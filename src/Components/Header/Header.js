@@ -5,7 +5,6 @@ function Header({ isMobile }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-  // Handle scroll effect for header
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 10);
@@ -14,12 +13,7 @@ function Header({ isMobile }) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Mobile search toggle
-  const toggleSearch = () => {
-    if (isMobile) {
-      setSearchOpen(!searchOpen);
-    }
-  };
+
 
   return (
     <div style={{
@@ -33,34 +27,31 @@ function Header({ isMobile }) {
       flexWrap: isMobile ? 'wrap' : 'nowrap',
     }}>
 
-      {/* Mobile Page Title - Only on mobile */}
+
       {isMobile && (
         <div style={styles.mobileLeftSection}>
           <div style={styles.pageTitle}>HRMS</div>
         </div>
       )}
 
-
-      {/* Right Section - Profile and Notifications */}
       <div style={{
         ...styles.rightSection,
         gap: isMobile ? '15px' : '25px',
         order: isMobile ? 2 : 'initial',
       }}>
-       
 
-        {/* Profile - Hide on very small mobile when search is open */}
+
+
         {(!isMobile || (isMobile && !searchOpen)) && (
           <div style={styles.profile}>
-            {/* Avatar - Show only on desktop/tablet, hide on very small mobile */}
+
             {(!isMobile || window.innerWidth > 400) && (
               <div style={styles.avatarContainer}>
                 <div style={styles.avatar}>{username.charAt(0)}</div>
                 <div style={styles.statusIndicator} />
               </div>
             )}
-            
-            {/* Profile Info - Show on desktop/tablet */}
+
             {!isMobile && (
               <div style={styles.profileInfo}>
                 <div style={styles.name}>
@@ -69,8 +60,7 @@ function Header({ isMobile }) {
                 <div style={styles.role}>Admin</div>
               </div>
             )}
-            
-            {/* Dropdown - Always show if profile is visible */}
+
             {(!isMobile || window.innerWidth > 400) && (
               <span style={styles.dropdownIcon}>⌄</span>
             )}
@@ -86,7 +76,7 @@ const styles = {
   header: {
     height: "100%",
     padding: "0 20px",
-    backgroundColor: "#1e1e2f",
+    backgroundColor: "#054242",
     color: "white",
     borderBottom: "1px solid #2d2d40",
     transition: 'all 0.3s ease',
@@ -148,7 +138,7 @@ const styles = {
     width: "32px",
     height: "32px",
     borderRadius: "50%",
-    backgroundColor: "#4f46e5",
+    backgroundColor: "#10b981",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
@@ -165,7 +155,7 @@ const styles = {
     height: "8px",
     backgroundColor: "#10b981",
     borderRadius: "50%",
-    border: "2px solid #1e1e2f",
+    border: "2px solid #054242",
   },
 
   profileInfo: {
@@ -195,7 +185,6 @@ const styles = {
   },
 };
 
-// Add hover effects
 Object.assign(styles.iconButton, {
   ':hover': {
     backgroundColor: "#2f2f45",

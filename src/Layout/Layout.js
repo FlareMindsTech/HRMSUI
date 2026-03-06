@@ -23,7 +23,7 @@ function Layout() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
- 
+
   useEffect(() => {
     if (isMobile) {
       setSidebarOpen(false);
@@ -38,12 +38,13 @@ function Layout() {
     <div
       style={{
         display: "flex",
-        minHeight: "100vh",
+        height: "100vh",
+        maxHeight: "100vh",
         fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
         position: "relative",
+        overflow: "hidden",
       }}
     >
-      {/* Mobile Menu Button */}
       {isMobile && (
         <button
           onClick={toggleSidebar}
@@ -52,7 +53,7 @@ function Layout() {
             top: "15px",
             left: "15px",
             zIndex: 1100,
-            backgroundColor: "#4f46e5",
+            backgroundColor: "#10b981",
             color: "white",
             border: "none",
             borderRadius: "6px",
@@ -70,13 +71,12 @@ function Layout() {
         </button>
       )}
 
-      {/* Sidebar */}
       <div
         style={{
           width: isMobile ? (sidebarOpen ? "280px" : "0") : "240px",
           maxWidth: isMobile && sidebarOpen ? "85%" : "none",
-          minHeight: "100vh",
-          backgroundColor: "#1e1e2f",
+          height: "100vh",
+          backgroundColor: "#032f2f",
           transition: "width 0.3s ease",
           position: isMobile ? "fixed" : "relative",
           zIndex: 1000,
@@ -90,7 +90,7 @@ function Layout() {
         {(!isMobile || sidebarOpen) && <Sidebar />}
       </div>
 
-      {/* Overlay */}
+
       {isMobile && sidebarOpen && (
         <div
           onClick={toggleSidebar}
@@ -103,7 +103,7 @@ function Layout() {
         />
       )}
 
-      {/* Right Content */}
+
       <div
         style={{
           flex: 1,
@@ -111,19 +111,21 @@ function Layout() {
           flexDirection: "column",
           minWidth: 0,
           width: "100%",
+          height: "100vh",
+          overflow: "hidden",
         }}
       >
+
         {/* Header */}
         <div
           style={{
             height: isMobile ? "60px" : "70px",
-            backgroundColor: "#1e1e2f",
+            backgroundColor: "#054242",
             color: "white",
             display: "flex",
             alignItems: "center",
             padding: isMobile ? "0 15px 0 60px" : "0 30px",
-            position: "sticky",
-            top: 0,
+            flexShrink: 0,
             zIndex: 900,
             boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
           }}
@@ -131,13 +133,16 @@ function Layout() {
           <Header isMobile={isMobile} />
         </div>
 
-        {/* Main Content */}
+
         <div
+          className="no-scrollbar"
           style={{
             flex: 1,
-            padding: isMobile ? "15px" : "25px 30px",
+            padding: isMobile ? "10px" : "15px 30px",
             backgroundColor: "#f8fafc",
             overflowY: "auto",
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
           }}
         >
           <Outlet />
@@ -146,8 +151,8 @@ function Layout() {
         {/* Footer */}
         <div
           style={{
-            height: isMobile ? "50px" : "60px",
-            backgroundColor: "#2c3e50",
+            height: isMobile ? "30px" : "40px",
+            backgroundColor: "#054242",
             color: "#e0e0e0",
             display: "flex",
             alignItems: "center",
@@ -158,6 +163,8 @@ function Layout() {
         >
           <Footer />
         </div>
+
+
       </div>
     </div>
   );

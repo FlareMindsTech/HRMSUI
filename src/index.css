@@ -1,13 +1,79 @@
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+
+:root {
+  --primary-color: #032f2f;
+  --primary-gradient: linear-gradient(135deg, #032f2f 0%, #064b4b 100%);
+  --sidebar-width: 260px;
+  --header-height: 70px;
+}
+
+.premium-card {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.premium-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.gradient-bg {
+  background: var(--primary-gradient);
+  color: white;
+}
+
+/* Hide scrollbar for all elements with .no-scrollbar class */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+.form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.25rem rgba(3, 47, 47, 0.15);
+}
+
+.nav-pills .nav-link {
+  color: #64748b;
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 6px 12px;
+  transition: all 0.2s ease;
+}
+
+.nav-pills .nav-link.active {
+  background: var(--primary-gradient);
+  color: white;
+  box-shadow: 0 10px 15px -3px rgba(3, 47, 47, 0.2);
+}
+
+.nav-pills .nav-link:not(.active):hover {
+  background: rgba(3, 47, 47, 0.05);
+  color: var(--primary-color);
+}
+
+.progress-teal .progress-bar {
+  background-color: var(--primary-color) !important;
 }
