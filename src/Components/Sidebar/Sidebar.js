@@ -1,132 +1,151 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-
 import {
-  MdDashboard,
-  MdBusiness,
-  MdPeople,
-  MdEventNote,
-  MdAccessTime,
-  MdPersonAdd,
-  MdReceipt,
-  MdAccountBalance,
-  MdAssessment,
-  MdLogout
+  MdDashboard, MdBusiness, MdEventNote, MdAccessTime,
+  MdPersonAdd, MdReceipt, MdAccountBalance, MdAssessment, MdLogout, MdWork
 } from "react-icons/md";
+
+const menuItems = [
+  { name: "Dashboard", path: "/dashboard", icon: MdDashboard, section: "main" },
+  { name: "Organisation", path: "/organisation", icon: MdBusiness, section: "main" },
+  { name: "Leave Request", path: "/leave", icon: MdEventNote, section: "main" },
+  { name: "Attendance", path: "/attendance", icon: MdAccessTime, section: "main" },
+  { name: "Projects", path: "/projects", icon: MdWork, section: "main" },
+  { name: "HR Onboarding", path: "/onboarding", icon: MdPersonAdd, section: "manage" },
+  { name: "Payslip", path: "/payslip", icon: MdReceipt, section: "manage" },
+  { name: "EPFO", path: "/epfo", icon: MdAccountBalance, section: "manage" },
+  { name: "MIS", path: "/mis", icon: MdAssessment, section: "manage" },
+];
 
 function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [hoveredItem, setHoveredItem] = useState(null);
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [hovered, setHovered] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
-  const menuItems = [
-    { name: "Dashboard", path: "/dashboard", icon: <MdDashboard /> },
-    { name: "Organisation", path: "/organisation", icon: <MdBusiness /> },
-
-    { name: "Leave Request", path: "/leave", icon: <MdEventNote /> },
-    { name: "Attendance Management", path: "/attendance", icon: <MdAccessTime /> },
-    { name: "HR Onboarding", path: "/onboarding", icon: <MdPersonAdd /> },
-    { name: "Payslip", path: "/payslip", icon: <MdReceipt /> },
-    { name: "EPFO", path: "/epfo", icon: <MdAccountBalance /> },
-    { name: "MIS", path: "/mis", icon: <MdAssessment /> },
-    { name: "Logout", path: "#", icon: <MdLogout /> },
-  ];
-
-  const activeItem =
-    menuItems.find(item => location.pathname.startsWith(item.path))?.name ||
-    "Dashboard";
+  const activePath = menuItems.find(
+    item => location.pathname.startsWith(item.path)
+  )?.path || "/dashboard";
 
   const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    window.location.href = '/login';
+    localStorage.removeItem("isAuthenticated");
+    window.location.href = "/login";
+  };
+
+  const renderItem = (item) => {
+    const isActive = activePath === item.path;
+    const isHovered = hovered === item.path;
+    const highlighted = isActive || isHovered;
+    const Icon = item.icon;
+
+    return (
+      <li
+        key={item.path}
+        style={{
+          ...styles.menuItem,
+          background: isActive
+            ? "rgba(45,197,138,0.15)"
+            : isHovered
+              ? "rgba(45,197,138,0.07)"
+              : "transparent",
+          boxShadow: isActive ? "inset 0 0 0 1px rgba(45,197,138,0.2)" : "none",
+        }}
+        onClick={() => navigate(item.path)}
+        onMouseEnter={() => setHovered(item.path)}
+        onMouseLeave={() => setHovered(null)}
+      >
+        <span style={{
+          ...styles.iconWrap,
+          background: isActive
+            ? "rgba(45,197,138,0.22)"
+            : isHovered
+              ? "rgba(45,197,138,0.1)"
+              : "rgba(255,255,255,0.04)",
+        }}>
+          <Icon style={{
+            fontSize: 18,
+            color: highlighted ? "#2DC58A" : "rgba(200,230,215,0.45)",
+            transition: "color 0.2s",
+          }} />
+        </span>
+        <span style={{
+          ...styles.menuLabel,
+          color: highlighted ? "#e8f8f2" : "rgba(180,220,200,0.6)",
+          fontWeight: isActive ? 600 : 400,
+        }}>
+          {item.name}
+        </span>
+        {isActive && <span style={styles.activeIndicator} />}
+      </li>
+    );
   };
 
   return (
     <div style={styles.sidebar}>
-      {/* Title */}
-      <div style={styles.title}>
-        <div style={styles.titleText}>HRMS</div>
-        <div style={styles.titleSub}>Human Resource System</div>
+      {/* ─── Brand ─── */}
+      <div style={styles.brand}>
+        <div style={styles.brandLogo}>
+          <span style={{ color: "#2DC58A", fontWeight: 800, fontSize: 16 }}>T</span>
+        </div>
+        <div>
+          <div style={styles.brandName}>TeamHub</div>
+          <div style={styles.brandSub}>HR Management</div>
+        </div>
       </div>
 
-      {/* Menu */}
-      <ul style={styles.menu}>
-        {menuItems.map(item => {
-          const isActive = activeItem === item.name && item.name !== "Logout";
-          const isHovered = hoveredItem === item.name;
-          const isSelected = isActive || isHovered;
+      {/* ─── Navigation ─── */}
+      <div style={styles.navContainer}>
+        <div style={styles.navSection}>
+          <p style={styles.sectionLabel}>MAIN</p>
+          <ul style={styles.menuList}>
+            {menuItems.filter(i => i.section === "main").map(renderItem)}
+          </ul>
+        </div>
 
-          return (
-            <li
-              key={item.name}
-              style={{
-                ...styles.item,
-                ...(isSelected ? styles.active : {})
-              }}
-              onClick={() => {
-                if (item.name === "Logout") {
-                  setShowLogoutModal(true);
-                } else {
-                  navigate(item.path);
-                }
-              }}
-              onMouseEnter={() => setHoveredItem(item.name)}
-              onMouseLeave={() => setHoveredItem(null)}
-            >
-              <div style={styles.itemContent}>
+        <div style={styles.navSection}>
+          <p style={styles.sectionLabel}>MANAGE</p>
+          <ul style={styles.menuList}>
+            {menuItems.filter(i => i.section === "manage").map(renderItem)}
+          </ul>
+        </div>
+      </div>
 
-                <span
-                  style={{
-                    ...styles.iconWrapper,
-                    backgroundColor: isSelected ? "#ffffff" : "transparent"
-                  }}
-                >
-                  <span
-                    style={{
-                      ...styles.icon,
-                      color: isSelected ? "#032f2f" : "#9ca3af"
-                    }}
-                  >
-                    {item.icon}
-                  </span>
-                </span>
+      {/* ─── Promo Card ─── */}
+      <div style={styles.promoCard}>
+        <div style={styles.promoIcon}></div>
+        <p style={styles.promoTitle}>Level Up Your HR System</p>
+        <p style={styles.promoSub}>Upgrade to Pro for more features</p>
+        <button style={styles.promoBtn}>Get TeamHub Pro</button>
+      </div>
 
+      {/* ─── User Profile / Logout ─── */}
+      <div style={styles.userRow}>
+        <div style={styles.userAvatar}>A</div>
+        <div style={styles.userInfo}>
+          <div style={styles.userName}>Admin User</div>
+          <div style={styles.userRole}>Administrator</div>
+        </div>
+        <button
+          style={styles.logoutBtn}
+          title="Logout"
+          onClick={() => setShowModal(true)}
+        >
+          <MdLogout style={{ fontSize: 16, color: "#8ba49d" }} />
+        </button>
+      </div>
 
-                <span
-                  style={{
-                    ...styles.itemText,
-                    color: isSelected ? "#ffffff" : "#9ca3af",
-                    fontWeight: isActive ? "600" : "500"
-                  }}
-                >
-                  {item.name}
-                </span>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-
-      {/* Logout Confirmation Modal */}
-      {showLogoutModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
+      {/* ─── Logout Modal ─── */}
+      {showModal && (
+        <div style={styles.overlay}>
+          <div style={styles.modal}>
+            <div style={styles.modalIconCircle}>
+              <MdLogout style={{ fontSize: 24, color: "#ef4444" }} />
+            </div>
             <h3 style={styles.modalTitle}>Confirm Logout</h3>
-            <p style={styles.modalText}>Are you sure you want to logout?</p>
-            <div style={styles.modalActions}>
-              <button
-                style={styles.cancelBtn}
-                onClick={() => setShowLogoutModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                style={styles.confirmBtn}
-                onClick={handleLogout}
-              >
-                Yes, Logout
-              </button>
+            <p style={styles.modalText}>Are you sure you want to log out of HRMS?</p>
+            <div style={styles.modalButtons}>
+              <button style={styles.cancelBtn} onClick={() => setShowModal(false)}>Cancel</button>
+              <button style={styles.confirmBtn} onClick={handleLogout}>Yes, Logout</button>
             </div>
           </div>
         </div>
@@ -137,142 +156,157 @@ function Sidebar() {
 
 const styles = {
   sidebar: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#032f2f",
+    width: "100%", height: "100%",
+    background: "transparent",
+    borderRight: "none",
+    display: "flex", flexDirection: "column",
+    overflowY: "auto", overflowX: "hidden",
+    scrollbarWidth: "none",
+  },
+
+  /* Brand */
+  brand: {
+    display: "flex", alignItems: "center", gap: 10,
+    padding: "20px 18px 14px",
+    borderBottom: "1px solid rgba(45, 197, 138, 0.12)",
+  },
+  brandLogo: {
+    width: 36, height: 36, borderRadius: 10,
+    background: "linear-gradient(135deg, rgba(45,197,138,0.25) 0%, rgba(32,166,115,0.35) 100%)",
+    border: "1px solid rgba(45, 197, 138, 0.4)",
+    boxShadow: "0 0 14px rgba(45,197,138,0.18)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    flexShrink: 0,
+  },
+  brandName: { fontSize: 16, fontWeight: 700, color: "#e8f8f2", letterSpacing: "0.01em" },
+  brandSub: { fontSize: 10, color: "rgba(45,197,138,0.65)", marginTop: 1 },
+
+  /* Nav */
+  navContainer: { flex: 1, padding: "10px 10px 0" },
+  navSection: { marginBottom: 8 },
+  sectionLabel: {
+    fontSize: 9.5, fontWeight: 700, letterSpacing: "0.12em",
+    color: "rgba(45,197,138,0.45)", margin: "12px 8px 4px",
+    textTransform: "uppercase",
+  },
+  menuList: { listStyle: "none", padding: 0, margin: 0 },
+
+  /* Menu Item */
+  menuItem: {
+    display: "flex", alignItems: "center", gap: 10,
+    padding: "8px 10px", borderRadius: 9,
+    cursor: "pointer", transition: "all 0.2s ease",
+    position: "relative", marginBottom: 2,
+  },
+  iconWrap: {
+    width: 30, height: 30, borderRadius: 7,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    flexShrink: 0, transition: "all 0.2s ease",
+  },
+  menuLabel: { fontSize: 13.5, transition: "color 0.2s", flex: 1 },
+  activeIndicator: {
+    width: 5, height: 5, borderRadius: "50%",
+    background: "#2DC58A",
+    boxShadow: "0 0 7px rgba(45,197,138,0.9)",
+    flexShrink: 0,
+  },
+
+  /* Promo card */
+  promoCard: {
+    margin: "12px 12px 8px",
+    background: "rgba(45, 197, 138, 0.1)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+    border: "1px solid rgba(45, 197, 138, 0.22)",
+    borderRadius: 14, padding: "16px 14px",
     color: "#fff",
-    display: "flex",
-    flexDirection: "column"
+    boxShadow: "0 4px 24px rgba(45,197,138,0.08), inset 0 1px 0 rgba(255,255,255,0.05)",
+  },
+  promoIcon: { fontSize: 22, marginBottom: 6 },
+  promoTitle: { fontSize: 13, fontWeight: 700, margin: "0 0 3px", lineHeight: 1.3, color: "#e8f8f2" },
+  promoSub: { fontSize: 10.5, margin: "0 0 10px", color: "rgba(200,240,220,0.72)" },
+  promoBtn: {
+    background: "linear-gradient(135deg,#2DC58A 0%,#20a673 100%)",
+    color: "#fff",
+    border: "none", borderRadius: 7,
+    padding: "6px 14px", fontSize: 12, fontWeight: 700,
+    cursor: "pointer", transition: "all 0.18s",
+    width: "100%",
+    boxShadow: "0 4px 14px rgba(45,197,138,0.32)",
   },
 
-  title: {
-    height: "80px",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#022626",
-    borderBottom: "1px solid #2d2d40"
+  /* User row */
+  userRow: {
+    display: "flex", alignItems: "center", gap: 10,
+    padding: "12px 14px",
+    borderTop: "1px solid rgba(45,197,138,0.12)",
+    marginTop: "auto",
+    background: "rgba(0,0,0,0.15)",
+  },
+  userAvatar: {
+    width: 32, height: 32, borderRadius: 8,
+    background: "linear-gradient(135deg,#2DC58A 0%,#1a9e6e 100%)",
+    border: "1px solid rgba(45,197,138,0.45)",
+    boxShadow: "0 0 10px rgba(45,197,138,0.22)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontSize: 13, fontWeight: 700, color: "#fff", flexShrink: 0,
+  },
+  userInfo: { flex: 1, minWidth: 0 },
+  userName: { fontSize: 12.5, fontWeight: 600, color: "#e8f8f2", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  userRole: { fontSize: 10.5, color: "rgba(45,197,138,0.6)" },
+  logoutBtn: {
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    cursor: "pointer", padding: 6, borderRadius: 7,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    flexShrink: 0,
+    transition: "all 0.18s",
   },
 
-  titleText: {
-    fontSize: "20px",
-    fontWeight: "bold"
+  /* Modal */
+  overlay: {
+    position: "fixed", inset: 0,
+    background: "rgba(0,10,5,0.6)",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    zIndex: 9999,
   },
-
-  titleSub: {
-    fontSize: "11px",
-    color: "#a0a0c0"
+  modal: {
+    background: "rgba(12, 28, 20, 0.92)",
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+    border: "1px solid rgba(45,197,138,0.18)",
+    borderRadius: 18,
+    padding: "28px 28px 24px", width: "90%", maxWidth: 360,
+    boxShadow: "0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(45,197,138,0.07)",
+    textAlign: "center",
   },
-
-  sidebarItemHover: {
-    backgroundColor: 'rgba(124, 58, 237, 0.15)',
-    color: '#ffffff',
+  modalIconCircle: {
+    width: 52, height: 52, borderRadius: "50%",
+    background: "rgba(239,68,68,0.12)",
+    border: "1px solid rgba(239,68,68,0.22)",
+    margin: "0 auto 16px",
+    display: "flex", alignItems: "center", justifyContent: "center",
   },
-
-  menu: {
-    listStyle: "none",
-    padding: "16px 0",
-    margin: 0,
-    flex: 1
-  },
-
-  item: {
-    padding: "10px 12px",
-    margin: "4px 0",
-    cursor: "pointer",
-    transition: "all 0.25s ease",
-    borderRadius: "14px"
-  },
-
-  itemContent: {
-    display: "flex",
-    alignItems: "center"
-  },
-
-  iconWrapper: {
-    width: "34px",
-    height: "34px",
-    borderRadius: "10px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: "14px",
-    transition: "all 0.25s ease"
-  },
-
-  icon: {
-    fontSize: "18px"
-  },
-
-  itemText: {
-    fontSize: "14px"
-  },
-
-  active: {
-    backgroundColor: "#054242",
-    margin: "6px 12px"
-  },
-
-  /* Modal Styles */
-  modalOverlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 9999
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    padding: '24px',
-    borderRadius: '12px',
-    width: '90%',
-    maxWidth: '400px',
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-    color: '#333'
-  },
-  modalTitle: {
-    marginTop: 0,
-    marginBottom: '10px',
-    fontSize: '20px',
-    fontWeight: 'bold',
-    color: '#1e1e2f'
-  },
-  modalText: {
-    marginBottom: '24px',
-    fontSize: '16px',
-    color: '#4b5563'
-  },
-  modalActions: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '12px'
-  },
+  modalTitle: { fontSize: 17, fontWeight: 700, color: "#e8f8f2", margin: "0 0 6px" },
+  modalText: { fontSize: 13.5, color: "rgba(200,230,215,0.7)", margin: "0 0 22px" },
+  modalButtons: { display: "flex", gap: 10, justifyContent: "center" },
   cancelBtn: {
-    padding: '8px 16px',
-    border: '1px solid #d1d5db',
-    backgroundColor: '#fff',
-    color: '#374151',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontWeight: '500',
-    transition: 'background-color 0.2s'
+    flex: 1, padding: "9px 0",
+    border: "1px solid rgba(45,197,138,0.2)",
+    background: "rgba(255,255,255,0.05)",
+    color: "#c8e6d8", borderRadius: 9, cursor: "pointer",
+    fontSize: 13.5, fontWeight: 500,
   },
   confirmBtn: {
-    padding: '8px 16px',
-    border: 'none',
-    backgroundColor: '#dc2626',
-    color: '#fff',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontWeight: '500',
-    transition: 'background-color 0.2s'
-  }
+    flex: 1, padding: "9px 0",
+    border: "none",
+    background: "linear-gradient(135deg,#ef4444 0%,#dc2626 100%)",
+    color: "#fff", borderRadius: 9, cursor: "pointer",
+    fontSize: 13.5, fontWeight: 600,
+    boxShadow: "0 4px 14px rgba(239,68,68,0.35)",
+  },
 };
 
 export default Sidebar;

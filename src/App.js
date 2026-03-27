@@ -11,7 +11,7 @@ import UserManagement from './Pages/Dashboard/UserManagement';
 import Attendance from './Pages/Dashboard/Attendance';
 import Epfo from './Pages/Dashboard/Epfo';
 import Login from './view/Login';
-
+import ProjectManagement from './Pages/Dashboard/ProjectManagement';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
@@ -46,6 +46,7 @@ function App() {
             <Route path="/payslip" element={<Payslip />} />
             <Route path="/users" element={<UserManagement />} />
             <Route path="/attendance" element={<Attendance />} />
+            <Route path="/projects" element={<ProjectManagement />} />
             <Route path="/epfo" element={<Epfo />} />
             {/* Add other routes here */}
           </Route>
