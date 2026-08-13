@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { useDispatch } from 'react-redux';
+import { loginStart, loginSuccess, loginFailure } from '../redux/slices/authSlice';
+import { loginUser } from '../utils/api';
 
 const Login = ({ onLogin }) => {
   const [email, setEmail] = useState('');
@@ -7,8 +10,25 @@ const Login = ({ onLogin }) => {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const dispatch = useDispatch();
 
-  const handleSubmit = (e) => {
+  const getLocation = () => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Geolocation is not supported by your browser.'));
+      } else {
+        navigator.geolocation.getCurrentPosition(
+          (position) => resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          }),
+          (error) => reject(new Error('Please allow location access to log in.'))
+        );
+      }
+    });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (!email || !password) {
@@ -16,7 +36,23 @@ const Login = ({ onLogin }) => {
       return;
     }
     setLoading(true);
-    setTimeout(() => { setLoading(false); onLogin(); }, 800);
+    dispatch(loginStart());
+    try {
+      const position = await getLocation();
+      const data = await loginUser({ 
+        email, 
+        password, 
+        latitude: position.latitude, 
+        longitude: position.longitude 
+      });
+      dispatch(loginSuccess(data));
+      setLoading(false);
+      if (onLogin) onLogin();
+    } catch (err) {
+      setLoading(false);
+      setError(err.message || 'Invalid email or password.');
+      dispatch(loginFailure(err.message));
+    }
   };
 
   return (
