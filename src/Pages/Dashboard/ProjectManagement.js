@@ -1,129 +1,221 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Container, Row, Col, Card, Form, Button, Badge, Table, Modal, OverlayTrigger, Tooltip
+  Container, Row, Col, Card, Form, Button, Badge, Table, Modal, OverlayTrigger, Tooltip, Spinner, Alert
 } from 'react-bootstrap';
 import {
   FaProjectDiagram, FaTasks, FaRunning, FaPlus, FaRegClock, FaUsers, FaEllipsisV
 } from 'react-icons/fa';
+import { API_BASE_URL, authHeaders } from '../../config/api';
 
 function ProjectManagement() {
-  const [projects, setProjects] = useState([
-    {
-      _id: '1',
-      projectName: 'HRMS Platform Rekit',
-      description: 'Revamping the core HRMS UI to newer standards.',
-      startDate: '2024-03-01',
-      endDate: '2024-06-30',
-      status: 'In Progress',
-      teamSize: 8,
-    },
-    {
-      _id: '2',
-      projectName: 'Mobile App Beta',
-      description: 'Flutter beta release for both iOS and Android.',
-      startDate: '2024-02-15',
-      endDate: '2024-05-15',
-      status: 'Planning',
-      teamSize: 5,
-    }
-  ]);
+  // --- Core data (now loaded from backend, not hardcoded) ---
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(null);
 
-  const [selectedProject, setSelectedProject] = useState(projects[0]);
+  const [projectDetails, setProjectDetails] = useState(null); // full project doc with populated members
+  const [sprints, setSprints] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [companyUsers, setCompanyUsers] = useState([]); // used for Add Member dropdown
 
-  const [sprints, setSprints] = useState([
-    { _id: 's1', sprintName: 'Sprint 1 - Foundation', startDate: '2024-03-01', endDate: '2024-03-14', status: 'Completed' },
-    { _id: 's2', sprintName: 'Sprint 2 - Core UI', startDate: '2024-03-15', endDate: '2024-03-28', status: 'Active' },
-  ]);
-
-  const [tasks, setTasks] = useState([
-    { _id: 't1', taskName: 'Design System Update', assignedTo: { firstName: 'Alice', lastName: 'Smith' }, priority: 'High', status: 'In Progress', dueDate: '2024-03-20' },
-    { _id: 't2', taskName: 'Leave Component Integration', assignedTo: { firstName: 'Bob', lastName: 'Jones' }, priority: 'Medium', status: 'Pending', dueDate: '2024-03-24' },
-    { _id: 't3', taskName: 'Dashboard Metrics API', assignedTo: { firstName: 'Charlie', lastName: 'Brown' }, priority: 'High', status: 'Completed', dueDate: '2024-03-18' },
-  ]);
+  // --- Loading / error states ---
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [projectsError, setProjectsError] = useState('');
+  const [detailsError, setDetailsError] = useState('');
 
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showSprintModal, setShowSprintModal] = useState(false);
   const [showMemberModal, setShowMemberModal] = useState(false);
 
-  const [teamMembers] = useState([
-    { _id: 'u1', firstName: 'Alice', lastName: 'Smith', role: 'Project Manager' },
-    { _id: 'u2', firstName: 'Bob', lastName: 'Jones', role: 'Team Lead' },
-    { _id: 'u3', firstName: 'Charlie', lastName: 'Brown', role: 'Software Developer' },
-    { _id: 'u4', firstName: 'Diana', lastName: 'Prince', role: 'Intern' },
-  ]);
-
   const [newProject, setNewProject] = useState({ projectName: '', description: '', startDate: '', endDate: '' });
   const [newSprint, setNewSprint] = useState({ sprintName: '', startDate: '', endDate: '', status: 'Planned' });
   const [newTask, setNewTask] = useState({ taskName: '', priority: 'High', dueDate: '', assignedTo: '' });
   const [newMember, setNewMember] = useState({ newMemberId: '', role: 'Project Manager' });
 
-  const getAuthToken = () => localStorage.getItem('token') || '';
+  // ----------------------------------------------------------------
+  // GET: All projects (left panel list)
+  // ----------------------------------------------------------------
+  const fetchProjects = useCallback(async (preserveSelectionId) => {
+    setLoadingProjects(true);
+    setProjectsError('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/project/getAllProjects`, {
+        headers: authHeaders()
+      });
+      const data = await res.json();
+      if (data.success) {
+        setProjects(data.data);
+        setSelectedProject(prev => {
+          const keepId = preserveSelectionId || prev?._id;
+          const stillExists = keepId ? data.data.find(p => p._id === keepId) : null;
+          return stillExists || data.data[0] || null;
+        });
+      } else {
+        setProjectsError(data.message || "Failed to load projects");
+      }
+    } catch (e) {
+      console.error(e);
+      setProjectsError("Unable to reach the server. Please check your connection.");
+    } finally {
+      setLoadingProjects(false);
+    }
+  }, []);
 
+  // ----------------------------------------------------------------
+  // GET: Project details (members) + Sprints + Tasks for selected project
+  // ----------------------------------------------------------------
+  const fetchProjectDetails = useCallback(async (projectId) => {
+    if (!projectId) {
+      setProjectDetails(null);
+      setSprints([]);
+      setTasks([]);
+      return;
+    }
+    setLoadingDetails(true);
+    setDetailsError('');
+    try {
+      const [detailsRes, sprintsRes, tasksRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/project/getProjectDetails/${projectId}`, { headers: authHeaders() }),
+        fetch(`${API_BASE_URL}/sprint/getByProject/${projectId}`, { headers: authHeaders() }),
+        fetch(`${API_BASE_URL}/task/getByProject/${projectId}`, { headers: authHeaders() }),
+      ]);
+
+      const detailsData = await detailsRes.json();
+      const sprintsData = await sprintsRes.json();
+      const tasksData = await tasksRes.json();
+
+      if (detailsData.success) setProjectDetails(detailsData.data);
+      else setDetailsError(detailsData.message || "Failed to load project details");
+
+      if (sprintsData.success) setSprints(sprintsData.data);
+      if (tasksData.success) setTasks(tasksData.data);
+    } catch (e) {
+      console.error(e);
+      setDetailsError("Unable to reach the server. Please check your connection.");
+    } finally {
+      setLoadingDetails(false);
+    }
+  }, []);
+
+  // ----------------------------------------------------------------
+  // GET: Company users (for Add Member dropdown)
+  // ----------------------------------------------------------------
+  const fetchCompanyUsers = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/user/get?limit=100`, {
+        headers: authHeaders()
+      });
+      const data = await res.json();
+      if (Array.isArray(data.data)) {
+        setCompanyUsers(data.data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProjects();
+    fetchCompanyUsers();
+  }, [fetchProjects, fetchCompanyUsers]);
+
+  useEffect(() => {
+    fetchProjectDetails(selectedProject?._id);
+  }, [selectedProject?._id, fetchProjectDetails]);
+
+  // ----------------------------------------------------------------
+  // Derived: real project team members (from populated projectDetails)
+  // ----------------------------------------------------------------
+  const projectMembers = projectDetails ? [
+    ...(projectDetails.projectManager ? [{ ...projectDetails.projectManager, roleLabel: 'Project Manager' }] : []),
+    ...(projectDetails.teamLeads || []).filter(m => m.userId).map(m => ({ ...m.userId, roleLabel: 'Team Lead' })),
+    ...(projectDetails.softwareDevelopers || []).filter(m => m.userId).map(m => ({ ...m.userId, roleLabel: 'Software Developer' })),
+    ...(projectDetails.interns || []).filter(m => m.userId).map(m => ({ ...m.userId, roleLabel: 'Intern' })),
+  ] : [];
+
+  const getTeamSize = (proj) => {
+    return (proj.projectManager ? 1 : 0)
+      + (proj.teamLeads?.length || 0)
+      + (proj.softwareDevelopers?.length || 0)
+      + (proj.interns?.length || 0);
+  };
+
+  // ----------------------------------------------------------------
+  // Create actions (unchanged endpoints/logic) — now re-fetch fresh
+  // data from the server on success instead of faking local state.
+  // ----------------------------------------------------------------
   const handleCreateProject = async () => {
     try {
-      const res = await fetch("http://localhost:7800/api/project/create", {
+      const res = await fetch(`${API_BASE_URL}/project/create`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${getAuthToken()}` },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify(newProject)
       });
       const data = await res.json();
       if (data.success) {
-        setProjects([...projects, { ...data.data, status: 'Planning', teamSize: 1 }]);
         setShowProjectModal(false);
+        setNewProject({ projectName: '', description: '', startDate: '', endDate: '' });
+        fetchProjects(data.data._id);
       } else alert(data.message);
     } catch (e) { console.error(e); }
   };
 
   const handleCreateSprint = async () => {
-    if(!selectedProject) return alert("Select a project first");
+    if (!selectedProject) return alert("Select a project first");
     try {
-      const res = await fetch("http://localhost:7800/api/sprint/create", {
+      const res = await fetch(`${API_BASE_URL}/sprint/create`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${getAuthToken()}` },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ ...newSprint, projectId: selectedProject._id })
       });
       const data = await res.json();
       if (data.success) {
-        setSprints([...sprints, data.data]);
         setShowSprintModal(false);
+        setNewSprint({ sprintName: '', startDate: '', endDate: '', status: 'Planned' });
+        fetchProjectDetails(selectedProject._id);
       } else alert(data.message);
     } catch (e) { console.error(e); }
   };
 
   const handleCreateTask = async () => {
-    if(!selectedProject) return alert("Select a project first");
+    if (!selectedProject) return alert("Select a project first");
     try {
-      const res = await fetch("http://localhost:7800/api/task/create", {
+      const res = await fetch(`${API_BASE_URL}/task/create`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${getAuthToken()}` },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ ...newTask, projectId: selectedProject._id })
       });
       const data = await res.json();
       if (data.success) {
-        setTasks([...tasks, { ...data.data, assignedTo: { firstName: 'New', lastName: 'User' } }]);
         setShowTaskModal(false);
+        setNewTask({ taskName: '', priority: 'High', dueDate: '', assignedTo: '' });
+        fetchProjectDetails(selectedProject._id);
       } else alert(data.message);
     } catch (e) { console.error(e); }
   };
 
   const handleAddMember = async () => {
-    if(!selectedProject) return alert("Select a project first");
+    if (!selectedProject) return alert("Select a project first");
     try {
-      const res = await fetch("http://localhost:7800/api/project/addMember", {
+      const res = await fetch(`${API_BASE_URL}/project/addMember`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${getAuthToken()}` },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ projectId: selectedProject._id, newMemberId: newMember.newMemberId })
       });
       const data = await res.json();
       if (data.success) {
         alert("Member added successfully!");
         setShowMemberModal(false);
+        setNewMember({ newMemberId: '', role: 'Project Manager' });
+        fetchProjectDetails(selectedProject._id);
+        fetchProjects(selectedProject._id); // refresh member counts on left panel cards
       } else alert(data.message);
     } catch (e) { console.error(e); }
   };
+
   const getPriorityBadge = (priority) => {
-    switch(priority?.toLowerCase()) {
+    switch (priority?.toLowerCase()) {
       case 'high': return <Badge bg="danger">High</Badge>;
       case 'medium': return <Badge bg="warning" text="dark">Medium</Badge>;
       case 'low': return <Badge bg="info">Low</Badge>;
@@ -138,15 +230,17 @@ function ProjectManagement() {
       case 'active':
         return <Badge bg="primary" className="rounded-pill px-3">Active</Badge>;
       case 'planning':
+      case 'planned':
       case 'pending':
-        return <Badge bg="warning" className="rounded-pill px-3 text-dark">Pending</Badge>;
+      case 'to do':
+        return <Badge bg="warning" className="rounded-pill px-3 text-dark">{status}</Badge>;
       default: return <Badge bg="secondary" className="rounded-pill px-3">{status}</Badge>;
     }
   };
 
   return (
     <Container fluid className="p-3 no-scrollbar" style={{ height: 'calc(100vh - var(--header-height))', overflowY: 'auto' }}>
-      
+
       {/* Header Section */}
       <Row className="mb-4 align-items-center">
         <Col>
@@ -154,7 +248,7 @@ function ProjectManagement() {
           <p className="text-muted small mb-0">Oversee projects, manage sprints, and track team tasks seamlessly.</p>
         </Col>
         <Col xs="auto">
-          <Button variant="primary" className="rounded-pill gradient-bg border-0 px-4 py-2 shadow-sm d-flex align-items-center gap-2" 
+          <Button variant="primary" className="rounded-pill gradient-bg border-0 px-4 py-2 shadow-sm d-flex align-items-center gap-2"
                   style={{ backgroundColor: 'var(--primary-color)' }} onClick={() => setShowProjectModal(true)}>
             <FaPlus /> New Project
           </Button>
@@ -173,32 +267,48 @@ function ProjectManagement() {
                 <h5 className="fw-bold mb-0">My Projects</h5>
               </div>
 
-              <div className="d-flex flex-column gap-3">
-                {projects.map((proj) => (
-                  <div 
-                    key={proj._id} 
-                    className={`p-3 rounded-4 border transition-all cursor-pointer ${selectedProject?._id === proj._id ? 'border-primary bg-primary bg-opacity-10 shadow-sm' : 'border-light bg-light hover-bg-white'}`}
-                    onClick={() => setSelectedProject(proj)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <div className="d-flex justify-content-between align-items-start mb-2">
-                      <h6 className="fw-bold mb-0 text-dark">{proj.projectName}</h6>
-                      {getStatusBadge(proj.status)}
-                    </div>
-                    <p className="text-muted small mb-3 line-clamp-2" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                      {proj.description}
-                    </p>
-                    <div className="d-flex justify-content-between align-items-center mt-auto">
-                      <div className="d-flex align-items-center gap-2 text-muted small">
-                        <FaRegClock /> {new Date(proj.endDate).toLocaleDateString()}
+              {projectsError && (
+                <Alert variant="danger" className="small py-2">{projectsError}</Alert>
+              )}
+
+              {loadingProjects ? (
+                <div className="text-center py-5">
+                  <Spinner animation="border" size="sm" variant="primary" />
+                  <p className="text-muted small mt-2 mb-0">Loading projects...</p>
+                </div>
+              ) : projects.length === 0 ? (
+                <div className="text-center py-5">
+                  <FaProjectDiagram size={32} className="text-muted mb-2 opacity-50" />
+                  <p className="text-muted small mb-0">No projects yet. Create your first one!</p>
+                </div>
+              ) : (
+                <div className="d-flex flex-column gap-3">
+                  {projects.map((proj) => (
+                    <div
+                      key={proj._id}
+                      className={`p-3 rounded-4 border transition-all cursor-pointer ${selectedProject?._id === proj._id ? 'border-primary bg-primary bg-opacity-10 shadow-sm' : 'border-light bg-light hover-bg-white'}`}
+                      onClick={() => setSelectedProject(proj)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <h6 className="fw-bold mb-0 text-dark">{proj.projectName}</h6>
+                        {getStatusBadge(proj.status)}
                       </div>
-                      <div className="d-flex align-items-center gap-1 text-muted small">
-                         <FaUsers /> {proj.teamSize} Members
+                      <p className="text-muted small mb-3 line-clamp-2" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {proj.description}
+                      </p>
+                      <div className="d-flex justify-content-between align-items-center mt-auto">
+                        <div className="d-flex align-items-center gap-2 text-muted small">
+                          <FaRegClock /> {proj.endDate ? new Date(proj.endDate).toLocaleDateString() : '—'}
+                        </div>
+                        <div className="d-flex align-items-center gap-1 text-muted small">
+                          <FaUsers /> {getTeamSize(proj)} Members
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </Card.Body>
           </Card>
         </Col>
@@ -220,34 +330,41 @@ function ProjectManagement() {
                     </OverlayTrigger>
                   </div>
                 </div>
-                
+
+                {detailsError && (
+                  <Alert variant="danger" className="small py-2 m-3 mb-0">{detailsError}</Alert>
+                )}
+
                 <div className="d-flex">
                   <div className="flex-fill p-3 border-end border-light text-center">
                      <span className="text-muted small d-block mb-1">Total Sprints</span>
-                     <h5 className="fw-bold mb-0 text-dark">{sprints.length}</h5>
+                     <h5 className="fw-bold mb-0 text-dark">{loadingDetails ? '—' : sprints.length}</h5>
                   </div>
                   <div className="flex-fill p-3 border-end border-light text-center">
                      <span className="text-muted small d-block mb-1">Active Tasks</span>
-                     <h5 className="fw-bold mb-0 text-primary">{tasks.filter(t => t.status !== 'Completed').length}</h5>
+                     <h5 className="fw-bold mb-0 text-primary">{loadingDetails ? '—' : tasks.filter(t => t.status !== 'Completed').length}</h5>
                   </div>
                   <div className="flex-fill p-3 border-end border-light text-center">
                      <span className="text-muted small d-block mb-1">End Date</span>
-                     <h5 className="fw-bold mb-0 text-dark">{new Date(selectedProject.endDate).toLocaleDateString()}</h5>
+                     <h5 className="fw-bold mb-0 text-dark">{selectedProject.endDate ? new Date(selectedProject.endDate).toLocaleDateString() : '—'}</h5>
                   </div>
                   <div className="flex-fill p-3 text-center d-flex flex-column align-items-center justify-content-center">
                      <span className="text-muted small d-block mb-2">Team Members</span>
                      <div className="d-flex align-items-center justify-content-center">
-                       {teamMembers.slice(0, 3).map((m, i) => (
-                         <OverlayTrigger key={m._id} placement="top" overlay={<Tooltip>{m.firstName} {m.lastName} - {m.role}</Tooltip>}>
+                       {projectMembers.slice(0, 3).map((m, i) => (
+                         <OverlayTrigger key={m._id || i} placement="top" overlay={<Tooltip>{m.firstName} {m.lastName} - {m.roleLabel}</Tooltip>}>
                            <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center border border-white" style={{width: 32, height: 32, fontSize: '0.8rem', marginLeft: i > 0 ? '-10px' : '0', zIndex: 10 - i, cursor: 'pointer'}}>
-                             {m.firstName[0]}{m.lastName[0]}
+                             {m.firstName?.[0]}{m.lastName?.[0]}
                            </div>
                          </OverlayTrigger>
                        ))}
-                       {teamMembers.length > 3 && (
+                       {projectMembers.length > 3 && (
                          <div className="bg-light text-muted rounded-circle d-flex align-items-center justify-content-center border border-white" style={{width: 32, height: 32, fontSize: '0.75rem', marginLeft: '-10px', zIndex: 1}}>
-                           +{teamMembers.length - 3}
+                           +{projectMembers.length - 3}
                          </div>
+                       )}
+                       {projectMembers.length === 0 && !loadingDetails && (
+                         <span className="text-muted extra-small me-2">No members yet</span>
                        )}
                        <Button variant="outline-primary" className="rounded-circle p-0 d-flex flex-shrink-0 align-items-center justify-content-center ms-2" style={{width: 32, height: 32, minWidth: 32, minHeight: 32}} onClick={() => setShowMemberModal(true)}>
                          <FaPlus size={12} />
@@ -270,28 +387,36 @@ function ProjectManagement() {
                             </div>
                             <h6 className="fw-bold mb-0">Sprints</h6>
                           </div>
-                          <Button 
-                            variant="link" 
+                          <Button
+                            variant="link"
                             className="text-primary p-0 shadow-none small text-decoration-none"
                             onClick={() => setShowSprintModal(true)}
                           >
                             <FaPlus /> New
                           </Button>
                         </div>
-                        
-                        <div className="d-flex flex-column gap-2 overflow-auto no-scrollbar" style={{maxHeight: '300px'}}>
-                          {sprints.map(sprint => (
-                            <div key={sprint._id} className="p-3 border rounded-3 bg-light">
-                              <div className="d-flex justify-content-between align-items-center mb-1">
-                                <span className="fw-bold text-dark small">{sprint.sprintName}</span>
-                                {getStatusBadge(sprint.status)}
+
+                        {loadingDetails ? (
+                          <div className="text-center py-4">
+                            <Spinner animation="border" size="sm" variant="primary" />
+                          </div>
+                        ) : sprints.length === 0 ? (
+                          <p className="text-muted small text-center py-4 mb-0">No sprints yet for this project.</p>
+                        ) : (
+                          <div className="d-flex flex-column gap-2 overflow-auto no-scrollbar" style={{maxHeight: '300px'}}>
+                            {sprints.map(sprint => (
+                              <div key={sprint._id} className="p-3 border rounded-3 bg-light">
+                                <div className="d-flex justify-content-between align-items-center mb-1">
+                                  <span className="fw-bold text-dark small">{sprint.sprintName}</span>
+                                  {getStatusBadge(sprint.status)}
+                                </div>
+                                <span className="text-muted extra-small">
+                                  {new Date(sprint.startDate).toLocaleDateString()} - {new Date(sprint.endDate).toLocaleDateString()}
+                                </span>
                               </div>
-                              <span className="text-muted extra-small">
-                                {new Date(sprint.startDate).toLocaleDateString()} - {new Date(sprint.endDate).toLocaleDateString()}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                        )}
                      </Card.Body>
                   </Card>
                 </Col>
@@ -307,9 +432,9 @@ function ProjectManagement() {
                             </div>
                             <h6 className="fw-bold mb-0">Tasks Board</h6>
                           </div>
-                          <Button 
-                            variant="primary" 
-                            size="sm" 
+                          <Button
+                            variant="primary"
+                            size="sm"
                             className="rounded-pill px-3 shadow-sm d-flex align-items-center gap-1"
                             onClick={() => setShowTaskModal(true)}
                           >
@@ -317,41 +442,53 @@ function ProjectManagement() {
                           </Button>
                         </div>
 
-                        <div className="table-responsive no-scrollbar flex-fill">
-                          <Table borderless hover className="align-middle mb-0" style={{ fontSize: '0.85rem' }}>
-                            <thead className="text-muted border-bottom">
-                              <tr>
-                                <th className="fw-medium py-2">Task</th>
-                                <th className="fw-medium py-2">Assigned</th>
-                                <th className="fw-medium py-2">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {tasks.map(task => (
-                                <tr key={task._id} className="border-bottom-light">
-                                  <td className="py-3">
-                                    <div className="fw-bold text-dark mb-1">{task.taskName}</div>
-                                    <div className="d-flex align-items-center gap-2">
-                                      {getPriorityBadge(task.priority)}
-                                      <span className="text-muted small px-1"><FaRegClock className="me-1"/>{new Date(task.dueDate).toLocaleDateString()}</span>
-                                    </div>
-                                  </td>
-                                  <td className="py-3">
-                                    <div className="d-flex align-items-center gap-2">
-                                      <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style={{width: 28, height: 28, fontSize: '0.75rem'}}>
-                                        {task.assignedTo.firstName[0]}{task.assignedTo.lastName[0]}
-                                      </div>
-                                      <span className="text-dark fw-medium">{task.assignedTo.firstName}</span>
-                                    </div>
-                                  </td>
-                                  <td className="py-3">
-                                    {getStatusBadge(task.status)}
-                                  </td>
+                        {loadingDetails ? (
+                          <div className="text-center py-4">
+                            <Spinner animation="border" size="sm" variant="primary" />
+                          </div>
+                        ) : tasks.length === 0 ? (
+                          <p className="text-muted small text-center py-4 mb-0">No tasks yet for this project.</p>
+                        ) : (
+                          <div className="table-responsive no-scrollbar flex-fill">
+                            <Table borderless hover className="align-middle mb-0" style={{ fontSize: '0.85rem' }}>
+                              <thead className="text-muted border-bottom">
+                                <tr>
+                                  <th className="fw-medium py-2">Task</th>
+                                  <th className="fw-medium py-2">Assigned</th>
+                                  <th className="fw-medium py-2">Status</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </Table>
-                        </div>
+                              </thead>
+                              <tbody>
+                                {tasks.map(task => (
+                                  <tr key={task._id} className="border-bottom-light">
+                                    <td className="py-3">
+                                      <div className="fw-bold text-dark mb-1">{task.taskName}</div>
+                                      <div className="d-flex align-items-center gap-2">
+                                        {getPriorityBadge(task.priority)}
+                                        <span className="text-muted small px-1"><FaRegClock className="me-1"/>{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '—'}</span>
+                                      </div>
+                                    </td>
+                                    <td className="py-3">
+                                      {task.assignedTo ? (
+                                        <div className="d-flex align-items-center gap-2">
+                                          <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style={{width: 28, height: 28, fontSize: '0.75rem'}}>
+                                            {task.assignedTo.firstName?.[0]}{task.assignedTo.lastName?.[0]}
+                                          </div>
+                                          <span className="text-dark fw-medium">{task.assignedTo.firstName}</span>
+                                        </div>
+                                      ) : (
+                                        <span className="text-muted small">Unassigned</span>
+                                      )}
+                                    </td>
+                                    <td className="py-3">
+                                      {getStatusBadge(task.status)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </Table>
+                          </div>
+                        )}
                      </Card.Body>
                   </Card>
                 </Col>
@@ -361,7 +498,7 @@ function ProjectManagement() {
             <Card className="border-0 shadow-sm h-100 d-flex align-items-center justify-content-center bg-light">
               <div className="text-center p-5">
                 <FaProjectDiagram size={48} className="text-muted mb-3 opacity-50" />
-                <h5 className="fw-bold text-dark">Select a Project</h5>
+                <h5 className="fw-bold text-dark">{loadingProjects ? 'Loading...' : 'Select a Project'}</h5>
                 <p className="text-muted small">Choose a project from the left panel to view its complete details, sprints, and tasks.</p>
               </div>
             </Card>
@@ -437,8 +574,18 @@ function ProjectManagement() {
               </Col>
             </Row>
             <Form.Group className="mb-3">
-              <Form.Label className="small fw-bold">Assign To (User ID)</Form.Label>
-              <Form.Control type="text" placeholder="Enter User ID..." className="shadow-none" value={newTask.assignedTo} onChange={e => setNewTask({...newTask, assignedTo: e.target.value})} />
+              <Form.Label className="small fw-bold">Assign To</Form.Label>
+              <Form.Select className="shadow-none" value={newTask.assignedTo} onChange={e => setNewTask({...newTask, assignedTo: e.target.value})}>
+                <option value="">Select team member...</option>
+                {projectMembers.map(m => (
+                  <option key={m._id} value={m._id}>{m.firstName} {m.lastName} ({m.roleLabel})</option>
+                ))}
+              </Form.Select>
+              {projectMembers.length === 0 && (
+                <Form.Text className="text-muted mt-2" style={{fontSize: '0.75rem'}}>
+                  This project has no members yet — add members first to assign tasks.
+                </Form.Text>
+              )}
             </Form.Group>
           </Form>
         </Modal.Body>
@@ -497,20 +644,25 @@ function ProjectManagement() {
         <Modal.Body>
           <Form>
             <Form.Group className="mb-3">
-              <Form.Label className="small fw-bold">User ID</Form.Label>
-              <Form.Control type="text" placeholder="Enter Member's User ID..." className="shadow-none" value={newMember.newMemberId} onChange={e => setNewMember({...newMember, newMemberId: e.target.value})} />
+              <Form.Label className="small fw-bold">Select User</Form.Label>
+              <Form.Select className="shadow-none" value={newMember.newMemberId} onChange={e => setNewMember({...newMember, newMemberId: e.target.value})}>
+                <option value="">Select a user...</option>
+                {companyUsers.map(u => (
+                  <option key={u._id} value={u._id}>{u.firstName} {u.lastName} — {u.role?.roleName || 'No Role'}</option>
+                ))}
+              </Form.Select>
+              <Form.Text className="text-muted mt-2" style={{fontSize: '0.75rem'}}>
+                The user's actual assigned role (shown above) determines their project access privileges according to HRMS priority rules — the role dropdown below is informational only.
+              </Form.Text>
             </Form.Group>
             <Form.Group className="mb-3">
-              <Form.Label className="small fw-bold">Assign Role</Form.Label>
+              <Form.Label className="small fw-bold">Role (reference)</Form.Label>
               <Form.Select className="shadow-none" value={newMember.role} onChange={e => setNewMember({...newMember, role: e.target.value})}>
                 <option>Project Manager</option>
                 <option>Team Lead</option>
                 <option>Software Developer</option>
                 <option>Intern</option>
               </Form.Select>
-              <Form.Text className="text-muted mt-2" style={{fontSize: '0.75rem'}}>
-                Roles define their project access privileges according to HRMS priority rules.
-              </Form.Text>
             </Form.Group>
           </Form>
         </Modal.Body>

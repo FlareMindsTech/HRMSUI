@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { API_BASE_URL, setAuthToken } from '../config/api';
 
 const Login = ({ onLogin }) => {
   const [email, setEmail] = useState('');
@@ -8,15 +9,72 @@ const Login = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  // Backend login requires GPS coords (office radius check),
+  // so we grab the browser geolocation before hitting /api/auth/login.
+  const getPosition = () =>
+    new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Geolocation is not supported by this browser.'));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve(pos.coords),
+        (err) => reject(err),
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    });
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
     if (!email || !password) {
       setError('Please enter your email and password.');
       return;
     }
+
     setLoading(true);
-    setTimeout(() => { setLoading(false); onLogin(); }, 800);
+
+    try {
+      // 1. Get current GPS location (required by backend office/WFH check)
+      let coords;
+      try {
+        coords = await getPosition();
+      } catch (geoErr) {
+        setError('Location access is required to login. Please allow location permission.');
+        setLoading(false);
+        return;
+      }
+
+      // 2. Call real login API
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: email,
+          password,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setError(data.message || 'Login failed. Please check your credentials.');
+        setLoading(false);
+        return;
+      }
+
+      // 3. Save token so authHeaders() in api.js picks it up for every future request
+      setAuthToken(data.token);
+
+      setLoading(false);
+      onLogin();
+    } catch (err) {
+      setError('Unable to reach the server. Please try again.');
+      setLoading(false);
+    }
   };
 
   return (
