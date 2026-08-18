@@ -1,0 +1,220 @@
+/* ============================================================
+   Project Management module styles
+   Scoped with the .pm- prefix so nothing here leaks into or
+   collides with other Dashboard pages (Attendance, Leave, etc).
+   Colors reuse the app's existing CSS variables from index.css
+   (--primary-color, --header-height) — no new palette introduced.
+   ============================================================ */
+
+.pm-wrapper {
+  height: calc(100vh - var(--header-height));
+  overflow-y: auto;
+}
+
+/* ---------- New Project button ---------- */
+.pm-new-project-btn {
+  background-color: var(--primary-color);
+  border: none;
+}
+
+/* ---------- Modal primary (save) buttons ---------- */
+.pm-primary-btn {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+/* ---------- Project list card ---------- */
+.pm-project-card {
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid #eef1ef;
+  background: #fff;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.pm-project-card:hover {
+  border-color: rgba(45, 197, 138, 0.35);
+}
+
+.pm-project-card.pm-active {
+  border: 2px solid var(--primary-color);
+  background: rgba(45, 197, 138, 0.06);
+}
+
+.pm-project-name {
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+
+.pm-project-pm-label {
+  color: #6c757d;
+  font-size: 0.7rem;
+  margin: 4px 0 0;
+}
+
+/* ---------- Small icon buttons (edit/delete on cards & rows) ---------- */
+.pm-icon-btn {
+  padding: 4px !important;
+  border: none !important;
+  background: transparent !important;
+  line-height: 1;
+}
+
+.pm-icon-btn.pm-danger {
+  color: #dc3545;
+}
+
+/* ---------- Detail header ---------- */
+.pm-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  color: #6c757d;
+  font-size: 0.78rem;
+}
+
+.pm-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ---------- Section headers inside cards ---------- */
+.pm-section-title {
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  color: #6c757d;
+  margin-bottom: 0;
+}
+
+.pm-outline-btn {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+/* ---------- Member chips ---------- */
+.pm-member-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f4f7f5;
+  border: 1px solid #e8f0ec;
+}
+
+.pm-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.7rem;
+  background-color: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.pm-member-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.pm-member-role {
+  color: #6c757d;
+  font-size: 0.65rem;
+  line-height: 1.1;
+}
+
+/* ---------- Sprint cards ---------- */
+.pm-sprint-card {
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid #eef1ef;
+  height: 100%;
+}
+
+.pm-sprint-name {
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+
+.pm-sprint-dates {
+  color: #6c757d;
+  font-size: 0.7rem;
+  margin: 4px 0 0;
+}
+
+/* ---------- Task mobile card ---------- */
+.pm-task-card {
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid #eef1ef;
+}
+
+.pm-task-title {
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.pm-task-status-select {
+  max-width: 150px;
+}
+
+/* ---------- Empty / loading states ---------- */
+.pm-empty-state {
+  text-align: center;
+  padding: 32px 8px;
+  color: #6c757d;
+}
+
+.pm-empty-icon {
+  opacity: 0.5;
+  margin-bottom: 8px;
+}
+
+/* ---------- Misc utilities ---------- */
+.pm-page-title {
+  color: var(--primary-color);
+}
+
+.pm-spinner {
+  color: var(--primary-color);
+}
+
+.pm-min-w-0 {
+  min-width: 0;
+}
+
+.pm-scroll-x {
+  overflow-x: auto;
+}
+
+.pm-status-select {
+  min-width: 130px;
+}
+
+.pm-hint-text {
+  font-size: 0.75rem;
+}
+
+/* ---------- Responsive tweaks ---------- */
+@media (max-width: 767.98px) {
+  .pm-new-project-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .pm-task-status-select {
+    max-width: 100%;
+  }
+}
