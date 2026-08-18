@@ -9,21 +9,6 @@ const Login = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Backend login requires GPS coords (office radius check),
-  // so we grab the browser geolocation before hitting /api/auth/login.
-  const getPosition = () =>
-    new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('Geolocation is not supported by this browser.'));
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        (pos) => resolve(pos.coords),
-        (err) => reject(err),
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    });
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -36,25 +21,13 @@ const Login = ({ onLogin }) => {
     setLoading(true);
 
     try {
-      // 1. Get current GPS location (required by backend office/WFH check)
-      let coords;
-      try {
-        coords = await getPosition();
-      } catch (geoErr) {
-        setError('Location access is required to login. Please allow location permission.');
-        setLoading(false);
-        return;
-      }
-
-      // 2. Call real login API
+      // Call authentication login API
       const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           identifier: email,
           password,
-          latitude: coords.latitude,
-          longitude: coords.longitude,
         }),
       });
 
@@ -66,8 +39,13 @@ const Login = ({ onLogin }) => {
         return;
       }
 
-      // 3. Save token so authHeaders() in api.js picks it up for every future request
+      // Save token so authHeaders() in api.js picks it up for every future request
       setAuthToken(data.token);
+
+      // Also store user info in localStorage for profile badge
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
 
       setLoading(false);
       onLogin();

@@ -4,6 +4,7 @@ import {
   MdDashboard, MdBusiness, MdEventNote, MdAccessTime,
   MdPersonAdd, MdReceipt, MdAccountBalance, MdAssessment, MdLogout, MdWork
 } from "react-icons/md";
+import { clearAuthToken } from "../../config/api";
 
 const menuItems = [
   { name: "Dashboard", path: "/dashboard", icon: MdDashboard, section: "main" },
@@ -28,7 +29,9 @@ function Sidebar() {
   )?.path || "/dashboard";
 
   const handleLogout = () => {
+    clearAuthToken();
     localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("user");
     window.location.href = "/login";
   };
 
