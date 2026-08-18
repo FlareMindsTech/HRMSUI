@@ -208,13 +208,3 @@
 }
 
 /* ---------- Responsive tweaks ---------- */
-@media (max-width: 767.98px) {
-  .pm-new-project-btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .pm-task-status-select {
-    max-width: 100%;
-  }
-}
