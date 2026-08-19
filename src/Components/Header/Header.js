@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
 import { MdSearch, MdNotifications, MdSettings, MdKeyboardArrowDown } from 'react-icons/md';
-
-const username = "Davis Levin";
-const initials = username.split(" ").map(n => n[0]).join("").toUpperCase();
+import { useAuth } from '../../context/AuthContext';
 
 function Header({ isMobile }) {
+  const { user } = useAuth();
   const [searchVal, setSearchVal] = useState("");
   const [searchFocus, setFocus] = useState(false);
   const [notifCount] = useState(3);
+
+  const fullName = user?.firstName
+    ? `${user.firstName} ${user.lastName || ''}`.trim()
+    : "System Owner";
+  const roleName = user?.roleName || (user?.priority === 1 ? "Owner" : "Administrator");
+  const initials = fullName.split(" ").map(n => n[0]).join("").toUpperCase() || "O";
 
   return (
     <div style={{
@@ -64,8 +69,8 @@ function Header({ isMobile }) {
           <div style={styles.avatar}>{initials}</div>
           {!isMobile && (
             <div style={styles.profileText}>
-              <span style={styles.profileName}>{username}</span>
-              <span style={styles.profileRole}>Admin</span>
+              <span style={styles.profileName}>{fullName}</span>
+              <span style={styles.profileRole}>{roleName}</span>
             </div>
           )}
           <MdKeyboardArrowDown style={{ fontSize: 15, color: "#8ba49d", marginLeft: 2 }} />

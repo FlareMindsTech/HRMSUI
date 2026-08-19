@@ -6,8 +6,11 @@ import {
   FaProjectDiagram, FaTasks, FaRunning, FaPlus, FaRegClock, FaUsers, FaEllipsisV
 } from 'react-icons/fa';
 import { API_BASE_URL, authHeaders } from '../../config/api';
+import { useAuth } from '../../context/AuthContext';
 
 function ProjectManagement() {
+  const { hasPermission } = useAuth();
+
   // --- Core data (now loaded from backend, not hardcoded) ---
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
@@ -247,12 +250,14 @@ function ProjectManagement() {
           <h4 className="fw-bold mb-0" style={{ color: 'var(--primary-color)' }}>Project Management</h4>
           <p className="text-muted small mb-0">Oversee projects, manage sprints, and track team tasks seamlessly.</p>
         </Col>
-        <Col xs="auto">
-          <Button variant="primary" className="rounded-pill gradient-bg border-0 px-4 py-2 shadow-sm d-flex align-items-center gap-2"
-                  style={{ backgroundColor: 'var(--primary-color)' }} onClick={() => setShowProjectModal(true)}>
-            <FaPlus /> New Project
-          </Button>
-        </Col>
+        {hasPermission("project.create") && (
+          <Col xs="auto">
+            <Button variant="primary" className="rounded-pill gradient-bg border-0 px-4 py-2 shadow-sm d-flex align-items-center gap-2"
+                    style={{ backgroundColor: 'var(--primary-color)' }} onClick={() => setShowProjectModal(true)}>
+              <FaPlus /> New Project
+            </Button>
+          </Col>
+        )}
       </Row>
 
       <Row className="g-3">
@@ -366,9 +371,11 @@ function ProjectManagement() {
                        {projectMembers.length === 0 && !loadingDetails && (
                          <span className="text-muted extra-small me-2">No members yet</span>
                        )}
-                       <Button variant="outline-primary" className="rounded-circle p-0 d-flex flex-shrink-0 align-items-center justify-content-center ms-2" style={{width: 32, height: 32, minWidth: 32, minHeight: 32}} onClick={() => setShowMemberModal(true)}>
-                         <FaPlus size={12} />
-                       </Button>
+                       {hasPermission("project.add_member") && (
+                         <Button variant="outline-primary" className="rounded-circle p-0 d-flex flex-shrink-0 align-items-center justify-content-center ms-2" style={{width: 32, height: 32, minWidth: 32, minHeight: 32}} onClick={() => setShowMemberModal(true)}>
+                           <FaPlus size={12} />
+                         </Button>
+                       )}
                      </div>
                   </div>
                 </div>

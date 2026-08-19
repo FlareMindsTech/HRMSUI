@@ -2,37 +2,55 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   MdDashboard, MdBusiness, MdEventNote, MdAccessTime,
-  MdPersonAdd, MdReceipt, MdAccountBalance, MdAssessment, MdLogout, MdWork
+  MdPersonAdd, MdReceipt, MdAccountBalance, MdAssessment, MdLogout, MdWork, MdAdminPanelSettings,
+  MdDevices
 } from "react-icons/md";
-import { clearAuthToken } from "../../config/api";
+import { logoutUser } from "../../services/attendanceService";
+import { useAuth } from "../../context/AuthContext";
 
 const menuItems = [
-  { name: "Dashboard", path: "/dashboard", icon: MdDashboard, section: "main" },
-  { name: "Organisation", path: "/organisation", icon: MdBusiness, section: "main" },
-  { name: "Leave Request", path: "/leave", icon: MdEventNote, section: "main" },
-  { name: "Attendance", path: "/attendance", icon: MdAccessTime, section: "main" },
-  { name: "Projects", path: "/projects", icon: MdWork, section: "main" },
-  { name: "HR Onboarding", path: "/onboarding", icon: MdPersonAdd, section: "manage" },
-  { name: "Payslip", path: "/payslip", icon: MdReceipt, section: "manage" },
-  { name: "EPFO", path: "/epfo", icon: MdAccountBalance, section: "manage" },
-  { name: "MIS", path: "/mis", icon: MdAssessment, section: "manage" },
+  { name: "Dashboard", path: "/dashboard", menuCode: "DASHBOARD", icon: MdDashboard, section: "main" },
+  { name: "Attendance", path: "/attendance", menuCode: "ATTENDANCE", icon: MdAccessTime, section: "main" },
+  { name: "Projects", path: "/projects", menuCode: "PROJECTS", icon: MdWork, section: "main" },
+  { name: "Organisation", path: "/organisation", menuCode: "ORGANISATION", icon: MdBusiness, section: "main" },
+  { name: "Leave Request", path: "/leave", menuCode: "LEAVE_MGMT", icon: MdEventNote, section: "main" },
+  { name: "HR Onboarding", path: "/onboarding", menuCode: "USER_MANAGEMENT", icon: MdPersonAdd, section: "manage" },
+  { name: "Role Management", path: "/roles", menuCode: "ROLE_MANAGEMENT", icon: MdAdminPanelSettings, section: "manage" },
+  { name: "Assets", path: "/assets", menuCode: "ASSETS", icon: MdDevices, section: "manage" },
+  { name: "Payslip", path: "/payslip", menuCode: "PAYSLIP", icon: MdReceipt, section: "manage" },
+  { name: "EPFO", path: "/epfo", menuCode: "EPFO", icon: MdAccountBalance, section: "manage" },
+  { name: "MIS", path: "/mis", menuCode: "MIS", icon: MdAssessment, section: "manage" },
 ];
 
 function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { hasMenu, isSystemAdmin, user, logoutUserLocal } = useAuth();
   const [hovered, setHovered] = useState(null);
   const [showModal, setShowModal] = useState(false);
+
+  const isVisible = (item) => {
+    if (item.menuCode === "DASHBOARD") return true;
+    if (isSystemAdmin) return true;
+    return hasMenu(item.menuCode);
+  };
+
+  const visibleMainItems = menuItems.filter((i) => i.section === "main" && isVisible(i));
+  const visibleManageItems = menuItems.filter((i) => i.section === "manage" && isVisible(i));
 
   const activePath = menuItems.find(
     item => location.pathname.startsWith(item.path)
   )?.path || "/dashboard";
 
-  const handleLogout = () => {
-    clearAuthToken();
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("user");
-    window.location.href = "/login";
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } catch (e) {
+      console.warn("Logout request completed with notice:", e);
+    } finally {
+      logoutUserLocal();
+      window.location.href = "/login";
+    }
   };
 
   const renderItem = (item) => {
@@ -98,35 +116,42 @@ function Sidebar() {
 
       {/* ─── Navigation ─── */}
       <div style={styles.navContainer}>
-        <div style={styles.navSection}>
-          <p style={styles.sectionLabel}>MAIN</p>
-          <ul style={styles.menuList}>
-            {menuItems.filter(i => i.section === "main").map(renderItem)}
-          </ul>
-        </div>
+        {visibleMainItems.length > 0 && (
+          <div style={styles.navSection}>
+            <p style={styles.sectionLabel}>MAIN</p>
+            <ul style={styles.menuList}>
+              {visibleMainItems.map(renderItem)}
+            </ul>
+          </div>
+        )}
 
-        <div style={styles.navSection}>
-          <p style={styles.sectionLabel}>MANAGE</p>
-          <ul style={styles.menuList}>
-            {menuItems.filter(i => i.section === "manage").map(renderItem)}
-          </ul>
-        </div>
+        {visibleManageItems.length > 0 && (
+          <div style={styles.navSection}>
+            <p style={styles.sectionLabel}>MANAGE</p>
+            <ul style={styles.menuList}>
+              {visibleManageItems.map(renderItem)}
+            </ul>
+          </div>
+        )}
       </div>
 
       {/* ─── Promo Card ─── */}
       <div style={styles.promoCard}>
         <div style={styles.promoIcon}></div>
-        <p style={styles.promoTitle}>Level Up Your HR System</p>
-        <p style={styles.promoSub}>Upgrade to Pro for more features</p>
-        <button style={styles.promoBtn}>Get TeamHub Pro</button>
+        <p style={styles.promoTitle}>TeamHub RBAC</p>
+        <p style={styles.promoSub}>Granular Role & Permission Access</p>
       </div>
 
       {/* ─── User Profile / Logout ─── */}
       <div style={styles.userRow}>
-        <div style={styles.userAvatar}>A</div>
+        <div style={styles.userAvatar}>
+          {user?.firstName ? user.firstName.charAt(0).toUpperCase() : "U"}
+        </div>
         <div style={styles.userInfo}>
-          <div style={styles.userName}>Admin User</div>
-          <div style={styles.userRole}>Administrator</div>
+          <div style={styles.userName}>
+            {user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : "Employee"}
+          </div>
+          <div style={styles.userRole}>{user?.roleName || "Team Member"}</div>
         </div>
         <button
           style={styles.logoutBtn}

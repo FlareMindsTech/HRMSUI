@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
-import { API_BASE_URL, setAuthToken } from '../config/api';
+import { API_BASE_URL } from '../config/api';
+import { useAuth } from '../context/AuthContext';
 
 const Login = ({ onLogin }) => {
+  const { loginUser } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -39,13 +41,8 @@ const Login = ({ onLogin }) => {
         return;
       }
 
-      // Save token so authHeaders() in api.js picks it up for every future request
-      setAuthToken(data.token);
-
-      // Also store user info in localStorage for profile badge
-      if (data.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-      }
+      // Populate AuthContext synchronously with access context & token
+      await loginUser(data.token, data.user);
 
       setLoading(false);
       onLogin();
