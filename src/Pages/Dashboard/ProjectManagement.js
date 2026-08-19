@@ -8,40 +8,13 @@ import {
   FaEllipsisV, FaEdit, FaTrash, FaArrowLeft, FaTimes, FaExclamationTriangle,
   FaCheckCircle, FaUserPlus, FaInbox, FaCalendarAlt
 } from 'react-icons/fa';
-import { apiFetch } from '../../config/api';
-import './ProjectManagement.css';
-
-// ============================================================
-// Project Management — Project / Sprint / Task module
-// Wired to real backend: /project, /sprint, /task, /user routes.
-// NOTE (for the team): Login/Auth is owned by another developer.
-// This file only reads the token that Login.js is expected to
-// save to localStorage under the "token" key (see config/api.js).
-// No auth/login logic is touched here.
-// ============================================================
-
-const PROJECT_STATUS_OPTIONS = ['Pending', 'In Progress', 'Completed', 'On Hold'];
-const SPRINT_STATUS_OPTIONS = ['Planned', 'Active', 'Completed'];
-const TASK_STATUS_OPTIONS = ['To Do', 'In Progress', 'Testing', 'Completed'];
-const TASK_PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
-
-const emptyProjectForm = { projectName: '', description: '', startDate: '', endDate: '', status: 'Pending' };
-const emptySprintForm = { sprintName: '', startDate: '', endDate: '', status: 'Planned' };
-const emptyTaskForm = { taskName: '', description: '', priority: 'Medium', dueDate: '', assignedTo: '', sprintId: '' };
-const emptyMemberForm = { newMemberId: '' };
+import { API_BASE_URL, authHeaders } from '../../config/api';
+import { useAuth } from '../../context/AuthContext';
 
 function ProjectManagement() {
-  // ---------- responsive ----------
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [mobileView, setMobileView] = useState('list'); // 'list' | 'detail'
+  const { hasPermission } = useAuth();
 
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  // ---------- data ----------
+  // --- Core data (now loaded from backend, not hardcoded) ---
   const [projects, setProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [projectsError, setProjectsError] = useState('');

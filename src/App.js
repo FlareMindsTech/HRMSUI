@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import Layout from './Layout/Layout';
 import Dashboard from './Pages/Dashboard/Dashboard';
 import Organisation from './Pages/Dashboard/Organisation';
@@ -12,6 +13,7 @@ import Attendance from './Pages/Dashboard/Attendance';
 import Epfo from './Pages/Dashboard/Epfo';
 import Login from './view/Login';
 import ProjectManagement from './Pages/Dashboard/ProjectManagement';
+import AssetManagement from './Pages/Dashboard/AssetManagement';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
@@ -24,37 +26,40 @@ function App() {
   };
 
   return (
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <Routes>
-        {/* Public Route */}
-        <Route
-          path="/login"
-          element={
-            isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login onLogin={() => handleLogin(true)} />
-          }
-        />
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public Route */}
+          <Route
+            path="/login"
+            element={
+              isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login onLogin={() => handleLogin(true)} />
+            }
+          />
 
-        {/* Protected Routes */}
-        {isAuthenticated ? (
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/organisation" element={<Organisation />} />
-            <Route path="/onboarding" element={<HrOnboarding />} />
-            <Route path="/leave" element={<LeaveRequest />} />
-            <Route path="/mis" element={<Mis />} />
-            <Route path="/payslip" element={<Payslip />} />
-            <Route path="/users" element={<UserManagement />} />
-            <Route path="/attendance" element={<Attendance />} />
-            <Route path="/projects" element={<ProjectManagement />} />
-            <Route path="/epfo" element={<Epfo />} />
-            {/* Add other routes here */}
-          </Route>
-        ) : (
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        )}
-      </Routes>
-    </BrowserRouter>
+          {/* Protected Routes */}
+          {isAuthenticated ? (
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/organisation" element={<Organisation />} />
+              <Route path="/onboarding" element={<HrOnboarding />} />
+              <Route path="/leave" element={<LeaveRequest />} />
+              <Route path="/mis" element={<Mis />} />
+              <Route path="/payslip" element={<Payslip />} />
+              <Route path="/users" element={<UserManagement />} />
+              <Route path="/roles" element={<UserManagement />} />
+              <Route path="/assets" element={<AssetManagement />} />
+              <Route path="/attendance" element={<Attendance />} />
+              <Route path="/projects" element={<ProjectManagement />} />
+              <Route path="/epfo" element={<Epfo />} />
+            </Route>
+          ) : (
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          )}
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
