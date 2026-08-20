@@ -8,8 +8,44 @@ import {
   FaEllipsisV, FaEdit, FaTrash, FaArrowLeft, FaTimes, FaExclamationTriangle,
   FaCheckCircle, FaUserPlus, FaInbox, FaCalendarAlt
 } from 'react-icons/fa';
-import { API_BASE_URL, authHeaders } from '../../config/api';
+import { API_BASE_URL, authHeaders, apiFetch } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
+
+// ============================================================
+// Constants - Empty form templates & status/priority options
+// ============================================================
+const emptyProjectForm = {
+  projectName: '',
+  description: '',
+  startDate: '',
+  endDate: '',
+  status: 'Pending',
+};
+
+const emptySprintForm = {
+  sprintName: '',
+  startDate: '',
+  endDate: '',
+  status: 'Planned',
+};
+
+const emptyTaskForm = {
+  taskName: '',
+  description: '',
+  priority: 'Medium',
+  dueDate: '',
+  assignedTo: '',
+  sprintId: '',
+};
+
+const emptyMemberForm = {
+  newMemberId: '',
+};
+
+const PROJECT_STATUS_OPTIONS = ['Pending', 'Active', 'Completed', 'On Hold'];
+const SPRINT_STATUS_OPTIONS = ['Planned', 'In Progress', 'Completed'];
+const TASK_STATUS_OPTIONS = ['To Do', 'In Progress', 'Testing', 'Completed'];
+const TASK_PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
 
 function ProjectManagement() {
   const { hasPermission } = useAuth();
@@ -31,6 +67,10 @@ function ProjectManagement() {
 
   const [companyUsers, setCompanyUsers] = useState([]);
   const [companyUsersLoading, setCompanyUsersLoading] = useState(false);
+
+  // ---------- responsive/mobile ----------
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [mobileView, setMobileView] = useState('list'); // 'list' | 'detail'
 
   // ---------- filters ----------
   const [sprintFilter, setSprintFilter] = useState('all'); // 'all' | 'backlog' | sprintId
@@ -146,6 +186,13 @@ function ProjectManagement() {
   }, []);
 
   useEffect(() => { fetchProjects(); }, [fetchProjects]);
+
+  // Handle window resize for responsive mobile detection
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (selectedProjectId) {
