@@ -29,6 +29,7 @@ const Login = ({ onLogin }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           identifier: email,
+          email: email,
           password,
         }),
       });
