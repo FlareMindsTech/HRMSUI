@@ -2,27 +2,24 @@ import React from 'react';
 import { Container, Row, Col, Card } from 'react-bootstrap';
 import { FaUserCheck, FaBusinessTime, FaCalendarAlt, FaShieldAlt } from 'react-icons/fa';
 import AttendanceCard from '../../Components/Attendance/AttendanceCard';
+import { useAuth } from '../../context/AuthContext';
 
 /**
  * Dashboard Component
  *
  * Serves as the landing view for authenticated users.
- * Hosts the AttendanceCard widget for daily punch in / punch out tracking.
+ * Role Matrix Rules:
+ * - Employee & HR: Display AttendanceCard (Punch In / Punch Out Widget).
+ * - Admin & Owner: NO Attendance Punch card and NO Attendance Analytics widgets on Dashboard.
  */
 function Dashboard() {
-  // Retrieve stored user profile for personalized greeting
-  let user = null;
-  try {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      user = JSON.parse(storedUser);
-    }
-  } catch (e) {
-    console.warn('Failed to parse stored user profile:', e);
-  }
+  const { user } = useAuth();
 
-  const employeeName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Employee';
-  const roleName = user?.roleName || 'Team Member';
+  const employeeName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Team Member';
+  const roleCode = (user?.roleCode || user?.roleName || '').toUpperCase();
+
+  // Admin and Owner roles do not have Punch In / Out widget on Dashboard
+  const isPunchTrackedRole = !(roleCode.includes('ADMIN') || roleCode.includes('OWNER'));
 
   return (
     <Container fluid className="p-3">
@@ -33,20 +30,21 @@ function Dashboard() {
             Welcome back, {employeeName || 'Team Member'}! 👋
           </h4>
           <p className="text-muted small mb-0">
-            Role: <span className="fw-medium text-dark">{roleName}</span> · Here is your daily workspace overview.
+            Role: <span className="fw-medium text-dark">{user?.roleName || 'Team Member'}</span> · Here is your daily workspace overview.
           </p>
         </Col>
       </Row>
 
-      {/* Main Grid: Attendance Card + Workspace Overview */}
+      {/* Main Grid: Attendance Card (Employee/HR only) + Workspace Overview */}
       <Row className="g-4 mb-4">
-        {/* Attendance Action Widget */}
-        <Col lg={6} xl={5}>
-          <AttendanceCard />
-        </Col>
+        {isPunchTrackedRole && (
+          <Col lg={6} xl={5}>
+            <AttendanceCard />
+          </Col>
+        )}
 
         {/* Quick Workspace Info / Summary Card */}
-        <Col lg={6} xl={7}>
+        <Col lg={isPunchTrackedRole ? 6 : 12} xl={isPunchTrackedRole ? 7 : 12}>
           <Card
             className="border-0 shadow-sm rounded-4 h-100 p-4"
             style={{ background: '#ffffff', border: '1px solid var(--card-border, rgba(220, 235, 228, 0.9))' }}

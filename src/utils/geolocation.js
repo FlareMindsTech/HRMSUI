@@ -14,8 +14,8 @@ export const getCurrentCoordinates = () => {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const { latitude, longitude } = position.coords;
-        resolve({ latitude, longitude });
+        const { latitude, longitude, accuracy } = position.coords;
+        resolve({ latitude, longitude, accuracy });
       },
       (error) => {
         let message = "Unable to retrieve your location.";

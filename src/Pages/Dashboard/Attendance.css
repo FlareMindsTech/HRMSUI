@@ -1,0 +1,401 @@
+/* ============================================================
+   Attendance Page Styles — TeamHub Mint Design System
+   Calendar-first, role-aware attendance dashboard
+   ============================================================ */
+
+/* ── Calendar Grid ── */
+.attendance-calendar {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: #f8faf9;
+  border-bottom: 1px solid #e8f0ec;
+}
+
+.calendar-nav-btn {
+  background: none;
+  border: 1px solid #e0e8e4;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary, #4a6560);
+  transition: all 0.15s ease;
+}
+
+.calendar-nav-btn:hover {
+  background: var(--primary-subtle, rgba(45, 197, 138, 0.1));
+  border-color: var(--primary, #2DC58A);
+  color: var(--primary, #2DC58A);
+}
+
+.calendar-month-label {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text-primary, #1a2e2a);
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+  padding: 0.5rem 0.75rem;
+  background: #f8faf9;
+  border-bottom: 1px solid #e8f0ec;
+}
+
+.calendar-weekday {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted, #8ba49d);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.4rem 0;
+}
+
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+
+.calendar-day {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary, #1a2e2a);
+  min-height: 44px;
+}
+
+.calendar-day:hover:not(.calendar-day--empty):not(.calendar-day--weekend) {
+  background: var(--primary-subtle, rgba(45, 197, 138, 0.1));
+  transform: scale(1.05);
+}
+
+.calendar-day--empty {
+  cursor: default;
+}
+
+.calendar-day--today {
+  border: 2px solid var(--primary, #2DC58A);
+  font-weight: 800;
+}
+
+.calendar-day--weekend {
+  color: var(--text-muted, #8ba49d);
+  cursor: default;
+  opacity: 0.65;
+}
+
+.calendar-day--future {
+  color: var(--text-muted, #8ba49d);
+  opacity: 0.5;
+}
+
+/* Status dot under day number */
+.calendar-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-top: 3px;
+}
+
+.calendar-dot--present {
+  background: #22c55e;
+}
+
+.calendar-dot--late {
+  background: #f59e0b;
+}
+
+.calendar-dot--halfday {
+  background: #8b5cf6;
+}
+
+.calendar-dot--absent {
+  background: #ef4444;
+}
+
+.calendar-dot--working {
+  background: #06b6d4;
+  animation: pulse-dot 1.8s infinite;
+}
+
+.calendar-dot--weekend {
+  background: #d1d5db;
+}
+
+.calendar-dot--leave {
+  background: #3b82f6;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(0.9); opacity: 0.7; }
+  50% { transform: scale(1.2); opacity: 1; }
+}
+
+/* ── Summary Cards Row ── */
+.attendance-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.summary-metric-card {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--card-border, rgba(220, 235, 228, 0.9));
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: center;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.summary-metric-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 40, 20, 0.08);
+  transform: translateY(-1px);
+}
+
+.summary-metric-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.summary-metric-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted, #8ba49d);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-top: 0.3rem;
+}
+
+/* ── Day Detail Modal ── */
+.day-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.day-detail-item {
+  text-align: center;
+  padding: 0.75rem;
+  background: #f8faf9;
+  border-radius: 10px;
+  border: 1px solid #e8f0ec;
+}
+
+.day-detail-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted, #8ba49d);
+  margin-bottom: 0.25rem;
+}
+
+.day-detail-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary, #1a2e2a);
+}
+
+/* ── Calendar Legend ── */
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #e8f0ec;
+  background: #fafbfa;
+  border-radius: 0 0 16px 16px;
+}
+
+.calendar-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--text-secondary, #4a6560);
+  font-weight: 500;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Needs Attention Section ── */
+.needs-attention-card {
+  border-left: 3px solid var(--warning, #f59e0b);
+  background: rgba(245, 158, 11, 0.04);
+}
+
+.needs-attention-list {
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.needs-attention-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f0f4f2;
+  font-size: 0.82rem;
+}
+
+.needs-attention-item:last-child {
+  border-bottom: none;
+}
+
+/* ── Tab Navigation ── */
+.attendance-tabs {
+  display: flex;
+  gap: 0.35rem;
+  border-bottom: 2px solid #e8f0ec;
+  padding-bottom: 0;
+  margin-bottom: 1.5rem;
+}
+
+.attendance-tab {
+  padding: 0.6rem 1.25rem;
+  border: none;
+  background: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted, #8ba49d);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.attendance-tab:hover {
+  color: var(--text-primary, #1a2e2a);
+}
+
+.attendance-tab--active {
+  color: var(--primary, #2DC58A);
+  border-bottom-color: var(--primary, #2DC58A);
+}
+
+/* ── Analytics Stat Card ── */
+.analytics-stat-card {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--card-border, rgba(220, 235, 228, 0.9));
+  border-radius: 14px;
+  padding: 1.25rem;
+  transition: box-shadow 0.2s ease;
+}
+
+.analytics-stat-card:hover {
+  box-shadow: 0 6px 18px rgba(0, 40, 20, 0.08);
+}
+
+.analytics-stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  margin-bottom: 0.75rem;
+}
+
+.analytics-stat-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--text-primary, #1a2e2a);
+}
+
+.analytics-stat-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted, #8ba49d);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 0.25rem;
+}
+
+.analytics-stat-sub {
+  font-size: 0.72rem;
+  color: var(--text-secondary, #4a6560);
+  margin-top: 0.15rem;
+}
+
+/* ── Monthly Stats Bar ── */
+.monthly-stat-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #f0f4f2;
+}
+
+.monthly-stat-bar-segment {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .attendance-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .calendar-day {
+    min-height: 38px;
+    font-size: 0.78rem;
+  }
+
+  .calendar-dot {
+    width: 5px;
+    height: 5px;
+  }
+
+  .day-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .attendance-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .attendance-tab {
+    white-space: nowrap;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+  }
+}

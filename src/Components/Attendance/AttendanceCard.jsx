@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Button, Badge, Spinner, Alert } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
+import { Card, Badge, Alert, Spinner, Button } from 'react-bootstrap';
 import {
   FaCalendarCheck,
   FaClock,
@@ -8,8 +9,9 @@ import {
   FaCheckCircle,
   FaMapMarkerAlt,
   FaExclamationTriangle,
+  FaArrowRight,
 } from 'react-icons/fa';
-import { fetchTodayAttendance, punchInUser, punchOutUser } from '../../services/attendanceService';
+import { fetchTodayAttendance, punchInUser, punchOutUser } from '../../Api/Attendance/attendance';
 import { getCurrentCoordinates } from '../../utils/geolocation';
 import { formatTime, formatFullDate } from '../../utils/dateFormatter';
 import './AttendanceCard.css';
@@ -25,6 +27,7 @@ import './AttendanceCard.css';
  * The backend API (GET /api/attendance/today) is the single source of truth.
  */
 function AttendanceCard() {
+  const navigate = useNavigate();
   const [attendance, setAttendance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionInProgress, setActionInProgress] = useState(false);
@@ -78,6 +81,7 @@ function AttendanceCard() {
       await punchInUser({
         latitude: coords.latitude,
         longitude: coords.longitude,
+        accuracy: coords.accuracy || 0,
       });
 
       setSuccessMessage('Punched in successfully! Have a great workday.');
@@ -313,6 +317,17 @@ function AttendanceCard() {
             </div>
           </div>
         )}
+
+        <div className="mt-3 pt-3 border-top text-center">
+          <Button
+            variant="link"
+            className="text-decoration-none p-0 small fw-bold text-success d-inline-flex align-items-center gap-1"
+            onClick={() => navigate('/attendance')}
+          >
+            <span>View Full Attendance History</span>
+            <FaArrowRight size={12} />
+          </Button>
+        </div>
       </div>
     </Card>
   );
