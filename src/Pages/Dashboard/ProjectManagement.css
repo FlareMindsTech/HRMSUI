@@ -1,196 +1,541 @@
 /* ============================================================
-   Project Management module styles
-   Scoped with the .pm- prefix so nothing here leaks into or
-   collides with other Dashboard pages (Attendance, Leave, etc).
-   Colors reuse the app's existing CSS variables from index.css
-   (--primary-color, --header-height) — no new palette introduced.
+   Project Management module styles — Enhanced & Professional
+   Scoped with the .pm- prefix. No logic changes, CSS only.
    ============================================================ */
+
+:root {
+  --pm-primary: var(--primary-color, #2dc58a);
+  --pm-secondary: #f8f9fa;
+  --pm-border: #e5e7eb;
+  --pm-border-light: #f0f3f2;
+  --pm-text-muted: #6c757d;
+  --pm-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --pm-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --pm-transition: all 0.2s ease;
+}
 
 .pm-wrapper {
   height: calc(100vh - var(--header-height));
   overflow-y: auto;
+  background-color: #f8fafb;
 }
 
-/* ---------- New Project button ---------- */
+/* ============================================================
+   BUTTONS & CTAs
+   ============================================================ */
 .pm-new-project-btn {
-  background-color: var(--primary-color);
+  background: linear-gradient(135deg, var(--pm-primary) 0%, #25b878 100%);
   border: none;
+  box-shadow: var(--pm-shadow-md);
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: var(--pm-transition);
 }
 
-/* ---------- Modal primary (save) buttons ---------- */
+.pm-new-project-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(45, 197, 138, 0.25);
+}
+
 .pm-primary-btn {
-  background-color: var(--primary-color);
-  border-color: var(--primary-color);
+  background-color: var(--pm-primary);
+  border-color: var(--pm-primary);
+  font-weight: 600;
+  transition: var(--pm-transition);
 }
 
-/* ---------- Project list card ---------- */
+.pm-primary-btn:hover {
+  background-color: #25b878;
+  border-color: #25b878;
+}
+
+.pm-outline-btn {
+  color: var(--pm-primary);
+  border-color: var(--pm-primary);
+  font-weight: 500;
+  transition: var(--pm-transition);
+}
+
+.pm-outline-btn:hover {
+  background-color: rgba(45, 197, 138, 0.08);
+  border-color: var(--pm-primary);
+}
+
+/* ============================================================
+   CARDS & CONTAINERS
+   ============================================================ */
+.pm-wrapper .card {
+  border: 1px solid var(--pm-border-light);
+  box-shadow: var(--pm-shadow-sm);
+  border-radius: 10px;
+}
+
+.pm-wrapper .card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* ============================================================
+   PROJECT LIST
+   ============================================================ */
 .pm-project-card {
   cursor: pointer;
-  padding: 8px;
-  border-radius: 12px;
-  border: 1px solid #eef1ef;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--pm-border-light);
   background: #fff;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: var(--pm-transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.pm-project-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
+  transition: var(--pm-transition);
 }
 
 .pm-project-card:hover {
-  border-color: rgba(45, 197, 138, 0.35);
+  border-color: rgba(45, 197, 138, 0.2);
+  background: rgba(45, 197, 138, 0.02);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
 .pm-project-card.pm-active {
-  border: 2px solid var(--primary-color);
-  background: rgba(45, 197, 138, 0.06);
+  border-color: var(--pm-primary);
+  background: rgba(45, 197, 138, 0.08);
+  box-shadow: 0 4px 10px rgba(45, 197, 138, 0.15);
+}
+
+.pm-project-card.pm-active::before {
+  background: var(--pm-primary);
 }
 
 .pm-project-name {
   font-weight: 700;
-  font-size: 0.85rem;
-  margin-bottom: 4px;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+  color: #1a1a1a;
+  word-break: break-word;
 }
 
 .pm-project-pm-label {
-  color: #6c757d;
-  font-size: 0.7rem;
-  margin: 4px 0 0;
+  color: var(--pm-text-muted);
+  font-size: 0.75rem;
+  margin: 6px 0 0;
+  font-weight: 500;
 }
 
-/* ---------- Small icon buttons (edit/delete on cards & rows) ---------- */
+/* ============================================================
+   ICON BUTTONS
+   ============================================================ */
 .pm-icon-btn {
-  padding: 4px !important;
+  padding: 6px !important;
   border: none !important;
   background: transparent !important;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+  transition: var(--pm-transition);
+  border-radius: 6px;
 }
 
-.pm-icon-btn.pm-danger {
+.pm-icon-btn:hover {
+  background: #f0f3f2 !important;
+  color: var(--pm-primary);
+}
+
+.pm-icon-btn.pm-danger:hover {
+  background: #fff5f5 !important;
   color: #dc3545;
 }
 
-/* ---------- Detail header ---------- */
+/* ============================================================
+   DROPDOWNS & SELECTS
+   ============================================================ */
+.pm-wrapper .form-select,
+.pm-wrapper .form-control {
+  border: 1px solid var(--pm-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  transition: var(--pm-transition);
+  background-color: #fff;
+}
+
+.pm-wrapper .form-select:focus,
+.pm-wrapper .form-control:focus {
+  border-color: var(--pm-primary);
+  box-shadow: 0 0 0 3px rgba(45, 197, 138, 0.1);
+}
+
+.pm-wrapper .form-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%232dc58a' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+  background-size: 16px 12px;
+  padding-right: 32px;
+}
+
+.pm-wrapper .form-select:hover:not(:disabled) {
+  border-color: rgba(45, 197, 138, 0.3);
+}
+
+/* Dropdown improvements */
+.dropdown-menu {
+  border: 1px solid var(--pm-border);
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  padding: 8px 0;
+}
+
+.dropdown-item {
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  transition: var(--pm-transition);
+  color: #1a1a1a;
+}
+
+.dropdown-item:hover {
+  background-color: rgba(45, 197, 138, 0.08);
+  color: var(--pm-primary);
+}
+
+.dropdown-item.active,
+.dropdown-item:active {
+  background-color: rgba(45, 197, 138, 0.15);
+  color: var(--pm-primary);
+}
+
+/* ============================================================
+   FILTERS & HEADER
+   ============================================================ */
 .pm-meta-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
-  color: #6c757d;
-  font-size: 0.78rem;
+  gap: 16px;
+  color: var(--pm-text-muted);
+  font-size: 0.85rem;
+  margin-top: 10px;
 }
 
 .pm-meta-item {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  font-weight: 500;
 }
 
-/* ---------- Section headers inside cards ---------- */
+.pm-page-title {
+  color: var(--pm-primary);
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
 .pm-section-title {
   font-weight: 700;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   text-transform: uppercase;
-  color: #6c757d;
+  letter-spacing: 0.5px;
+  color: var(--pm-text-muted);
   margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.pm-outline-btn {
-  color: var(--primary-color);
-  border-color: var(--primary-color);
-}
-
-/* ---------- Member chips ---------- */
+/* ============================================================
+   MEMBER CHIPS & AVATARS
+   ============================================================ */
 .pm-member-chip {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: #f4f7f5;
-  border: 1px solid #e8f0ec;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(45, 197, 138, 0.08) 0%, rgba(45, 197, 138, 0.04) 100%);
+  border: 1.5px solid rgba(45, 197, 138, 0.15);
+  transition: var(--pm-transition);
+  position: relative;
+}
+
+.pm-member-chip:hover {
+  border-color: rgba(45, 197, 138, 0.3);
+  background: rgba(45, 197, 138, 0.12);
+  box-shadow: 0 2px 8px rgba(45, 197, 138, 0.1);
 }
 
 .pm-avatar {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   font-weight: 700;
-  font-size: 0.7rem;
-  background-color: var(--primary-color);
+  font-size: 0.75rem;
+  background: linear-gradient(135deg, var(--pm-primary) 0%, #25b878 100%);
   flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(45, 197, 138, 0.2);
 }
 
 .pm-member-name {
-  font-size: 0.8rem;
-  font-weight: 700;
-  line-height: 1.1;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #1a1a1a;
 }
 
 .pm-member-role {
-  color: #6c757d;
-  font-size: 0.65rem;
-  line-height: 1.1;
+  color: var(--pm-text-muted);
+  font-size: 0.7rem;
+  line-height: 1.2;
+  font-weight: 500;
 }
 
-/* ---------- Sprint cards ---------- */
+/* ============================================================
+   SPRINT & TASK CARDS
+   ============================================================ */
 .pm-sprint-card {
-  padding: 8px;
-  border-radius: 12px;
-  border: 1px solid #eef1ef;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--pm-border-light);
+  background: linear-gradient(135deg, #fafbfc 0%, #f5f8f7 100%);
   height: 100%;
+  transition: var(--pm-transition);
+}
+
+.pm-sprint-card:hover {
+  border-color: rgba(45, 197, 138, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
 }
 
 .pm-sprint-name {
   font-weight: 700;
-  font-size: 0.85rem;
-  margin-bottom: 4px;
-}
-
-.pm-sprint-dates {
-  color: #6c757d;
-  font-size: 0.7rem;
-  margin: 4px 0 0;
-}
-
-/* ---------- Task mobile card ---------- */
-.pm-task-card {
-  padding: 8px;
-  border-radius: 12px;
-  border: 1px solid #eef1ef;
-}
-
-.pm-task-title {
-  font-weight: 700;
-  font-size: 0.85rem;
-  margin-bottom: 4px;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+  color: #1a1a1a;
   word-break: break-word;
 }
 
-.pm-task-status-select {
-  max-width: 150px;
+.pm-sprint-dates {
+  color: var(--pm-text-muted);
+  font-size: 0.75rem;
+  margin: 8px 0 0;
+  font-weight: 500;
 }
 
-/* ---------- Empty / loading states ---------- */
+/* ============================================================
+   STATUS & PRIORITY BADGES
+   ============================================================ */
+.badge {
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 5px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.badge.bg-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+}
+
+.badge.bg-primary {
+  background: linear-gradient(135deg, var(--pm-primary) 0%, #25b878 100%) !important;
+}
+
+.badge.bg-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+}
+
+.badge.bg-warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  color: #fff !important;
+}
+
+.badge.bg-info {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+  color: #fff !important;
+}
+
+.badge.bg-secondary {
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%) !important;
+}
+
+.badge.bg-dark {
+  background: linear-gradient(135deg, #374151 0%, #111827 100%) !important;
+}
+
+/* ============================================================
+   TASK TABLE
+   ============================================================ */
+.pm-wrapper .table {
+  font-size: 0.9rem;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.pm-wrapper .table thead {
+  background: linear-gradient(135deg, #f8fafb 0%, #f0f3f2 100%);
+  border-bottom: 2px solid var(--pm-border);
+}
+
+.pm-wrapper .table th {
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--pm-text-muted);
+  padding: 12px;
+  border: none;
+}
+
+.pm-wrapper .table tbody tr {
+  border-bottom: 1px solid var(--pm-border-light);
+  transition: var(--pm-transition);
+}
+
+.pm-wrapper .table tbody tr:hover {
+  background-color: rgba(45, 197, 138, 0.03);
+}
+
+.pm-wrapper .table td {
+  padding: 12px;
+  vertical-align: middle;
+}
+
+.pm-status-select {
+  min-width: 140px;
+}
+
+/* ============================================================
+   FORMS & MODALS
+   ============================================================ */
+.pm-wrapper .modal-content {
+  border: 1px solid var(--pm-border-light);
+  border-radius: 12px;
+  box-shadow: 0 20px 25px rgba(0, 0, 0, 0.1);
+}
+
+.pm-wrapper .modal-header {
+  background: linear-gradient(135deg, #f8fafb 0%, #f0f3f2 100%);
+  border-bottom: 1px solid var(--pm-border);
+  border-radius: 12px 12px 0 0;
+  padding: 18px 20px;
+}
+
+.pm-wrapper .modal-title {
+  font-weight: 700;
+  color: #1a1a1a;
+  font-size: 1.1rem;
+}
+
+.pm-wrapper .form-label {
+  font-weight: 600;
+  color: #1a1a1a;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.pm-wrapper .form-text {
+  font-size: 0.75rem;
+  color: var(--pm-text-muted);
+  margin-top: 4px;
+}
+
+/* ============================================================
+   EMPTY STATES & LOADING
+   ============================================================ */
 .pm-empty-state {
   text-align: center;
-  padding: 32px 8px;
-  color: #6c757d;
+  padding: 40px 16px;
+  color: var(--pm-text-muted);
 }
 
 .pm-empty-icon {
-  opacity: 0.5;
-  margin-bottom: 8px;
+  opacity: 0.4;
+  margin-bottom: 12px;
+  font-size: 3rem;
 }
 
-/* ---------- Misc utilities ---------- */
-.pm-page-title {
-  color: var(--primary-color);
+.pm-empty-state p {
+  font-size: 0.9rem;
+  margin-bottom: 16px;
 }
 
 .pm-spinner {
-  color: var(--primary-color);
+  color: var(--pm-primary);
+  animation: spin 0.8s linear infinite;
 }
 
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================
+   ALERTS & FEEDBACK
+   ============================================================ */
+.pm-wrapper .alert {
+  border: 1px solid var(--pm-border);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  padding: 12px 16px;
+}
+
+.alert-success {
+  background-color: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.2);
+  color: #059669;
+}
+
+.alert-danger {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #dc2626;
+}
+
+/* ============================================================
+   TABS
+   ============================================================ */
+.pm-wrapper .nav-pills .nav-link {
+  color: var(--pm-text-muted);
+  font-weight: 600;
+  font-size: 0.85rem;
+  border-radius: 20px;
+  padding: 8px 16px;
+  transition: var(--pm-transition);
+  background-color: transparent;
+}
+
+.pm-wrapper .nav-pills .nav-link:hover {
+  background-color: rgba(45, 197, 138, 0.08);
+  color: var(--pm-primary);
+}
+
+.pm-wrapper .nav-pills .nav-link.active {
+  background: linear-gradient(135deg, var(--pm-primary) 0%, #25b878 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(45, 197, 138, 0.3);
+}
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
 .pm-min-w-0 {
   min-width: 0;
 }
@@ -199,12 +544,175 @@
   overflow-x: auto;
 }
 
-.pm-status-select {
-  min-width: 130px;
-}
-
 .pm-hint-text {
   font-size: 0.75rem;
+  color: var(--pm-text-muted);
 }
 
-/* ---------- Responsive tweaks ---------- */
+.gradient-bg {
+  background: linear-gradient(135deg, var(--pm-primary) 0%, #25b878 100%);
+  border: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ============================================================
+   RESPONSIVE TWEAKS
+   ============================================================ */
+@media (max-width: 768px) {
+  .pm-meta-row {
+    gap: 12px;
+    font-size: 0.8rem;
+  }
+
+  .pm-project-card {
+    padding: 10px 12px;
+  }
+
+  .pm-member-chip {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+
+  .pm-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 0.7rem;
+  }
+
+  .pm-wrapper .table {
+    font-size: 0.85rem;
+  }
+
+  .pm-wrapper .table th,
+  .pm-wrapper .table td {
+    padding: 10px 8px;
+  }
+
+  .pm-status-select {
+    min-width: 120px;
+  }
+
+  .pm-wrapper .modal-body {
+    padding: 16px;
+  }
+}
+
+/* ============================================================
+   DAILY REPORTS CHAT STYLES
+   ============================================================ */
+.pm-chat-card {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 160px);
+  min-height: 520px;
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.pm-chat-header {
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #f8fafb 0%, #f0f3f2 100%);
+  border-bottom: 1px solid var(--pm-border);
+}
+
+.pm-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  background-color: #f8fafb;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pm-chat-bubble {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 0.85rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.pm-chat-bubble-other {
+  align-self: flex-start;
+  background: #ffffff;
+  border: 1px solid var(--pm-border);
+  border-bottom-left-radius: 4px;
+}
+
+.pm-chat-bubble-self {
+  align-self: flex-end;
+  background: rgba(45, 197, 138, 0.12);
+  border: 1.5px solid rgba(45, 197, 138, 0.25);
+  border-bottom-right-radius: 4px;
+}
+
+.pm-chat-input-bar {
+  padding: 12px 14px;
+  background: #ffffff;
+  border-top: 1px solid var(--pm-border);
+}
+
+.pm-spin {
+  animation: spin 0.8s linear infinite;
+}
+
+/* Floating Chat Trigger Button */
+.pm-floating-chat-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1050;
+  background: linear-gradient(135deg, var(--pm-primary) 0%, #25b878 100%);
+  border: none;
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(45, 197, 138, 0.4);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pm-floating-chat-btn:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 12px 28px rgba(45, 197, 138, 0.5);
+  background: linear-gradient(135deg, #25b878 0%, #1fa86b 100%);
+  color: #ffffff;
+}
+
+/* Floating Chat Widget Window */
+.pm-floating-chat-widget {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 390px;
+  max-width: calc(100vw - 32px);
+  height: 540px;
+  max-height: calc(100vh - 80px);
+  z-index: 1060;
+  background: #ffffff;
+  border: 1px solid var(--pm-border);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: pmSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pmSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
