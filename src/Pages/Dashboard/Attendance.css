@@ -128,7 +128,7 @@
 }
 
 .calendar-dot--halfday {
-  background: #8b5cf6;
+  background: #ec4899;
 }
 
 .calendar-dot--absent {
@@ -146,6 +146,10 @@
 
 .calendar-dot--leave {
   background: #3b82f6;
+}
+
+.calendar-dot--halfday-leave {
+  background: #8b5cf6;
 }
 
 @keyframes pulse-dot {

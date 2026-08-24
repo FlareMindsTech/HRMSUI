@@ -44,6 +44,7 @@ const getStatusDotClass = (status) => {
     case 'Working': return 'calendar-dot--working';
     case 'Late': return 'calendar-dot--late';
     case 'Half Day': return 'calendar-dot--halfday';
+    case 'Half Day Leave': return 'calendar-dot--halfday-leave';
     case 'Absent': return 'calendar-dot--absent';
     case 'Leave': return 'calendar-dot--leave';
     case 'Weekend': return 'calendar-dot--weekend';
@@ -107,7 +108,7 @@ function AttendanceCalendar({ monthlyRecords, month, year, onMonthChange, onDayC
                 onClick={() => record && !record.isGenerated && onDayClick && onDayClick(record)}
               >
                 <span>{day}</span>
-                {dotClass && <div className={`calendar-dot ${dotClass}`} />}
+                {dotClass && <div className={`calendar-dot ${dotClass}`} title={status} />}
               </div>
             );
           })}
@@ -117,7 +118,9 @@ function AttendanceCalendar({ monthlyRecords, month, year, onMonthChange, onDayC
       <div className="calendar-legend">
         <div className="calendar-legend-item"><div className="legend-dot" style={{ background: '#22c55e' }} /> Present</div>
         <div className="calendar-legend-item"><div className="legend-dot" style={{ background: '#f59e0b' }} /> Late</div>
-        <div className="calendar-legend-item"><div className="legend-dot" style={{ background: '#8b5cf6' }} /> Half Day</div>
+        <div className="calendar-legend-item"><div className="legend-dot" style={{ background: '#ec4899' }} /> Half Day Attendance</div>
+        <div className="calendar-legend-item"><div className="legend-dot" style={{ background: '#3b82f6' }} /> Full Day Leave</div>
+        <div className="calendar-legend-item"><div className="legend-dot" style={{ background: '#8b5cf6' }} /> Half Day Leave</div>
         <div className="calendar-legend-item"><div className="legend-dot" style={{ background: '#ef4444' }} /> Absent</div>
         <div className="calendar-legend-item"><div className="legend-dot" style={{ background: '#06b6d4', animation: 'pulse-dot 1.8s infinite' }} /> Working</div>
         <div className="calendar-legend-item"><div className="legend-dot" style={{ background: '#d1d5db' }} /> Weekend</div>
@@ -128,13 +131,14 @@ function AttendanceCalendar({ monthlyRecords, month, year, onMonthChange, onDayC
 
 // ── Summary Cards ──
 function SummaryCards({ records }) {
-  const stats = { present: 0, late: 0, halfDay: 0, absent: 0, totalHours: 0, workDays: 0 };
+  const stats = { present: 0, late: 0, halfDay: 0, absent: 0, leave: 0, totalHours: 0, workDays: 0 };
   (records || []).forEach(r => {
     if (['Present', 'Late', 'Half Day', 'Working'].includes(r.status)) stats.workDays++;
     if (r.status === 'Present') stats.present++;
     if (r.status === 'Late') { stats.late++; stats.present++; }
     if (r.status === 'Half Day') stats.halfDay++;
     if (r.status === 'Absent') stats.absent++;
+    if (['Leave', 'Half Day Leave'].includes(r.status)) stats.leave++;
     if (r.totalHours) stats.totalHours += r.totalHours;
   });
   const avgHours = stats.workDays > 0 ? (stats.totalHours / stats.workDays).toFixed(1) : '0';
@@ -148,6 +152,10 @@ function SummaryCards({ records }) {
       <div className="summary-metric-card">
         <div className="summary-metric-value" style={{ color: '#ef4444' }}>{stats.absent}</div>
         <div className="summary-metric-label">Absent</div>
+      </div>
+      <div className="summary-metric-card">
+        <div className="summary-metric-value" style={{ color: '#3b82f6' }}>{stats.leave}</div>
+        <div className="summary-metric-label">Approved Leave</div>
       </div>
       <div className="summary-metric-card">
         <div className="summary-metric-value" style={{ color: '#f59e0b' }}>{stats.late}</div>
