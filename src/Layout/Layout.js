@@ -66,7 +66,7 @@ function Layout() {
         borderRight: "1px solid rgba(45, 197, 138, 0.18)",
         transition: "width 0.3s cubic-bezier(.4,0,.2,1)",
         position: isMobile ? "fixed" : "relative",
-        zIndex: 1100,
+        zIndex: isMobile ? 1100 : 100,
         overflow: "hidden",
         boxShadow: isMobile && sidebarOpen
           ? "6px 0 32px rgba(45, 197, 138, 0.15), 0 0 0 1px rgba(45,197,138,0.08)"
