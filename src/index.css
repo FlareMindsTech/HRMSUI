@@ -9,6 +9,38 @@
   box-sizing: border-box;
 }
 
+/* ── Modal Layering & Responsive Fixes ── */
+.modal-backdrop {
+  z-index: 1300 !important;
+}
+
+.modal {
+  z-index: 1350 !important;
+}
+
+.modal-dialog {
+  max-width: 95vw;
+  margin: 1.25rem auto;
+}
+
+@media (min-width: 992px) {
+  .modal-lg {
+    max-width: 860px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .modal-xl {
+    max-width: 1180px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .modal-xl {
+    max-width: 1320px;
+  }
+}
+
 body {
   margin: 0;
   font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
