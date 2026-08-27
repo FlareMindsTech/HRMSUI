@@ -4,9 +4,9 @@
 // ============================================================
 
 // Reads from HRMSUI/.env -> REACT_APP_API_BASE_URL
-// Falls back to localhost:7800 if .env is missing (dev convenience).
+// Falls back to the live server URL if .env is missing.
 export const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || "http://localhost:7800/api";
+  process.env.REACT_APP_API_BASE_URL || "https://3.6.122.34/api";
 
 // Token is stored under this key in localStorage after a real login.
 const TOKEN_KEY = "token";
