@@ -9,7 +9,30 @@ import {
   FaCheckCircle, FaUserPlus, FaInbox, FaCalendarAlt, FaPaperPlane,
   FaSyncAlt, FaComments
 } from 'react-icons/fa';
-import { apiFetch } from '../../config/api';
+import {
+  getAllProjectsApi,
+  getMyProjectsApi,
+  getEligiblePMsApi,
+  getCompanyUsersApi,
+  getProjectDetailsApi,
+  createProjectApi,
+  updateProjectApi,
+  deleteProjectApi,
+  addProjectMemberApi,
+  removeProjectMemberApi,
+  getProjectSprintsApi,
+  createSprintApi,
+  updateSprintApi,
+  deleteSprintApi,
+  getTasksByProjectApi,
+  createTaskApi,
+  updateTaskApi,
+  updateTaskStatusApi,
+  deleteTaskApi,
+  getProjectDailyReportsApi,
+  submitDailyReportApi,
+  addDailyReportCommentApi,
+} from '../../Api/Project/project';
 import { useAuth } from '../../context/AuthContext';
 import './ProjectManagement.css';
 
@@ -170,8 +193,7 @@ function ProjectManagement() {
     setProjectsLoading(true);
     setProjectsError('');
     try {
-      const endpoint = isOwnerOrAdmin ? '/project/getAllProjects' : '/project/getMyProjects';
-      const { ok, data } = await apiFetch(endpoint);
+      const { ok, data } = isOwnerOrAdmin ? await getAllProjectsApi() : await getMyProjectsApi();
       if (ok && data.success) {
         setProjects(data.data || []);
         if (selectIdAfter) {
@@ -192,7 +214,7 @@ function ProjectManagement() {
 
   const fetchEligiblePMs = useCallback(async () => {
     try {
-      const { ok, data } = await apiFetch('/project/getEligiblePMs');
+      const { ok, data } = await getEligiblePMsApi();
       if (ok && data.success) setEligiblePMs(data.data || []);
     } catch (e) {
       console.error(e);
@@ -203,7 +225,7 @@ function ProjectManagement() {
     if (!id) return;
     setDetailsLoading(true);
     try {
-      const { ok, data } = await apiFetch(`/project/getProjectDetails/${id}`);
+      const { ok, data } = await getProjectDetailsApi(id);
       if (ok && data.success) {
         setProjectDetails(data.data);
       } else {
@@ -221,7 +243,7 @@ function ProjectManagement() {
     if (!projectId) return;
     setSprintsLoading(true);
     try {
-      const { ok, data } = await apiFetch(`/sprint/project/${projectId}`);
+      const { ok, data } = await getProjectSprintsApi(projectId);
       if (ok && data.success) setSprints(data.data || []);
     } catch (e) {
       console.error(e);
@@ -234,7 +256,7 @@ function ProjectManagement() {
     if (!projectId) return;
     setTasksLoading(true);
     try {
-      const { ok, data } = await apiFetch(`/task/project/${projectId}`);
+      const { ok, data } = await getTasksByProjectApi(projectId);
       if (ok && data.success) setTasks(data.data || []);
     } catch (e) {
       console.error(e);
@@ -246,7 +268,7 @@ function ProjectManagement() {
   const fetchCompanyUsers = useCallback(async () => {
     setCompanyUsersLoading(true);
     try {
-      const { ok, data } = await apiFetch('/project/getCompanyUsers');
+      const { ok, data } = await getCompanyUsersApi();
       if (ok && Array.isArray(data.data)) setCompanyUsers(data.data);
     } catch (e) {
       console.error(e);
@@ -259,7 +281,7 @@ function ProjectManagement() {
     if (!projectId) return;
     setReportsLoading(true);
     try {
-      const { ok, data } = await apiFetch(`/daily-report/project/${projectId}`);
+      const { ok, data } = await getProjectDailyReportsApi(projectId);
       if (ok && data.success) setProjectReports(data.data || []);
     } catch (e) {
       console.error(e);
@@ -335,11 +357,9 @@ function ProjectManagement() {
       if (!isEdit && !payload.projectManager && isProjectManager && user) {
         payload.projectManager = user._id || user.id;
       }
-      const path = isEdit ? `/project/updateProject/${editingProjectId}` : '/project/create';
-      const { ok, data } = await apiFetch(path, {
-        method: isEdit ? 'PUT' : 'POST',
-        body: JSON.stringify(payload),
-      });
+      const { ok, data } = isEdit
+        ? await updateProjectApi(editingProjectId, payload)
+        : await createProjectApi(payload);
 
       if (ok && data.success) {
         showFeedback('success', isEdit ? 'Project updated successfully.' : 'Project created successfully.');
@@ -359,7 +379,7 @@ function ProjectManagement() {
   const deleteProject = async (project) => {
     if (!window.confirm(`Are you sure you want to delete "${project.projectName}"?`)) return;
     try {
-      const { ok, data } = await apiFetch(`/project/deleteProject/${project._id}`, { method: 'DELETE' });
+      const { ok, data } = await deleteProjectApi(project._id);
       if (ok && data.success) {
         showFeedback('success', 'Project deleted.');
         if (selectedProjectId === project._id) setSelectedProjectId(null);
@@ -401,12 +421,10 @@ function ProjectManagement() {
     setSavingSprint(true);
     try {
       const isEdit = !!editingSprintId;
-      const path = isEdit ? `/sprint/update/${editingSprintId}` : '/sprint/create';
       const body = isEdit ? sprintForm : { ...sprintForm, projectId: selectedProjectId };
-      const { ok, data } = await apiFetch(path, {
-        method: isEdit ? 'PUT' : 'POST',
-        body: JSON.stringify(body),
-      });
+      const { ok, data } = isEdit
+        ? await updateSprintApi(editingSprintId, body)
+        : await createSprintApi(body);
 
       if (ok && data.success) {
         showFeedback('success', isEdit ? 'Sprint updated.' : 'Sprint created.');
@@ -426,7 +444,7 @@ function ProjectManagement() {
   const deleteSprint = async (sprint) => {
     if (!window.confirm(`Delete sprint "${sprint.sprintName}"?`)) return;
     try {
-      const { ok, data } = await apiFetch(`/sprint/delete/${sprint._id}`, { method: 'DELETE' });
+      const { ok, data } = await deleteSprintApi(sprint._id);
       if (ok && data.success) {
         showFeedback('success', 'Sprint deleted.');
         fetchSprints(selectedProjectId);
@@ -470,7 +488,6 @@ function ProjectManagement() {
     setSavingTask(true);
     try {
       const isEdit = !!editingTaskId;
-      const path = isEdit ? `/task/${editingTaskId}` : '/task/create';
       const payload = isEdit ? taskForm : {
         ...taskForm,
         projectId: selectedProjectId,
@@ -478,10 +495,9 @@ function ProjectManagement() {
         assignedTo: taskForm.assignedTo || undefined,
       };
 
-      const { ok, data } = await apiFetch(path, {
-        method: isEdit ? 'PUT' : 'POST',
-        body: JSON.stringify(payload),
-      });
+      const { ok, data } = isEdit
+        ? await updateTaskApi(editingTaskId, payload)
+        : await createTaskApi(payload);
 
       if (ok && data.success) {
         showFeedback('success', isEdit ? 'Task updated.' : 'Task created and assigned.');
@@ -507,10 +523,7 @@ function ProjectManagement() {
     }
 
     try {
-      const { ok, data } = await apiFetch(`/task/${task._id}/status`, {
-        method: 'PUT',
-        body: JSON.stringify({ status: newStatus }),
-      });
+      const { ok, data } = await updateTaskStatusApi(task._id, { status: newStatus });
       if (ok && data.success) {
         showFeedback('success', `Task status changed to ${newStatus}`);
         fetchTasks(selectedProjectId);
@@ -527,9 +540,9 @@ function ProjectManagement() {
     if (!taskToComplete) return;
     setSavingCompletion(true);
     try {
-      const { ok, data } = await apiFetch(`/task/${taskToComplete._id}/status`, {
-        method: 'PUT',
-        body: JSON.stringify({ status: 'Completed', completionNote }),
+      const { ok, data } = await updateTaskStatusApi(taskToComplete._id, {
+        status: 'Completed',
+        completionNote,
       });
       if (ok && data.success) {
         showFeedback('success', 'Task marked as Completed!');
@@ -550,7 +563,7 @@ function ProjectManagement() {
   const deleteTask = async (task) => {
     if (!window.confirm(`Delete task "${task.taskName}"?`)) return;
     try {
-      const { ok, data } = await apiFetch(`/task/delete/${task._id}`, { method: 'DELETE' });
+      const { ok, data } = await deleteTaskApi(task._id);
       if (ok && data.success) {
         showFeedback('success', 'Task deleted.');
         fetchTasks(selectedProjectId);
@@ -580,12 +593,9 @@ function ProjectManagement() {
     }
     setSavingMember(true);
     try {
-      const { ok, data } = await apiFetch('/project/addMember', {
-        method: 'POST',
-        body: JSON.stringify({
-          projectId: selectedProjectId,
-          newMemberId: memberForm.newMemberId,
-        }),
+      const { ok, data } = await addProjectMemberApi({
+        projectId: selectedProjectId,
+        newMemberId: memberForm.newMemberId,
       });
 
       if (ok && data.success) {
@@ -607,13 +617,10 @@ function ProjectManagement() {
   const removeMember = async (member) => {
     if (!window.confirm(`Remove ${getDisplayName(member)} from project?`)) return;
     try {
-      const { ok, data } = await apiFetch('/project/removeMember', {
-        method: 'POST',
-        body: JSON.stringify({
-          projectId: selectedProjectId,
-          memberId: member._id,
-          memberRole: member.roleKey,
-        }),
+      const { ok, data } = await removeProjectMemberApi({
+        projectId: selectedProjectId,
+        memberId: member._id,
+        memberRole: member.roleKey,
       });
       if (ok && data.success) {
         showFeedback('success', 'Member removed.');
@@ -644,10 +651,7 @@ function ProjectManagement() {
         projectId: selectedProjectId,
         title: dailyReportForm.title.trim() || 'Work Update',
       };
-      const { ok, data } = await apiFetch('/daily-report/submit', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
+      const { ok, data } = await submitDailyReportApi(payload);
       if (ok && data.success) {
         showFeedback('success', 'Daily Report submitted successfully for this project!');
         setDailyReportForm(emptyDailyReportForm);
@@ -669,10 +673,7 @@ function ProjectManagement() {
 
     setSubmittingCommentMap(prev => ({ ...prev, [reportId]: true }));
     try {
-      const { ok, data } = await apiFetch(`/daily-report/${reportId}/comment`, {
-        method: 'POST',
-        body: JSON.stringify({ commentText: text }),
-      });
+      const { ok, data } = await addDailyReportCommentApi(reportId, text);
       if (ok && data.success) {
         setCommentTextMap(prev => ({ ...prev, [reportId]: '' }));
         fetchProjectReports(selectedProjectId);
