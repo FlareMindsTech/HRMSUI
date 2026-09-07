@@ -1,0 +1,322 @@
+/* ============================================================
+   User & Role Management Styles — TeamHub Mint Design System
+   Dedicated stylesheet for src/Pages/Dashboard/UserManagement.js
+   ============================================================ */
+
+.user-mgmt-container {
+  padding: 0;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+/* ── Primary Create Button ── */
+.user-mgmt-create-btn {
+  background: linear-gradient(135deg, #2DC58A 0%, #20a673 100%) !important;
+  border: none !important;
+  font-size: 0.84rem !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+.user-mgmt-create-btn:hover {
+  box-shadow: 0 4px 12px rgba(45, 197, 138, 0.35) !important;
+  transform: translateY(-1px);
+}
+
+/* ── KPI Stat Cards ── */
+.user-mgmt-kpi-card {
+  background: #ffffff;
+  border: 1px solid rgba(220, 235, 228, 0.8);
+  border-radius: 16px;
+  padding: 1rem 1.2rem;
+  height: 100%;
+  box-shadow: 0 2px 8px rgba(0, 40, 20, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.user-mgmt-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 40, 20, 0.06);
+}
+
+.user-mgmt-kpi-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.user-mgmt-kpi-icon.icon-employees {
+  background: rgba(45, 197, 138, 0.12);
+  color: #2DC58A;
+}
+
+.user-mgmt-kpi-icon.icon-active {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.user-mgmt-kpi-icon.icon-provision {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+}
+
+.user-mgmt-kpi-icon.icon-roles {
+  background: rgba(139, 92, 246, 0.12);
+  color: #8b5cf6;
+}
+
+.user-mgmt-kpi-val {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.3px;
+}
+
+.user-mgmt-kpi-lbl {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted, #8ba49d);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-top: 0.2rem;
+}
+
+/* ── Section Navigation Tabs ── */
+.user-mgmt-nav-wrapper {
+  background: #ffffff;
+  padding: 4px 6px;
+  border-radius: 9999px;
+  display: inline-flex;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.user-mgmt-nav-tab {
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+  padding: 6px 18px !important;
+  border-radius: 9999px !important;
+  transition: all 0.15s ease-in-out !important;
+  border: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  cursor: pointer;
+}
+
+.user-mgmt-nav-tab.active {
+  background: linear-gradient(135deg, #2DC58A 0%, #20a673 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(45, 197, 138, 0.35) !important;
+}
+
+.user-mgmt-nav-tab:not(.active) {
+  background: transparent !important;
+  color: #64748b !important;
+}
+
+.user-mgmt-nav-tab:not(.active):hover {
+  background: #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+.user-mgmt-tab-count {
+  font-size: 0.78rem;
+  opacity: 0.88;
+  font-weight: 700;
+}
+
+/* ── Table Card & Header ── */
+.user-mgmt-table-card {
+  background: #ffffff;
+  border: 1px solid rgba(220, 235, 228, 0.8);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 40, 20, 0.03);
+  margin-bottom: 2rem;
+}
+
+.user-mgmt-filter-header {
+  padding: 0.85rem 1.15rem;
+  border-bottom: 1px solid rgba(220, 235, 228, 0.7);
+  background: #ffffff;
+}
+
+.user-mgmt-ctrl {
+  height: 32px !important;
+  font-size: 0.8rem !important;
+  border-radius: 6px !important;
+}
+
+/* ── Compact Table Styling (Eliminating Horizontal Scrolling) ── */
+.user-mgmt-table {
+  width: 100%;
+}
+
+.user-mgmt-table th {
+  padding: 0.65rem 0.85rem !important;
+  white-space: nowrap;
+  vertical-align: middle;
+  letter-spacing: 0.3px;
+  background-color: #f8faf9 !important;
+  border-bottom: 1px solid #e8f0eb !important;
+}
+
+.user-mgmt-table td {
+  padding: 0.65rem 0.85rem !important;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1f5f3;
+}
+
+.user-mgmt-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Role Description Clamping ── */
+.role-desc-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+  margin-top: 2px;
+  max-width: 340px;
+}
+
+/* ── Access Summary Badges ── */
+.role-badge-system {
+  background: rgba(14, 165, 233, 0.1);
+  color: #0284c7;
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  display: inline-block;
+  letter-spacing: 0.2px;
+}
+
+.role-badge-custom {
+  background: rgba(139, 92, 246, 0.1);
+  color: #7c3aed;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  display: inline-block;
+  letter-spacing: 0.2px;
+}
+
+.role-delete-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+
+/* ── Avatar Chips ── */
+.user-mgmt-avatar-chip {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 11px;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.user-mgmt-avatar-chip.account-active {
+  background: linear-gradient(135deg, #2DC58A 0%, #1f9d6c 100%);
+  color: #ffffff;
+}
+
+.user-mgmt-avatar-chip.account-none {
+  background: #e2ede8;
+  color: #4a6560;
+}
+
+/* ── Interactive Checkbox Cards (Role Modal) ── */
+.user-mgmt-checkbox-item {
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-radius: 8px;
+  border: 1px solid #d5e6de;
+  background: #ffffff;
+}
+
+.user-mgmt-checkbox-item:hover {
+  border-color: #2DC58A;
+  box-shadow: 0 2px 6px rgba(45, 197, 138, 0.1);
+}
+
+.user-mgmt-checkbox-item.selected {
+  border-color: #2DC58A;
+  background: #f7fbf9;
+}
+
+/* ── Pagination Bar & Controls ── */
+.user-mgmt-pagination-bar {
+  background: #ffffff;
+  border-top: 1px solid #eef2f0;
+}
+
+.user-mgmt-pagination .page-link {
+  padding: 3px 9px;
+  font-size: 0.78rem;
+  color: #475569;
+  border-color: #e2e8e5;
+  box-shadow: none !important;
+  border-radius: 6px;
+  margin: 0 2px;
+  cursor: pointer;
+}
+
+.user-mgmt-pagination .page-item.active .page-link {
+  background-color: #2DC58A;
+  border-color: #2DC58A;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.user-mgmt-pagination .page-link:hover:not(.active) {
+  background-color: #f0fdf4;
+  color: #10b981;
+  border-color: #a7f3d0;
+}
+
+.user-mgmt-pagination .page-item.disabled .page-link {
+  color: #94a3b8;
+  background-color: #f8fafc;
+  border-color: #e2e8e5;
+}
+
+/* ── Responsive Adjustments ── */
+@media (max-width: 992px) {
+  .user-mgmt-filter-header {
+    padding: 0.75rem 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .user-mgmt-kpi-card {
+    padding: 0.85rem 1rem;
+  }
+
+  .user-mgmt-nav-wrapper {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .user-mgmt-pagination-bar {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+}

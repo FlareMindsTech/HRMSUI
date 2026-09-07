@@ -1,0 +1,162 @@
+/* ==========================================================================
+   Layout Shell Stylesheet (Layout.css)
+   Responsive structural shell for TeamHub Enterprise HRMS.
+   ========================================================================== */
+
+.app-layout {
+  display: flex;
+  height: 100vh;
+  max-height: 100vh;
+  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  position: relative;
+  overflow: hidden;
+  background: #0d2218;
+}
+
+/* ── Mobile Hamburger Toggle Button ── */
+.app-layout-menu-toggle {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 1250;
+  background: linear-gradient(135deg, #2DC58A 0%, #20a673 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(45, 197, 138, 0.38);
+  font-size: 18px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.app-layout-menu-toggle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(45, 197, 138, 0.48);
+}
+
+.app-layout-menu-toggle:active {
+  transform: translateY(0);
+}
+
+/* ── Sidebar Container ── */
+.app-layout-sidebar {
+  width: 230px;
+  height: 100vh;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #0f271d 0%, #091a13 100%);
+  border-right: 1px solid rgba(45, 197, 138, 0.16);
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+  position: relative;
+  z-index: 100;
+  overflow: hidden;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+}
+
+/* Mobile Sidebar States */
+.app-layout-sidebar.is-mobile {
+  position: fixed;
+  z-index: 1200;
+  width: 0;
+  box-shadow: none;
+}
+
+.app-layout-sidebar.is-mobile.sidebar-open {
+  width: 250px;
+  box-shadow: 10px 0 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(45, 197, 138, 0.12);
+}
+
+/* ── Mobile Backdrop ── */
+.app-layout-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 15, 10, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1150;
+  animation: appLayoutFadeIn 0.2s ease;
+}
+
+@keyframes appLayoutFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ── Main Workspace ── */
+.app-layout-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100vh;
+  overflow: hidden;
+  background: #f3f6f4;
+}
+
+/* ── Header Wrapper ── */
+.app-layout-header-wrapper {
+  height: 64px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border-bottom: 1px solid #e4ece7;
+  box-shadow: 0 1px 4px rgba(0, 30, 15, 0.04);
+  z-index: 900;
+  transition: height 0.2s ease;
+}
+
+.app-layout-header-wrapper.is-mobile {
+  height: 56px;
+}
+
+/* ── Content Container ── */
+.app-layout-content {
+  flex: 1;
+  padding: 20px 28px;
+  background: #f3f6f4;
+  overflow-y: auto;
+  transition: padding 0.2s ease;
+}
+
+.app-layout-content.is-mobile {
+  padding: 14px;
+}
+
+/* ── Footer Wrapper ── */
+.app-layout-footer-wrapper {
+  height: 36px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border-top: 1px solid #e4ece7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: height 0.2s ease;
+}
+
+.app-layout-footer-wrapper.is-mobile {
+  height: 30px;
+}
+
+/* ── Responsive Queries for Viewport Fallback ── */
+@media (max-width: 767px) {
+  .app-layout-header-wrapper {
+    height: 56px;
+  }
+
+  .app-layout-content {
+    padding: 14px;
+  }
+
+  .app-layout-footer-wrapper {
+    height: 30px;
+  }
+}

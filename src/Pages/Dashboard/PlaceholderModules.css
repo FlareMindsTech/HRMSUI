@@ -1,0 +1,386 @@
+/* ============================================================
+   Placeholder Module Workspaces — TeamHub Mint Design System
+   Styles for Organisation, MIS, Payslip, EPFO
+   ============================================================ */
+
+.placeholder-page {
+  padding: 1.5rem;
+  max-width: 1320px;
+  margin: 0 auto;
+  min-height: calc(100vh - 120px);
+}
+
+/* ── Header Area ── */
+.placeholder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.placeholder-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted, #8ba49d);
+  margin-bottom: 0.35rem;
+}
+
+.placeholder-breadcrumb a,
+.placeholder-breadcrumb span.clickable {
+  color: var(--text-muted, #8ba49d);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.placeholder-breadcrumb a:hover,
+.placeholder-breadcrumb span.clickable:hover {
+  color: var(--primary-dark, #20a673);
+}
+
+.placeholder-title {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--text-primary, #1a2e2a);
+  letter-spacing: -0.4px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.placeholder-desc {
+  font-size: 0.88rem;
+  color: var(--text-secondary, #5f7a74);
+  margin: 0.25rem 0 0 0;
+}
+
+/* ── Status Pill ── */
+.placeholder-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+}
+
+.placeholder-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #d97706;
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.2);
+}
+
+/* ── Main Workspace Card ── */
+.placeholder-workspace-card {
+  background: #ffffff;
+  border: 1px solid rgba(220, 235, 228, 0.9);
+  border-radius: 18px;
+  padding: 2.25rem;
+  box-shadow: 0 4px 16px rgba(0, 40, 20, 0.03);
+  margin-bottom: 2rem;
+}
+
+/* ── Hero Centerpiece ── */
+.placeholder-hero {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 2.5rem auto;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid rgba(220, 235, 228, 0.7);
+}
+
+.placeholder-hero-icon-wrapper {
+  width: 76px;
+  height: 76px;
+  border-radius: 20px;
+  margin: 0 auto 1.25rem auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  box-shadow: 0 8px 24px rgba(0, 40, 20, 0.06);
+}
+
+.placeholder-hero-icon-wrapper.organisation {
+  background: linear-gradient(135deg, rgba(45, 197, 138, 0.15) 0%, rgba(32, 166, 115, 0.08) 100%);
+  color: #20a673;
+  border: 1px solid rgba(45, 197, 138, 0.3);
+}
+
+.placeholder-hero-icon-wrapper.mis {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.08) 100%);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.placeholder-hero-icon-wrapper.payslip {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.08) 100%);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.placeholder-hero-icon-wrapper.epfo {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(109, 40, 217, 0.08) 100%);
+  color: #7c3aed;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.placeholder-hero-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--text-primary, #1a2e2a);
+  margin-bottom: 0.45rem;
+}
+
+.placeholder-hero-text {
+  font-size: 0.92rem;
+  color: var(--text-secondary, #5f7a74);
+  line-height: 1.6;
+  margin-bottom: 1.25rem;
+}
+
+/* ── Info Notice Callout ── */
+.placeholder-notice-box {
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  border-left: 4px solid #f59e0b;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  text-align: left;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  margin: 0 auto;
+}
+
+.placeholder-notice-icon {
+  font-size: 1.25rem;
+  color: #d97706;
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.placeholder-notice-title {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #92400e;
+  margin-bottom: 0.2rem;
+}
+
+.placeholder-notice-desc {
+  font-size: 0.82rem;
+  color: #78350f;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Planned Scope Features ── */
+.placeholder-scope-section {
+  margin-bottom: 2.25rem;
+}
+
+.placeholder-section-heading {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary, #1a2e2a);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.placeholder-scope-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.placeholder-scope-item {
+  background: #f8faf9;
+  border: 1px solid rgba(220, 235, 228, 0.7);
+  border-radius: 14px;
+  padding: 1.15rem;
+  transition: all 0.2s ease;
+}
+
+.placeholder-scope-item:hover {
+  background: #ffffff;
+  border-color: rgba(45, 197, 138, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 40, 20, 0.04);
+  transform: translateY(-2px);
+}
+
+.placeholder-scope-item-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(45, 197, 138, 0.12);
+  color: var(--primary-dark, #20a673);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  margin-bottom: 0.75rem;
+}
+
+.placeholder-scope-item-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary, #1a2e2a);
+  margin-bottom: 0.3rem;
+}
+
+.placeholder-scope-item-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted, #8ba49d);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Navigation Shortcuts Section ── */
+.placeholder-shortcuts-card {
+  background: #ffffff;
+  border: 1px solid rgba(220, 235, 228, 0.9);
+  border-radius: 18px;
+  padding: 1.75rem 2rem;
+  box-shadow: 0 2px 10px rgba(0, 40, 20, 0.02);
+}
+
+.placeholder-shortcuts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.placeholder-shortcuts-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text-primary, #1a2e2a);
+  margin: 0;
+}
+
+.placeholder-shortcuts-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted, #8ba49d);
+}
+
+.placeholder-shortcuts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.placeholder-shortcut-btn {
+  background: #f8faf9;
+  border: 1px solid rgba(220, 235, 228, 0.8);
+  border-radius: 14px;
+  padding: 1.15rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.placeholder-shortcut-btn:hover {
+  background: #ffffff;
+  border-color: var(--primary, #2DC58A);
+  box-shadow: 0 6px 18px rgba(45, 197, 138, 0.12);
+  transform: translateY(-2px);
+}
+
+.placeholder-shortcut-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.placeholder-shortcut-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(45, 197, 138, 0.12);
+  color: var(--primary-dark, #20a673);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.placeholder-shortcut-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary, #1a2e2a);
+  line-height: 1.2;
+}
+
+.placeholder-shortcut-target {
+  font-size: 0.74rem;
+  color: var(--text-muted, #8ba49d);
+  margin-top: 0.2rem;
+  font-family: monospace;
+}
+
+.placeholder-shortcut-arrow {
+  font-size: 1rem;
+  color: var(--text-muted, #8ba49d);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.placeholder-shortcut-btn:hover .placeholder-shortcut-arrow {
+  color: var(--primary-dark, #20a673);
+  transform: translateX(4px);
+}
+
+/* ── Responsive Behavior ── */
+@media (max-width: 768px) {
+  .placeholder-page {
+    padding: 1rem;
+  }
+
+  .placeholder-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .placeholder-workspace-card {
+    padding: 1.5rem 1.25rem;
+  }
+
+  .placeholder-hero {
+    margin-bottom: 1.75rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .placeholder-scope-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .placeholder-shortcuts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .placeholder-shortcuts-card {
+    padding: 1.25rem;
+  }
+}

@@ -1,0 +1,34 @@
+/* ==========================================================================
+   Footer Stylesheet (Footer.css)
+   Scoped styling for TeamHub Enterprise HRMS bottom status & copyright bar.
+   ========================================================================== */
+
+.app-footer {
+  font-size: 11.5px;
+  color: #8ba49d;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.01em;
+  user-select: none;
+}
+
+.app-footer-brand {
+  color: #2DC58A;
+  font-weight: 700;
+}
+
+.app-footer-dot {
+  color: #d5e6de;
+}
+
+.app-footer-copy {
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .app-footer {
+    font-size: 10.5px;
+    gap: 4px;
+  }
+}

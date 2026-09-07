@@ -4,10 +4,8 @@ import {
   Container,
   Row,
   Col,
-  Card,
   Table,
   Button,
-  Badge,
   Modal,
   Form,
   Spinner,
@@ -31,8 +29,6 @@ import {
   FaCheckCircle,
   FaExclamationTriangle,
   FaInfoCircle,
-  FaCalendarAlt,
-  FaBarcode,
   FaUser,
 } from "react-icons/fa";
 import { MdDevices } from "react-icons/md";
@@ -44,24 +40,25 @@ import {
   returnAsset,
 } from "../../services/assetService";
 import { fetchAllUsers } from "../../services/rbacService";
+import "./AssetManagement.css";
 
 // Helper for category badge icons
 const getCategoryIcon = (category) => {
   switch (category) {
     case "LAPTOP":
-      return <FaLaptop className="me-1" />;
+      return <FaLaptop className="text-primary" />;
     case "DESKTOP":
-      return <FaDesktop className="me-1" />;
+      return <FaDesktop className="text-primary" />;
     case "MOBILE":
-      return <FaMobileAlt className="me-1" />;
+      return <FaMobileAlt className="text-success" />;
     case "MONITOR":
-      return <FaTv className="me-1" />;
+      return <FaTv className="text-info" />;
     case "PERIPHERAL":
-      return <FaKeyboard className="me-1" />;
+      return <FaKeyboard className="text-secondary" />;
     case "VEHICLE":
-      return <FaCar className="me-1" />;
+      return <FaCar className="text-warning" />;
     default:
-      return <FaBox className="me-1" />;
+      return <FaBox className="text-muted" />;
   }
 };
 
@@ -70,56 +67,40 @@ const getStatusBadge = (status) => {
   switch (status) {
     case "AVAILABLE":
       return (
-        <Badge
-          bg="success"
-          className="px-2 py-1"
-          style={{ backgroundColor: "#10b981", fontSize: "0.75rem" }}
-        >
+        <span className="asset-status-pill asset-status-pill--available">
           ● Available
-        </Badge>
+        </span>
       );
     case "ASSIGNED":
       return (
-        <Badge
-          bg="primary"
-          className="px-2 py-1"
-          style={{ backgroundColor: "#3b82f6", fontSize: "0.75rem" }}
-        >
+        <span className="asset-status-pill asset-status-pill--assigned">
           ● Assigned
-        </Badge>
+        </span>
       );
     case "DAMAGED":
       return (
-        <Badge
-          bg="danger"
-          className="px-2 py-1"
-          style={{ backgroundColor: "#ef4444", fontSize: "0.75rem" }}
-        >
+        <span className="asset-status-pill asset-status-pill--damaged">
           ● Damaged
-        </Badge>
+        </span>
       );
     case "UNDER_REPAIR":
       return (
-        <Badge
-          bg="warning"
-          className="px-2 py-1 text-dark"
-          style={{ backgroundColor: "#f59e0b", fontSize: "0.75rem" }}
-        >
+        <span className="asset-status-pill asset-status-pill--under-repair">
           ● Under Repair
-        </Badge>
+        </span>
       );
     case "RETIRED":
       return (
-        <Badge
-          bg="secondary"
-          className="px-2 py-1"
-          style={{ backgroundColor: "#64748b", fontSize: "0.75rem" }}
-        >
+        <span className="asset-status-pill asset-status-pill--retired">
           ● Retired
-        </Badge>
+        </span>
       );
     default:
-      return <Badge bg="secondary">{status || "Unknown"}</Badge>;
+      return (
+        <span className="asset-status-pill bg-light text-secondary border">
+          {status || "Unknown"}
+        </span>
+      );
   }
 };
 
@@ -431,26 +412,24 @@ function AssetManagement() {
   }
 
   return (
-    <Container fluid className="py-3 px-3 px-md-4">
+    <Container fluid className="p-3 p-md-4 no-scrollbar" style={{ minHeight: "calc(100vh - var(--header-height))" }}>
       {/* ── 1. Page Header ── */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
         <div className="d-flex align-items-center gap-3">
           <div
+            className="d-flex align-items-center justify-content-center rounded-3 shadow-xs"
             style={{
-              width: 46,
-              height: 46,
-              borderRadius: 12,
-              background: "linear-gradient(135deg, rgba(45,197,138,0.2) 0%, rgba(32,166,115,0.3) 100%)",
-              border: "1px solid rgba(45, 197, 138, 0.4)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              width: 44,
+              height: 44,
+              background: "linear-gradient(135deg, rgba(45,197,138,0.18) 0%, rgba(32,166,115,0.25) 100%)",
+              color: "#2DC58A",
+              border: "1px solid rgba(45, 197, 138, 0.35)",
             }}
           >
-            <MdDevices style={{ fontSize: 26, color: "#2DC58A" }} />
+            <MdDevices style={{ fontSize: 24 }} />
           </div>
           <div>
-            <h4 className="mb-0 fw-bold" style={{ color: "#1e293b" }}>
+            <h4 className="mb-0 fw-bold" style={{ color: "var(--text-primary, #1a2e2a)", letterSpacing: "-0.3px" }}>
               Asset Management
             </h4>
             <small className="text-muted">
@@ -462,27 +441,22 @@ function AssetManagement() {
         <div className="d-flex align-items-center gap-2">
           <Button
             variant="light"
-            className="border d-flex align-items-center gap-2 shadow-sm rounded-3 px-3 py-2"
+            className="border d-flex align-items-center gap-2 shadow-xs rounded-pill px-3 py-2 small fw-semibold bg-white"
             onClick={() => loadAssets(currentPage)}
             disabled={loading}
             title="Refresh Inventory"
           >
-            <FaRedo className={loading ? "fa-spin" : ""} style={{ fontSize: 13 }} />
+            <FaRedo className={loading ? "fa-spin" : ""} style={{ fontSize: 12 }} />
             <span className="d-none d-sm-inline">Refresh</span>
           </Button>
 
           {/* Add Asset Action: Permission Guarded */}
           {hasPermission("asset.create") && (
             <Button
-              className="d-flex align-items-center gap-2 shadow-sm rounded-3 px-3 py-2 fw-semibold"
-              style={{
-                backgroundColor: "#2DC58A",
-                borderColor: "#2DC58A",
-                color: "#ffffff",
-              }}
+              className="btn-add-asset d-flex align-items-center gap-2 rounded-pill px-4 py-2 small fw-semibold"
               onClick={handleOpenCreateModal}
             >
-              <FaPlus style={{ fontSize: 13 }} />
+              <FaPlus style={{ fontSize: 12 }} />
               <span>Add Asset</span>
             </Button>
           )}
@@ -495,10 +469,10 @@ function AssetManagement() {
           variant="success"
           dismissible
           onClose={() => setSuccessMessage(null)}
-          className="d-flex align-items-center gap-2 shadow-sm border-0 rounded-3"
-          style={{ backgroundColor: "rgba(45, 197, 138, 0.15)", color: "#065f46" }}
+          className="d-flex align-items-center gap-2 shadow-xs border-0 rounded-3 mb-3 py-2 px-3 small"
+          style={{ backgroundColor: "rgba(45, 197, 138, 0.12)", color: "#065f46" }}
         >
-          <FaCheckCircle className="flex-shrink-0" />
+          <FaCheckCircle className="flex-shrink-0 text-success" />
           <div>{successMessage}</div>
         </Alert>
       )}
@@ -508,7 +482,7 @@ function AssetManagement() {
           variant="danger"
           dismissible
           onClose={() => setError(null)}
-          className="d-flex align-items-center gap-2 shadow-sm border-0 rounded-3"
+          className="d-flex align-items-center gap-2 shadow-xs border-0 rounded-3 mb-3 py-2 px-3 small"
         >
           <FaExclamationTriangle className="flex-shrink-0" />
           <div>{error}</div>
@@ -518,121 +492,73 @@ function AssetManagement() {
       {/* ── 2. Summary KPI Cards ── */}
       <Row className="g-3 mb-4">
         <Col xs={6} md={3}>
-          <Card className="border-0 shadow-sm rounded-4 h-100 p-3" style={{ background: "#ffffff" }}>
+          <div className="asset-kpi-card h-100">
             <div className="d-flex justify-content-between align-items-center">
               <div>
-                <span className="text-muted small fw-medium">Total Assets</span>
-                <h3 className="mb-0 fw-bold mt-1" style={{ color: "#1e293b" }}>
-                  {counts.total}
-                </h3>
+                <span className="asset-kpi-label">Total Assets</span>
+                <div className="asset-kpi-value">{counts.total}</div>
               </div>
-              <div
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 10,
-                  background: "rgba(59, 130, 246, 0.1)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <MdDevices style={{ fontSize: 22, color: "#3b82f6" }} />
+              <div className="asset-kpi-icon" style={{ background: "rgba(59, 130, 246, 0.12)", color: "#3b82f6" }}>
+                <MdDevices />
               </div>
             </div>
-          </Card>
+          </div>
         </Col>
 
         <Col xs={6} md={3}>
-          <Card className="border-0 shadow-sm rounded-4 h-100 p-3" style={{ background: "#ffffff" }}>
+          <div className="asset-kpi-card h-100">
             <div className="d-flex justify-content-between align-items-center">
               <div>
-                <span className="text-muted small fw-medium">Available</span>
-                <h3 className="mb-0 fw-bold mt-1" style={{ color: "#10b981" }}>
-                  {counts.available}
-                </h3>
+                <span className="asset-kpi-label">Available</span>
+                <div className="asset-kpi-value" style={{ color: "#10b981" }}>{counts.available}</div>
               </div>
-              <div
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 10,
-                  background: "rgba(16, 185, 129, 0.1)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <FaCheckCircle style={{ fontSize: 20, color: "#10b981" }} />
+              <div className="asset-kpi-icon" style={{ background: "rgba(16, 185, 129, 0.12)", color: "#10b981" }}>
+                <FaCheckCircle />
               </div>
             </div>
-          </Card>
+          </div>
         </Col>
 
         <Col xs={6} md={3}>
-          <Card className="border-0 shadow-sm rounded-4 h-100 p-3" style={{ background: "#ffffff" }}>
+          <div className="asset-kpi-card h-100">
             <div className="d-flex justify-content-between align-items-center">
               <div>
-                <span className="text-muted small fw-medium">Assigned</span>
-                <h3 className="mb-0 fw-bold mt-1" style={{ color: "#3b82f6" }}>
-                  {counts.assigned}
-                </h3>
+                <span className="asset-kpi-label">Assigned</span>
+                <div className="asset-kpi-value" style={{ color: "#3b82f6" }}>{counts.assigned}</div>
               </div>
-              <div
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 10,
-                  background: "rgba(59, 130, 246, 0.1)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <FaUser style={{ fontSize: 18, color: "#3b82f6" }} />
+              <div className="asset-kpi-icon" style={{ background: "rgba(59, 130, 246, 0.12)", color: "#3b82f6" }}>
+                <FaUser />
               </div>
             </div>
-          </Card>
+          </div>
         </Col>
 
         <Col xs={6} md={3}>
-          <Card className="border-0 shadow-sm rounded-4 h-100 p-3" style={{ background: "#ffffff" }}>
+          <div className="asset-kpi-card h-100">
             <div className="d-flex justify-content-between align-items-center">
               <div>
-                <span className="text-muted small fw-medium">Damaged</span>
-                <h3 className="mb-0 fw-bold mt-1" style={{ color: "#ef4444" }}>
-                  {counts.damaged}
-                </h3>
+                <span className="asset-kpi-label">Damaged</span>
+                <div className="asset-kpi-value" style={{ color: "#ef4444" }}>{counts.damaged}</div>
               </div>
-              <div
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 10,
-                  background: "rgba(239, 68, 68, 0.1)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <FaExclamationTriangle style={{ fontSize: 18, color: "#ef4444" }} />
+              <div className="asset-kpi-icon" style={{ background: "rgba(239, 68, 68, 0.12)", color: "#ef4444" }}>
+                <FaExclamationTriangle />
               </div>
             </div>
-          </Card>
+          </div>
         </Col>
       </Row>
 
       {/* ── 3. Filters & Search Control Bar ── */}
-      <Card className="border-0 shadow-sm rounded-4 mb-4 p-3" style={{ background: "#ffffff" }}>
+      <div className="asset-filter-bar mb-4 p-3">
         <Row className="g-2 align-items-center">
           <Col xs={12} md={5}>
-            <InputGroup>
+            <InputGroup size="sm">
               <InputGroup.Text className="bg-white border-end-0 text-muted rounded-start-3">
                 <FaSearch />
               </InputGroup.Text>
               <Form.Control
                 type="text"
-                placeholder="Search by code, name, serial, assignee..."
+                placeholder="Search by code, name, serial, model, assignee..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="border-start-0 shadow-none rounded-end-3"
@@ -642,6 +568,7 @@ function AssetManagement() {
 
           <Col xs={6} md={3}>
             <Form.Select
+              size="sm"
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value);
@@ -660,6 +587,7 @@ function AssetManagement() {
 
           <Col xs={6} md={3}>
             <Form.Select
+              size="sm"
               value={categoryFilter}
               onChange={(e) => {
                 setCategoryFilter(e.target.value);
@@ -683,7 +611,7 @@ function AssetManagement() {
               <Button
                 variant="outline-secondary"
                 size="sm"
-                className="w-100 rounded-3 py-2"
+                className="w-100 rounded-3 py-1 extra-small"
                 onClick={() => {
                   setSearchQuery("");
                   setStatusFilter("");
@@ -697,51 +625,47 @@ function AssetManagement() {
             )}
           </Col>
         </Row>
-      </Card>
+      </div>
 
       {/* ── 4. Main Inventory Table ── */}
-      <Card className="border-0 shadow-sm rounded-4 overflow-hidden" style={{ background: "#ffffff" }}>
+      <div className="asset-table-card">
         {!hasPermission("asset.read") ? (
           <div className="p-5 text-center text-muted">
             <FaInfoCircle className="mb-2 text-warning" style={{ fontSize: 32 }} />
-            <h5>Read Access Restricted</h5>
-            <p className="mb-0">You do not have permission ('asset.read') to view the asset catalog.</p>
+            <h6 className="fw-bold text-dark mb-1">Read Access Restricted</h6>
+            <p className="small mb-0">You do not have permission ('asset.read') to view the asset catalog.</p>
           </div>
         ) : loading ? (
           <div className="p-5 text-center">
-            <Spinner animation="border" variant="success" />
-            <p className="mt-2 text-muted mb-0">Loading company assets...</p>
+            <Spinner animation="border" variant="success" size="sm" className="me-2" />
+            <span className="text-muted small">Loading company assets...</span>
           </div>
         ) : filteredAssets.length === 0 ? (
           <div className="p-5 text-center text-muted">
             <div
-              className="mx-auto mb-3"
+              className="mx-auto mb-3 rounded-circle d-flex align-items-center justify-content-center"
               style={{
-                width: 60,
-                height: 60,
-                borderRadius: "50%",
-                background: "rgba(100, 116, 139, 0.1)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                width: 58,
+                height: 58,
+                background: "rgba(100, 116, 139, 0.08)",
+                color: "#64748b"
               }}
             >
-              <MdDevices style={{ fontSize: 30, color: "#64748b" }} />
+              <MdDevices style={{ fontSize: 28 }} />
             </div>
             {searchQuery || statusFilter || categoryFilter ? (
               <>
-                <h6 className="fw-bold mb-1">No Matching Assets Found</h6>
+                <h6 className="fw-bold text-dark mb-1">No Matching Assets Found</h6>
                 <p className="small mb-0">Try adjusting or clearing your search and filter criteria.</p>
               </>
             ) : (
               <>
-                <h6 className="fw-bold mb-1">No Assets in Inventory</h6>
+                <h6 className="fw-bold text-dark mb-1">No Assets in Inventory</h6>
                 <p className="small mb-3">Get started by registering company hardware and equipment.</p>
                 {hasPermission("asset.create") && (
                   <Button
                     size="sm"
-                    className="fw-semibold px-3 py-2 rounded-3"
-                    style={{ backgroundColor: "#2DC58A", borderColor: "#2DC58A" }}
+                    className="btn-add-asset fw-semibold px-3 py-2 rounded-pill shadow-xs"
                     onClick={handleOpenCreateModal}
                   >
                     <FaPlus className="me-1" /> Add First Asset
@@ -753,8 +677,8 @@ function AssetManagement() {
         ) : (
           <>
             <div className="table-responsive">
-              <Table hover className="align-middle mb-0" style={{ fontSize: "0.875rem" }}>
-                <thead style={{ backgroundColor: "#f8fafc", color: "#64748b" }}>
+              <Table hover className="asset-table align-middle mb-0" style={{ fontSize: "0.85rem" }}>
+                <thead>
                   <tr>
                     <th className="py-3 px-3">Asset Code</th>
                     <th className="py-3 px-3">Asset Name</th>
@@ -772,7 +696,7 @@ function AssetManagement() {
                       {/* Asset Code */}
                       <td className="px-3 py-3">
                         <span
-                          className="badge bg-light text-dark border fw-bold px-2 py-1"
+                          className="badge bg-light text-dark border fw-bold px-2 py-1 font-monospace"
                           style={{ letterSpacing: "0.5px" }}
                         >
                           {asset.assetCode}
@@ -786,27 +710,24 @@ function AssetManagement() {
 
                       {/* Category */}
                       <td className="px-3 py-3">
-                        <span className="text-secondary d-flex align-items-center">
+                        <span className="asset-category-tag">
                           {getCategoryIcon(asset.category)}
-                          {asset.category}
+                          <span>{asset.category}</span>
                         </span>
                       </td>
 
                       {/* Serial Number */}
                       <td className="px-3 py-3">
-                        <span
-                          className="font-monospace text-muted small"
-                          style={{ letterSpacing: "0.5px" }}
-                        >
+                        <span className="font-monospace text-muted small">
                           {asset.serialNumber}
                         </span>
                       </td>
 
                       {/* Model / Manufacturer */}
                       <td className="px-3 py-3">
-                        <div className="text-dark">{asset.modelName || "—"}</div>
+                        <div className="text-dark fw-medium">{asset.modelName || "—"}</div>
                         {asset.manufacturer && (
-                          <small className="text-muted">{asset.manufacturer}</small>
+                          <small className="text-muted d-block">{asset.manufacturer}</small>
                         )}
                       </td>
 
@@ -816,32 +737,37 @@ function AssetManagement() {
                       {/* Current Assignee */}
                       <td className="px-3 py-3">
                         {asset.currentAssignee ? (
-                          <div>
-                            <div className="fw-medium text-dark">
-                              {asset.currentAssignee.firstName} {asset.currentAssignee.lastName}
+                          <div className="d-flex align-items-center gap-2">
+                            <div className="assignee-avatar-chip">
+                              {(asset.currentAssignee.firstName?.[0] || "E") + (asset.currentAssignee.lastName?.[0] || "")}
                             </div>
-                            <small className="text-muted">
-                              {asset.currentAssignee.employeeCode || asset.currentAssignee.email}
-                            </small>
+                            <div>
+                              <div className="fw-semibold text-dark">
+                                {asset.currentAssignee.firstName} {asset.currentAssignee.lastName}
+                              </div>
+                              <small className="text-muted extra-small">
+                                {asset.currentAssignee.employeeCode || asset.currentAssignee.email}
+                              </small>
+                            </div>
                           </div>
                         ) : (
-                          <span className="text-muted small">Unassigned</span>
+                          <span className="text-muted small">—</span>
                         )}
                       </td>
 
                       {/* Actions: Permission Guarded */}
                       <td className="px-3 py-3 text-end">
-                        <div className="d-flex justify-content-end gap-1">
+                        <div className="d-flex justify-content-end gap-2">
                           {/* Assign Action */}
                           {hasPermission("asset.assign") && asset.status === "AVAILABLE" && (
                             <Button
                               variant="outline-primary"
                               size="sm"
-                              className="d-flex align-items-center gap-1 rounded-2 px-2 py-1"
+                              className="btn-asset-action"
                               onClick={() => handleOpenAssignModal(asset)}
                               title="Assign asset to employee"
                             >
-                              <FaExchangeAlt style={{ fontSize: 11 }} />
+                              <FaExchangeAlt />
                               <span>Assign</span>
                             </Button>
                           )}
@@ -851,11 +777,11 @@ function AssetManagement() {
                             <Button
                               variant="outline-success"
                               size="sm"
-                              className="d-flex align-items-center gap-1 rounded-2 px-2 py-1"
+                              className="btn-asset-action"
                               onClick={() => handleOpenReturnModal(asset)}
                               title="Return asset to inventory"
                             >
-                              <FaUndoAlt style={{ fontSize: 11 }} />
+                              <FaUndoAlt />
                               <span>Return</span>
                             </Button>
                           )}
@@ -875,7 +801,7 @@ function AssetManagement() {
 
             {/* Pagination Controls */}
             {paginationInfo.totalPages > 1 && (
-              <div className="d-flex justify-content-between align-items-center p-3 border-top">
+              <div className="d-flex justify-content-between align-items-center p-3 px-4 border-top">
                 <small className="text-muted">
                   Page {currentPage} of {paginationInfo.totalPages} ({paginationInfo.totalRecords} total assets)
                 </small>
@@ -902,7 +828,7 @@ function AssetManagement() {
             )}
           </>
         )}
-      </Card>
+      </div>
 
       {/* ══════════════════════════════════════════════════════ */}
       {/* ── CREATE ASSET MODAL ── */}
@@ -914,14 +840,15 @@ function AssetManagement() {
         backdrop="static"
       >
         <Modal.Header closeButton={!createSubmitting} className="border-0 pb-0">
-          <Modal.Title className="fw-bold fs-5">
-            <FaPlus className="me-2 text-success" /> Add New Asset
+          <Modal.Title className="fw-bold fs-5 text-dark d-flex align-items-center gap-2">
+            <FaPlus className="text-success" /> Add New Asset
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleCreateSubmit}>
           <Modal.Body className="pt-3">
             {createError && (
-              <Alert variant="danger" className="py-2 small">
+              <Alert variant="danger" className="py-2 px-3 small rounded-3 mb-3">
+                <FaExclamationTriangle className="me-2" />
                 {createError}
               </Alert>
             )}
@@ -929,7 +856,7 @@ function AssetManagement() {
             <Row className="g-3">
               <Col xs={12}>
                 <Form.Group>
-                  <Form.Label className="small fw-semibold">
+                  <Form.Label className="small fw-semibold text-dark">
                     Asset Name <span className="text-danger">*</span>
                   </Form.Label>
                   <Form.Control
@@ -937,6 +864,7 @@ function AssetManagement() {
                     placeholder="e.g. MacBook Pro 16, Dell UltraSharp 27"
                     value={createForm.name}
                     onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                    className="shadow-none rounded-3"
                     required
                   />
                 </Form.Group>
@@ -944,12 +872,13 @@ function AssetManagement() {
 
               <Col xs={12} sm={6}>
                 <Form.Group>
-                  <Form.Label className="small fw-semibold">
+                  <Form.Label className="small fw-semibold text-dark">
                     Category <span className="text-danger">*</span>
                   </Form.Label>
                   <Form.Select
                     value={createForm.category}
                     onChange={(e) => setCreateForm({ ...createForm, category: e.target.value })}
+                    className="shadow-none rounded-3"
                     required
                   >
                     <option value="LAPTOP">Laptop</option>
@@ -965,7 +894,7 @@ function AssetManagement() {
 
               <Col xs={12} sm={6}>
                 <Form.Group>
-                  <Form.Label className="small fw-semibold">
+                  <Form.Label className="small fw-semibold text-dark">
                     Serial Number <span className="text-danger">*</span>
                   </Form.Label>
                   <Form.Control
@@ -973,6 +902,7 @@ function AssetManagement() {
                     placeholder="e.g. C02G789HKL"
                     value={createForm.serialNumber}
                     onChange={(e) => setCreateForm({ ...createForm, serialNumber: e.target.value })}
+                    className="shadow-none rounded-3"
                     required
                   />
                 </Form.Group>
@@ -980,53 +910,57 @@ function AssetManagement() {
 
               <Col xs={12} sm={6}>
                 <Form.Group>
-                  <Form.Label className="small fw-semibold">Manufacturer</Form.Label>
+                  <Form.Label className="small fw-semibold text-dark">Manufacturer</Form.Label>
                   <Form.Control
                     type="text"
                     placeholder="e.g. Apple, Dell, Lenovo"
                     value={createForm.manufacturer}
                     onChange={(e) => setCreateForm({ ...createForm, manufacturer: e.target.value })}
+                    className="shadow-none rounded-3"
                   />
                 </Form.Group>
               </Col>
 
               <Col xs={12} sm={6}>
                 <Form.Group>
-                  <Form.Label className="small fw-semibold">Model Name</Form.Label>
+                  <Form.Label className="small fw-semibold text-dark">Model Name</Form.Label>
                   <Form.Control
                     type="text"
                     placeholder="e.g. M3 Max, Latitude 5420"
                     value={createForm.modelName}
                     onChange={(e) => setCreateForm({ ...createForm, modelName: e.target.value })}
+                    className="shadow-none rounded-3"
                   />
                 </Form.Group>
               </Col>
 
               <Col xs={12} sm={6}>
                 <Form.Group>
-                  <Form.Label className="small fw-semibold">Purchase Date</Form.Label>
+                  <Form.Label className="small fw-semibold text-dark">Purchase Date</Form.Label>
                   <Form.Control
                     type="date"
                     value={createForm.purchaseDate}
                     onChange={(e) => setCreateForm({ ...createForm, purchaseDate: e.target.value })}
+                    className="shadow-none rounded-3"
                   />
                 </Form.Group>
               </Col>
 
               <Col xs={12} sm={6}>
                 <Form.Group>
-                  <Form.Label className="small fw-semibold">Warranty Expiry Date</Form.Label>
+                  <Form.Label className="small fw-semibold text-dark">Warranty Expiry Date</Form.Label>
                   <Form.Control
                     type="date"
                     value={createForm.warrantyExpiryDate}
                     onChange={(e) => setCreateForm({ ...createForm, warrantyExpiryDate: e.target.value })}
+                    className="shadow-none rounded-3"
                   />
                 </Form.Group>
               </Col>
             </Row>
 
-            <div className="mt-3 p-2 bg-light rounded text-muted small">
-              <FaInfoCircle className="me-1 text-primary" />
+            <div className="mt-3 p-3 bg-light rounded-3 text-muted small border">
+              <FaInfoCircle className="me-2 text-primary" />
               Asset code (e.g. AST0001) and initial status (AVAILABLE) will be automatically generated by the backend.
             </div>
           </Modal.Body>
@@ -1036,13 +970,14 @@ function AssetManagement() {
               variant="light"
               onClick={() => setShowCreateModal(false)}
               disabled={createSubmitting}
+              className="rounded-pill px-3"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={createSubmitting}
-              style={{ backgroundColor: "#2DC58A", borderColor: "#2DC58A" }}
+              className="btn-add-asset rounded-pill px-4"
             >
               {createSubmitting ? (
                 <>
@@ -1067,44 +1002,46 @@ function AssetManagement() {
         backdrop="static"
       >
         <Modal.Header closeButton={!assignSubmitting} className="border-0 pb-0">
-          <Modal.Title className="fw-bold fs-5">
-            <FaExchangeAlt className="me-2 text-primary" /> Assign Asset to Employee
+          <Modal.Title className="fw-bold fs-5 text-dark d-flex align-items-center gap-2">
+            <FaExchangeAlt className="text-primary" /> Assign Asset to Employee
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleAssignSubmit}>
           <Modal.Body className="pt-3">
             {assignError && (
-              <Alert variant="danger" className="py-2 small">
+              <Alert variant="danger" className="py-2 px-3 small rounded-3 mb-3">
+                <FaExclamationTriangle className="me-2" />
                 {assignError}
               </Alert>
             )}
 
             {selectedAssetForAssign && (
-              <Card className="bg-light border-0 p-3 mb-3 rounded-3">
+              <div className="asset-modal-preview mb-3">
                 <div className="d-flex justify-content-between align-items-center mb-1">
                   <span className="fw-bold text-dark">{selectedAssetForAssign.name}</span>
-                  <Badge bg="light" className="text-dark border">
+                  <span className="badge bg-light text-dark border font-monospace">
                     {selectedAssetForAssign.assetCode}
-                  </Badge>
+                  </span>
                 </div>
                 <small className="text-muted">
-                  Serial: <span className="font-monospace">{selectedAssetForAssign.serialNumber}</span> | Category: {selectedAssetForAssign.category}
+                  Serial: <span className="font-monospace text-dark">{selectedAssetForAssign.serialNumber}</span> | Category: {selectedAssetForAssign.category}
                 </small>
-              </Card>
+              </div>
             )}
 
             <Form.Group className="mb-3">
-              <Form.Label className="small fw-semibold">
+              <Form.Label className="small fw-semibold text-dark">
                 Select Employee <span className="text-danger">*</span>
               </Form.Label>
               {loadingEmployees ? (
                 <div className="py-2 text-muted small">
-                  <Spinner size="sm" animation="border" className="me-1" /> Loading employee directory...
+                  <Spinner size="sm" animation="border" className="me-2" /> Loading employee directory...
                 </div>
               ) : (
                 <Form.Select
                   value={assignForm.employeeId}
                   onChange={(e) => setAssignForm({ ...assignForm, employeeId: e.target.value })}
+                  className="shadow-none rounded-3"
                   required
                 >
                   <option value="">-- Choose Employee --</option>
@@ -1118,10 +1055,11 @@ function AssetManagement() {
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label className="small fw-semibold">Condition on Assignment</Form.Label>
+              <Form.Label className="small fw-semibold text-dark">Condition on Assignment</Form.Label>
               <Form.Select
                 value={assignForm.conditionOnAssign}
                 onChange={(e) => setAssignForm({ ...assignForm, conditionOnAssign: e.target.value })}
+                className="shadow-none rounded-3"
               >
                 <option value="NEW">New</option>
                 <option value="GOOD">Good</option>
@@ -1131,13 +1069,14 @@ function AssetManagement() {
             </Form.Group>
 
             <Form.Group>
-              <Form.Label className="small fw-semibold">Remarks / Allocation Notes</Form.Label>
+              <Form.Label className="small fw-semibold text-dark">Remarks / Allocation Notes</Form.Label>
               <Form.Control
                 as="textarea"
                 rows={3}
                 placeholder="e.g. Primary workstation allocation for developer"
                 value={assignForm.remarks}
                 onChange={(e) => setAssignForm({ ...assignForm, remarks: e.target.value })}
+                className="shadow-none rounded-3"
               />
             </Form.Group>
           </Modal.Body>
@@ -1147,6 +1086,7 @@ function AssetManagement() {
               variant="light"
               onClick={() => setShowAssignModal(false)}
               disabled={assignSubmitting}
+              className="rounded-pill px-3"
             >
               Cancel
             </Button>
@@ -1154,6 +1094,7 @@ function AssetManagement() {
               type="submit"
               variant="primary"
               disabled={assignSubmitting || !assignForm.employeeId}
+              className="rounded-pill px-4 fw-semibold"
             >
               {assignSubmitting ? (
                 <>
@@ -1178,45 +1119,47 @@ function AssetManagement() {
         backdrop="static"
       >
         <Modal.Header closeButton={!returnSubmitting} className="border-0 pb-0">
-          <Modal.Title className="fw-bold fs-5">
-            <FaUndoAlt className="me-2 text-success" /> Return Asset to Inventory
+          <Modal.Title className="fw-bold fs-5 text-dark d-flex align-items-center gap-2">
+            <FaUndoAlt className="text-success" /> Return Asset to Inventory
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleReturnSubmit}>
           <Modal.Body className="pt-3">
             {returnError && (
-              <Alert variant="danger" className="py-2 small">
+              <Alert variant="danger" className="py-2 px-3 small rounded-3 mb-3">
+                <FaExclamationTriangle className="me-2" />
                 {returnError}
               </Alert>
             )}
 
             {selectedAssetForReturn && (
-              <Card className="bg-light border-0 p-3 mb-3 rounded-3">
+              <div className="asset-modal-preview mb-3">
                 <div className="d-flex justify-content-between align-items-center mb-1">
                   <span className="fw-bold text-dark">{selectedAssetForReturn.name}</span>
-                  <Badge bg="light" className="text-dark border">
+                  <span className="badge bg-light text-dark border font-monospace">
                     {selectedAssetForReturn.assetCode}
-                  </Badge>
+                  </span>
                 </div>
                 <div className="small text-muted mb-1">
                   Assigned To:{" "}
-                  <strong>
+                  <strong className="text-dark">
                     {selectedAssetForReturn.currentAssignee?.firstName}{" "}
                     {selectedAssetForReturn.currentAssignee?.lastName}
                   </strong>{" "}
                   ({selectedAssetForReturn.currentAssignee?.employeeCode || selectedAssetForReturn.currentAssignee?.email})
                 </div>
                 <small className="text-muted">
-                  Serial: <span className="font-monospace">{selectedAssetForReturn.serialNumber}</span>
+                  Serial: <span className="font-monospace text-dark">{selectedAssetForReturn.serialNumber}</span>
                 </small>
-              </Card>
+              </div>
             )}
 
             <Form.Group className="mb-3">
-              <Form.Label className="small fw-semibold">Condition on Return</Form.Label>
+              <Form.Label className="small fw-semibold text-dark">Condition on Return</Form.Label>
               <Form.Select
                 value={returnForm.conditionOnReturn}
                 onChange={(e) => setReturnForm({ ...returnForm, conditionOnReturn: e.target.value })}
+                className="shadow-none rounded-3"
               >
                 <option value="GOOD">Good (Asset becomes Available)</option>
                 <option value="DAMAGED">Damaged (Asset marked Damaged)</option>
@@ -1224,13 +1167,14 @@ function AssetManagement() {
             </Form.Group>
 
             <Form.Group>
-              <Form.Label className="small fw-semibold">Inspection & Return Remarks</Form.Label>
+              <Form.Label className="small fw-semibold text-dark">Inspection & Return Remarks</Form.Label>
               <Form.Control
                 as="textarea"
                 rows={3}
                 placeholder="e.g. Device returned in clean working order, wiped clean"
                 value={returnForm.remarks}
                 onChange={(e) => setReturnForm({ ...returnForm, remarks: e.target.value })}
+                className="shadow-none rounded-3"
               />
             </Form.Group>
           </Modal.Body>
@@ -1240,6 +1184,7 @@ function AssetManagement() {
               variant="light"
               onClick={() => setShowReturnModal(false)}
               disabled={returnSubmitting}
+              className="rounded-pill px-3"
             >
               Cancel
             </Button>
@@ -1247,6 +1192,8 @@ function AssetManagement() {
               type="submit"
               variant="success"
               disabled={returnSubmitting}
+              className="rounded-pill px-4 fw-semibold"
+              style={{ background: "linear-gradient(135deg, #2DC58A 0%, #20a673 100%)", border: "none" }}
             >
               {returnSubmitting ? (
                 <>

@@ -1,6 +1,7 @@
 import React from "react";
 import { Card, Row, Col, Form, Badge } from "react-bootstrap";
 import { FaGraduationCap, FaCheckCircle } from "react-icons/fa";
+import "./Education.css";
 
 function UGSection({
   data = {},
@@ -21,8 +22,7 @@ function UGSection({
       <div className="p-3.5 bg-light border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
         <div className="d-flex align-items-center gap-2">
           <div
-            className="rounded-circle p-2 d-flex align-items-center justify-content-center text-white"
-            style={{ background: "#2DC58A" }}
+            className="rounded-circle p-2 d-flex align-items-center justify-content-center text-white edu-icon-ug"
           >
             <FaGraduationCap size={16} />
           </div>

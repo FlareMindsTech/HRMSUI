@@ -3,52 +3,58 @@
    Calendar-first, role-aware attendance dashboard
    ============================================================ */
 
-/* ── Calendar Grid ── */
+/* ── Calendar Grid Card ── */
 .attendance-calendar {
   border-radius: 16px;
   overflow: hidden;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--card-border, rgba(220, 235, 228, 0.9));
+  box-shadow: 0 4px 16px rgba(0, 40, 20, 0.04);
 }
 
 .calendar-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.25rem;
+  padding: 1.1rem 1.5rem;
   background: #f8faf9;
   border-bottom: 1px solid #e8f0ec;
 }
 
 .calendar-nav-btn {
-  background: none;
-  border: 1px solid #e0e8e4;
-  border-radius: 8px;
-  width: 32px;
-  height: 32px;
+  background: #ffffff;
+  border: 1px solid #dce5e0;
+  border-radius: 10px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: var(--text-secondary, #4a6560);
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
 .calendar-nav-btn:hover {
-  background: var(--primary-subtle, rgba(45, 197, 138, 0.1));
+  background: rgba(45, 197, 138, 0.12);
   border-color: var(--primary, #2DC58A);
   color: var(--primary, #2DC58A);
+  transform: translateY(-1px);
 }
 
 .calendar-month-label {
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 1.05rem;
   color: var(--text-primary, #1a2e2a);
+  letter-spacing: -0.2px;
 }
 
 .calendar-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 0;
-  padding: 0.5rem 0.75rem;
+  padding: 0.6rem 0.75rem;
   background: #f8faf9;
   border-bottom: 1px solid #e8f0ec;
 }
@@ -59,15 +65,15 @@
   font-weight: 700;
   color: var(--text-muted, #8ba49d);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
   padding: 0.4rem 0;
 }
 
 .calendar-days {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-  padding: 0.5rem 0.75rem 0.75rem;
+  gap: 6px;
+  padding: 0.85rem;
 }
 
 .calendar-day {
@@ -77,18 +83,21 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.15s ease;
-  font-size: 0.85rem;
+  transition: all 0.2s ease;
+  font-size: 0.88rem;
   font-weight: 600;
   color: var(--text-primary, #1a2e2a);
-  min-height: 44px;
+  min-height: 48px;
+  border: 1px solid transparent;
 }
 
 .calendar-day:hover:not(.calendar-day--empty):not(.calendar-day--weekend) {
-  background: var(--primary-subtle, rgba(45, 197, 138, 0.1));
-  transform: scale(1.05);
+  background: rgba(45, 197, 138, 0.1);
+  border-color: rgba(45, 197, 138, 0.3);
+  transform: scale(1.04);
+  z-index: 2;
 }
 
 .calendar-day--empty {
@@ -96,19 +105,21 @@
 }
 
 .calendar-day--today {
-  border: 2px solid var(--primary, #2DC58A);
+  border: 2px solid var(--primary, #2DC58A) !important;
+  background: rgba(45, 197, 138, 0.08);
   font-weight: 800;
+  color: var(--primary, #2DC58A);
 }
 
 .calendar-day--weekend {
   color: var(--text-muted, #8ba49d);
   cursor: default;
-  opacity: 0.65;
+  background: rgba(240, 244, 242, 0.4);
 }
 
 .calendar-day--future {
-  color: var(--text-muted, #8ba49d);
-  opacity: 0.5;
+  color: #b0c2bb;
+  cursor: default;
 }
 
 /* Status dot under day number */
@@ -116,27 +127,32 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  margin-top: 3px;
+  margin-top: 4px;
 }
 
 .calendar-dot--present {
   background: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
 }
 
 .calendar-dot--late {
   background: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
 }
 
 .calendar-dot--halfday {
   background: #ec4899;
+  box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.2);
 }
 
 .calendar-dot--absent {
   background: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
 }
 
 .calendar-dot--working {
   background: #06b6d4;
+  box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
   animation: pulse-dot 1.8s infinite;
 }
 
@@ -146,81 +162,85 @@
 
 .calendar-dot--leave {
   background: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .calendar-dot--halfday-leave {
   background: #8b5cf6;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
 }
 
 @keyframes pulse-dot {
   0%, 100% { transform: scale(0.9); opacity: 0.7; }
-  50% { transform: scale(1.2); opacity: 1; }
+  50% { transform: scale(1.25); opacity: 1; }
 }
 
 /* ── Summary Cards Row ── */
 .attendance-summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
 }
 
 .summary-metric-card {
-  background: var(--card-bg, #ffffff);
+  background: #ffffff;
   border: 1px solid var(--card-border, rgba(220, 235, 228, 0.9));
   border-radius: 12px;
-  padding: 1rem;
+  padding: 0.75rem 0.85rem;
   text-align: center;
   transition: box-shadow 0.2s ease, transform 0.15s ease;
+  box-shadow: 0 1px 4px rgba(0, 40, 20, 0.03);
 }
 
 .summary-metric-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 40, 20, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 40, 20, 0.07);
   transform: translateY(-1px);
 }
 
 .summary-metric-value {
-  font-size: 1.6rem;
+  font-size: 1.45rem;
   font-weight: 800;
-  line-height: 1.2;
+  line-height: 1.15;
+  letter-spacing: -0.4px;
 }
 
 .summary-metric-label {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
   color: var(--text-muted, #8ba49d);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin-top: 0.3rem;
+  letter-spacing: 0.5px;
+  margin-top: 0.25rem;
 }
 
 /* ── Day Detail Modal ── */
 .day-detail-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  gap: 0.85rem;
   padding: 0.5rem 0;
 }
 
 .day-detail-item {
   text-align: center;
-  padding: 0.75rem;
+  padding: 0.85rem;
   background: #f8faf9;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid #e8f0ec;
 }
 
 .day-detail-label {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.5px;
   color: var(--text-muted, #8ba49d);
   margin-bottom: 0.25rem;
 }
 
 .day-detail-value {
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--text-primary, #1a2e2a);
 }
@@ -230,7 +250,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
-  padding: 0.75rem 1rem;
+  padding: 0.85rem 1.25rem;
   border-top: 1px solid #e8f0ec;
   background: #fafbfa;
   border-radius: 0 0 16px 16px;
@@ -239,8 +259,8 @@
 .calendar-legend-item {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.72rem;
+  gap: 0.45rem;
+  font-size: 0.74rem;
   color: var(--text-secondary, #4a6560);
   font-weight: 500;
 }
@@ -254,23 +274,23 @@
 
 /* ── Needs Attention Section ── */
 .needs-attention-card {
-  border-left: 3px solid var(--warning, #f59e0b);
-  background: rgba(245, 158, 11, 0.04);
+  border-left: 4px solid var(--warning, #f59e0b) !important;
+  background: rgba(245, 158, 11, 0.03);
 }
 
 .needs-attention-list {
-  max-height: 200px;
+  max-height: 220px;
   overflow-y: auto;
-  padding-right: 0.5rem;
+  padding-right: 0.4rem;
 }
 
 .needs-attention-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0;
+  padding: 0.55rem 0;
   border-bottom: 1px solid #f0f4f2;
-  font-size: 0.82rem;
+  font-size: 0.84rem;
 }
 
 .needs-attention-item:last-child {
@@ -281,25 +301,27 @@
 .attendance-tabs {
   display: flex;
   gap: 0.35rem;
-  border-bottom: 2px solid #e8f0ec;
-  padding-bottom: 0;
-  margin-bottom: 1.5rem;
+  background: #f1f5f3;
+  padding: 0.25rem;
+  border-radius: 10px;
+  margin-bottom: 0.85rem;
+  width: fit-content;
 }
 
 .attendance-tab {
-  padding: 0.6rem 1.25rem;
+  padding: 0.42rem 0.95rem;
   border: none;
-  background: none;
-  font-size: 0.85rem;
+  background: transparent;
+  font-size: 0.82rem;
   font-weight: 600;
   color: var(--text-muted, #8ba49d);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
+  border-radius: 7px;
   cursor: pointer;
-  transition: all 0.15s ease;
-  display: flex;
+  transition: all 0.2s ease;
+  display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
+  white-space: nowrap;
 }
 
 .attendance-tab:hover {
@@ -307,8 +329,10 @@
 }
 
 .attendance-tab--active {
+  background: #ffffff;
   color: var(--primary, #2DC58A);
-  border-bottom-color: var(--primary, #2DC58A);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  font-weight: 700;
 }
 
 /* ── Analytics Stat Card ── */
@@ -317,42 +341,45 @@
   border: 1px solid var(--card-border, rgba(220, 235, 228, 0.9));
   border-radius: 14px;
   padding: 1.25rem;
-  transition: box-shadow 0.2s ease;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+  box-shadow: 0 2px 8px rgba(0, 40, 20, 0.03);
 }
 
 .analytics-stat-card:hover {
-  box-shadow: 0 6px 18px rgba(0, 40, 20, 0.08);
+  box-shadow: 0 8px 22px rgba(0, 40, 20, 0.08);
+  transform: translateY(-2px);
 }
 
 .analytics-stat-icon {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
-  margin-bottom: 0.75rem;
+  font-size: 1.25rem;
+  margin-bottom: 0.85rem;
 }
 
 .analytics-stat-value {
-  font-size: 1.8rem;
+  font-size: 1.85rem;
   font-weight: 800;
   line-height: 1.1;
   color: var(--text-primary, #1a2e2a);
+  letter-spacing: -0.5px;
 }
 
 .analytics-stat-label {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 600;
   color: var(--text-muted, #8ba49d);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-top: 0.25rem;
+  margin-top: 0.35rem;
 }
 
 .analytics-stat-sub {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   color: var(--text-secondary, #4a6560);
   margin-top: 0.15rem;
 }
@@ -360,8 +387,8 @@
 /* ── Monthly Stats Bar ── */
 .monthly-stat-bar {
   display: flex;
-  height: 8px;
-  border-radius: 4px;
+  height: 10px;
+  border-radius: 5px;
   overflow: hidden;
   background: #f0f4f2;
 }
@@ -371,6 +398,16 @@
   transition: width 0.3s ease;
 }
 
+/* ── Table Row Transitions ── */
+.border-bottom-light {
+  border-bottom: 1px solid #f0f4f2;
+  transition: background-color 0.15s ease;
+}
+
+.border-bottom-light:hover {
+  background-color: #fbfdfc !important;
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .attendance-summary-grid {
@@ -378,13 +415,15 @@
   }
 
   .calendar-day {
-    min-height: 38px;
-    font-size: 0.78rem;
+    min-height: 40px;
+    font-size: 0.8rem;
+    border-radius: 8px;
   }
 
   .calendar-dot {
     width: 5px;
     height: 5px;
+    margin-top: 2px;
   }
 
   .day-detail-grid {
@@ -392,14 +431,437 @@
   }
 
   .attendance-tabs {
+    width: 100%;
     overflow-x: auto;
     flex-wrap: nowrap;
     -webkit-overflow-scrolling: touch;
+    padding: 0.25rem;
   }
 
   .attendance-tab {
     white-space: nowrap;
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 0.85rem;
     font-size: 0.8rem;
   }
 }
+
+/* ── Legend Dot Color Classes ── */
+.legend-dot.dot-present { background: #22c55e; }
+.legend-dot.dot-late { background: #f59e0b; }
+.legend-dot.dot-halfday { background: #ec4899; }
+.legend-dot.dot-leave { background: #3b82f6; }
+.legend-dot.dot-halfday-leave { background: #8b5cf6; }
+.legend-dot.dot-absent { background: #ef4444; }
+.legend-dot.dot-working { background: #06b6d4; animation: pulse-dot 1.8s infinite; }
+.legend-dot.dot-weekend { background: #d1d5db; }
+
+/* ── Metric Value & Status Text Colors ── */
+.metric-val-success { color: #22c55e; }
+.metric-val-danger { color: #ef4444; }
+.metric-val-primary { color: #3b82f6; }
+.metric-val-warning { color: #f59e0b; }
+.metric-val-purple { color: #8b5cf6; }
+.metric-val-info { color: #06b6d4; }
+.text-purple-val { color: #8b5cf6; }
+
+/* ── Badges ── */
+.att-badge-status { font-size: 0.74rem; }
+.att-badge-micro { font-size: 0.72rem; }
+.att-badge-late { font-size: 0.65rem; }
+
+/* ── Page Layout & Header ── */
+.att-page-container {
+  min-height: calc(100vh - var(--header-height));
+}
+
+.att-header-icon {
+  width: 38px;
+  height: 38px;
+  background: rgba(45, 197, 138, 0.12);
+  color: #2DC58A;
+  font-size: 1.15rem;
+}
+
+.att-page-title {
+  color: var(--text-primary, #1a2e2a);
+  letter-spacing: -0.3px;
+}
+
+/* ── Attention Cards ── */
+.att-card-late-attention {
+  border-left: 4px solid #f59e0b !important;
+  background: rgba(245, 158, 11, 0.03);
+}
+
+.att-card-working-attention {
+  border-left: 4px solid #06b6d4 !important;
+  background: rgba(6, 182, 212, 0.03);
+}
+
+/* ── Avatars ── */
+.att-avatar-sm {
+  width: 32px;
+  height: 32px;
+  background: rgba(45, 197, 138, 0.12);
+  font-size: 0.78rem;
+}
+
+.att-avatar-md {
+  width: 42px;
+  height: 42px;
+  background: rgba(45, 197, 138, 0.15);
+  font-size: 1.1rem;
+}
+
+/* ── Scrollable Lists & List Items ── */
+.att-list-scroll-420 {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+/* ── Compact Analytics Stat Card ── */
+.analytics-stat-card-compact {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--card-border, rgba(220, 235, 228, 0.9));
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+  box-shadow: 0 1px 4px rgba(0, 40, 20, 0.03);
+  min-height: 74px;
+}
+
+.analytics-stat-card-compact:hover {
+  box-shadow: 0 4px 14px rgba(0, 40, 20, 0.07);
+  transform: translateY(-1px);
+}
+
+.analytics-stat-card-compact .analytics-stat-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.analytics-stat-card-compact .analytics-stat-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.analytics-stat-card-compact .analytics-stat-value {
+  font-size: 1.42rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--text-primary, #1a2e2a);
+  letter-spacing: -0.4px;
+}
+
+.analytics-stat-card-compact .analytics-stat-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted, #8ba49d);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.1rem;
+}
+
+.analytics-stat-card-compact .analytics-stat-sub {
+  font-size: 0.69rem;
+  color: var(--text-secondary, #4a6560);
+  margin-top: 0.1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Compact Monthly Status Breakdown ── */
+.monthly-breakdown-card {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--card-border, rgba(220, 235, 228, 0.9));
+  border-radius: 12px;
+  padding: 0.65rem 1rem;
+  box-shadow: 0 1px 4px rgba(0, 40, 20, 0.03);
+}
+
+.monthly-breakdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+
+.monthly-breakdown-title {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-primary, #1a2e2a);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.monthly-stat-bar-slim {
+  display: flex;
+  height: 6px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #edf3f0;
+}
+
+.monthly-legend-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.monthly-legend-pill {
+  font-size: 0.73rem;
+  color: var(--text-secondary, #4a6560);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.12rem 0.5rem;
+  background: #f8faf9;
+  border-radius: 6px;
+  border: 1px solid #e8f0ec;
+}
+
+.monthly-legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Compact Attendance Table Card & Toolbar ── */
+.att-table-card {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--card-border, rgba(220, 235, 228, 0.9));
+  border-radius: 12px;
+  padding: 0.9rem 1.1rem;
+  box-shadow: 0 1px 6px rgba(0, 40, 20, 0.03);
+}
+
+.att-section-heading {
+  font-size: 0.92rem;
+  letter-spacing: -0.2px;
+}
+
+.att-filters-row {
+  margin-bottom: 0.7rem;
+}
+
+.att-filter-input {
+  height: 33px !important;
+  font-size: 0.82rem !important;
+  border-color: #dce5e0 !important;
+  border-radius: 8px !important;
+  color: var(--text-primary, #1a2e2a) !important;
+}
+
+.att-filter-input:focus {
+  border-color: var(--primary, #2DC58A) !important;
+  box-shadow: 0 0 0 2px rgba(45, 197, 138, 0.15) !important;
+}
+
+.att-btn-reset {
+  height: 33px !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  border-color: #dce5e0 !important;
+  color: var(--text-secondary, #4a6560) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.15s ease !important;
+}
+
+.att-btn-reset:hover {
+  background: #edf3f0 !important;
+  border-color: #cbd8d1 !important;
+  color: var(--text-primary, #1a2e2a) !important;
+}
+
+/* ── Compact Attendance Table ── */
+.att-table {
+  margin-bottom: 0;
+  font-size: 0.83rem;
+}
+
+.att-table thead th {
+  padding: 0.45rem 0.75rem !important;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #718d86;
+  background-color: #f8faf9;
+  border-bottom: 1px solid #e8f0ec;
+  white-space: nowrap;
+}
+
+.att-table tbody tr {
+  border-bottom: 1px solid #f0f4f2;
+  transition: background-color 0.15s ease;
+}
+
+.att-table tbody tr:hover {
+  background-color: #f7faf8 !important;
+}
+
+.att-table tbody td {
+  padding: 0.52rem 0.75rem !important;
+  vertical-align: middle;
+  color: var(--text-primary, #1a2e2a);
+}
+
+.att-emp-name {
+  font-weight: 600;
+  color: var(--text-primary, #1a2e2a);
+  font-size: 0.85rem;
+  line-height: 1.25;
+}
+
+.att-emp-sub {
+  font-size: 0.71rem;
+  color: var(--text-muted, #8ba49d);
+  line-height: 1.2;
+}
+
+.att-time-cell {
+  font-size: 0.82rem;
+  color: #334d47;
+}
+
+.att-avatar-sm-compact {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(45, 197, 138, 0.12);
+  color: #2DC58A;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Compact Pagination Bar ── */
+.att-pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.6rem;
+  margin-top: 0.45rem;
+  border-top: 1px solid #edf3f0;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.att-pagination-info {
+  font-size: 0.76rem;
+  color: var(--text-muted, #8ba49d);
+  font-weight: 500;
+}
+
+.att-pagination {
+  margin-bottom: 0;
+  gap: 2px;
+}
+
+.att-pagination .page-link {
+  padding: 0.18rem 0.5rem;
+  font-size: 0.76rem;
+  border-radius: 6px !important;
+  color: #4a6560;
+  border: 1px solid #e0e8e4;
+  background: #ffffff;
+  margin: 0 1px;
+}
+
+.att-pagination .page-item.active .page-link {
+  background-color: #2DC58A;
+  border-color: #2DC58A;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.att-pagination .page-item.disabled .page-link {
+  color: #b0c2bb;
+  background: #f8faf9;
+  border-color: #e8f0ec;
+}
+
+/* ── Scrollable Lists & List Items ── */
+.att-list-scroll-420 {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.att-list-scroll-380 {
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.att-list-item-sm {
+  font-size: 0.84rem;
+}
+
+.att-list-item-xs {
+  font-size: 0.82rem;
+}
+
+/* ── Analytics Stat Icons ── */
+.analytics-icon-users {
+  background: rgba(45, 197, 138, 0.1);
+  color: #2DC58A;
+}
+
+.analytics-icon-check {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.analytics-icon-warn {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.analytics-icon-chart {
+  background: rgba(6, 182, 212, 0.1);
+  color: #06b6d4;
+}
+
+/* ── Monthly Stats Progress Bar Segments ── */
+.monthly-stat-bar .progress-bar.att-bar-present,
+.monthly-stat-bar-slim .progress-bar.att-bar-present {
+  background-color: #22c55e;
+}
+
+.monthly-stat-bar .progress-bar.att-bar-late,
+.monthly-stat-bar-slim .progress-bar.att-bar-late {
+  background-color: #f59e0b;
+}
+
+.monthly-stat-bar .progress-bar.att-bar-halfday,
+.monthly-stat-bar-slim .progress-bar.att-bar-halfday {
+  background-color: #8b5cf6;
+}
+
+.monthly-stat-bar .progress-bar.att-bar-working,
+.monthly-stat-bar-slim .progress-bar.att-bar-working {
+  background-color: #06b6d4;
+}
+
+

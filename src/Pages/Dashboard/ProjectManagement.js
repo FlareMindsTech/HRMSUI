@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Container, Row, Col, Card, Form, Button, Badge, Table, Modal,
   Dropdown, Spinner, Alert, Nav, Tab
@@ -6,8 +6,8 @@ import {
 import {
   FaProjectDiagram, FaPlus,
   FaEllipsisV, FaEdit, FaTrash, FaArrowLeft, FaTimes, FaExclamationTriangle,
-  FaCheckCircle, FaUserPlus, FaInbox, FaCalendarAlt, FaPaperPlane,
-  FaSyncAlt, FaComments
+  FaCheckCircle, FaUserPlus, FaInbox, FaPaperPlane,
+  FaSyncAlt, FaComments, FaSearch
 } from 'react-icons/fa';
 import {
   getAllProjectsApi,
@@ -32,6 +32,11 @@ import {
   getProjectDailyReportsApi,
   submitDailyReportApi,
   addDailyReportCommentApi,
+  getMyTasksApi,
+  updateSprintStatusApi,
+  getTasksBySprintApi,
+  getProjectCompletionStatusApi,
+  completeProjectApi,
 } from '../../Api/Project/project';
 import { useAuth } from '../../context/AuthContext';
 import './ProjectManagement.css';
@@ -77,7 +82,7 @@ const emptyDailyReportForm = {
   referenceLink: '',
 };
 
-const PROJECT_STATUS_OPTIONS = ['Pending', 'In Progress', 'Completed', 'On Hold'];
+const PROJECT_STATUS_OPTIONS = ['Pending', 'In Progress', 'On Hold'];
 const SPRINT_STATUS_OPTIONS = ['Planned', 'In Progress', 'Completed'];
 const TASK_STATUS_OPTIONS = ['To Do', 'In Progress', 'Testing', 'Completed'];
 const TASK_PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
@@ -125,7 +130,8 @@ function ProjectManagement() {
   const [submittingCommentMap, setSubmittingCommentMap] = useState({});
 
   // Active Workspace Tab
-  const [activeTab, setActiveTab] = useState('reports');
+  const [activeTab, setActiveTab] = useState('overview');
+  const [projectSearch, setProjectSearch] = useState('');
 
   // Responsive / Mobile
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -134,6 +140,24 @@ function ProjectManagement() {
   // Filters
   const [sprintFilter, setSprintFilter] = useState('all');
   const [taskStatusFilter, setTaskStatusFilter] = useState('all');
+  const [taskAssigneeFilter, setTaskAssigneeFilter] = useState('all');
+
+  // View mode: 'projects' or 'my-tasks'
+  const [currentView, setCurrentView] = useState('projects');
+
+  // My Tasks state
+  const [myTasks, setMyTasks] = useState([]);
+  const [myTasksLoading, setMyTasksLoading] = useState(false);
+  const [myTasksError, setMyTasksError] = useState('');
+  const [myTaskStatusFilter, setMyTaskStatusFilter] = useState('all');
+  const [myTaskSearch, setMyTaskSearch] = useState('');
+
+  // Project Completion Gate Modal state
+  const [showProjectCompletionModal, setShowProjectCompletionModal] = useState(false);
+  const [completionStatusLoading, setCompletionStatusLoading] = useState(false);
+  const [completionStatus, setCompletionStatus] = useState(null);
+  const [projectCompletionNotes, setProjectCompletionNotes] = useState('');
+  const [completingProject, setCompletingProject] = useState(false);
 
   // Feedback banner
   const [feedback, setFeedback] = useState(null);
@@ -148,7 +172,6 @@ function ProjectManagement() {
   const [showSprintModal, setShowSprintModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showMemberModal, setShowMemberModal] = useState(false);
-  const [showChatDrawer, setShowChatDrawer] = useState(false);
   const [memberRoleFilter, setMemberRoleFilter] = useState('all');
 
   // Task Completion Modal
@@ -252,16 +275,40 @@ function ProjectManagement() {
     }
   }, []);
 
-  const fetchTasks = useCallback(async (projectId) => {
+  const fetchTasks = useCallback(async (projectId, sprintId) => {
     if (!projectId) return;
     setTasksLoading(true);
     try {
-      const { ok, data } = await getTasksByProjectApi(projectId);
+      let res;
+      if (sprintId && sprintId !== 'all' && sprintId !== 'backlog') {
+        res = await getTasksBySprintApi(sprintId);
+      } else {
+        res = await getTasksByProjectApi(projectId);
+      }
+      const { ok, data } = res;
       if (ok && data.success) setTasks(data.data || []);
     } catch (e) {
       console.error(e);
     } finally {
       setTasksLoading(false);
+    }
+  }, []);
+
+  const fetchMyTasks = useCallback(async () => {
+    setMyTasksLoading(true);
+    setMyTasksError('');
+    try {
+      const { ok, data } = await getMyTasksApi();
+      if (ok && data.success) {
+        setMyTasks(data.data || []);
+      } else {
+        setMyTasksError(data?.message || 'Failed to load your tasks.');
+      }
+    } catch (e) {
+      console.error(e);
+      setMyTasksError('Could not reach the server to load your tasks.');
+    } finally {
+      setMyTasksLoading(false);
     }
   }, []);
 
@@ -292,8 +339,9 @@ function ProjectManagement() {
 
   useEffect(() => {
     fetchProjects();
+    fetchMyTasks();
     if (isOwnerOrAdmin) fetchEligiblePMs();
-  }, [fetchProjects, isOwnerOrAdmin, fetchEligiblePMs]);
+  }, [fetchProjects, fetchMyTasks, isOwnerOrAdmin, fetchEligiblePMs]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -305,20 +353,18 @@ function ProjectManagement() {
     if (selectedProjectId) {
       fetchProjectDetails(selectedProjectId);
       fetchSprints(selectedProjectId);
-      fetchTasks(selectedProjectId);
+      fetchTasks(selectedProjectId, 'all');
       fetchProjectReports(selectedProjectId);
       setSprintFilter('all');
       setTaskStatusFilter('all');
+      setTaskAssigneeFilter('all');
       setSelectedMemberFilter('all');
-      setActiveTab('overview');
-      setShowChatDrawer(false);
       if (isMobile) setMobileView('detail');
     } else {
       setProjectDetails(null);
       setSprints([]);
       setTasks([]);
       setProjectReports([]);
-      setShowChatDrawer(false);
     }
   }, [selectedProjectId, fetchProjectDetails, fetchSprints, fetchTasks, fetchProjectReports, isMobile]);
 
@@ -448,13 +494,88 @@ function ProjectManagement() {
       if (ok && data.success) {
         showFeedback('success', 'Sprint deleted.');
         fetchSprints(selectedProjectId);
-        fetchTasks(selectedProjectId);
+        fetchTasks(selectedProjectId, sprintFilter);
       } else {
         showFeedback('danger', data.message || 'Failed to delete sprint.');
       }
     } catch (e) {
       console.error(e);
       showFeedback('danger', 'Something went wrong.');
+    }
+  };
+
+  // Sprint Lifecycle Handlers (PUT /api/sprint/:id/status & GET /api/task/sprint/:sprintId)
+  const handleUpdateSprintStatus = async (sprintId, newStatus) => {
+    if (!canManageSprints) {
+      showFeedback('danger', 'Only Project Manager or Admin can update sprint status.');
+      return;
+    }
+    try {
+      const { ok, data } = await updateSprintStatusApi(sprintId, newStatus);
+      if (ok && data.success) {
+        showFeedback('success', data.message || `Sprint marked as ${newStatus}.`);
+        fetchSprints(selectedProjectId);
+        fetchTasks(selectedProjectId, sprintFilter);
+      } else {
+        showFeedback('danger', data?.message || 'Failed to update sprint status.');
+      }
+    } catch (e) {
+      console.error(e);
+      showFeedback('danger', 'Error updating sprint status.');
+    }
+  };
+
+  const handleSelectSprintTasks = (sprintId) => {
+    setSprintFilter(sprintId);
+    setActiveTab('tasks');
+    fetchTasks(selectedProjectId, sprintId);
+  };
+
+  // Safe Project Completion Gate Handlers (GET /completion-status & PUT /complete)
+  const openProjectCompletion = async (project) => {
+    const projId = project?._id || selectedProjectId;
+    if (!projId) return;
+    setShowProjectCompletionModal(true);
+    setCompletionStatusLoading(true);
+    setProjectCompletionNotes('');
+    setCompletionStatus(null);
+    try {
+      const { ok, data } = await getProjectCompletionStatusApi(projId);
+      if (ok && data.success) {
+        setCompletionStatus(data);
+      } else {
+        showFeedback('danger', data?.message || 'Failed to check project completion status.');
+        setShowProjectCompletionModal(false);
+      }
+    } catch (e) {
+      console.error(e);
+      showFeedback('danger', 'Error checking project completion status.');
+      setShowProjectCompletionModal(false);
+    } finally {
+      setCompletionStatusLoading(false);
+    }
+  };
+
+  const handleConfirmCompleteProject = async () => {
+    if (!selectedProjectId) return;
+    setCompletingProject(true);
+    try {
+      const { ok, data } = await completeProjectApi(selectedProjectId, {
+        completionNotes: projectCompletionNotes,
+      });
+      if (ok && data.success) {
+        showFeedback('success', data.message || 'Project marked as Completed successfully!');
+        setShowProjectCompletionModal(false);
+        fetchProjectDetails(selectedProjectId);
+        fetchProjects(selectedProjectId);
+      } else {
+        showFeedback('danger', data?.message || 'Failed to complete project.');
+      }
+    } catch (e) {
+      console.error(e);
+      showFeedback('danger', 'Error submitting project completion.');
+    } finally {
+      setCompletingProject(false);
     }
   };
 
@@ -502,7 +623,8 @@ function ProjectManagement() {
       if (ok && data.success) {
         showFeedback('success', isEdit ? 'Task updated.' : 'Task created and assigned.');
         setShowTaskModal(false);
-        fetchTasks(selectedProjectId);
+        fetchTasks(selectedProjectId, sprintFilter);
+        fetchMyTasks();
       } else {
         showFeedback('danger', data.message || 'Failed to save task.');
       }
@@ -526,7 +648,8 @@ function ProjectManagement() {
       const { ok, data } = await updateTaskStatusApi(task._id, { status: newStatus });
       if (ok && data.success) {
         showFeedback('success', `Task status changed to ${newStatus}`);
-        fetchTasks(selectedProjectId);
+        fetchTasks(selectedProjectId, sprintFilter);
+        fetchMyTasks();
       } else {
         showFeedback('danger', data.message || 'Failed to update task status.');
       }
@@ -548,7 +671,8 @@ function ProjectManagement() {
         showFeedback('success', 'Task marked as Completed!');
         setShowCompletionModal(false);
         setTaskToComplete(null);
-        fetchTasks(selectedProjectId);
+        fetchTasks(selectedProjectId, sprintFilter);
+        fetchMyTasks();
       } else {
         showFeedback('danger', data.message || 'Failed to complete task.');
       }
@@ -566,7 +690,8 @@ function ProjectManagement() {
       const { ok, data } = await deleteTaskApi(task._id);
       if (ok && data.success) {
         showFeedback('success', 'Task deleted.');
-        fetchTasks(selectedProjectId);
+        fetchTasks(selectedProjectId, sprintFilter);
+        fetchMyTasks();
       } else {
         showFeedback('danger', data.message || 'Failed to delete task.');
       }
@@ -718,8 +843,35 @@ function ProjectManagement() {
         ? !sid
         : sid === sprintFilter;
     const statusMatch = taskStatusFilter === 'all' ? true : t.status === taskStatusFilter;
-    return sprintMatch && statusMatch;
+    const assigneeMatch = taskAssigneeFilter === 'all'
+      ? true
+      : taskAssigneeFilter === 'me'
+        ? (t.assignedTo && getId(t.assignedTo) === user?.id)
+        : (t.assignedTo && getId(t.assignedTo) === taskAssigneeFilter);
+    return sprintMatch && statusMatch && assigneeMatch;
   });
+
+  const filteredMyTasks = myTasks.filter(t => {
+    const statusMatch = myTaskStatusFilter === 'all' ? true : t.status === myTaskStatusFilter;
+    const q = myTaskSearch.trim().toLowerCase();
+    const searchMatch = !q
+      ? true
+      : (t.taskName?.toLowerCase().includes(q) ||
+         t.description?.toLowerCase().includes(q) ||
+         t.projectId?.projectName?.toLowerCase().includes(q) ||
+         t.sprintId?.sprintName?.toLowerCase().includes(q));
+    return statusMatch && searchMatch;
+  });
+
+  const filteredProjects = useMemo(() => {
+    if (!projectSearch.trim()) return projects;
+    const q = projectSearch.toLowerCase();
+    return projects.filter(p =>
+      p.projectName?.toLowerCase().includes(q) ||
+      p.status?.toLowerCase().includes(q) ||
+      (p.projectManager && getDisplayName(p.projectManager).toLowerCase().includes(q))
+    );
+  }, [projects, projectSearch]);
 
   const filteredReports = projectReports.filter(r => {
     if (selectedMemberFilter === 'all') return true;
@@ -789,8 +941,8 @@ function ProjectManagement() {
 
       {/* Header */}
       <Row className="mb-3 g-2 align-items-center">
-        <Col xs={12} md={7}>
-          <div className="d-flex align-items-center gap-2">
+        <Col xs={12} md={6}>
+          <div className="d-flex align-items-center gap-2 flex-wrap">
             <h4 className="fw-bold mb-0 pm-page-title">Project Management</h4>
             {isOwnerOrAdmin && <Badge bg="primary" className="rounded-pill">Admin View</Badge>}
             {isProjectManager && <Badge bg="info" text="dark" className="rounded-pill">PM View</Badge>}
@@ -798,11 +950,43 @@ function ProjectManagement() {
           </div>
           <p className="text-muted small mb-0">Oversee projects, manage sprints, and track team tasks seamlessly.</p>
         </Col>
-        <Col xs={12} md={5} className="d-flex justify-content-md-end">
-          {(isOwnerOrAdmin || isProjectManager || hasPermission('project.create')) && (
+        <Col xs={12} md={6} className="d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
+          {/* View Mode Toggle: Projects vs My Tasks */}
+          <div className="bg-light p-1 rounded-pill border d-flex gap-1 shadow-sm">
+            <Button
+              size="sm"
+              variant={currentView === 'projects' ? 'primary' : 'light'}
+              className="rounded-pill px-3 py-1 fw-bold small border-0"
+              onClick={() => setCurrentView('projects')}
+            >
+              Projects
+            </Button>
+            <Button
+              size="sm"
+              variant={currentView === 'my-tasks' ? 'primary' : 'light'}
+              className="rounded-pill px-3 py-1 fw-bold small border-0 d-flex align-items-center gap-1"
+              onClick={() => {
+                setCurrentView('my-tasks');
+                fetchMyTasks();
+              }}
+            >
+              My Tasks
+              {myTasks.length > 0 && (
+                <Badge
+                  bg={currentView === 'my-tasks' ? 'light' : 'primary'}
+                  text={currentView === 'my-tasks' ? 'dark' : 'white'}
+                  className="rounded-pill ms-1"
+                >
+                  {myTasks.length}
+                </Badge>
+              )}
+            </Button>
+          </div>
+
+          {currentView === 'projects' && (isOwnerOrAdmin || isProjectManager || hasPermission('project.create')) && (
             <Button
               variant="primary"
-              className="pm-new-project-btn rounded-pill gradient-bg px-4 py-2 shadow-sm d-flex align-items-center gap-2 justify-content-center"
+              className="pm-new-project-btn rounded-pill gradient-bg px-3 py-2 shadow-sm d-flex align-items-center gap-2 justify-content-center"
               onClick={openCreateProject}
             >
               <FaPlus /> New Project
@@ -811,22 +995,38 @@ function ProjectManagement() {
         </Col>
       </Row>
 
-      {projectsError && (
+      {currentView === 'projects' && projectsError && (
         <Alert variant="danger" className="d-flex align-items-center justify-content-between py-2 shadow-sm mb-3">
           <span className="small d-flex align-items-center gap-2"><FaExclamationTriangle /> {projectsError}</span>
           <Button size="sm" variant="outline-danger" onClick={() => fetchProjects()}>Retry</Button>
         </Alert>
       )}
 
-      <Row className="g-3">
+      {currentView === 'projects' ? (
+        <Row className="g-3">
         {/* Projects list */}
         {showList && (
           <Col xs={12} lg={3}>
             <Card className="border-0 shadow-sm h-100">
               <Card.Body className="p-3">
-                <h6 className="fw-bold small text-uppercase text-muted mb-3">
-                  {isOwnerOrAdmin ? 'All Projects' : 'My Projects'}
-                </h6>
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <h6 className="fw-bold small text-uppercase text-muted mb-0">
+                    {isOwnerOrAdmin ? 'All Projects' : 'My Projects'} ({projects.length})
+                  </h6>
+                </div>
+
+                {projects.length > 2 && (
+                  <div className="pm-search-input-group">
+                    <FaSearch className="pm-search-icon" />
+                    <Form.Control
+                      type="text"
+                      size="sm"
+                      placeholder="Search projects..."
+                      value={projectSearch}
+                      onChange={e => setProjectSearch(e.target.value)}
+                    />
+                  </div>
+                )}
 
                 {projectsLoading && (
                   <div className="d-flex justify-content-center py-4">
@@ -846,8 +1046,12 @@ function ProjectManagement() {
                   </div>
                 )}
 
+                {!projectsLoading && filteredProjects.length === 0 && projects.length > 0 && (
+                  <p className="small text-muted text-center py-3">No matching projects found.</p>
+                )}
+
                 <div className="d-flex flex-column gap-2">
-                  {projects.map(project => (
+                  {filteredProjects.map(project => (
                     <div
                       key={project._id}
                       onClick={() => selectProject(project)}
@@ -918,42 +1122,71 @@ function ProjectManagement() {
 
               {selectedProjectId && projectDetails && (
                 <>
-                  {/* Project Header Card */}
-                  <Card className="border-0 shadow-sm mb-3">
-                    <Card.Body className="p-3">
-                      <div className="d-flex justify-content-between align-items-start gap-2 flex-wrap">
-                        <div className="pm-min-w-0">
-                          <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
-                            <h5 className="fw-bold mb-0">{projectDetails.projectName}</h5>
-                            {getStatusBadge(projectDetails.status)}
-                          </div>
-                          {projectDetails.description && (
-                            <p className="text-muted small mb-2">{projectDetails.description}</p>
-                          )}
-                          <div className="pm-meta-row d-flex flex-wrap gap-3 text-muted small">
-                            <span><FaCalendarAlt /> {formatDate(projectDetails.startDate)} — {formatDate(projectDetails.endDate)}</span>
-                          </div>
+                  {/* Workspace Tab Container */}
+                  <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
+                    {/* 1. PROJECT NAVIGATION (TOP OF WORKSPACE) */}
+                    <div className="pm-top-nav-bar">
+                      <Nav variant="pills" className="pm-nav-pills-custom no-scrollbar">
+                        <Nav.Item>
+                          <Nav.Link eventKey="overview" className="pm-nav-link">
+                            Overview
+                          </Nav.Link>
+                        </Nav.Item>
+                        <Nav.Item>
+                          <Nav.Link eventKey="tasks" className="pm-nav-link">
+                            Tasks
+                          </Nav.Link>
+                        </Nav.Item>
+                        <Nav.Item>
+                          <Nav.Link eventKey="members" className="pm-nav-link">
+                            Members
+                          </Nav.Link>
+                        </Nav.Item>
+                        <Nav.Item>
+                          <Nav.Link eventKey="sprints" className="pm-nav-link">
+                            Sprints
+                          </Nav.Link>
+                        </Nav.Item>
+                        <Nav.Item>
+                          <Nav.Link eventKey="reports" className="pm-nav-link">
+                            Reports
+                          </Nav.Link>
+                        </Nav.Item>
+                      </Nav>
+                    </div>
+
+                    {/* 2. SELECTED PROJECT HEADER (DIRECTLY BELOW NAVIGATION) */}
+                    <div className="pm-selected-project-header">
+                      <div className="pm-project-title-row">
+                        <div className="d-flex align-items-center gap-2 flex-wrap">
+                          <h5 className="pm-project-title-text mb-0">{projectDetails.projectName}</h5>
+                          {getStatusBadge(projectDetails.status)}
                         </div>
 
                         <div className="d-flex align-items-center gap-2">
-                          <Button
-                            variant="outline-success"
-                            size="sm"
-                            className="rounded-pill d-flex align-items-center gap-1 micro-text fw-bold"
-                            onClick={() => {
-                              setShowChatDrawer(true);
-                              fetchProjectReports(selectedProjectId);
-                            }}
-                          >
-                            <FaComments size={13} /> Daily Reports Chat
-                          </Button>
+                          {canEditProject && projectDetails.status !== 'Completed' && (
+                            <Button
+                              variant="outline-success"
+                              size="sm"
+                              className="rounded-pill py-0 px-2 micro-text fw-bold d-flex align-items-center gap-1"
+                              onClick={() => openProjectCompletion(projectDetails)}
+                              title="Verify tasks and complete project"
+                            >
+                              <FaCheckCircle size={11} /> Complete Project
+                            </Button>
+                          )}
 
                           {(canEditProject || canDeleteProject) && (
                             <Dropdown align="end">
-                              <Dropdown.Toggle as={Button} variant="light" size="sm" className="border-0 px-2">
-                                <FaEllipsisV />
+                              <Dropdown.Toggle as={Button} variant="light" size="sm" className="pm-icon-btn p-1 text-muted border-0 shadow-none" title="Project Actions">
+                                <FaEllipsisV size={14} />
                               </Dropdown.Toggle>
                               <Dropdown.Menu>
+                                {canEditProject && projectDetails.status !== 'Completed' && (
+                                  <Dropdown.Item onClick={() => openProjectCompletion(projectDetails)} className="d-flex align-items-center gap-2 text-success">
+                                    <FaCheckCircle /> Complete Project
+                                  </Dropdown.Item>
+                                )}
                                 {canEditProject && (
                                   <Dropdown.Item onClick={() => openEditProject(projectDetails)} className="d-flex align-items-center gap-2">
                                     <FaEdit /> Edit Project
@@ -969,26 +1202,15 @@ function ProjectManagement() {
                           )}
                         </div>
                       </div>
-                    </Card.Body>
-                  </Card>
 
-                  {/* Workspace Navigation Tabs (Top of Middle Column) */}
-                  <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
-                    <Nav variant="pills" className="bg-white p-2 rounded shadow-sm mb-3 gap-1 flex-nowrap overflow-auto no-scrollbar">
-                      <Nav.Item>
-                        <Nav.Link eventKey="overview" className="rounded-pill px-3 py-1 small">Project Overview</Nav.Link>
-                      </Nav.Item>
-                      <Nav.Item>
-                        <Nav.Link eventKey="members" className="rounded-pill px-3 py-1 small">Team Members ({projectMembers.length})</Nav.Link>
-                      </Nav.Item>
-                      <Nav.Item>
-                        <Nav.Link eventKey="sprints" className="rounded-pill px-3 py-1 small">Sprints ({sprints.length})</Nav.Link>
-                      </Nav.Item>
-                      <Nav.Item>
-                        <Nav.Link eventKey="tasks" className="rounded-pill px-3 py-1 small">Tasks ({tasks.length})</Nav.Link>
-                      </Nav.Item>
-                    </Nav>
+                      <div className="pm-project-meta-line">
+                        <span><strong>Manager:</strong> {projectDetails.projectManager ? getDisplayName(projectDetails.projectManager) : 'Unassigned'}</span>
+                        <span>|</span>
+                        <span>{formatDate(projectDetails.startDate)} — {formatDate(projectDetails.endDate)}</span>
+                      </div>
+                    </div>
 
+                    {/* 3. SELECTED TAB CONTENT (BELOW HEADER) */}
                     <Tab.Content>
                       {/* PROJECT OVERVIEW TAB */}
                       <Tab.Pane eventKey="overview">
@@ -1041,108 +1263,7 @@ function ProjectManagement() {
                         </Card>
                       </Tab.Pane>
 
-                      {/* TEAM MEMBERS TAB */}
-                      <Tab.Pane eventKey="members">
-                        <Card className="border-0 shadow-sm mb-3">
-                          <Card.Body className="p-3">
-                            <div className="d-flex justify-content-between align-items-center mb-3">
-                              <h6 className="fw-bold mb-0 text-uppercase small text-muted">Team Members</h6>
-                              {canAddMember && (
-                                <Button
-                                  size="sm" variant="outline-primary" className="pm-outline-btn d-flex align-items-center gap-1 rounded-pill"
-                                  onClick={openAddMember}
-                                >
-                                  <FaUserPlus size={12} /> Add Member
-                                </Button>
-                              )}
-                            </div>
-
-                            {projectMembers.length === 0 && (
-                              <p className="text-muted small mb-0">No members assigned yet.</p>
-                            )}
-
-                            <div className="d-flex flex-wrap gap-2">
-                              {projectMembers.map((member, idx) => (
-                                <div key={`${member.roleKey}-${member._id || idx}`} className="pm-member-chip border rounded p-2 d-flex align-items-center gap-2 bg-light">
-                                  <div className="pm-avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: 32, height: 32, fontSize: 12 }}>
-                                    {getInitials(member)}
-                                  </div>
-                                  <div>
-                                    <div className="pm-member-name fw-bold small">{getDisplayName(member)}</div>
-                                    <div className="pm-member-role text-muted micro-text" style={{ fontSize: 10 }}>{member.roleLabel}</div>
-                                  </div>
-                                  {canRemoveMember && (
-                                    <Button
-                                      size="sm" variant="link" className="p-0 text-muted ms-1"
-                                      onClick={() => removeMember(member)}
-                                      title="Remove member"
-                                    >
-                                      <FaTimes size={12} />
-                                    </Button>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </Card.Body>
-                        </Card>
-                      </Tab.Pane>
-
-                      {/* SPRINTS TAB */}
-                      <Tab.Pane eventKey="sprints">
-                        <Card className="border-0 shadow-sm mb-3">
-                          <Card.Body className="p-3">
-                            <div className="d-flex justify-content-between align-items-center mb-3">
-                              <h6 className="fw-bold mb-0 text-uppercase small text-muted">Sprints</h6>
-                              {canManageSprints && (
-                                <Button
-                                  size="sm" variant="outline-primary" className="pm-outline-btn d-flex align-items-center gap-1 rounded-pill"
-                                  onClick={openCreateSprint}
-                                >
-                                  <FaPlus size={12} /> New Sprint
-                                </Button>
-                              )}
-                            </div>
-
-                            {sprintsLoading && (
-                              <div className="d-flex justify-content-center py-3">
-                                <Spinner animation="border" size="sm" className="pm-spinner" />
-                              </div>
-                            )}
-
-                            {!sprintsLoading && sprints.length === 0 && (
-                              <p className="text-muted small mb-0">No sprints yet.</p>
-                            )}
-
-                            <Row className="g-2">
-                              {sprints.map(sprint => (
-                                <Col xs={12} key={sprint._id}>
-                                  <div className="pm-sprint-card border rounded p-3 bg-light">
-                                    <div className="d-flex justify-content-between align-items-start gap-1 mb-2">
-                                      <p className="pm-sprint-name text-truncate fw-bold mb-0" title={sprint.sprintName}>{sprint.sprintName}</p>
-                                      {canManageSprints && (
-                                        <div className="d-flex gap-1 flex-shrink-0">
-                                          <Button size="sm" variant="light" className="pm-icon-btn p-1" onClick={() => openEditSprint(sprint)} title="Edit sprint">
-                                            <FaEdit size={11} />
-                                          </Button>
-                                          <Button size="sm" variant="light" className="pm-icon-btn pm-danger p-1 text-danger" onClick={() => deleteSprint(sprint)} title="Delete sprint">
-                                            <FaTrash size={11} />
-                                          </Button>
-                                        </div>
-                                      )}
-                                    </div>
-                                    {getStatusBadge(sprint.status)}
-                                    <p className="pm-sprint-dates text-muted small mt-2 mb-0">
-                                      {formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}
-                                    </p>
-                                  </div>
-                                </Col>
-                              ))}
-                            </Row>
-                          </Card.Body>
-                        </Card>
-                      </Tab.Pane>
-
-                      {/* TASKS TAB */}
+                      {/* 2. TASKS TAB */}
                       <Tab.Pane eventKey="tasks">
                         <Card className="border-0 shadow-sm mb-3">
                           <Card.Body className="p-3">
@@ -1159,17 +1280,35 @@ function ProjectManagement() {
                             </div>
 
                             <Row className="g-2 mb-3">
-                              <Col xs={6}>
-                                <Form.Select size="sm" className="shadow-none" value={sprintFilter} onChange={e => setSprintFilter(e.target.value)}>
+                              <Col xs={12} sm={4}>
+                                <Form.Select
+                                  size="sm"
+                                  className="shadow-none"
+                                  value={sprintFilter}
+                                  onChange={e => {
+                                    const val = e.target.value;
+                                    setSprintFilter(val);
+                                    fetchTasks(selectedProjectId, val);
+                                  }}
+                                >
                                   <option value="all">All Sprints</option>
                                   <option value="backlog">Backlog (No Sprint)</option>
                                   {sprints.map(s => <option key={s._id} value={s._id}>{s.sprintName}</option>)}
                                 </Form.Select>
                               </Col>
-                              <Col xs={6}>
+                              <Col xs={6} sm={4}>
                                 <Form.Select size="sm" className="shadow-none" value={taskStatusFilter} onChange={e => setTaskStatusFilter(e.target.value)}>
                                   <option value="all">All Statuses</option>
                                   {TASK_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                                </Form.Select>
+                              </Col>
+                              <Col xs={6} sm={4}>
+                                <Form.Select size="sm" className="shadow-none" value={taskAssigneeFilter} onChange={e => setTaskAssigneeFilter(e.target.value)}>
+                                  <option value="all">All Assignees</option>
+                                  <option value="me">Assigned to Me</option>
+                                  {projectMembers.map(m => (
+                                    <option key={m._id} value={m._id}>{getDisplayName(m)}</option>
+                                  ))}
                                 </Form.Select>
                               </Col>
                             </Row>
@@ -1248,6 +1387,312 @@ function ProjectManagement() {
                           </Card.Body>
                         </Card>
                       </Tab.Pane>
+
+                      {/* 3. TEAM MEMBERS TAB */}
+                      <Tab.Pane eventKey="members">
+                        <Card className="border-0 shadow-sm mb-3">
+                          <Card.Body className="p-3">
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                              <h6 className="fw-bold mb-0 text-uppercase small text-muted">Team Members</h6>
+                              {canAddMember && (
+                                <Button
+                                  size="sm" variant="outline-primary" className="pm-outline-btn d-flex align-items-center gap-1 rounded-pill"
+                                  onClick={openAddMember}
+                                >
+                                  <FaUserPlus size={12} /> Add Member
+                                </Button>
+                              )}
+                            </div>
+
+                            {projectMembers.length === 0 && (
+                              <p className="text-muted small mb-0">No members assigned yet.</p>
+                            )}
+
+                            <div className="d-flex flex-wrap gap-2">
+                              {projectMembers.map((member, idx) => (
+                                <div key={`${member.roleKey}-${member._id || idx}`} className="pm-member-chip border rounded p-2 d-flex align-items-center gap-2 bg-light">
+                                  <div className="pm-avatar pm-avatar-chip bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold">
+                                    {getInitials(member)}
+                                  </div>
+                                  <div>
+                                    <div className="pm-member-name fw-bold small">{getDisplayName(member)}</div>
+                                    <div className="pm-member-role pm-role-micro text-muted micro-text">{member.roleLabel}</div>
+                                  </div>
+                                  {canRemoveMember && (
+                                    <Button
+                                      size="sm" variant="link" className="p-0 text-muted ms-1"
+                                      onClick={() => removeMember(member)}
+                                      title="Remove member"
+                                    >
+                                      <FaTimes size={12} />
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </Card.Body>
+                        </Card>
+                      </Tab.Pane>
+
+                      {/* 4. SPRINTS TAB */}
+                      <Tab.Pane eventKey="sprints">
+                        <Card className="border-0 shadow-sm mb-3">
+                          <Card.Body className="p-3">
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                              <h6 className="fw-bold mb-0 text-uppercase small text-muted">Sprints</h6>
+                              {canManageSprints && (
+                                <Button
+                                  size="sm" variant="outline-primary" className="pm-outline-btn d-flex align-items-center gap-1 rounded-pill"
+                                  onClick={openCreateSprint}
+                                >
+                                  <FaPlus size={12} /> New Sprint
+                                </Button>
+                              )}
+                            </div>
+
+                            {sprintsLoading && (
+                              <div className="d-flex justify-content-center py-3">
+                                <Spinner animation="border" size="sm" className="pm-spinner" />
+                              </div>
+                            )}
+
+                            {!sprintsLoading && sprints.length === 0 && (
+                              <p className="text-muted small mb-0">No sprints yet.</p>
+                            )}
+
+                            <Row className="g-2">
+                              {sprints.map(sprint => (
+                                <Col xs={12} key={sprint._id}>
+                                  <div className="pm-sprint-card border rounded p-3 bg-light">
+                                    <div className="d-flex justify-content-between align-items-start gap-1 mb-2 flex-wrap">
+                                      <p className="pm-sprint-name text-truncate fw-bold mb-0" title={sprint.sprintName}>{sprint.sprintName}</p>
+                                      <div className="d-flex gap-1 flex-shrink-0 align-items-center flex-wrap">
+                                        {canManageSprints && sprint.status === 'Planned' && (
+                                          <Button
+                                            size="sm"
+                                            variant="outline-success"
+                                            className="rounded-pill py-0 px-2 micro-text fw-bold"
+                                            onClick={() => handleUpdateSprintStatus(sprint._id, 'Active')}
+                                            title="Start this sprint"
+                                          >
+                                            Start Sprint
+                                          </Button>
+                                        )}
+                                        {canManageSprints && (sprint.status === 'Active' || sprint.status === 'In Progress') && (
+                                          <Button
+                                            size="sm"
+                                            variant="outline-primary"
+                                            className="rounded-pill py-0 px-2 micro-text fw-bold"
+                                            onClick={() => handleUpdateSprintStatus(sprint._id, 'Completed')}
+                                            title="Complete this sprint"
+                                          >
+                                            Complete Sprint
+                                          </Button>
+                                        )}
+                                        <Button
+                                          size="sm"
+                                          variant="outline-secondary"
+                                          className="rounded-pill py-0 px-2 micro-text"
+                                          onClick={() => handleSelectSprintTasks(sprint._id)}
+                                          title="View tasks in this sprint"
+                                        >
+                                          Tasks
+                                        </Button>
+                                        {canManageSprints && (
+                                          <>
+                                            <Button size="sm" variant="light" className="pm-icon-btn p-1" onClick={() => openEditSprint(sprint)} title="Edit sprint">
+                                              <FaEdit size={11} />
+                                            </Button>
+                                            <Button size="sm" variant="light" className="pm-icon-btn pm-danger p-1 text-danger" onClick={() => deleteSprint(sprint)} title="Delete sprint">
+                                              <FaTrash size={11} />
+                                            </Button>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {getStatusBadge(sprint.status)}
+                                    <p className="pm-sprint-dates text-muted small mt-2 mb-0">
+                                      {formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}
+                                    </p>
+                                  </div>
+                                </Col>
+                              ))}
+                            </Row>
+                          </Card.Body>
+                        </Card>
+                      </Tab.Pane>
+
+                      {/* 5. DAILY REPORTS TAB (Restored Original Design) */}
+                      <Tab.Pane eventKey="reports">
+                        <div className="pm-chat-card shadow-sm border mb-3">
+                          {/* Chat Header */}
+                          <div className="pm-chat-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div className="d-flex align-items-center gap-2">
+                              <FaComments className="text-success" size={16} />
+                              <h6 className="fw-bold mb-0 text-uppercase small text-dark">
+                                DAILY REPORTS CHAT
+                              </h6>
+                            </div>
+                            <div className="d-flex align-items-center gap-1">
+                              {(isOwnerOrAdmin || isCurrentProjectPM || isDefaultPMRole) && projectMembers.length > 0 && (
+                                <Form.Select
+                                  size="sm"
+                                  style={{ width: '130px', fontSize: '12px' }}
+                                  className="py-0 px-2 shadow-none"
+                                  value={selectedMemberFilter}
+                                  onChange={e => setSelectedMemberFilter(e.target.value)}
+                                >
+                                  <option value="all">All Members</option>
+                                  {projectMembers.map(m => (
+                                    <option key={m._id} value={m._id}>{getDisplayName(m)}</option>
+                                  ))}
+                                </Form.Select>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="outline-success"
+                                className="d-flex align-items-center gap-1 rounded-pill px-3 py-1 micro-text fw-bold"
+                                onClick={() => fetchProjectReports(selectedProjectId)}
+                                title="Click to manually refresh daily reports"
+                                disabled={reportsLoading}
+                              >
+                                <FaSyncAlt className={reportsLoading ? 'pm-spin' : ''} size={11} /> Refresh
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Messages Feed */}
+                          <div className="pm-chat-messages">
+                            {reportsLoading && (
+                              <div className="d-flex justify-content-center py-4">
+                                <Spinner animation="border" size="sm" className="pm-spinner" />
+                              </div>
+                            )}
+
+                            {!reportsLoading && filteredReports.length === 0 && (
+                              <div className="text-center text-muted py-5 small">
+                                <p className="mb-1 fw-bold">No daily reports yet</p>
+                                <span className="micro-text text-muted">Post your work status update using the message box below!</span>
+                              </div>
+                            )}
+
+                            {!reportsLoading && filteredReports.map((report) => {
+                              const submitter = report.submittedBy || report.user;
+                              const senderId = getId(submitter);
+                              const isSelf = senderId === user?.id;
+                              const empCode = submitter?.employeeCode || (typeof submitter === 'object' ? submitter.employeeCode : '');
+                              const reportId = report._id;
+
+                              return (
+                                <div key={reportId} className={`pm-chat-bubble ${isSelf ? 'pm-chat-bubble-self' : 'pm-chat-bubble-other'} mb-3 p-3 rounded border`}>
+                                  <div className="d-flex justify-content-between align-items-center mb-1 gap-2 border-bottom pb-1">
+                                    <span className="fw-bold micro-text text-success d-flex align-items-center gap-1">
+                                      {getDisplayName(submitter)} {empCode && <span className="text-muted fw-normal">({empCode})</span>}
+                                    </span>
+                                    <span className="micro-text text-muted">
+                                      {formatDate(report.reportDate || report.createdAt)} • Shift: {report.shift || 'FULL_DAY'}
+                                    </span>
+                                  </div>
+                                  
+                                  {report.title && report.title !== "Work Update" && (
+                                    <div className="fw-bold small mb-1 text-primary">{report.title}</div>
+                                  )}
+                                  
+                                  <div className="small text-secondary mb-2 pm-text-pre-wrap">
+                                    {report.description}
+                                  </div>
+
+                                  {report.referenceLink && (
+                                    <div className="mb-2 micro-text">
+                                      <a href={report.referenceLink} target="_blank" rel="noreferrer" className="text-decoration-underline text-success">
+                                        Reference Link
+                                      </a>
+                                    </div>
+                                  )}
+
+                                  {/* Comments / PM Replies Section */}
+                                  <div className="mt-2 pt-2 border-top">
+                                    {report.comments && report.comments.length > 0 && (
+                                      <div className="mb-2">
+                                        <div className="micro-text fw-bold text-muted mb-1">Comments / PM Replies:</div>
+                                        {report.comments.map((c, idx) => (
+                                          <div key={idx} className="bg-light rounded p-2 mb-1 micro-text border">
+                                            <div className="d-flex justify-content-between align-items-center mb-1">
+                                              <span className="fw-bold text-dark">
+                                                {getDisplayName(c.commentedBy || c.user)} {c.commentedBy?.role?.roleName ? <span className="text-primary micro-text">({c.commentedBy.role.roleName})</span> : ''}
+                                              </span>
+                                              <span className="text-muted micro-text">
+                                                {formatDate(c.createdAt)}
+                                              </span>
+                                            </div>
+                                            <div className="text-secondary pm-text-pre-wrap">{c.commentText}</div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    {/* Reply Input */}
+                                    <div className="d-flex gap-1 mt-2">
+                                      <Form.Control
+                                        type="text"
+                                        size="sm"
+                                        placeholder="Write a reply/comment..."
+                                        value={commentTextMap[reportId] || ''}
+                                        onChange={e => setCommentTextMap({ ...commentTextMap, [reportId]: e.target.value })}
+                                        onKeyDown={e => {
+                                          if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleAddComment(reportId);
+                                          }
+                                        }}
+                                        className="pm-chat-reply-input"
+                                      />
+                                      <Button
+                                        size="sm"
+                                        variant="outline-primary"
+                                        className="px-2 py-0 d-flex align-items-center micro-text fw-bold"
+                                        onClick={() => handleAddComment(reportId)}
+                                        disabled={submittingCommentMap[reportId] || !(commentTextMap[reportId] || '').trim()}
+                                      >
+                                        {submittingCommentMap[reportId] ? <Spinner animation="border" size="sm" /> : 'Reply'}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Chat Input Bar */}
+                          <div className="pm-chat-input-bar">
+                            <Form onSubmit={submitProjectDailyReport}>
+                              <Form.Group className="mb-2">
+                                <Form.Control
+                                  type="text"
+                                  size="sm"
+                                  placeholder="Report Title (Optional - default: Work Update)..."
+                                  value={dailyReportForm.title}
+                                  onChange={e => setDailyReportForm({ ...dailyReportForm, title: e.target.value })}
+                                />
+                              </Form.Group>
+                              <div className="d-flex gap-2">
+                                <Form.Control
+                                  as="textarea"
+                                  rows={2}
+                                  size="sm"
+                                  placeholder="Type your daily work details..."
+                                  value={dailyReportForm.description}
+                                  onChange={e => setDailyReportForm({ ...dailyReportForm, description: e.target.value })}
+                                  required
+                                />
+                                <Button type="submit" variant="primary" size="sm" className="pm-primary-btn d-flex align-items-center justify-content-center px-3" disabled={submittingReport}>
+                                  {submittingReport ? <Spinner animation="border" size="sm" /> : <FaPaperPlane />}
+                                </Button>
+                              </div>
+                            </Form>
+                          </div>
+                        </div>
+                      </Tab.Pane>
                     </Tab.Content>
                   </Tab.Container>
                 </>
@@ -1257,206 +1702,217 @@ function ProjectManagement() {
           </>
         )}
       </Row>
-
-      {/* Floating Daily Reports Chat Trigger Button */}
-      {selectedProjectId && !showChatDrawer && (
-        <Button
-          className="pm-floating-chat-btn shadow-lg d-flex align-items-center gap-2 rounded-pill px-3 py-2"
-          onClick={() => {
-            setShowChatDrawer(true);
-            fetchProjectReports(selectedProjectId);
-          }}
-          title="Open Daily Reports Chat"
-        >
-          <FaComments size={18} />
-          <span className="fw-bold small d-none d-sm-inline">Daily Reports Chat</span>
-          {projectReports.length > 0 && (
-            <Badge bg="light" text="dark" className="rounded-pill ms-1">
-              {projectReports.length}
-            </Badge>
-          )}
-        </Button>
-      )}
-
-      {/* Floating Daily Reports Chat Widget Window */}
-      {selectedProjectId && showChatDrawer && (
-        <div className="pm-floating-chat-widget shadow-lg">
-          {/* Chat Header */}
-          <div className="pm-chat-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div className="d-flex align-items-center gap-2">
-              <FaComments className="text-success" size={16} />
-              <h6 className="fw-bold mb-0 text-uppercase small text-dark">
-                DAILY REPORTS CHAT
-              </h6>
-            </div>
-            <div className="d-flex align-items-center gap-1">
-              {(isOwnerOrAdmin || isCurrentProjectPM || isDefaultPMRole) && projectMembers.length > 0 && (
-                <Form.Select
-                  size="sm"
-                  style={{ width: '100px', fontSize: '11px' }}
-                  className="py-0 px-1 shadow-none"
-                  value={selectedMemberFilter}
-                  onChange={e => setSelectedMemberFilter(e.target.value)}
-                >
-                  <option value="all">All Members</option>
-                  {projectMembers.map(m => (
-                    <option key={m._id} value={m._id}>{getDisplayName(m)}</option>
-                  ))}
-                </Form.Select>
-              )}
-              <Button
-                size="sm"
-                variant="outline-success"
-                className="d-flex align-items-center gap-1 rounded-pill px-2 py-0 micro-text fw-bold"
-                onClick={() => fetchProjectReports(selectedProjectId)}
-                title="Click to manually refresh daily reports"
-                disabled={reportsLoading}
-              >
-                <FaSyncAlt className={reportsLoading ? 'pm-spin' : ''} size={11} /> Refresh
-              </Button>
-              <Button
-                size="sm"
-                variant="light"
-                className="pm-icon-btn p-1 text-muted ms-1"
-                onClick={() => setShowChatDrawer(false)}
-                title="Close Chat"
-              >
-                <FaTimes size={13} />
-              </Button>
-            </div>
-          </div>
-
-          {/* Messages Feed */}
-          <div className="pm-chat-messages">
-            {reportsLoading && (
-              <div className="d-flex justify-content-center py-4">
-                <Spinner animation="border" size="sm" className="pm-spinner" />
-              </div>
-            )}
-
-            {!reportsLoading && filteredReports.length === 0 && (
-              <div className="text-center text-muted py-5 small">
-                <p className="mb-1 fw-bold">No daily reports yet</p>
-                <span className="micro-text text-muted">Post your work status update using the message box below!</span>
-              </div>
-            )}
-
-            {!reportsLoading && filteredReports.map((report) => {
-              const submitter = report.submittedBy || report.user;
-              const senderId = getId(submitter);
-              const isSelf = senderId === user?.id;
-              const empCode = submitter?.employeeCode || (typeof submitter === 'object' ? submitter.employeeCode : '');
-              const reportId = report._id;
-
-              return (
-                <div key={reportId} className={`pm-chat-bubble ${isSelf ? 'pm-chat-bubble-self' : 'pm-chat-bubble-other'} mb-3 p-3 rounded border`}>
-                  <div className="d-flex justify-content-between align-items-center mb-1 gap-2 border-bottom pb-1">
-                    <span className="fw-bold micro-text text-success d-flex align-items-center gap-1">
-                      {getDisplayName(submitter)} {empCode && <span className="text-muted fw-normal">({empCode})</span>}
-                    </span>
-                    <span className="micro-text text-muted">
-                      {formatDate(report.reportDate || report.createdAt)} • Shift: {report.shift || 'FULL_DAY'}
-                    </span>
+      ) : (
+        /* MY TASKS VIEW (GET /api/task/my-tasks) */
+        <Row className="g-3">
+          <Col xs={12}>
+            <Card className="border-0 shadow-sm mb-3">
+              <Card.Body className="p-3">
+                {/* Header & Metrics */}
+                <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                  <div>
+                    <h5 className="fw-bold mb-0 d-flex align-items-center gap-2">
+                      <FaInbox className="text-primary" /> My Assigned Tasks
+                    </h5>
+                    <p className="text-muted small mb-0">Track and manage all tasks assigned to you across all projects.</p>
                   </div>
-                  
-                  {report.title && report.title !== "Work Update" && (
-                    <div className="fw-bold small mb-1 text-primary">{report.title}</div>
-                  )}
-                  
-                  <div className="small text-secondary mb-2" style={{ whiteSpace: 'pre-wrap' }}>
-                    {report.description}
-                  </div>
-
-                  {report.referenceLink && (
-                    <div className="mb-2 micro-text">
-                      <a href={report.referenceLink} target="_blank" rel="noreferrer" className="text-decoration-underline text-success">
-                        Reference Link
-                      </a>
-                    </div>
-                  )}
-
-                  {/* Comments / PM Replies Section */}
-                  <div className="mt-2 pt-2 border-top">
-                    {report.comments && report.comments.length > 0 && (
-                      <div className="mb-2">
-                        <div className="micro-text fw-bold text-muted mb-1">Comments / PM Replies:</div>
-                        {report.comments.map((c, idx) => (
-                          <div key={idx} className="bg-light rounded p-2 mb-1 micro-text border">
-                            <div className="d-flex justify-content-between align-items-center mb-1">
-                              <span className="fw-bold text-dark">
-                                {getDisplayName(c.commentedBy || c.user)} {c.commentedBy?.role?.roleName ? <span className="text-primary micro-text">({c.commentedBy.role.roleName})</span> : ''}
-                              </span>
-                              <span className="text-muted micro-text">
-                                {formatDate(c.createdAt)}
-                              </span>
-                            </div>
-                            <div className="text-secondary" style={{ whiteSpace: 'pre-wrap' }}>{c.commentText}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Reply Input */}
-                    <div className="d-flex gap-1 mt-2">
-                      <Form.Control
-                        type="text"
-                        size="sm"
-                        placeholder="Write a reply/comment..."
-                        value={commentTextMap[reportId] || ''}
-                        onChange={e => setCommentTextMap({ ...commentTextMap, [reportId]: e.target.value })}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleAddComment(reportId);
-                          }
-                        }}
-                        style={{ fontSize: '12px' }}
-                      />
-                      <Button
-                        size="sm"
-                        variant="outline-primary"
-                        className="px-2 py-0 d-flex align-items-center micro-text fw-bold"
-                        onClick={() => handleAddComment(reportId)}
-                        disabled={submittingCommentMap[reportId] || !(commentTextMap[reportId] || '').trim()}
-                      >
-                        {submittingCommentMap[reportId] ? <Spinner animation="border" size="sm" /> : 'Reply'}
-                      </Button>
-                    </div>
-                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline-primary"
+                    className="rounded-pill px-3 py-1 d-flex align-items-center gap-1 micro-text fw-bold"
+                    onClick={fetchMyTasks}
+                    disabled={myTasksLoading}
+                  >
+                    <FaSyncAlt className={myTasksLoading ? 'fa-spin' : ''} size={12} /> Refresh
+                  </Button>
                 </div>
-              );
-            })}
-          </div>
 
-          {/* Chat Input Bar */}
-          <div className="pm-chat-input-bar">
-            <Form onSubmit={submitProjectDailyReport}>
-              <Form.Group className="mb-2">
-                <Form.Control
-                  type="text"
-                  size="sm"
-                  placeholder="Report Title (Optional - default: Work Update)..."
-                  value={dailyReportForm.title}
-                  onChange={e => setDailyReportForm({ ...dailyReportForm, title: e.target.value })}
-                />
-              </Form.Group>
-              <div className="d-flex gap-2">
-                <Form.Control
-                  as="textarea"
-                  rows={2}
-                  size="sm"
-                  placeholder="Type your daily work details..."
-                  value={dailyReportForm.description}
-                  onChange={e => setDailyReportForm({ ...dailyReportForm, description: e.target.value })}
-                  required
-                />
-                <Button type="submit" variant="primary" size="sm" className="pm-primary-btn d-flex align-items-center justify-content-center px-3" disabled={submittingReport}>
-                  {submittingReport ? <Spinner animation="border" size="sm" /> : <FaPaperPlane />}
-                </Button>
-              </div>
-            </Form>
-          </div>
-        </div>
+                {/* Metrics Row */}
+                <Row className="g-2 mb-3">
+                  <Col xs={6} md={3}>
+                    <div className="p-2 border rounded text-center bg-light">
+                      <div className="fw-bold text-dark fs-5">{myTasks.length}</div>
+                      <div className="text-muted micro-text">Total Tasks</div>
+                    </div>
+                  </Col>
+                  <Col xs={6} md={3}>
+                    <div className="p-2 border rounded text-center bg-light">
+                      <div className="fw-bold text-warning fs-5">
+                        {myTasks.filter(t => t.status === 'In Progress').length}
+                      </div>
+                      <div className="text-muted micro-text">In Progress</div>
+                    </div>
+                  </Col>
+                  <Col xs={6} md={3}>
+                    <div className="p-2 border rounded text-center bg-light">
+                      <div className="fw-bold text-secondary fs-5">
+                        {myTasks.filter(t => t.status === 'To Do').length}
+                      </div>
+                      <div className="text-muted micro-text">To Do</div>
+                    </div>
+                  </Col>
+                  <Col xs={6} md={3}>
+                    <div className="p-2 border rounded text-center bg-light">
+                      <div className="fw-bold text-success fs-5">
+                        {myTasks.filter(t => t.status === 'Completed').length}
+                      </div>
+                      <div className="text-muted micro-text">Completed</div>
+                    </div>
+                  </Col>
+                </Row>
+
+                {/* Filter & Search Bar */}
+                <Row className="g-2 mb-3 align-items-center">
+                  <Col xs={12} md={6}>
+                    <Form.Control
+                      size="sm"
+                      type="text"
+                      placeholder="Search by task, project, or sprint..."
+                      value={myTaskSearch}
+                      onChange={e => setMyTaskSearch(e.target.value)}
+                      className="shadow-none"
+                    />
+                  </Col>
+                  <Col xs={12} md={6}>
+                    <div className="d-flex gap-1 flex-wrap justify-content-md-end">
+                      {['all', 'To Do', 'In Progress', 'Testing', 'Completed'].map(status => (
+                        <Button
+                          key={status}
+                          size="sm"
+                          variant={myTaskStatusFilter === status ? 'primary' : 'outline-secondary'}
+                          className="rounded-pill px-2 py-0 micro-text fw-bold"
+                          onClick={() => setMyTaskStatusFilter(status)}
+                        >
+                          {status === 'all' ? 'All' : status}
+                        </Button>
+                      ))}
+                    </div>
+                  </Col>
+                </Row>
+
+                {/* Loading Spinner */}
+                {myTasksLoading && (
+                  <div className="d-flex justify-content-center py-5">
+                    <Spinner animation="border" size="sm" className="pm-spinner" />
+                  </div>
+                )}
+
+                {/* Error */}
+                {myTasksError && (
+                  <Alert variant="danger" className="py-2 small">
+                    {myTasksError}
+                  </Alert>
+                )}
+
+                {/* Empty State */}
+                {!myTasksLoading && filteredMyTasks.length === 0 && (
+                  <div className="text-center py-5 text-muted">
+                    <FaInbox size={32} className="mb-2 opacity-50" />
+                    <p className="small mb-0">No assigned tasks match your filter.</p>
+                  </div>
+                )}
+
+                {/* Tasks Table */}
+                {!myTasksLoading && filteredMyTasks.length > 0 && (
+                  <div className="table-responsive">
+                    <Table hover className="align-middle mb-0 small">
+                      <thead>
+                        <tr className="text-muted small text-uppercase">
+                          <th>Task & Project</th>
+                          <th>Sprint</th>
+                          <th>Priority</th>
+                          <th>Due Date</th>
+                          <th>Status</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredMyTasks.map(task => {
+                          const projName = task.projectId?.projectName || 'General Project';
+                          const projId = task.projectId?._id || task.projectId;
+                          const sprintName = task.sprintId?.sprintName;
+                          const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'Completed';
+
+                          return (
+                            <tr key={task._id}>
+                              <td>
+                                <div className="fw-bold text-dark">{task.taskName}</div>
+                                {task.description && (
+                                  <div className="text-muted micro-text text-truncate pm-desc-truncate">
+                                    {task.description}
+                                  </div>
+                                )}
+                                <div className="mt-1">
+                                  <Badge
+                                    bg="light"
+                                    text="dark"
+                                    className="border cursor-pointer"
+                                    onClick={() => {
+                                      if (projId) {
+                                        setSelectedProjectId(projId);
+                                        setCurrentView('projects');
+                                        setActiveTab('tasks');
+                                      }
+                                    }}
+                                    title="Go to project"
+                                  >
+                                    📁 {projName}
+                                  </Badge>
+                                </div>
+                              </td>
+                              <td>
+                                <span className="text-muted micro-text">
+                                  {sprintName ? `🏃 ${sprintName}` : 'Backlog'}
+                                </span>
+                              </td>
+                              <td>{getPriorityBadge(task.priority)}</td>
+                              <td>
+                                <span className={isOverdue ? 'text-danger fw-bold micro-text' : 'text-muted micro-text'}>
+                                  {formatDate(task.dueDate)}
+                                  {isOverdue && ' (Overdue)'}
+                                </span>
+                              </td>
+                              <td>
+                                <Form.Select
+                                  size="sm"
+                                  className="shadow-none pm-status-select pm-status-select-sm py-0 px-1"
+                                  value={task.status}
+                                  onChange={e => quickStatusChange(task, e.target.value)}
+                                >
+                                  {TASK_STATUS_OPTIONS.map(s => (
+                                    <option key={s} value={s}>{s}</option>
+                                  ))}
+                                </Form.Select>
+                              </td>
+                              <td>
+                                {task.status !== 'Completed' ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline-success"
+                                    className="rounded-pill py-0 px-2 micro-text fw-bold d-flex align-items-center gap-1"
+                                    onClick={() => {
+                                      setTaskToComplete(task);
+                                      setCompletionNote('');
+                                      setShowCompletionModal(true);
+                                    }}
+                                  >
+                                    <FaCheckCircle size={10} /> Complete
+                                  </Button>
+                                ) : (
+                                  <Badge bg="success" className="rounded-pill micro-text">Done</Badge>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </Table>
+                  </div>
+                )}
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
       )}
 
       {/* Project Modal */}
@@ -1526,8 +1982,16 @@ function ProjectManagement() {
               <Form.Group className="mb-3">
                 <Form.Label className="small fw-bold">Status</Form.Label>
                 <Form.Select className="shadow-none" value={projectForm.status} onChange={e => setProjectForm({ ...projectForm, status: e.target.value })}>
+                  {projectForm.status === 'Completed' && (
+                    <option value="Completed">Completed</option>
+                  )}
                   {PROJECT_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                 </Form.Select>
+                {projectForm.status !== 'Completed' && (
+                  <Form.Text className="text-muted micro-text">
+                    To formally close and complete this project, use the &quot;Complete Project&quot; action button.
+                  </Form.Text>
+                )}
               </Form.Group>
             )}
           </Form>
@@ -1755,6 +2219,103 @@ function ProjectManagement() {
           <Button variant="primary" onClick={addMember} disabled={savingMember || companyUsersLoading || !memberForm.newMemberId} className="pm-primary-btn">
             {savingMember ? <Spinner animation="border" size="sm" /> : 'Add Member'}
           </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Project Completion Gate Modal */}
+      <Modal show={showProjectCompletionModal} onHide={() => !completingProject && setShowProjectCompletionModal(false)} centered>
+        <Modal.Header closeButton={!completingProject} className="border-0 pb-0">
+          <Modal.Title className="fw-bold d-flex align-items-center gap-2">
+            <FaCheckCircle className="text-success" /> Complete Project Gate
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {completionStatusLoading ? (
+            <div className="text-center py-4">
+              <Spinner animation="border" size="sm" className="pm-spinner mb-2" />
+              <p className="text-muted small mb-0">Verifying pending tasks and deliverables...</p>
+            </div>
+          ) : completionStatus ? (
+            <>
+              <div className="mb-3">
+                <h6 className="fw-bold mb-1">{projectDetails?.projectName}</h6>
+                <div className="text-muted small">
+                  Total Tasks: <strong>{completionStatus.totalTasks}</strong> | Completed: <strong className="text-success">{completionStatus.completedTasks}</strong> | Pending: <strong className={completionStatus.pendingTasks > 0 ? 'text-danger' : 'text-muted'}>{completionStatus.pendingTasks}</strong>
+                </div>
+              </div>
+
+              {!completionStatus.canClose ? (
+                <Alert variant="warning" className="d-flex flex-column gap-2 mb-0">
+                  <div className="d-flex align-items-center gap-2 fw-bold">
+                    <FaExclamationTriangle /> Cannot Complete Project
+                  </div>
+                  <div className="small">
+                    <strong>{completionStatus.pendingTasks}</strong> task(s) are still pending or in-progress.
+                  </div>
+                  {completionStatus.blockers && completionStatus.blockers.length > 0 && (
+                    <ul className="small mb-0 ps-3">
+                      {completionStatus.blockers.map((b, i) => (
+                        <li key={i}>{b}</li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="micro-text text-muted mt-1">
+                    All project tasks must be marked as &quot;Completed&quot; before this project can be officially closed.
+                  </div>
+                </Alert>
+              ) : (
+                <>
+                  <Alert variant="success" className="d-flex align-items-center gap-2 mb-3">
+                    <FaCheckCircle />
+                    <span className="small">
+                      All deliverables and tasks are completed! You can now formally complete this project.
+                    </span>
+                  </Alert>
+
+                  <Form.Group className="mb-2">
+                    <Form.Label className="small fw-bold">Completion Notes / Sign-off Summary</Form.Label>
+                    <Form.Control
+                      as="textarea"
+                      rows={3}
+                      placeholder="Enter final completion notes, client sign-off remarks, or retrospective summary..."
+                      value={projectCompletionNotes}
+                      onChange={e => setProjectCompletionNotes(e.target.value)}
+                      disabled={completingProject}
+                      className="shadow-none"
+                    />
+                  </Form.Group>
+                </>
+              )}
+            </>
+          ) : null}
+        </Modal.Body>
+        <Modal.Footer className="border-0 pt-0">
+          <Button variant="light" onClick={() => setShowProjectCompletionModal(false)} disabled={completingProject}>
+            {completionStatus?.canClose ? 'Cancel' : 'Close'}
+          </Button>
+          {completionStatus && !completionStatus.canClose && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setShowProjectCompletionModal(false);
+                setActiveTab('tasks');
+                setTaskStatusFilter('In Progress');
+              }}
+            >
+              View Pending Tasks
+            </Button>
+          )}
+          {completionStatus && completionStatus.canClose && (
+            <Button
+              variant="success"
+              onClick={handleConfirmCompleteProject}
+              disabled={completingProject}
+              className="d-flex align-items-center gap-2"
+            >
+              {completingProject ? <Spinner animation="border" size="sm" /> : <FaCheckCircle />} Confirm & Complete Project
+            </Button>
+          )}
         </Modal.Footer>
       </Modal>
 

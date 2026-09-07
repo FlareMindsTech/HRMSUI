@@ -1,169 +1,230 @@
-import React, { useState } from 'react';
-import { MdSearch, MdNotifications, MdSettings, MdKeyboardArrowDown } from 'react-icons/md';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  MdSearch,
+  MdNotifications,
+  MdKeyboardArrowDown,
+  MdLogout,
+  MdAccessTime,
+  MdWork,
+  MdAdminPanelSettings,
+  MdCheckCircle,
+} from 'react-icons/md';
 import { useAuth } from '../../context/AuthContext';
+import { logoutUser } from '../../services/attendanceService';
+import './Header.css';
 
 function Header({ isMobile }) {
-  const { user } = useAuth();
-  const [searchVal, setSearchVal] = useState("");
+  const { user, isSystemAdmin, logoutUserLocal } = useAuth();
+  const navigate = useNavigate();
+
+  const [searchVal, setSearchVal] = useState('');
   const [searchFocus, setFocus] = useState(false);
   const [notifCount] = useState(3);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showNotifMenu, setShowNotifMenu] = useState(false);
+
+  const profileMenuRef = useRef(null);
+  const notifMenuRef = useRef(null);
 
   const fullName = user?.firstName
     ? `${user.firstName} ${user.lastName || ''}`.trim()
-    : "System Owner";
-  const roleName = user?.roleName || (user?.priority === 1 ? "Owner" : "Administrator");
-  const initials = fullName.split(" ").map(n => n[0]).join("").toUpperCase() || "O";
+    : 'System Owner';
+  const roleName = user?.roleName || (user?.priority === 1 ? 'Owner' : 'Administrator');
+  const initials = fullName
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase() || 'O';
+  const userEmail = user?.email || user?.workEmail || 'user@hrms.internal';
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
+        setShowProfileMenu(false);
+      }
+      if (notifMenuRef.current && !notifMenuRef.current.contains(e.target)) {
+        setShowNotifMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } catch (e) {
+      console.warn('Logout request notice:', e);
+    } finally {
+      logoutUserLocal();
+      window.location.href = '/login';
+    }
+  };
 
   return (
-    <div style={{
-      ...styles.header,
-      padding: isMobile ? "0 14px 0 56px" : "0 24px",
-      justifyContent: "space-between",
-    }}>
-
-      {/* ── Left: Page title (mobile) or Search ── */}
+    <header className="header-container">
+      {/* ── Left: Search Bar or Mobile Brand ── */}
       {isMobile ? (
-        <span style={styles.mobileBrand}>HRMS</span>
+        <div className="header-mobile-brand">
+          <span className="header-mobile-brand-icon">T</span>
+          <span className="header-mobile-brand-text">TeamHub</span>
+        </div>
       ) : (
-        <div style={{
-          ...styles.searchWrap,
-          ...(searchFocus ? styles.searchFocused : {}),
-        }}>
-          <MdSearch style={{ fontSize: 16, color: "#8ba49d", flexShrink: 0 }} />
+        <div className={`header-search-wrap ${searchFocus ? 'header-search-wrap--focused' : ''}`}>
+          <MdSearch className="header-search-icon" />
           <input
-            style={styles.searchInput}
-            placeholder="Search anything…"
+            className="header-search-input"
+            placeholder="Search employees, projects, modules..."
             value={searchVal}
             onFocus={() => setFocus(true)}
             onBlur={() => setFocus(false)}
             onChange={e => setSearchVal(e.target.value)}
           />
+          <span className="header-search-kbd">/</span>
         </div>
       )}
 
-      {/* ── Right Actions ── */}
-      <div style={styles.right}>
-
-        {/* Notification bell */}
-        <button style={styles.iconBtn} aria-label="Notifications">
-          <span style={{ position: "relative", display: "inline-flex" }}>
-            <MdNotifications style={{ fontSize: 20, color: "#6b7e77" }} />
-            {notifCount > 0 && (
-              <span style={styles.badge}>{notifCount}</span>
-            )}
-          </span>
-        </button>
-
-        {/* Settings */}
-        {!isMobile && (
-          <button style={styles.iconBtn} aria-label="Settings">
-            <MdSettings style={{ fontSize: 19, color: "#6b7e77" }} />
+      {/* ── Right: Notifications & Profile ── */}
+      <div className="header-right-actions">
+        {/* Notification Bell */}
+        <div className="header-menu-anchor" ref={notifMenuRef}>
+          <button
+            className="header-icon-btn"
+            onClick={() => {
+              setShowNotifMenu(p => !p);
+              setShowProfileMenu(false);
+            }}
+            aria-label="Notifications"
+            title="Notifications"
+          >
+            <span className="header-icon-badge-anchor">
+              <MdNotifications className="header-notif-bell-icon" />
+              {notifCount > 0 && <span className="header-notif-badge">{notifCount}</span>}
+            </span>
           </button>
-        )}
 
-        {/* Vertical separator */}
-        <div style={styles.sep} />
-
-        {/* Profile chip */}
-        <div style={styles.profileChip}>
-          <div style={styles.avatar}>{initials}</div>
-          {!isMobile && (
-            <div style={styles.profileText}>
-              <span style={styles.profileName}>{fullName}</span>
-              <span style={styles.profileRole}>{roleName}</span>
+          {showNotifMenu && (
+            <div className="header-dropdown-panel">
+              <div className="header-dropdown-header">
+                <span className="header-dropdown-title">Notifications</span>
+                <span className="header-dropdown-tag">3 New</span>
+              </div>
+              <div className="header-notif-list">
+                <div className="header-notif-item">
+                  <div className="header-notif-icon-circle header-notif-icon-circle--mint">
+                    <MdCheckCircle size={14} />
+                  </div>
+                  <div>
+                    <div className="header-notif-title">Daily Attendance System</div>
+                    <div className="header-notif-time">Remember to punch in for your scheduled shift</div>
+                  </div>
+                </div>
+                <div className="header-notif-item">
+                  <div className="header-notif-icon-circle header-notif-icon-circle--sky">
+                    <MdWork size={14} />
+                  </div>
+                  <div>
+                    <div className="header-notif-title">Project Tasks Ready</div>
+                    <div className="header-notif-time">Check the Project Management tab for active sprints</div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
-          <MdKeyboardArrowDown style={{ fontSize: 15, color: "#8ba49d", marginLeft: 2 }} />
+        </div>
+
+        {/* Separator */}
+        <div className="header-vertical-sep" />
+
+        {/* Profile Chip & Dropdown */}
+        <div className="header-menu-anchor" ref={profileMenuRef}>
+          <div
+            className={`header-profile-chip ${showProfileMenu ? 'header-profile-chip--active' : ''}`}
+            onClick={() => {
+              setShowProfileMenu(p => !p);
+              setShowNotifMenu(false);
+            }}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="header-avatar">{initials}</div>
+            {!isMobile && (
+              <div className="header-profile-info">
+                <span className="header-profile-name">{fullName}</span>
+                <span className="header-profile-role">{roleName}</span>
+              </div>
+            )}
+            <MdKeyboardArrowDown
+              className={`header-profile-chevron ${showProfileMenu ? 'header-profile-chevron--open' : ''}`}
+            />
+          </div>
+
+          {/* Profile Dropdown Menu */}
+          {showProfileMenu && (
+            <div className="header-dropdown-panel header-dropdown-panel--profile">
+              <div className="header-user-dropdown-card">
+                <div className="header-large-avatar">{initials}</div>
+                <div className="header-user-details">
+                  <div className="header-dropdown-user-name">{fullName}</div>
+                  <div className="header-dropdown-user-role">{roleName}</div>
+                  <div className="header-dropdown-user-email">{userEmail}</div>
+                </div>
+              </div>
+
+              <div className="header-dropdown-divider" />
+
+              <div className="header-dropdown-section">
+                <div
+                  className="header-dropdown-item"
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    navigate('/attendance');
+                  }}
+                >
+                  <MdAccessTime size={16} color="#2DC58A" />
+                  <span>My Attendance</span>
+                </div>
+                <div
+                  className="header-dropdown-item"
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    navigate('/projects');
+                  }}
+                >
+                  <MdWork size={16} color="#0ea5e9" />
+                  <span>My Projects & Tasks</span>
+                </div>
+                {isSystemAdmin && (
+                  <div
+                    className="header-dropdown-item"
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      navigate('/roles');
+                    }}
+                  >
+                    <MdAdminPanelSettings size={16} color="#8b5cf6" />
+                    <span>Role & Access Control</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="header-dropdown-divider" />
+
+              <div
+                className="header-dropdown-item header-dropdown-item--danger"
+                onClick={handleLogout}
+              >
+                <MdLogout size={16} color="#ef4444" />
+                <span>Sign Out</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </header>
   );
 }
-
-const styles = {
-  header: {
-    height: "100%",
-    display: "flex",
-    alignItems: "center",
-    background: "#ffffff",
-    borderBottom: "1px solid #e8f0ec",
-    gap: 8,
-  },
-
-  mobileBrand: {
-    fontSize: 15, fontWeight: 700, color: "#1a2e2a",
-  },
-
-  /* Search */
-  searchWrap: {
-    display: "flex", alignItems: "center", gap: 8,
-    background: "#f4f8f6",
-    border: "1px solid #e0ede7",
-    borderRadius: 10,
-    padding: "7px 14px",
-    width: 240,
-    transition: "all 0.2s ease",
-  },
-  searchFocused: {
-    width: 320,
-    background: "#fff",
-    border: "1px solid #2DC58A",
-    boxShadow: "0 0 0 3px rgba(45,197,138,0.12)",
-  },
-  searchInput: {
-    background: "transparent", border: "none", outline: "none",
-    color: "#1a2e2a", fontSize: 13.5, flex: 1,
-    caretColor: "#2DC58A",
-  },
-
-  /* Right */
-  right: {
-    display: "flex", alignItems: "center", gap: 4,
-  },
-
-  iconBtn: {
-    background: "transparent", border: "none", cursor: "pointer",
-    width: 36, height: 36, borderRadius: 8,
-    display: "flex", alignItems: "center", justifyContent: "center",
-    transition: "background 0.15s ease",
-    outline: "none",
-  },
-
-  badge: {
-    position: "absolute", top: -4, right: -4,
-    width: 14, height: 14, borderRadius: "50%",
-    background: "#ef4444", color: "#fff",
-    fontSize: 8.5, fontWeight: 700,
-    display: "flex", alignItems: "center", justifyContent: "center",
-    border: "1.5px solid #fff",
-  },
-
-  sep: {
-    width: 1, height: 26,
-    background: "#e0ede7",
-    margin: "0 8px",
-  },
-
-  /* Profile chip */
-  profileChip: {
-    display: "flex", alignItems: "center", gap: 8,
-    background: "#f4f8f6",
-    border: "1px solid #e0ede7",
-    borderRadius: 10,
-    padding: "5px 10px 5px 6px",
-    cursor: "pointer",
-    transition: "all 0.18s ease",
-  },
-  avatar: {
-    width: 30, height: 30, borderRadius: 7,
-    background: "linear-gradient(135deg,#2DC58A 0%,#20a673 100%)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: 12, fontWeight: 700, color: "#fff", flexShrink: 0,
-    boxShadow: "0 2px 6px rgba(45,197,138,0.3)",
-  },
-  profileText: { display: "flex", flexDirection: "column" },
-  profileName: { fontSize: 13, fontWeight: 600, color: "#1a2e2a", lineHeight: 1.2, whiteSpace: "nowrap" },
-  profileRole: { fontSize: 10, color: "#8ba49d", marginTop: 1 },
-};
 
 export default Header;

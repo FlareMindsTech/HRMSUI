@@ -1,18 +1,12 @@
 import React from 'react';
+import './Footer.css';
 
 function Footer() {
   return (
-    <div style={{
-      fontSize: 11.5,
-      color: "#8ba49d",
-      display: "flex",
-      alignItems: "center",
-      gap: 6,
-      letterSpacing: "0.01em",
-    }}>
-      <span style={{ color: "#2DC58A", fontWeight: 700 }}>TeamHub</span>
-      <span style={{ color: "#d5e6de" }}>·</span>
-      <span>© {new Date().getFullYear()} FlareMindsTech. All rights reserved.</span>
+    <div className="app-footer">
+      <span className="app-footer-brand">TeamHub</span>
+      <span className="app-footer-dot">·</span>
+      <span className="app-footer-copy">© {new Date().getFullYear()} FlareMindsTech. All rights reserved.</span>
     </div>
   );
 }

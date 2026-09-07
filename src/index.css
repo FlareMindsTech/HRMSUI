@@ -426,3 +426,153 @@ code {
   background: linear-gradient(to right, transparent, #d5e6de, transparent);
   margin: 14px 0;
 }
+
+/* ============================================================
+   Enterprise Design System Utilities (Shared across Batches)
+   ============================================================ */
+.app-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.app-page-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.app-page-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0.25rem 0 0;
+}
+
+/* ── Hero Welcome Card ── */
+.app-hero-card {
+  background: linear-gradient(135deg, #0e271c 0%, #153c2b 50%, #0d261b 100%);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem 2rem;
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(14, 39, 28, 0.18);
+  border: 1px solid rgba(45, 197, 138, 0.22);
+  margin-bottom: 1.5rem;
+}
+
+.app-hero-card::after {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(45, 197, 138, 0.25) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ── Standard Container Card ── */
+.app-card {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.app-card-header {
+  padding: 1.1rem 1.35rem;
+  border-bottom: 1px solid #edf4f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+}
+
+.app-card-body {
+  padding: 1.35rem;
+}
+
+/* ── Quick Action Cards ── */
+.app-quick-card {
+  background: #ffffff;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none !important;
+  color: inherit !important;
+  height: 100%;
+}
+
+.app-quick-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+  box-shadow: 0 8px 24px rgba(45, 197, 138, 0.12);
+}
+
+.app-quick-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  background: rgba(45, 197, 138, 0.1);
+  color: var(--primary);
+  transition: all 0.2s ease;
+}
+
+.app-quick-card:hover .app-quick-icon {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+/* ── Status Pills & Badges ── */
+.app-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.app-pill-success {
+  background: rgba(45, 197, 138, 0.12);
+  color: #178a5e;
+  border: 1px solid rgba(45, 197, 138, 0.25);
+}
+
+.app-pill-primary {
+  background: rgba(14, 165, 233, 0.1);
+  color: #0284c7;
+  border: 1px solid rgba(14, 165, 233, 0.2);
+}
+
+.app-pill-warning {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.app-pill-muted {
+  background: #f1f5f3;
+  color: #556963;
+  border: 1px solid #e1ebe6;
+}

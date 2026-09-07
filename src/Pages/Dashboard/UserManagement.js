@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Container,
   Row,
@@ -11,9 +11,8 @@ import {
   Form,
   Spinner,
   Alert,
-  Tabs,
-  Tab,
   InputGroup,
+  Pagination,
 } from "react-bootstrap";
 import {
   FaUserShield,
@@ -33,6 +32,9 @@ import {
   FaEyeSlash,
   FaUserCheck,
   FaUserTimes,
+  FaSearch,
+  FaTimes,
+  FaLock,
 } from "react-icons/fa";
 import {
   fetchAllRoles,
@@ -50,12 +52,13 @@ import {
   resetAccountCredentials,
 } from "../../services/rbacService";
 import { useAuth } from "../../context/AuthContext";
+import "./UserManagement.css";
 
 function UserManagement() {
   const { isSystemAdmin, hasPermission, user: currentUser, refreshAuthContext } = useAuth();
 
-  // ── Tab State ──
-  const [activeTab, setActiveTab] = useState(isSystemAdmin ? "roles" : "users");
+  // ── Tab State: Exclusive rendering ("users" or "roles") ──
+  const [activeTab, setActiveTab] = useState("users");
 
   // ── Roles & Catalog State ──
   const [roles, setRoles] = useState([]);
@@ -103,8 +106,20 @@ function UserManagement() {
     showPass: false,
   });
 
-  // ── Search State ──
+  // ── Search & Filter State: Employee Directory ──
   const [userSearch, setUserSearch] = useState("");
+  const [accountStatusFilter, setAccountStatusFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
+
+  // ── Search & Filter State: Roles ──
+  const [roleSearch, setRoleSearch] = useState("");
+  const [roleTypeFilter, setRoleTypeFilter] = useState("all");
+
+  // ── Pagination Constants & State (6 records per page) ──
+  const USER_PAGE_SIZE = 6;
+  const ROLE_PAGE_SIZE = 6;
+  const [userPage, setUserPage] = useState(1);
+  const [rolePage, setRolePage] = useState(1);
 
   // ── Load All RBAC & User Data ──
   const loadData = useCallback(async () => {
@@ -274,7 +289,6 @@ function UserManagement() {
   // ── Open Provision Account Modal ──
   const handleOpenProvisionModal = (employee) => {
     setProvisioningUser(employee);
-    // Find default employee role or first assignable role
     const defaultRole = assignableRoles.find((r) => r.roleCode === "EMPLOYEE") || assignableRoles[0];
     setProvisionForm({
       roleId: defaultRole?._id || "",
@@ -365,39 +379,296 @@ function UserManagement() {
     }
   };
 
+  // ── Derived Real-Data Metrics (Strictly Dynamic Real Data) ──
+  const totalEmployeesCount = users.length;
+  const activeLoginsCount = useMemo(() => {
+    return users.filter((u) => u.hasLoginAccess && u.isActive && !u.isBlocked).length;
+  }, [users]);
+  const pendingProvisionCount = useMemo(() => {
+    return users.filter((u) => !u.hasLoginAccess).length;
+  }, [users]);
+  const configuredRolesCount = roles.length;
+
   // ── Filtered Users List ──
-  const filteredUsers = users.filter((u) => {
-    const fullName = `${u.firstName || ""} ${u.lastName || ""}`.toLowerCase();
-    const email = (u.email || "").toLowerCase();
-    const empCode = (u.employeeCode || "").toLowerCase();
-    const dept = (u.department || "").toLowerCase();
-    const search = userSearch.toLowerCase();
-    return fullName.includes(search) || email.includes(search) || empCode.includes(search) || dept.includes(search);
-  });
+  const filteredUsers = useMemo(() => {
+    return users.filter((u) => {
+      const fullName = `${u.firstName || ""} ${u.lastName || ""}`.toLowerCase();
+      const email = (u.email || "").toLowerCase();
+      const empCode = (u.employeeCode || "").toLowerCase();
+      const dept = (u.department || "").toLowerCase();
+      const search = userSearch.toLowerCase().trim();
+      const matchesSearch =
+        !search ||
+        fullName.includes(search) ||
+        email.includes(search) ||
+        empCode.includes(search) ||
+        dept.includes(search);
+
+      if (!matchesSearch) return false;
+
+      // Status filter
+      if (accountStatusFilter === "active" && (!u.hasLoginAccess || !u.isActive || u.isBlocked)) return false;
+      if (accountStatusFilter === "no-account" && u.hasLoginAccess) return false;
+      if (accountStatusFilter === "blocked" && !u.isBlocked) return false;
+      if (accountStatusFilter === "inactive" && (u.isActive || !u.hasLoginAccess)) return false;
+
+      // Role filter
+      if (roleFilter !== "all") {
+        const uRoleId = u.role?._id || u.role;
+        if (uRoleId !== roleFilter) return false;
+      }
+
+      return true;
+    });
+  }, [users, userSearch, accountStatusFilter, roleFilter]);
+
+  // ── Dynamic Pagination for Users ──
+  const totalFilteredUsers = filteredUsers.length;
+  const totalUserPages = Math.ceil(totalFilteredUsers / USER_PAGE_SIZE) || 1;
+  const paginatedUsers = useMemo(() => {
+    const start = (userPage - 1) * USER_PAGE_SIZE;
+    return filteredUsers.slice(start, start + USER_PAGE_SIZE);
+  }, [filteredUsers, userPage]);
+
+  // Safe boundary check
+  useEffect(() => {
+    if (userPage > totalUserPages && totalUserPages > 0) {
+      setUserPage(totalUserPages);
+    }
+  }, [totalUserPages, userPage]);
+
+  // ── Filtered Roles List ──
+  const filteredRoles = useMemo(() => {
+    return roles.filter((role) => {
+      const search = roleSearch.toLowerCase().trim();
+      const roleName = (role.roleName || "").toLowerCase();
+      const roleCode = (role.roleCode || "").toLowerCase();
+      const description = (role.description || "").toLowerCase();
+      const matchesSearch =
+        !search ||
+        roleName.includes(search) ||
+        roleCode.includes(search) ||
+        description.includes(search);
+
+      if (!matchesSearch) return false;
+
+      const isSystem = Boolean(
+        role.isSystemRole ||
+        role.priority <= 2 ||
+        ["OWNER", "ADMIN", "HR", "EMPLOYEE"].includes(role.roleCode)
+      );
+
+      if (roleTypeFilter === "system" && !isSystem) return false;
+      if (roleTypeFilter === "custom" && isSystem) return false;
+
+      return true;
+    });
+  }, [roles, roleSearch, roleTypeFilter]);
+
+  // ── Dynamic Pagination for Roles ──
+  const totalFilteredRoles = filteredRoles.length;
+  const totalRolePages = Math.ceil(totalFilteredRoles / ROLE_PAGE_SIZE) || 1;
+  const paginatedRoles = useMemo(() => {
+    const start = (rolePage - 1) * ROLE_PAGE_SIZE;
+    return filteredRoles.slice(start, start + ROLE_PAGE_SIZE);
+  }, [filteredRoles, rolePage]);
+
+  // Safe boundary check
+  useEffect(() => {
+    if (rolePage > totalRolePages && totalRolePages > 0) {
+      setRolePage(totalRolePages);
+    }
+  }, [totalRolePages, rolePage]);
+
+  // Helper for Initials
+  const getInitials = (firstName, lastName) => {
+    const f = (firstName || "").charAt(0);
+    const l = (lastName || "").charAt(0);
+    return (f + l).toUpperCase() || "?";
+  };
+
+  // ── Employee Directory Pagination Render Component ──
+  const renderUserPagination = () => {
+    if (totalFilteredUsers === 0) return null;
+    const startIdx = (userPage - 1) * USER_PAGE_SIZE + 1;
+    const endIdx = Math.min(userPage * USER_PAGE_SIZE, totalFilteredUsers);
+
+    return (
+      <div className="user-mgmt-pagination-bar d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 px-md-4 py-2 bg-white border-top">
+        <div className="text-muted extra-small">
+          Showing <span className="fw-bold text-dark">{startIdx}–{endIdx}</span> of{" "}
+          <span className="fw-bold text-dark">{totalFilteredUsers}</span> employees
+        </div>
+        <Pagination size="sm" className="mb-0 user-mgmt-pagination">
+          <Pagination.Prev
+            disabled={userPage === 1}
+            onClick={() => setUserPage((p) => Math.max(1, p - 1))}
+          >
+            Previous
+          </Pagination.Prev>
+          {[...Array(totalUserPages)].map((_, i) => {
+            const pg = i + 1;
+            if (totalUserPages > 7) {
+              if (pg !== 1 && pg !== totalUserPages && Math.abs(pg - userPage) > 2) {
+                if (pg === 2 || pg === totalUserPages - 1) {
+                  return <Pagination.Ellipsis key={`ell-u-${pg}`} disabled />;
+                }
+                return null;
+              }
+            }
+            return (
+              <Pagination.Item
+                key={pg}
+                active={pg === userPage}
+                onClick={() => setUserPage(pg)}
+              >
+                {pg}
+              </Pagination.Item>
+            );
+          })}
+          <Pagination.Next
+            disabled={userPage === totalUserPages}
+            onClick={() => setUserPage((p) => Math.min(totalUserPages, p + 1))}
+          >
+            Next
+          </Pagination.Next>
+        </Pagination>
+      </div>
+    );
+  };
+
+  // ── Roles Table Pagination Render Component ──
+  const renderRolePagination = () => {
+    if (totalFilteredRoles === 0) return null;
+    const startIdx = (rolePage - 1) * ROLE_PAGE_SIZE + 1;
+    const endIdx = Math.min(rolePage * ROLE_PAGE_SIZE, totalFilteredRoles);
+
+    return (
+      <div className="user-mgmt-pagination-bar d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 px-md-4 py-2 bg-white border-top">
+        <div className="text-muted extra-small">
+          Showing <span className="fw-bold text-dark">{startIdx}–{endIdx}</span> of{" "}
+          <span className="fw-bold text-dark">{totalFilteredRoles}</span> roles
+        </div>
+        <Pagination size="sm" className="mb-0 user-mgmt-pagination">
+          <Pagination.Prev
+            disabled={rolePage === 1}
+            onClick={() => setRolePage((p) => Math.max(1, p - 1))}
+          >
+            Previous
+          </Pagination.Prev>
+          {[...Array(totalRolePages)].map((_, i) => {
+            const pg = i + 1;
+            if (totalRolePages > 7) {
+              if (pg !== 1 && pg !== totalRolePages && Math.abs(pg - rolePage) > 2) {
+                if (pg === 2 || pg === totalRolePages - 1) {
+                  return <Pagination.Ellipsis key={`ell-r-${pg}`} disabled />;
+                }
+                return null;
+              }
+            }
+            return (
+              <Pagination.Item
+                key={pg}
+                active={pg === rolePage}
+                onClick={() => setRolePage(pg)}
+              >
+                {pg}
+              </Pagination.Item>
+            );
+          })}
+          <Pagination.Next
+            disabled={rolePage === totalRolePages}
+            onClick={() => setRolePage((p) => Math.min(totalRolePages, p + 1))}
+          >
+            Next
+          </Pagination.Next>
+        </Pagination>
+      </div>
+    );
+  };
 
   return (
-    <Container fluid className="p-3">
-      {/* ── Header ── */}
-      <div className="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+    <Container fluid className="px-0 user-mgmt-container">
+      {/* ── Page Header ── */}
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div>
           <h4 className="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
-            <FaUserShield className="text-success" /> User & Access Management
+            <FaUserShield className="text-success" /> User & Role Management
           </h4>
           <p className="text-muted small mb-0">
-            Provision employee login accounts, manage assigned roles, and configure system RBAC permissions.
+            Provision employee credentials, manage assigned roles, and configure organizational RBAC permissions.
           </p>
         </div>
 
-        {isSystemAdmin && activeTab === "roles" && (
+        {isSystemAdmin && (
           <Button
             variant="success"
-            className="d-flex align-items-center gap-2 px-3 py-2 rounded-pill shadow-sm fw-semibold"
+            className="user-mgmt-create-btn d-inline-flex align-items-center gap-2 px-3 py-2 rounded-pill shadow-sm fw-semibold text-nowrap"
             onClick={handleOpenCreateRoleModal}
           >
-            <FaPlus /> Create Custom Role
+            <FaPlus size={11} /> Create Custom Role
           </Button>
         )}
       </div>
+
+      {/* ── Real Data KPI Summary Row ── */}
+      <Row className="g-3 mb-4">
+        <Col xs={6} md={3}>
+          <div className="user-mgmt-kpi-card">
+            <div className="d-flex align-items-center gap-3">
+              <div className="user-mgmt-kpi-icon icon-employees">
+                <FaUsers />
+              </div>
+              <div className="min-w-0">
+                <div className="user-mgmt-kpi-val text-dark">{totalEmployeesCount}</div>
+                <div className="user-mgmt-kpi-lbl">Total Employees</div>
+              </div>
+            </div>
+          </div>
+        </Col>
+
+        <Col xs={6} md={3}>
+          <div className="user-mgmt-kpi-card">
+            <div className="d-flex align-items-center gap-3">
+              <div className="user-mgmt-kpi-icon icon-active">
+                <FaUserCheck />
+              </div>
+              <div className="min-w-0">
+                <div className="user-mgmt-kpi-val text-success">{activeLoginsCount}</div>
+                <div className="user-mgmt-kpi-lbl">Active Logins</div>
+              </div>
+            </div>
+          </div>
+        </Col>
+
+        <Col xs={6} md={3}>
+          <div className="user-mgmt-kpi-card">
+            <div className="d-flex align-items-center gap-3">
+              <div className="user-mgmt-kpi-icon icon-provision">
+                <FaUserPlus />
+              </div>
+              <div className="min-w-0">
+                <div className="user-mgmt-kpi-val text-warning">{pendingProvisionCount}</div>
+                <div className="user-mgmt-kpi-lbl">Need Provisioning</div>
+              </div>
+            </div>
+          </div>
+        </Col>
+
+        <Col xs={6} md={3}>
+          <div className="user-mgmt-kpi-card">
+            <div className="d-flex align-items-center gap-3">
+              <div className="user-mgmt-kpi-icon icon-roles">
+                <FaShieldAlt />
+              </div>
+              <div className="min-w-0">
+                <div className="user-mgmt-kpi-val text-dark">{configuredRolesCount}</div>
+                <div className="user-mgmt-kpi-lbl">Configured Roles</div>
+              </div>
+            </div>
+          </div>
+        </Col>
+      </Row>
 
       {/* ── Alerts ── */}
       {errorMessage && (
@@ -413,231 +684,453 @@ function UserManagement() {
         </Alert>
       )}
 
-      {/* ── Main Navigation Tabs ── */}
-      <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k)} className="mb-4">
-        {/* ── Tab 1: Employee Directory & Account Provisioning ── */}
-        <Tab eventKey="users" title="Employee Directory & Account Provisioning">
-          <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
-            <Card.Header className="bg-white py-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
-              <div>
-                <span className="fw-bold text-dark">Employee Accounts Directory</span>
-                <span className="text-muted extra-small ms-2">({filteredUsers.length} employees)</span>
+      {/* ── Section Navigation Tabs (Exclusive Section View) ── */}
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4 pb-1">
+        <div className="user-mgmt-nav-wrapper">
+          <button
+            type="button"
+            className={`user-mgmt-nav-tab ${activeTab === "users" ? "active" : ""}`}
+            onClick={() => setActiveTab("users")}
+          >
+            <FaUsers className="me-1.5" /> Employee Directory & Accounts
+            <span className="user-mgmt-tab-count ms-2">({users.length})</span>
+          </button>
+
+          {isSystemAdmin && (
+            <button
+              type="button"
+              className={`user-mgmt-nav-tab ${activeTab === "roles" ? "active" : ""}`}
+              onClick={() => setActiveTab("roles")}
+            >
+              <FaShieldAlt className="me-1.5" /> Roles & Permissions Architecture
+              <span className="user-mgmt-tab-count ms-2">({roles.length})</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Section 1: Employee Directory & Account Provisioning ── */}
+      {activeTab === "users" && (
+        <Card className="user-mgmt-table-card border-0 shadow-sm overflow-hidden mb-4">
+          {/* Header & Filter Bar */}
+          <div className="user-mgmt-filter-header">
+            <div className="d-flex align-items-center flex-wrap gap-2">
+              {/* Search Bar */}
+              <div className="user-mgmt-search-box flex-grow-1" style={{ minWidth: "220px", maxWidth: "380px" }}>
+                <InputGroup size="sm">
+                  <InputGroup.Text className="bg-light border-end-0 text-muted">
+                    <FaSearch size={12} />
+                  </InputGroup.Text>
+                  <Form.Control
+                    type="search"
+                    placeholder="Search employee..."
+                    value={userSearch}
+                    onChange={(e) => {
+                      setUserSearch(e.target.value);
+                      setUserPage(1);
+                    }}
+                    className="shadow-none border-start-0 user-mgmt-ctrl"
+                  />
+                  {userSearch && (
+                    <Button
+                      variant="light"
+                      className="border border-start-0"
+                      onClick={() => {
+                        setUserSearch("");
+                        setUserPage(1);
+                      }}
+                    >
+                      <FaTimes size={11} className="text-muted" />
+                    </Button>
+                  )}
+                </InputGroup>
               </div>
-              <div style={{ width: 320 }}>
-                <Form.Control
-                  type="search"
-                  placeholder="Search by name, code, email, department..."
+
+              {/* Status Filter */}
+              <div style={{ minWidth: "160px" }}>
+                <Form.Select
                   size="sm"
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                  className="rounded-pill"
-                />
+                  className="shadow-none user-mgmt-ctrl"
+                  value={accountStatusFilter}
+                  onChange={(e) => {
+                    setAccountStatusFilter(e.target.value);
+                    setUserPage(1);
+                  }}
+                >
+                  <option value="all">Login Status</option>
+                  <option value="active">Active Logins Only</option>
+                  <option value="no-account">Need Provisioning (No Account)</option>
+                  <option value="blocked">Blocked / Locked</option>
+                  <option value="inactive">Inactive / Suspended</option>
+                </Form.Select>
               </div>
-            </Card.Header>
 
-            <div className="table-responsive">
-              {loading ? (
-                <div className="text-center py-5">
-                  <Spinner animation="border" variant="success" />
-                  <div className="small text-muted mt-2">Loading employee directory...</div>
-                </div>
-              ) : (
-                <Table hover align="middle" className="mb-0">
-                  <thead className="table-light extra-small text-uppercase text-muted">
-                    <tr>
-                      <th className="ps-4">Employee</th>
-                      <th>Employee Code</th>
-                      <th>Department / Role</th>
-                      <th>Login Status</th>
-                      <th>Assigned Role</th>
-                      <th className="text-end pe-4">Account Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredUsers.map((u) => {
-                      const hasAccount = u.hasLoginAccess === true;
-                      const isOwnerUser = u.role?.priority === 1 || u.role?.roleCode === "OWNER";
-                      const canModify = currentUser?.priority === 1 || (!isOwnerUser && (isSystemAdmin || hasPermission("user.manage_roles")));
+              {/* Role Filter */}
+              <div style={{ minWidth: "160px" }}>
+                <Form.Select
+                  size="sm"
+                  className="shadow-none user-mgmt-ctrl"
+                  value={roleFilter}
+                  onChange={(e) => {
+                    setRoleFilter(e.target.value);
+                    setUserPage(1);
+                  }}
+                >
+                  <option value="all">Role</option>
+                  {roles.map((r) => (
+                    <option key={r._id} value={r._id}>
+                      {r.roleName} ({r.roleCode})
+                    </option>
+                  ))}
+                </Form.Select>
+              </div>
 
-                      return (
-                        <tr key={u._id || u.id}>
-                          <td className="ps-4">
-                            <div className="fw-semibold text-dark">
-                              {u.firstName} {u.lastName}
-                            </div>
-                            <div className="extra-small text-muted">{u.email}</div>
-                          </td>
-                          <td>
-                            <code>{u.employeeCode || "—"}</code>
-                          </td>
-                          <td>
-                            <div className="small text-dark fw-medium">{u.department || "General"}</div>
-                            <div className="extra-small text-muted">{u.designation || "Employee"}</div>
-                          </td>
-                          <td>
-                            {!hasAccount ? (
-                              <Badge bg="warning" text="dark" className="px-2 py-1 rounded-pill">
-                                No Login Account
-                              </Badge>
-                            ) : u.isBlocked ? (
-                              <Badge bg="danger" className="px-2 py-1 rounded-pill">
-                                Blocked
-                              </Badge>
-                            ) : u.isActive ? (
-                              <Badge bg="success" className="px-2 py-1 rounded-pill">
-                                <FaUserCheck className="me-1" /> Active Login
-                              </Badge>
-                            ) : (
-                              <Badge bg="secondary" className="px-2 py-1 rounded-pill">
-                                <FaUserTimes className="me-1" /> Inactive
-                              </Badge>
-                            )}
-                          </td>
-                          <td>
-                            {u.role ? (
-                              <Badge
-                                bg={u.role.priority === 1 ? "danger" : u.role.priority === 2 ? "warning" : "light"}
-                                text={u.role.priority <= 2 ? "white" : "dark"}
-                                className="border px-2 py-1 rounded-pill"
-                              >
-                                <FaKey className="me-1" />
-                                {u.role.roleName || "Employee"}
-                              </Badge>
-                            ) : (
-                              <span className="text-muted small">Not Assigned</span>
-                            )}
-                          </td>
-                          <td className="text-end pe-4">
-                            {!hasAccount ? (
-                              (isSystemAdmin || hasPermission("user.provision_account")) && (
-                                <Button
-                                  variant="success"
-                                  size="sm"
-                                  className="rounded-pill px-3 py-1 fw-semibold d-inline-flex align-items-center gap-1 shadow-sm"
-                                  onClick={() => handleOpenProvisionModal(u)}
-                                >
-                                  <FaUserPlus /> Create Login Account
-                                </Button>
-                              )
-                            ) : (
-                              canModify && (
-                                <Button
-                                  variant="outline-secondary"
-                                  size="sm"
-                                  className="rounded-pill px-3 py-1 d-inline-flex align-items-center gap-1"
-                                  onClick={() => handleOpenManageModal(u)}
-                                >
-                                  <FaCog /> Manage Account
-                                </Button>
-                              )
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </Table>
+              {/* Reset Filter Button */}
+              {(userSearch || accountStatusFilter !== "all" || roleFilter !== "all") && (
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  className="user-mgmt-ctrl d-inline-flex align-items-center gap-1"
+                  onClick={() => {
+                    setUserSearch("");
+                    setAccountStatusFilter("all");
+                    setRoleFilter("all");
+                    setUserPage(1);
+                  }}
+                >
+                  <FaTimes size={11} /> Reset
+                </Button>
               )}
             </div>
-          </Card>
-        </Tab>
+          </div>
 
-        {/* ── Tab 2: Roles & Permissions Architecture (Admin / Owner Only) ── */}
-        {isSystemAdmin && (
-          <Tab eventKey="roles" title="Organizational Roles & RBAC Architecture">
-            <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
-              <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-                <span className="fw-bold text-dark">Configured Roles</span>
-                <Badge bg="light" text="dark" className="border px-3 py-2 rounded-pill">
-                  Total Roles: {roles.length}
-                </Badge>
-              </Card.Header>
+          {/* Table Container */}
+          <div className="table-responsive">
+            {loading ? (
+              <div className="text-center py-5">
+                <Spinner animation="border" variant="success" size="sm" />
+                <div className="small text-muted mt-2">Loading employee directory...</div>
+              </div>
+            ) : filteredUsers.length === 0 ? (
+              <div className="text-center py-5 text-muted">
+                <FaUsers size={32} className="mb-2 opacity-50" />
+                <p className="small mb-0">No employees match your search or filter criteria.</p>
+              </div>
+            ) : (
+              <Table hover align="middle" className="mb-0 small user-mgmt-table">
+                <thead className="table-light extra-small text-uppercase text-muted">
+                  <tr>
+                    <th className="ps-3 ps-md-4" style={{ width: "30%" }}>Employee</th>
+                    <th style={{ width: "15%" }}>Employee Code</th>
+                    <th style={{ width: "18%" }}>Department / Role</th>
+                    <th style={{ width: "15%" }}>Login Status</th>
+                    <th style={{ width: "12%" }}>Assigned Role</th>
+                    <th className="text-end pe-3 pe-md-4" style={{ width: "10%" }}>Account Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedUsers.map((u) => {
+                    const hasAccount = u.hasLoginAccess === true;
+                    const isOwnerUser = u.role?.priority === 1 || u.role?.roleCode === "OWNER";
+                    const canModify =
+                      currentUser?.priority === 1 ||
+                      (!isOwnerUser && (isSystemAdmin || hasPermission("user.manage_roles")));
+                    const initials = getInitials(u.firstName, u.lastName);
 
-              <div className="table-responsive">
-                <Table hover align="middle" className="mb-0">
-                  <thead className="table-light extra-small text-uppercase text-muted">
-                    <tr>
-                      <th className="ps-4">Role Name</th>
-                      <th>Role Code</th>
-                      <th>Priority Level</th>
-                      <th>Type</th>
-                      <th>Modules</th>
-                      <th>Permissions</th>
-                      <th>Assigned Users</th>
-                      <th className="text-end pe-4">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {roles.map((role) => (
-                      <tr key={role._id}>
-                        <td className="ps-4 fw-semibold text-dark">
-                          <div className="d-flex align-items-center gap-2">
-                            <FaShieldAlt className={role.priority <= 2 ? "text-danger" : "text-success"} />
-                            <span>{role.roleName}</span>
+                    return (
+                      <tr key={u._id || u.id}>
+                        <td className="ps-3 ps-md-4">
+                          <div className="d-flex align-items-center gap-2.5">
+                            <div
+                              className={`user-mgmt-avatar-chip ${hasAccount ? "account-active" : "account-none"}`}
+                            >
+                              {initials}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="fw-semibold text-dark text-truncate">
+                                {u.firstName} {u.lastName}
+                              </div>
+                              <div className="extra-small text-muted text-truncate">{u.email}</div>
+                            </div>
                           </div>
-                          {role.description && (
-                            <div className="extra-small text-muted">{role.description}</div>
+                        </td>
+                        <td>
+                          <code>{u.employeeCode || "—"}</code>
+                        </td>
+                        <td>
+                          <div className="small text-dark fw-medium text-truncate">{u.department || "General"}</div>
+                          <div className="extra-small text-muted text-truncate">{u.designation || "Employee"}</div>
+                        </td>
+                        <td className="text-nowrap">
+                          {!hasAccount ? (
+                            <span className="app-pill app-pill-warning">
+                              No Login Account
+                            </span>
+                          ) : u.isBlocked ? (
+                            <Badge bg="danger" className="rounded-pill px-2 py-1">
+                              <FaLock size={10} className="me-1" /> Blocked
+                            </Badge>
+                          ) : u.isActive ? (
+                            <span className="app-pill app-pill-success">
+                              <FaUserCheck size={11} /> Active
+                            </span>
+                          ) : (
+                            <span className="app-pill app-pill-muted">
+                              <FaUserTimes size={11} /> Inactive
+                            </span>
                           )}
                         </td>
-                        <td>
+                        <td className="text-nowrap">
+                          {u.role ? (
+                            <Badge
+                              bg={u.role.priority === 1 ? "danger" : u.role.priority === 2 ? "warning" : "light"}
+                              text={u.role.priority <= 2 ? "white" : "dark"}
+                              className="border px-2 py-1 rounded-pill"
+                            >
+                              <FaKey size={10} className="me-1" />
+                              {u.role.roleName || "Employee"}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted extra-small">Not Assigned</span>
+                          )}
+                        </td>
+                        <td className="text-end pe-3 pe-md-4 text-nowrap">
+                          {!hasAccount ? (
+                            (isSystemAdmin || hasPermission("user.provision_account")) && (
+                              <Button
+                                variant="success"
+                                size="sm"
+                                className="rounded-pill px-3 py-1 fw-semibold d-inline-flex align-items-center gap-1 shadow-sm micro-text text-nowrap"
+                                onClick={() => handleOpenProvisionModal(u)}
+                              >
+                                <FaUserPlus size={11} /> Create Account
+                              </Button>
+                            )
+                          ) : (
+                            canModify && (
+                              <Button
+                                variant="outline-secondary"
+                                size="sm"
+                                className="rounded-pill px-3 py-1 d-inline-flex align-items-center gap-1 micro-text text-nowrap"
+                                onClick={() => handleOpenManageModal(u)}
+                              >
+                                <FaCog size={11} /> Manage
+                              </Button>
+                            )
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
+            )}
+          </div>
+
+          {/* Pagination */}
+          {!loading && filteredUsers.length > 0 && renderUserPagination()}
+        </Card>
+      )}
+
+      {/* ── Section 2: Roles & Permissions Architecture (Admin / Owner Only) ── */}
+      {isSystemAdmin && activeTab === "roles" && (
+        <Card className="user-mgmt-table-card border-0 shadow-sm overflow-hidden mb-4">
+          {/* Header & Filter Bar */}
+          <div className="user-mgmt-filter-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+              <span className="fw-bold text-dark fs-6">Configured Organizational Roles</span>
+            </div>
+
+            <div className="d-flex align-items-center flex-wrap gap-2">
+              {/* Search Role */}
+              <div style={{ minWidth: "200px", maxWidth: "280px" }}>
+                <InputGroup size="sm">
+                  <InputGroup.Text className="bg-light border-end-0 text-muted">
+                    <FaSearch size={12} />
+                  </InputGroup.Text>
+                  <Form.Control
+                    type="search"
+                    placeholder="Search role..."
+                    value={roleSearch}
+                    onChange={(e) => {
+                      setRoleSearch(e.target.value);
+                      setRolePage(1);
+                    }}
+                    className="shadow-none border-start-0 user-mgmt-ctrl"
+                  />
+                  {roleSearch && (
+                    <Button
+                      variant="light"
+                      className="border border-start-0"
+                      onClick={() => {
+                        setRoleSearch("");
+                        setRolePage(1);
+                      }}
+                    >
+                      <FaTimes size={11} className="text-muted" />
+                    </Button>
+                  )}
+                </InputGroup>
+              </div>
+
+              {/* Role Type Filter */}
+              <div style={{ minWidth: "150px" }}>
+                <Form.Select
+                  size="sm"
+                  className="shadow-none user-mgmt-ctrl"
+                  value={roleTypeFilter}
+                  onChange={(e) => {
+                    setRoleTypeFilter(e.target.value);
+                    setRolePage(1);
+                  }}
+                >
+                  <option value="all">Role Type</option>
+                  <option value="system">System Core</option>
+                  <option value="custom">Custom Roles</option>
+                </Form.Select>
+              </div>
+
+              {/* Reset Filter Button */}
+              {(roleSearch || roleTypeFilter !== "all") && (
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  className="user-mgmt-ctrl d-inline-flex align-items-center gap-1"
+                  onClick={() => {
+                    setRoleSearch("");
+                    setRoleTypeFilter("all");
+                    setRolePage(1);
+                  }}
+                >
+                  <FaTimes size={11} /> Reset
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="table-responsive">
+            {loading ? (
+              <div className="text-center py-5">
+                <Spinner animation="border" variant="success" size="sm" />
+                <div className="small text-muted mt-2">Loading organizational roles...</div>
+              </div>
+            ) : filteredRoles.length === 0 ? (
+              <div className="text-center py-5 text-muted">
+                <FaShieldAlt size={32} className="mb-2 opacity-50" />
+                <p className="small mb-0">No roles match your search or filter criteria.</p>
+              </div>
+            ) : (
+              <Table hover align="middle" className="mb-0 small user-mgmt-table">
+                <thead className="table-light extra-small text-uppercase text-muted">
+                  <tr>
+                    <th className="ps-3 ps-md-4" style={{ width: "30%" }}>Role</th>
+                    <th style={{ width: "15%" }}>Role Code</th>
+                    <th style={{ width: "15%" }}>Priority</th>
+                    <th style={{ width: "20%" }}>Access Summary</th>
+                    <th style={{ width: "10%" }}>Users</th>
+                    <th className="text-end pe-3 pe-md-4" style={{ width: "10%" }}>Manage</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedRoles.map((role) => {
+                    const isSystemRole = Boolean(
+                      role.isSystemRole ||
+                      role.priority <= 2 ||
+                      ["OWNER", "ADMIN", "HR", "EMPLOYEE"].includes(role.roleCode)
+                    );
+                    const canEdit =
+                      !isSystemRole || currentUser?.priority === 1;
+                    const canDelete =
+                      !isSystemRole &&
+                      !["OWNER", "ADMIN", "HR", "EMPLOYEE"].includes(role.roleCode) &&
+                      role.priority > 2;
+
+                    return (
+                      <tr key={role._id}>
+                        <td className="ps-3 ps-md-4">
+                          <div className="d-flex align-items-start gap-2">
+                            <FaShieldAlt
+                              className={`mt-1 flex-shrink-0 ${role.priority <= 2 ? "text-danger" : "text-success"}`}
+                              size={14}
+                            />
+                            <div className="min-w-0">
+                              <div className="fw-bold text-dark text-truncate">{role.roleName}</div>
+                              {role.description && (
+                                <div className="role-desc-clamp extra-small text-muted" title={role.description}>
+                                  {role.description}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="text-nowrap">
                           <code>{role.roleCode}</code>
                         </td>
-                        <td>
-                          <Badge bg={role.priority === 1 ? "danger" : role.priority === 2 ? "warning" : "secondary"}>
+                        <td className="text-nowrap">
+                          <Badge
+                            bg={role.priority === 1 ? "danger" : role.priority === 2 ? "warning" : "secondary"}
+                            className="rounded-pill px-2 py-1 fw-medium"
+                          >
                             Priority {role.priority} {role.priority === 1 ? "(Owner)" : role.priority === 2 ? "(Admin)" : ""}
                           </Badge>
                         </td>
                         <td>
-                          {role.isSystemRole || role.priority <= 2 || ["OWNER", "ADMIN", "HR", "EMPLOYEE"].includes(role.roleCode) ? (
-                            <Badge bg="info" className="px-2 py-1">System Core</Badge>
-                          ) : (
-                            <Badge bg="light" text="dark" className="border px-2 py-1">Custom Role</Badge>
-                          )}
+                          <div className="d-flex flex-column gap-1">
+                            <div>
+                              {isSystemRole ? (
+                                <span className="role-badge-system">System Core</span>
+                              ) : (
+                                <span className="role-badge-custom">Custom Role</span>
+                              )}
+                            </div>
+                            <div className="extra-small text-muted text-nowrap">
+                              <span className="fw-semibold text-dark">{role.menuCount || 0} Modules</span> •{" "}
+                              <span className="fw-semibold text-success">{role.permissionCount || 0} Actions</span>
+                            </div>
+                          </div>
                         </td>
-                        <td>
-                          <span className="fw-bold text-dark">{role.menuCount || 0}</span>
-                          <span className="extra-small text-muted"> modules</span>
-                        </td>
-                        <td>
-                          <span className="fw-bold text-success">{role.permissionCount || 0}</span>
-                          <span className="extra-small text-muted"> actions</span>
-                        </td>
-                        <td>
-                          <Badge bg="light" text="dark" className="border">
-                            <FaUsers className="me-1" /> {role.userCount || 0}
+                        <td className="text-nowrap">
+                          <Badge bg="light" text="dark" className="border px-2 py-1 rounded-pill">
+                            <FaUsers className="me-1 text-muted" /> {role.userCount || 0}
                           </Badge>
                         </td>
-                        <td className="text-end pe-4">
-                          {((!role.isSystemRole && !["OWNER", "ADMIN", "HR", "EMPLOYEE"].includes(role.roleCode)) || currentUser?.priority === 1) && (
-                            <Button
-                              variant="outline-primary"
-                              size="sm"
-                              className="me-2 rounded-pill px-3"
-                              onClick={() => handleOpenEditRoleModal(role)}
-                            >
-                              <FaEdit className="me-1" /> Edit Access
-                            </Button>
-                          )}
-                          {!role.isSystemRole && !["OWNER", "ADMIN", "HR", "EMPLOYEE"].includes(role.roleCode) && role.priority > 2 && (
-                            <Button
-                              variant="outline-danger"
-                              size="sm"
-                              className="rounded-pill px-2"
-                              onClick={() => handleDeleteRole(role)}
-                            >
-                              <FaTrash />
-                            </Button>
-                          )}
+                        <td className="text-end pe-3 pe-md-4 text-nowrap">
+                          <div className="d-inline-flex align-items-center justify-content-end gap-1.5">
+                            {canEdit && (
+                              <Button
+                                variant="outline-primary"
+                                size="sm"
+                                className="rounded-pill px-2.5 py-1 micro-text text-nowrap d-inline-flex align-items-center gap-1"
+                                onClick={() => handleOpenEditRoleModal(role)}
+                              >
+                                <FaEdit size={11} /> Edit Access
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                variant="outline-danger"
+                                size="sm"
+                                className="rounded-pill p-1.5 d-inline-flex align-items-center justify-content-center role-delete-btn"
+                                onClick={() => handleDeleteRole(role)}
+                                title="Delete custom role"
+                              >
+                                <FaTrash size={11} />
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </div>
-            </Card>
-          </Tab>
-        )}
-      </Tabs>
+                    );
+                  })}
+                </tbody>
+              </Table>
+            )}
+          </div>
+
+          {/* Pagination */}
+          {!loading && filteredRoles.length > 0 && renderRolePagination()}
+        </Card>
+      )}
 
       {/* ========================================================
           MODAL: CREATE LOGIN ACCOUNT (PROVISIONING)
@@ -648,7 +1141,7 @@ function UserManagement() {
         centered
         backdrop="static"
       >
-        <Modal.Header closeButton>
+        <Modal.Header closeButton className="border-0 pb-0">
           <Modal.Title className="h6 fw-bold d-flex align-items-center gap-2">
             <FaUserPlus className="text-success" /> Provision Employee Login Account
           </Modal.Title>
@@ -664,10 +1157,13 @@ function UserManagement() {
                   </h6>
                   <span className="extra-small text-muted">{provisioningUser?.email}</span>
                 </div>
-                <Badge bg="dark"><code>{provisioningUser?.employeeCode}</code></Badge>
+                <Badge bg="dark">
+                  <code>{provisioningUser?.employeeCode}</code>
+                </Badge>
               </div>
               <div className="extra-small text-muted mt-2">
-                Department: <strong>{provisioningUser?.department || "General"}</strong> | Designation: <strong>{provisioningUser?.designation || "Employee"}</strong>
+                Department: <strong>{provisioningUser?.department || "General"}</strong> | Designation:{" "}
+                <strong>{provisioningUser?.designation || "Employee"}</strong>
               </div>
             </Card>
 
@@ -678,6 +1174,7 @@ function UserManagement() {
                 value={provisionForm.roleId}
                 onChange={(e) => setProvisionForm({ ...provisionForm, roleId: e.target.value })}
                 required
+                className="shadow-none"
               >
                 <option value="">-- Select Permitted Role --</option>
                 {assignableRoles.map((r) => (
@@ -701,6 +1198,7 @@ function UserManagement() {
                   onChange={(e) => setProvisionForm({ ...provisionForm, password: e.target.value })}
                   placeholder="Enter temporary password (min 6 chars)"
                   required
+                  className="shadow-none"
                 />
                 <Button
                   variant="outline-secondary"
@@ -727,8 +1225,8 @@ function UserManagement() {
             </Form.Group>
           </Modal.Body>
 
-          <Modal.Footer>
-            <Button variant="secondary" size="sm" onClick={() => setShowProvisionModal(false)}>
+          <Modal.Footer className="border-0 pt-0">
+            <Button variant="light" size="sm" onClick={() => setShowProvisionModal(false)}>
               Cancel
             </Button>
             <Button variant="success" size="sm" type="submit" disabled={modalLoading}>
@@ -747,7 +1245,7 @@ function UserManagement() {
         centered
         backdrop="static"
       >
-        <Modal.Header closeButton>
+        <Modal.Header closeButton className="border-0 pb-0">
           <Modal.Title className="h6 fw-bold d-flex align-items-center gap-2">
             <FaCog className="text-primary" /> Manage Employee Account
           </Modal.Title>
@@ -770,6 +1268,7 @@ function UserManagement() {
                 value={manageForm.roleId}
                 onChange={(e) => setManageForm({ ...manageForm, roleId: e.target.value })}
                 required
+                className="shadow-none"
               >
                 <option value="">-- Choose Role --</option>
                 {assignableRoles.map((r) => (
@@ -788,6 +1287,7 @@ function UserManagement() {
                   <Form.Select
                     value={manageForm.isActive ? "true" : "false"}
                     onChange={(e) => setManageForm({ ...manageForm, isActive: e.target.value === "true" })}
+                    className="shadow-none"
                   >
                     <option value="true">Active</option>
                     <option value="false">Inactive / Suspended</option>
@@ -800,6 +1300,7 @@ function UserManagement() {
                   <Form.Select
                     value={manageForm.isBlocked ? "true" : "false"}
                     onChange={(e) => setManageForm({ ...manageForm, isBlocked: e.target.value === "true" })}
+                    className="shadow-none"
                   >
                     <option value="false">Normal Access</option>
                     <option value="true">Blocked / Locked</option>
@@ -817,6 +1318,7 @@ function UserManagement() {
                   value={manageForm.newPassword}
                   onChange={(e) => setManageForm({ ...manageForm, newPassword: e.target.value })}
                   placeholder="Leave blank to keep existing password"
+                  className="shadow-none"
                 />
                 <Button
                   variant="outline-secondary"
@@ -828,8 +1330,8 @@ function UserManagement() {
             </Form.Group>
           </Modal.Body>
 
-          <Modal.Footer>
-            <Button variant="secondary" size="sm" onClick={() => setShowManageModal(false)}>
+          <Modal.Footer className="border-0 pt-0">
+            <Button variant="light" size="sm" onClick={() => setShowManageModal(false)}>
               Cancel
             </Button>
             <Button variant="primary" size="sm" type="submit" disabled={modalLoading}>
@@ -876,6 +1378,7 @@ function UserManagement() {
                       value={roleForm.roleName}
                       onChange={(e) => setRoleForm({ ...roleForm, roleName: e.target.value })}
                       required
+                      className="shadow-none"
                     />
                   </Form.Group>
                 </Col>
@@ -886,6 +1389,7 @@ function UserManagement() {
                     <Form.Select
                       value={roleForm.priority}
                       onChange={(e) => setRoleForm({ ...roleForm, priority: Number(e.target.value) })}
+                      className="shadow-none"
                     >
                       <option value={3}>Level 3 (Staff / Custom)</option>
                       <option value={2}>Level 2 (Admin Level)</option>
@@ -900,6 +1404,7 @@ function UserManagement() {
                     <Form.Select
                       value={roleForm.isActive ? "true" : "false"}
                       onChange={(e) => setRoleForm({ ...roleForm, isActive: e.target.value === "true" })}
+                      className="shadow-none"
                     >
                       <option value="true">Active</option>
                       <option value="false">Inactive</option>
@@ -915,6 +1420,7 @@ function UserManagement() {
                       placeholder="Summary of responsibilities and scope of this role"
                       value={roleForm.description}
                       onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
+                      className="shadow-none"
                     />
                   </Form.Group>
                 </Col>
@@ -924,10 +1430,10 @@ function UserManagement() {
               <div className="mb-4 p-3 bg-light rounded-3 border">
                 <div className="d-flex justify-content-between align-items-center mb-2">
                   <h6 className="fw-bold mb-0 text-dark">
-                    1. Application Module Access (RoleMenu)
+                    1. Application Module Access (Sidebar Visibility)
                   </h6>
                   <span className="extra-small text-muted">
-                    Determines which pages appear in the user's sidebar
+                    Determines which modules appear in the user sidebar
                   </span>
                 </div>
 
@@ -937,11 +1443,10 @@ function UserManagement() {
                     return (
                       <Col xs={6} md={4} key={menu._id}>
                         <div
-                          className={`p-2 rounded border cursor-pointer d-flex align-items-center gap-2 ${
-                            isChecked ? "bg-white border-success text-success fw-bold" : "bg-white text-secondary"
+                          className={`p-2 user-mgmt-checkbox-item d-flex align-items-center gap-2 ${
+                            isChecked ? "selected text-success fw-bold shadow-sm" : "text-secondary"
                           }`}
                           onClick={() => toggleMenu(menu._id)}
-                          style={{ cursor: "pointer", transition: "all 0.15s" }}
                         >
                           {isChecked ? <FaCheckSquare /> : <FaSquare className="text-muted" />}
                           <span className="small">{menu.menuName}</span>
@@ -957,7 +1462,7 @@ function UserManagement() {
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <div>
                     <h6 className="fw-bold mb-0 text-dark">
-                      2. Granular API Action Permissions (RolePermission)
+                      2. Granular API Action Permissions
                     </h6>
                     <span className="extra-small text-muted">
                       Backend authorization will strictly enforce these action rights
@@ -974,14 +1479,14 @@ function UserManagement() {
 
                   return (
                     <Card key={moduleName} className="mb-3 border shadow-none">
-                      <Card.Header className="bg-white py-2 d-flex justify-content-between align-items-center">
+                      <Card.Header className="bg-white py-2 d-flex justify-content-between align-items-center border-bottom">
                         <span className="fw-bold text-dark small">
-                          📦 {moduleName} MODULE
+                          📦 {moduleName.toUpperCase()} MODULE
                         </span>
                         <Button
                           variant="link"
                           size="sm"
-                          className="p-0 extra-small text-decoration-none text-success"
+                          className="p-0 extra-small text-decoration-none text-success fw-semibold"
                           onClick={() => toggleModulePermissions(moduleName)}
                         >
                           {isAllSelected ? "Deselect All" : "Select All"}
@@ -996,13 +1501,12 @@ function UserManagement() {
                             return (
                               <Col md={6} key={p.permissionCode}>
                                 <div
-                                  className={`p-2 rounded border cursor-pointer ${
+                                  className={`p-2 user-mgmt-checkbox-item ${
                                     isSelected
-                                      ? "bg-light border-success text-dark"
-                                      : "bg-white text-muted"
+                                      ? "selected text-dark shadow-xs"
+                                      : "text-muted"
                                   }`}
                                   onClick={() => togglePermission(p.permissionCode)}
-                                  style={{ cursor: "pointer" }}
                                 >
                                   <div className="d-flex align-items-center gap-2 mb-1">
                                     {isSelected ? (
@@ -1029,7 +1533,7 @@ function UserManagement() {
               </div>
 
               <div className="d-flex justify-content-end gap-2 pt-3 border-top">
-                <Button variant="secondary" onClick={() => setShowRoleModal(false)}>
+                <Button variant="light" onClick={() => setShowRoleModal(false)}>
                   Cancel
                 </Button>
                 <Button variant="success" type="submit" disabled={modalLoading}>

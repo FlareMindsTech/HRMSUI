@@ -1,0 +1,105 @@
+/* ============================================================
+   Dashboard Modernization Styles
+   TeamHub Mint Design System
+   Dedicated stylesheet for src/Pages/Dashboard/Dashboard.js
+   ============================================================ */
+
+/* ── Hero Welcome Banner Elements ── */
+.dash-role-badge {
+  background: rgba(45, 197, 138, 0.2) !important;
+  color: #4ade80 !important;
+}
+
+.dash-date-text {
+  font-size: 0.8rem;
+  color: rgba(200, 230, 215, 0.7);
+}
+
+.dash-hero-desc {
+  color: rgba(200, 230, 215, 0.8);
+  max-width: 640px;
+}
+
+/* ── Work Policy Card Header Icon ── */
+.dash-policy-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(45, 197, 138, 0.12);
+  color: #2DC58A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Console Quick Card Icon Thematic Colors ── */
+.dash-icon-mint {
+  background: rgba(45, 197, 138, 0.12) !important;
+  color: #2DC58A !important;
+}
+
+.dash-icon-purple {
+  background: rgba(139, 92, 246, 0.12) !important;
+  color: #8b5cf6 !important;
+}
+
+.dash-icon-sky {
+  background: rgba(14, 165, 233, 0.12) !important;
+  color: #0ea5e9 !important;
+}
+
+.dash-icon-amber {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #f59e0b !important;
+}
+
+.dash-icon-pink {
+  background: rgba(236, 72, 153, 0.12) !important;
+  color: #ec4899 !important;
+}
+
+.dash-icon-emerald {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #10b981 !important;
+}
+
+/* ── System Environment Information Card ── */
+.dash-admin-banner-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(45, 197, 138, 0.12);
+  color: #2DC58A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+/* ── Quick Card Transitions & Hover ── */
+.app-quick-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+}
+
+.app-quick-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  border-color: rgba(45, 197, 138, 0.35) !important;
+}
+
+/* ── Responsive Refinements ── */
+@media (max-width: 768px) {
+  .dash-hero-desc {
+    max-width: 100%;
+  }
+
+  .dash-admin-banner-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 1.1rem;
+    border-radius: 10px;
+  }
+}

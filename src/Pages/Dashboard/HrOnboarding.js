@@ -15,6 +15,7 @@ import {
   Spinner,
   InputGroup,
   Image,
+  Pagination,
 } from "react-bootstrap";
 import {
   FaUser,
@@ -146,6 +147,7 @@ import {
 } from "../../services/rbacService";
 import { getAssets, createAsset, assignAsset, returnAsset } from "../../services/assetService";
 import { useAuth } from "../../context/AuthContext";
+import "./HrOnboarding.css";
 
 /**
  * Safe Array normalizer
@@ -227,16 +229,7 @@ const StateSearchDropdown = ({ value, onChange, placeholder = "Select State" }) 
   return (
     <div className="position-relative w-100" ref={dropdownRef}>
       <div
-        className="form-control form-control-sm d-flex align-items-center justify-content-between bg-white"
-        style={{
-          fontSize: "0.825rem",
-          minHeight: "33px",
-          borderRadius: "8px",
-          borderColor: isOpen ? "#2DC58A" : "#ced4da",
-          boxShadow: isOpen ? "0 0 0 3px rgba(45, 197, 138, 0.15)" : "none",
-          transition: "all 0.2s ease",
-          cursor: "pointer",
-        }}
+        className={`form-control form-control-sm d-flex align-items-center justify-content-between bg-white state-search-box ${isOpen ? "open" : ""}`}
         onClick={() => {
           setIsOpen(!isOpen);
           setSearchTerm("");
@@ -247,28 +240,12 @@ const StateSearchDropdown = ({ value, onChange, placeholder = "Select State" }) 
         </span>
         <FaChevronDown
           size={10}
-          className="text-muted ms-2 flex-shrink-0"
-          style={{
-            transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-            transition: "transform 0.2s ease",
-          }}
+          className={`text-muted ms-2 flex-shrink-0 state-chevron ${isOpen ? "open" : ""}`}
         />
       </div>
 
       {isOpen && (
-        <div
-          className="position-absolute bg-white border rounded-3 shadow-lg mt-1 p-2"
-          style={{
-            zIndex: 1060,
-            minWidth: "240px",
-            width: "100%",
-            left: 0,
-            maxHeight: "260px",
-            display: "flex",
-            flexDirection: "column",
-            borderColor: "rgba(0,0,0,0.12)",
-          }}
-        >
+        <div className="state-search-menu">
           <div className="mb-2 position-relative">
             <div className="input-group input-group-sm">
               <span className="input-group-text bg-light border-end-0 text-muted ps-2.5 pe-1.5 py-1">
@@ -276,17 +253,15 @@ const StateSearchDropdown = ({ value, onChange, placeholder = "Select State" }) 
               </span>
               <input
                 type="text"
-                className="form-control form-control-sm bg-light border-start-0 shadow-none ps-1 py-1"
+                className="form-control form-control-sm bg-light border-start-0 shadow-none ps-1 py-1 state-search-input"
                 autoFocus
                 placeholder="Type to filter state..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ fontSize: "0.785rem" }}
               />
               {searchTerm && (
                 <span
-                  className="input-group-text bg-light border-start-0 text-muted cursor-pointer pe-2 py-1"
-                  style={{ fontSize: "0.75rem", cursor: "pointer" }}
+                  className="input-group-text bg-light border-start-0 text-muted pe-2 py-1 state-search-clear"
                   onClick={() => setSearchTerm("")}
                 >
                   ✕
@@ -295,34 +270,14 @@ const StateSearchDropdown = ({ value, onChange, placeholder = "Select State" }) 
             </div>
           </div>
 
-          <div
-            style={{
-              overflowY: "auto",
-              maxHeight: "175px",
-              paddingRight: "2px",
-            }}
-          >
+          <div className="state-search-list">
             {filteredStates.length > 0 ? (
               filteredStates.map((st) => {
                 const isSelected = value === st;
                 return (
                   <div
                     key={st}
-                    className="d-flex align-items-center justify-content-between px-2.5 py-1.5 rounded-2 mb-0.5"
-                    style={{
-                      fontSize: "0.8rem",
-                      backgroundColor: isSelected ? "rgba(45, 197, 138, 0.12)" : "transparent",
-                      color: isSelected ? "#065f46" : "#1e293b",
-                      fontWeight: isSelected ? "600" : "400",
-                      transition: "background-color 0.15s ease",
-                      cursor: "pointer",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isSelected) e.currentTarget.style.backgroundColor = "#f1f5f9";
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSelected) e.currentTarget.style.backgroundColor = "transparent";
-                    }}
+                    className={`state-search-item ${isSelected ? "selected" : ""}`}
                     onClick={() => {
                       onChange(st);
                       setIsOpen(false);
@@ -493,12 +448,186 @@ function HrOnboarding() {
   const [loadingPipeline, setLoadingPipeline] = useState(false);
   const [pipelineSearch, setPipelineSearch] = useState("");
   const [pipelineStatusFilter, setPipelineStatusFilter] = useState("ALL");
+  const [pipelinePage, setPipelinePage] = useState(1);
+  const PIPELINE_PAGE_SIZE = 6;
+
+  const handlePipelineSearchChange = (val) => {
+    setPipelineSearch(val);
+    setPipelinePage(1);
+  };
+
+  const handlePipelineStatusFilterChange = (val) => {
+    setPipelineStatusFilter(val);
+    setPipelinePage(1);
+  };
+
+  const handleResetPipelineFilters = () => {
+    setPipelineSearch("");
+    setPipelineStatusFilter("ALL");
+    setPipelinePage(1);
+  };
+
+  const totalPipelineCandidates = onboardings.length;
+  const totalPipelinePages = Math.ceil(totalPipelineCandidates / PIPELINE_PAGE_SIZE) || 1;
+  const paginatedPipeline = useMemo(() => {
+    const start = (pipelinePage - 1) * PIPELINE_PAGE_SIZE;
+    return onboardings.slice(start, start + PIPELINE_PAGE_SIZE);
+  }, [onboardings, pipelinePage]);
+
+  const renderPipelinePagination = () => {
+    if (totalPipelineCandidates === 0) return null;
+    const startIdx = (pipelinePage - 1) * PIPELINE_PAGE_SIZE + 1;
+    const endIdx = Math.min(pipelinePage * PIPELINE_PAGE_SIZE, totalPipelineCandidates);
+
+    return (
+      <div className="onboarding-pagination-bar d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 px-md-4 py-2 bg-white border-top">
+        <div className="text-muted extra-small">
+          Showing <span className="fw-bold text-dark">{startIdx}–{endIdx}</span> of{" "}
+          <span className="fw-bold text-dark">{totalPipelineCandidates}</span> candidates
+        </div>
+        <Pagination size="sm" className="mb-0 onboarding-pagination">
+          <Pagination.Prev
+            disabled={pipelinePage === 1}
+            onClick={() => setPipelinePage((p) => Math.max(1, p - 1))}
+          >
+            Previous
+          </Pagination.Prev>
+          {[...Array(totalPipelinePages)].map((_, i) => {
+            const pg = i + 1;
+            if (totalPipelinePages > 7) {
+              if (pg !== 1 && pg !== totalPipelinePages && Math.abs(pg - pipelinePage) > 2) {
+                if (pg === 2 || pg === totalPipelinePages - 1) {
+                  return <Pagination.Ellipsis key={`ell-${pg}`} disabled />;
+                }
+                return null;
+              }
+            }
+            return (
+              <Pagination.Item
+                key={pg}
+                active={pg === pipelinePage}
+                onClick={() => setPipelinePage(pg)}
+              >
+                {pg}
+              </Pagination.Item>
+            );
+          })}
+          <Pagination.Next
+            disabled={pipelinePage === totalPipelinePages}
+            onClick={() => setPipelinePage((p) => Math.min(totalPipelinePages, p + 1))}
+          >
+            Next
+          </Pagination.Next>
+        </Pagination>
+      </div>
+    );
+  };
 
   // ── Directory & Roles State ──
   const [employees, setEmployees] = useState([]);
   const [assignableRoles, setAssignableRoles] = useState([]);
   const [availableAssets, setAvailableAssets] = useState([]);
   const [loadingDirectory, setLoadingDirectory] = useState(false);
+
+  // ── Employee Directory Pagination & Filtering (6 records per page) ──
+  const [directorySearch, setDirectorySearch] = useState("");
+  const [directoryStatusFilter, setDirectoryStatusFilter] = useState("ALL");
+  const [directoryPage, setDirectoryPage] = useState(1);
+  const DIRECTORY_PAGE_SIZE = 6;
+
+  const handleDirectorySearchChange = (val) => {
+    setDirectorySearch(val);
+    setDirectoryPage(1);
+  };
+
+  const handleDirectoryStatusFilterChange = (val) => {
+    setDirectoryStatusFilter(val);
+    setDirectoryPage(1);
+  };
+
+  const handleResetDirectoryFilters = () => {
+    setDirectorySearch("");
+    setDirectoryStatusFilter("ALL");
+    setDirectoryPage(1);
+  };
+
+  const filteredEmployees = useMemo(() => {
+    return (employees || []).filter((emp) => {
+      const q = directorySearch.trim().toLowerCase();
+      const matchesSearch =
+        !q ||
+        (emp.firstName && emp.firstName.toLowerCase().includes(q)) ||
+        (emp.lastName && emp.lastName.toLowerCase().includes(q)) ||
+        (emp.email && emp.email.toLowerCase().includes(q)) ||
+        (emp.employeeCode && emp.employeeCode.toLowerCase().includes(q)) ||
+        (emp.department && emp.department.toLowerCase().includes(q)) ||
+        (emp.designation && emp.designation.toLowerCase().includes(q));
+
+      const matchesStatus =
+        directoryStatusFilter === "ALL" ||
+        (directoryStatusFilter === "ACTIVE" && emp.isActive) ||
+        (directoryStatusFilter === "NO_LOGIN" && !emp.hasLoginAccess) ||
+        (directoryStatusFilter === "BLOCKED" && emp.isBlocked);
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [employees, directorySearch, directoryStatusFilter]);
+
+  const totalDirectoryEmployees = filteredEmployees.length;
+  const totalDirectoryPages = Math.ceil(totalDirectoryEmployees / DIRECTORY_PAGE_SIZE) || 1;
+  const paginatedEmployees = useMemo(() => {
+    const start = (directoryPage - 1) * DIRECTORY_PAGE_SIZE;
+    return filteredEmployees.slice(start, start + DIRECTORY_PAGE_SIZE);
+  }, [filteredEmployees, directoryPage]);
+
+  const renderDirectoryPagination = () => {
+    if (totalDirectoryEmployees === 0) return null;
+    const startIdx = (directoryPage - 1) * DIRECTORY_PAGE_SIZE + 1;
+    const endIdx = Math.min(directoryPage * DIRECTORY_PAGE_SIZE, totalDirectoryEmployees);
+
+    return (
+      <div className="onboarding-pagination-bar d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 px-md-4 py-2 bg-white border-top">
+        <div className="text-muted extra-small">
+          Showing <span className="fw-bold text-dark">{startIdx}–{endIdx}</span> of{" "}
+          <span className="fw-bold text-dark">{totalDirectoryEmployees}</span> employees
+        </div>
+        <Pagination size="sm" className="mb-0 onboarding-pagination">
+          <Pagination.Prev
+            disabled={directoryPage === 1}
+            onClick={() => setDirectoryPage((p) => Math.max(1, p - 1))}
+          >
+            Previous
+          </Pagination.Prev>
+          {[...Array(totalDirectoryPages)].map((_, i) => {
+            const pg = i + 1;
+            if (totalDirectoryPages > 7) {
+              if (pg !== 1 && pg !== totalDirectoryPages && Math.abs(pg - directoryPage) > 2) {
+                if (pg === 2 || pg === totalDirectoryPages - 1) {
+                  return <Pagination.Ellipsis key={`ell-${pg}`} disabled />;
+                }
+                return null;
+              }
+            }
+            return (
+              <Pagination.Item
+                key={pg}
+                active={pg === directoryPage}
+                onClick={() => setDirectoryPage(pg)}
+              >
+                {pg}
+              </Pagination.Item>
+            );
+          })}
+          <Pagination.Next
+            disabled={directoryPage === totalDirectoryPages}
+            onClick={() => setDirectoryPage((p) => Math.min(totalDirectoryPages, p + 1))}
+          >
+            Next
+          </Pagination.Next>
+        </Pagination>
+      </div>
+    );
+  };
 
   // ── Initiate Multi-Step Form State ──
   const [activeFormTab, setActiveFormTab] = useState("personal");
@@ -2430,31 +2559,31 @@ function HrOnboarding() {
     switch (status) {
       case "AVAILABLE":
         return (
-          <Badge bg="success" className="px-2.5 py-1 rounded-pill" style={{ backgroundColor: "#10b981", fontSize: "0.75rem" }}>
+          <Badge bg="success" className="onboarding-badge status-active">
             ● Available
           </Badge>
         );
       case "ASSIGNED":
         return (
-          <Badge bg="primary" className="px-2.5 py-1 rounded-pill" style={{ backgroundColor: "#3b82f6", fontSize: "0.75rem" }}>
+          <Badge bg="primary" className="onboarding-badge status-initiated">
             ● Assigned
           </Badge>
         );
       case "DAMAGED":
         return (
-          <Badge bg="danger" className="px-2.5 py-1 rounded-pill" style={{ backgroundColor: "#ef4444", fontSize: "0.75rem" }}>
+          <Badge bg="danger" className="onboarding-badge status-rejected">
             ● Damaged
           </Badge>
         );
       case "UNDER_REPAIR":
         return (
-          <Badge bg="warning" className="px-2.5 py-1 text-dark rounded-pill" style={{ backgroundColor: "#f59e0b", fontSize: "0.75rem" }}>
+          <Badge bg="warning" className="onboarding-badge status-doc-verification">
             ● Under Repair
           </Badge>
         );
       case "RETIRED":
         return (
-          <Badge bg="secondary" className="px-2.5 py-1 rounded-pill" style={{ backgroundColor: "#64748b", fontSize: "0.75rem" }}>
+          <Badge bg="secondary" className="onboarding-badge status-default">
             ● Retired
           </Badge>
         );
@@ -3330,73 +3459,49 @@ function HrOnboarding() {
     switch (status) {
       case "ONBOARDING":
         return (
-          <span
-            className="d-inline-flex align-items-center px-2.5 py-1 rounded-pill extra-small fw-bold border"
-            style={{ backgroundColor: "rgba(59, 130, 246, 0.12)", color: "#1d4ed8", borderColor: "rgba(59, 130, 246, 0.3)" }}
-          >
+          <span className="d-inline-flex align-items-center onboarding-badge status-initiated">
             ● Onboarding
           </span>
         );
       case "IN_PROGRESS":
         return (
-          <span
-            className="d-inline-flex align-items-center px-2.5 py-1 rounded-pill extra-small fw-bold border"
-            style={{ backgroundColor: "rgba(6, 182, 212, 0.12)", color: "#0e7490", borderColor: "rgba(6, 182, 212, 0.3)" }}
-          >
+          <span className="d-inline-flex align-items-center onboarding-badge status-inprogress">
             ● In Progress
           </span>
         );
       case "PENDING_VALIDATION":
         return (
-          <span
-            className="d-inline-flex align-items-center px-2.5 py-1 rounded-pill extra-small fw-bold border"
-            style={{ backgroundColor: "rgba(245, 158, 11, 0.12)", color: "#b45309", borderColor: "rgba(245, 158, 11, 0.3)" }}
-          >
+          <span className="d-inline-flex align-items-center onboarding-badge status-doc-verification">
             ● Pending Validation
           </span>
         );
       case "VALIDATION_FAILED":
         return (
-          <span
-            className="d-inline-flex align-items-center px-2.5 py-1 rounded-pill extra-small fw-bold border"
-            style={{ backgroundColor: "rgba(239, 68, 68, 0.12)", color: "#b91c1c", borderColor: "rgba(239, 68, 68, 0.3)" }}
-          >
+          <span className="d-inline-flex align-items-center onboarding-badge status-rejected">
             ● Validation Failed
           </span>
         );
       case "READY_FOR_COMPLETION":
         return (
-          <span
-            className="d-inline-flex align-items-center px-2.5 py-1 rounded-pill extra-small fw-bold border shadow-xs"
-            style={{ backgroundColor: "rgba(99, 102, 241, 0.15)", color: "#4338ca", borderColor: "rgba(99, 102, 241, 0.4)" }}
-          >
+          <span className="d-inline-flex align-items-center onboarding-badge status-ready shadow-xs">
             ● Ready for Completion
           </span>
         );
       case "COMPLETED":
         return (
-          <span
-            className="d-inline-flex align-items-center px-2.5 py-1 rounded-pill extra-small fw-bold border"
-            style={{ backgroundColor: "rgba(16, 185, 129, 0.15)", color: "#065f46", borderColor: "rgba(16, 185, 129, 0.4)" }}
-          >
-            <FaCheckCircle className="me-1" style={{ color: "#10b981" }} /> Completed
+          <span className="d-inline-flex align-items-center onboarding-badge status-completed">
+            <FaCheckCircle className="me-1 text-success" /> Completed
           </span>
         );
       case "REJECTED":
         return (
-          <span
-            className="d-inline-flex align-items-center px-2.5 py-1 rounded-pill extra-small fw-bold border"
-            style={{ backgroundColor: "rgba(100, 116, 139, 0.12)", color: "#334155", borderColor: "rgba(100, 116, 139, 0.3)" }}
-          >
+          <span className="d-inline-flex align-items-center onboarding-badge status-default">
             ● Rejected
           </span>
         );
       default:
         return (
-          <span
-            className="d-inline-flex align-items-center px-2.5 py-1 rounded-pill extra-small fw-bold border"
-            style={{ backgroundColor: "rgba(100, 116, 139, 0.12)", color: "#334155", borderColor: "rgba(100, 116, 139, 0.3)" }}
-          >
+          <span className="d-inline-flex align-items-center onboarding-badge status-default">
             {status || "Pending"}
           </span>
         );
@@ -3605,23 +3710,12 @@ function HrOnboarding() {
       {/* ── 1. TOP PAGE HEADER ── */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
         <div className="d-flex align-items-center gap-3">
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 14,
-              background: "linear-gradient(135deg, rgba(45,197,138,0.2) 0%, rgba(32,166,115,0.35) 100%)",
-              border: "1px solid rgba(45, 197, 138, 0.45)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <FaUserPlus style={{ fontSize: 24, color: "#2DC58A" }} />
+          <div className="onboarding-header-icon">
+            <FaUserPlus />
           </div>
           <div>
             <div className="d-flex align-items-center gap-2">
-              <h4 className="mb-0 fw-bold" style={{ color: "#1e293b" }}>
+              <h4 className="mb-0 fw-bold onboarding-header-title">
                 HR Onboarding & Lifecycle Management
               </h4>
               <Badge bg="success" className="bg-opacity-10 text-success border border-success-subtle px-2 py-0.5 rounded-pill extra-small fw-bold">
@@ -3634,136 +3728,45 @@ function HrOnboarding() {
           </div>
         </div>
 
-        {/* View Switcher Controls */}
-        <div className="d-flex align-items-center gap-2 bg-white border p-1 rounded-pill shadow-xs">
+        {/* Top Header Primary Action */}
+        <div>
           <Button
-            variant={viewTab === "pipeline" ? "success" : "light"}
+            variant="success"
             size="sm"
-            className={`rounded-pill px-3 py-1.5 extra-small fw-bold d-flex align-items-center gap-1.5 ${viewTab === "pipeline" ? "text-white shadow-xs" : "text-secondary border-0 bg-transparent"}`}
-            style={viewTab === "pipeline" ? { backgroundColor: "#2DC58A", borderColor: "#2DC58A" } : {}}
-            onClick={() => setViewTab("pipeline")}
-          >
-            <FaTasks /> Active Pipeline ({totalPipelineCount})
-          </Button>
-          <Button
-            variant={viewTab === "onboard" ? "success" : "light"}
-            size="sm"
-            className={`rounded-pill px-3 py-1.5 extra-small fw-bold d-flex align-items-center gap-1.5 ${viewTab === "onboard" ? "text-white shadow-xs" : "text-secondary border-0 bg-transparent"}`}
-            style={viewTab === "onboard" ? { backgroundColor: "#2DC58A", borderColor: "#2DC58A" } : {}}
+            className="rounded-pill px-3.5 py-1.5 extra-small fw-bold d-flex align-items-center gap-1.5 text-white shadow-xs onboarding-primary-action-btn text-nowrap"
             onClick={handleInitiateNewOnboarding}
+            title="Start onboarding for a new employee/candidate"
           >
-            <FaPlus /> Initiate Onboarding
-          </Button>
-          <Button
-            variant={viewTab === "directory" ? "success" : "light"}
-            size="sm"
-            className={`rounded-pill px-3 py-1.5 extra-small fw-bold d-flex align-items-center gap-1.5 ${viewTab === "directory" ? "text-white shadow-xs" : "text-secondary border-0 bg-transparent"}`}
-            style={viewTab === "directory" ? { backgroundColor: "#2DC58A", borderColor: "#2DC58A" } : {}}
-            onClick={() => setViewTab("directory")}
-          >
-            <FaUsers /> Employee Directory ({employees.length})
+            <FaPlus /> Start Onboarding
           </Button>
         </div>
       </div>
 
-      {/* ── 2. SUMMARY KPI STAT CARDS ── */}
-      <Row className="g-3 mb-4">
-        <Col xs={6} md={3}>
-          <Card className="border shadow-xs rounded-4 p-3 bg-white h-100">
-            <div className="d-flex justify-content-between align-items-center">
-              <div>
-                <span className="text-muted extra-small fw-semibold text-uppercase">Total In Pipeline</span>
-                <h3 className="mb-0 fw-bold mt-1 text-dark">{totalPipelineCount}</h3>
-              </div>
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  background: "rgba(59, 130, 246, 0.1)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <FaUsers style={{ fontSize: 22, color: "#3b82f6" }} />
-              </div>
-            </div>
-          </Card>
-        </Col>
+      {/* ── SECTION NAVIGATION BAR ── */}
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4 pb-2 border-bottom">
+        <div className="onboarding-section-nav-wrapper">
+          <button
+            type="button"
+            className={`onboarding-section-tab-btn ${viewTab === "pipeline" ? "active" : ""}`}
+            onClick={() => setViewTab("pipeline")}
+          >
+            <FaTasks className="me-1.5" /> Onboarding Pipeline ({totalPipelineCount})
+          </button>
+          <button
+            type="button"
+            className={`onboarding-section-tab-btn ${viewTab === "directory" ? "active" : ""}`}
+            onClick={() => setViewTab("directory")}
+          >
+            <FaUsers className="me-1.5" /> Employee Directory ({employees.length})
+          </button>
+        </div>
 
-        <Col xs={6} md={3}>
-          <Card className="border shadow-xs rounded-4 p-3 bg-white h-100">
-            <div className="d-flex justify-content-between align-items-center">
-              <div>
-                <span className="text-muted extra-small fw-semibold text-uppercase">In-Progress Tasks</span>
-                <h3 className="mb-0 fw-bold mt-1 text-warning">{inProgressCount}</h3>
-              </div>
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  background: "rgba(245, 158, 11, 0.1)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <FaClock style={{ fontSize: 22, color: "#f59e0b" }} />
-              </div>
-            </div>
-          </Card>
-        </Col>
-
-        <Col xs={6} md={3}>
-          <Card className="border shadow-xs rounded-4 p-3 bg-white h-100">
-            <div className="d-flex justify-content-between align-items-center">
-              <div>
-                <span className="text-muted extra-small fw-semibold text-uppercase">Validation Passed</span>
-                <h3 className="mb-0 fw-bold mt-1" style={{ color: "#6366f1" }}>{readyCount}</h3>
-              </div>
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  background: "rgba(99, 102, 241, 0.1)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <FaShieldAlt style={{ fontSize: 22, color: "#6366f1" }} />
-              </div>
-            </div>
-          </Card>
-        </Col>
-
-        <Col xs={6} md={3}>
-          <Card className="border shadow-xs rounded-4 p-3 bg-white h-100">
-            <div className="d-flex justify-content-between align-items-center">
-              <div>
-                <span className="text-muted extra-small fw-semibold text-uppercase">Completed & Active</span>
-                <h3 className="mb-0 fw-bold mt-1" style={{ color: "#10b981" }}>{completedCount}</h3>
-              </div>
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  background: "rgba(16, 185, 129, 0.1)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <FaCheckCircle style={{ fontSize: 22, color: "#10b981" }} />
-              </div>
-            </div>
-          </Card>
-        </Col>
-      </Row>
+        {viewTab === "onboard" && (
+          <Badge bg="success" className="bg-opacity-10 text-success border border-success-subtle px-3 py-1.5 rounded-pill extra-small fw-bold">
+            + New Onboarding Form Active
+          </Badge>
+        )}
+      </div>
 
       {/* ── ALERTS & FEEDBACK ── */}
       {errorMsg && (
@@ -3773,7 +3776,7 @@ function HrOnboarding() {
         </Alert>
       )}
       {successMsg && (
-        <Alert variant="success" dismissible onClose={() => setSuccessMsg("")} className="small py-2 mb-3 shadow-xs rounded-3 border-0 d-flex align-items-center gap-2" style={{ backgroundColor: "rgba(45, 197, 138, 0.15)", color: "#065f46" }}>
+        <Alert variant="success" dismissible onClose={() => setSuccessMsg("")} className="small py-2 mb-3 shadow-xs rounded-3 border-0 d-flex align-items-center gap-2 alert-mint-subtle">
           <FaCheckCircle className="flex-shrink-0" />
           <div>{successMsg}</div>
         </Alert>
@@ -3783,21 +3786,81 @@ function HrOnboarding() {
           VIEW 1: ACTIVE ONBOARDING PIPELINE & CANDIDATE TABLE
           ======================================================== */}
       {viewTab === "pipeline" && (
-        <Card className="border shadow-xs rounded-4 overflow-hidden mb-4 bg-white">
-          <Card.Header className="bg-white py-3 px-3 px-md-4 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <div className="d-flex align-items-center gap-2">
-              <span className="fw-bold text-dark fs-6">Candidate Onboarding Pipeline</span>
-              <Badge bg="light" text="dark" className="border px-2 py-0.5 rounded-pill extra-small fw-semibold">{onboardings.length} Active Records</Badge>
-            </div>
+        <>
+          {/* Summary KPI Stat Cards for Onboarding Pipeline */}
+          <Row className="g-3 mb-4">
+            <Col xs={6} md={3}>
+              <Card className="onboarding-kpi-card p-3">
+                <div className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <span className="onboarding-kpi-lbl">Total Pipeline</span>
+                    <h3 className="onboarding-kpi-val mt-1 text-dark">{totalPipelineCount}</h3>
+                  </div>
+                  <div className="onboarding-kpi-icon icon-pipeline">
+                    <FaUsers />
+                  </div>
+                </div>
+              </Card>
+            </Col>
+
+            <Col xs={6} md={3}>
+              <Card className="onboarding-kpi-card p-3">
+                <div className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <span className="onboarding-kpi-lbl">In Progress</span>
+                    <h3 className="onboarding-kpi-val mt-1 text-warning">{inProgressCount}</h3>
+                  </div>
+                  <div className="onboarding-kpi-icon icon-progress">
+                    <FaClock />
+                  </div>
+                </div>
+              </Card>
+            </Col>
+
+            <Col xs={6} md={3}>
+              <Card className="onboarding-kpi-card p-3">
+                <div className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <span className="onboarding-kpi-lbl">Validation Passed</span>
+                    <h3 className="onboarding-kpi-val mt-1 text-primary">{readyCount}</h3>
+                  </div>
+                  <div className="onboarding-kpi-icon icon-ready">
+                    <FaShieldAlt />
+                  </div>
+                </div>
+              </Card>
+            </Col>
+
+            <Col xs={6} md={3}>
+              <Card className="onboarding-kpi-card p-3">
+                <div className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <span className="onboarding-kpi-lbl">Completed & Active</span>
+                    <h3 className="onboarding-kpi-val mt-1 text-success">{completedCount}</h3>
+                  </div>
+                  <div className="onboarding-kpi-icon icon-completed">
+                    <FaCheckCircle />
+                  </div>
+                </div>
+              </Card>
+            </Col>
+          </Row>
+
+          <Card className="border shadow-xs rounded-4 overflow-hidden mb-4 bg-white">
+            <Card.Header className="bg-white py-3 px-3 px-md-4 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+              <div className="d-flex align-items-center gap-2">
+                <span className="fw-bold text-dark fs-6">Candidate Onboarding Pipeline</span>
+                <Badge bg="light" text="dark" className="border px-2 py-0.5 rounded-pill extra-small fw-semibold">{onboardings.length} Active Records</Badge>
+              </div>
 
             {/* Filters & Search */}
             <div className="d-flex flex-wrap align-items-center gap-2">
-              <InputGroup size="sm" style={{ width: 230 }}>
+              <InputGroup size="sm" className="onboarding-search-input" style={{ width: "220px" }}>
                 <InputGroup.Text className="bg-light border-end-0 text-muted"><FaSearch /></InputGroup.Text>
                 <Form.Control
                   placeholder="Search candidate, code..."
                   value={pipelineSearch}
-                  onChange={(e) => setPipelineSearch(e.target.value)}
+                  onChange={(e) => handlePipelineSearchChange(e.target.value)}
                   className="border-start-0 bg-light shadow-none"
                 />
               </InputGroup>
@@ -3805,9 +3868,9 @@ function HrOnboarding() {
               <Form.Select
                 size="sm"
                 value={pipelineStatusFilter}
-                onChange={(e) => setPipelineStatusFilter(e.target.value)}
-                style={{ width: 180 }}
-                className="bg-light shadow-none border"
+                onChange={(e) => handlePipelineStatusFilterChange(e.target.value)}
+                className="bg-light shadow-none border onboarding-status-filter"
+                style={{ width: "160px" }}
               >
                 <option value="ALL">All Statuses</option>
                 <option value="ONBOARDING">ONBOARDING</option>
@@ -3816,6 +3879,18 @@ function HrOnboarding() {
                 <option value="READY_FOR_COMPLETION">READY_FOR_COMPLETION</option>
                 <option value="COMPLETED">COMPLETED</option>
               </Form.Select>
+
+              {(pipelineSearch || pipelineStatusFilter !== "ALL") && (
+                <Button
+                  variant="light"
+                  size="sm"
+                  className="border rounded-pill px-2.5 extra-small fw-semibold text-secondary shadow-xs"
+                  onClick={handleResetPipelineFilters}
+                  title="Reset Search and Status Filters"
+                >
+                  <FaTimes className="me-1" /> Reset
+                </Button>
+              )}
 
               <Button
                 variant="light"
@@ -3842,28 +3917,26 @@ function HrOnboarding() {
                 <p className="extra-small text-muted mb-3">Initiate onboarding for a new candidate or adjust filter criteria.</p>
                 <Button
                   size="sm"
-                  className="rounded-pill px-3 extra-small fw-bold text-white shadow-xs"
-                  style={{ backgroundColor: "#2DC58A", borderColor: "#2DC58A" }}
+                  className="rounded-pill px-3 extra-small fw-bold text-white shadow-xs onboarding-btn-mint"
                   onClick={handleInitiateNewOnboarding}
                 >
                   <FaUserPlus className="me-1" /> Onboard First Employee
                 </Button>
               </div>
             ) : (
-              <Table hover responsive align="middle" className="mb-0">
+              <Table hover align="middle" className="mb-0 small onboarding-pipeline-table">
                 <thead className="table-light extra-small text-uppercase text-muted border-bottom">
                   <tr>
-                    <th className="ps-4">Candidate / Code</th>
-                    <th>Department & Role</th>
-                    <th>Joining Date</th>
-                    <th>Progress & Status</th>
-                    <th>Lifecycle Stage</th>
-                    <th>Login Access</th>
-                    <th className="text-end pe-4">Actions</th>
+                    <th className="ps-3 ps-md-4" style={{ width: "28%" }}>Candidate</th>
+                    <th style={{ width: "18%" }}>Role & Dept</th>
+                    <th style={{ width: "16%" }}>Joining & Type</th>
+                    <th style={{ width: "20%" }}>Status & Progress</th>
+                    <th style={{ width: "10%" }}>Login Access</th>
+                    <th className="text-end pe-3 pe-md-4" style={{ width: "8%" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {onboardings.map((item) => {
+                  {paginatedPipeline.map((item) => {
                     const emp = item?.employeeId || {};
                     const tasksList = toArray(item?.tasks);
                     const totalTasks = tasksList.length;
@@ -3875,87 +3948,83 @@ function HrOnboarding() {
 
                     return (
                       <tr key={item._id}>
-                        <td className="ps-4">
-                          <div className="d-flex align-items-center gap-2.5">
+                        <td className="ps-3 ps-md-4">
+                          <div className="d-flex align-items-center gap-2">
                             {emp.avatar ? (
-                              <Image src={emp.avatar} roundedCircle width={38} height={38} />
+                              <Image src={emp.avatar} roundedCircle width={32} height={32} className="flex-shrink-0" />
                             ) : (
-                              <div
-                                className="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0 shadow-xs"
-                                style={{
-                                  width: 38,
-                                  height: 38,
-                                  fontSize: "0.85rem",
-                                  background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                                }}
-                              >
+                              <div className="onboarding-avatar-circle-32 shadow-xs">
                                 {initial}
                               </div>
                             )}
-                            <div>
-                              <div className="fw-bold text-dark small">
+                            <div className="min-w-0">
+                              <div className="fw-bold text-dark small text-truncate onboarding-text-truncate-180" title={fullName}>
                                 {fullName}
                               </div>
-                              <div className="extra-small text-muted d-flex align-items-center gap-1.5 mt-0.5">
-                                <Badge bg="light" text="dark" className="border font-monospace py-0.5 px-1.5 extra-small">
+                              <div className="extra-small text-muted d-flex align-items-center gap-1 mt-0.5">
+                                <code className="extra-small text-muted">
                                   {emp.employeeCode || item.candidateCode || "EMP-NEW"}
-                                </Badge>
+                                </code>
                                 <span>•</span>
-                                <span className="text-truncate" style={{ maxWidth: 160 }}>{emp.email || item.email || "—"}</span>
+                                <span className="onboarding-text-truncate-140" title={emp.email || item.email || "—"}>
+                                  {emp.email || item.email || "—"}
+                                </span>
                               </div>
                             </div>
                           </div>
                         </td>
                         <td>
-                          <div className="small text-dark fw-bold">{emp.department || item.department || "General"}</div>
-                          <div className="extra-small text-muted">{emp.designation || item.designation || "Employee"}</div>
+                          <div className="small text-dark fw-semibold text-truncate onboarding-text-truncate-160" title={emp.department || item.department || "General"}>
+                            {emp.department || item.department || "General"}
+                          </div>
+                          <div className="extra-small text-muted text-truncate onboarding-text-truncate-160" title={emp.designation || item.designation || "Employee"}>
+                            {emp.designation || item.designation || "Employee"}
+                          </div>
                         </td>
                         <td>
-                          <div className="small text-dark fw-semibold">
+                          <div className="small text-dark fw-medium text-nowrap">
                             {item.joiningDate ? new Date(item.joiningDate).toLocaleDateString() : "—"}
                           </div>
-                          <div className="extra-small text-muted">
+                          <div className="extra-small text-muted text-nowrap mt-0.5">
                             <Badge bg="light" text="secondary" className="border py-0.5 px-1.5 extra-small">
                               {(item.employmentType || "FULL_TIME").replace(/_/g, " ")}
                             </Badge>
                           </div>
                         </td>
                         <td>
-                          <div className="mb-1.5">{getStatusBadge(item.status)}</div>
-                          <div style={{ maxWidth: 140 }}>
-                            <ProgressBar now={taskPct} variant="success" style={{ height: 5 }} className="rounded-pill" />
-                            <span className="extra-small text-muted d-block mt-1 fw-medium" style={{ fontSize: "0.72rem" }}>
+                          <div className="d-flex align-items-center gap-1.5 mb-1 flex-wrap">
+                            {getStatusBadge(item.status)}
+                            {emp.lifecycleStatus && emp.lifecycleStatus !== "ONBOARDING" && (
+                              <Badge bg="light" text="dark" className="border px-1.5 py-0.5 rounded-pill extra-small">
+                                {emp.lifecycleStatus}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="onboarding-progress-compact">
+                            <ProgressBar now={taskPct} variant="success" className="rounded-pill onboarding-progress-bar-5" />
+                            <span className="extra-small text-muted d-block mt-0.5 fw-medium">
                               {completedTasks}/{totalTasks} tasks ({taskPct}%)
                             </span>
                           </div>
                         </td>
-                        <td>
-                          <Badge
-                            bg={emp.lifecycleStatus === "ACTIVE" ? "success" : "info"}
-                            className="bg-opacity-10 text-dark border px-2.5 py-1 rounded-pill extra-small fw-semibold"
-                          >
-                            {emp.lifecycleStatus || "ONBOARDING"}
-                          </Badge>
-                        </td>
-                        <td>
+                        <td className="text-nowrap">
                           {hasLogin ? (
-                            <Badge bg="success" className="bg-opacity-10 text-success border border-success-subtle px-2.5 py-1 rounded-pill extra-small fw-bold d-inline-flex align-items-center gap-1">
-                              <FaCheckCircle size={10} /> Login Enabled
+                            <Badge bg="success" className="bg-opacity-10 text-success border border-success-subtle px-2 py-0.5 rounded-pill extra-small fw-bold d-inline-flex align-items-center gap-1">
+                              <FaCheckCircle size={10} /> Enabled
                             </Badge>
                           ) : (
-                            <Badge bg="secondary" className="bg-opacity-10 text-secondary border border-secondary-subtle px-2.5 py-1 rounded-pill extra-small fw-semibold d-inline-flex align-items-center gap-1">
-                              <FaLock size={10} /> Not Provisioned
+                            <Badge bg="secondary" className="bg-opacity-10 text-secondary border border-secondary-subtle px-2 py-0.5 rounded-pill extra-small fw-semibold d-inline-flex align-items-center gap-1">
+                              <FaLock size={10} /> None
                             </Badge>
                           )}
                         </td>
-                        <td className="text-end pe-4">
+                        <td className="text-end pe-3 pe-md-4 text-nowrap">
                           <Button
                             size="sm"
-                            className="rounded-pill px-3 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1.5 text-white shadow-xs"
-                            style={{ backgroundColor: "#2DC58A", borderColor: "#2DC58A" }}
+                            className="rounded-pill px-2.5 py-1 extra-small fw-semibold d-inline-flex align-items-center gap-1 text-white shadow-xs onboarding-btn-mint text-nowrap"
                             onClick={() => handleOpenCandidateWorkspace(item._id)}
                           >
-                            <FaCog size={11} /> Inspect & Manage
+                            <FaCog size={11} /> Manage
                           </Button>
                         </td>
                       </tr>
@@ -3965,8 +4034,10 @@ function HrOnboarding() {
               </Table>
             )}
           </div>
+          {renderPipelinePagination()}
         </Card>
-      )}
+      </>
+    )}
 
       {/* ========================================================
           VIEW 2: INITIATE ONBOARDING (MULTI-STEP FORM)
@@ -4022,7 +4093,7 @@ function HrOnboarding() {
                         {formData.profilePicPreview ? (
                           <Image src={formData.profilePicPreview} roundedCircle width={40} height={40} className="border border-success" />
                         ) : (
-                          <div className="rounded-circle bg-light border d-flex align-items-center justify-content-center text-muted" style={{ width: 40, height: 40 }}>
+                          <div className="onboarding-avatar-circle-40">
                             <FaUser size={16} />
                           </div>
                         )}
@@ -4577,7 +4648,7 @@ function HrOnboarding() {
                                 <span className="extra-small text-muted fw-semibold">Document:</span>
                                 <Form.Select
                                   size="sm"
-                                  style={{ width: 220, fontSize: "0.75rem" }}
+                                  className="onboarding-col-w220-sm"
                                   value={prof.docType || "OFFER_LETTER"}
                                   onChange={(e) => {
                                     const arr = [...formData.professional];
@@ -5043,7 +5114,7 @@ function HrOnboarding() {
                             <span className="extra-small text-muted fw-semibold">Attached Document:</span>
                             <Form.Select
                               size="sm"
-                              style={{ width: 220, fontSize: "0.75rem" }}
+                              className="onboarding-col-w220-sm"
                               value={exp.docType || "EXPERIENCE_LETTER"}
                               onChange={(e) => {
                                 const arr = [...formData.experience];
@@ -5272,14 +5343,7 @@ function HrOnboarding() {
                         <Card.Header className="bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
                           <div className="d-flex align-items-center gap-2.5">
                             <div
-                              className="rounded-circle d-flex align-items-center justify-content-center"
-                              style={{
-                                width: 34,
-                                height: 34,
-                                background: idx === 0 ? "rgba(45, 197, 138, 0.15)" : "rgba(59, 130, 246, 0.12)",
-                                color: idx === 0 ? "#2DC58A" : "#2563EB",
-                                fontSize: 14,
-                              }}
+                              className={idx === 0 ? "company-badge-primary rounded-circle" : "company-badge-secondary rounded-circle"}
                             >
                               <FaUsers />
                             </div>
@@ -5452,7 +5516,7 @@ function HrOnboarding() {
                 <h6 className="fw-bold text-dark small mb-2">Onboarding Profile Completion</h6>
                 <h2 className="fw-bold text-success mb-0">{formProgress}%</h2>
                 <span className="extra-small text-muted">{completedSections} of {totalSections} sections filled</span>
-                <ProgressBar now={formProgress} variant="success" className="rounded-pill mt-2 mb-2" style={{ height: 6 }} />
+                <ProgressBar now={formProgress} variant="success" className="rounded-pill mt-2 mb-2 onboarding-progress-bar-6" />
               </div>
 
               {/* Section Checklist */}
@@ -5526,138 +5590,198 @@ function HrOnboarding() {
           VIEW 3: ONBOARDED DIRECTORY & LOGIN MANAGEMENT
           ======================================================== */}
       {viewTab === "directory" && (
-        <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
-          <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-            <div>
-              <span className="fw-bold text-dark">Employee Directory & Account Credentials</span>
-              <span className="text-muted extra-small ms-2">({employees.length} total)</span>
+        <Card id="employee-directory-section" className="border shadow-xs rounded-4 overflow-hidden mb-4 bg-white">
+          <Card.Header className="bg-white py-3 px-3 px-md-4 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div className="d-flex align-items-center gap-2">
+              <span className="fw-bold text-dark fs-6">Employee Directory & Account Credentials</span>
+              <Badge bg="light" text="dark" className="border px-2 py-0.5 rounded-pill extra-small fw-semibold">
+                {totalDirectoryEmployees} {totalDirectoryEmployees === 1 ? "Employee" : "Employees"}
+              </Badge>
             </div>
-            <Button
-              variant="outline-success"
-              size="sm"
-              className="rounded-pill px-3"
-              onClick={loadMasterData}
-            >
-              <FaSyncAlt /> Refresh
-            </Button>
+
+            {/* Filters, Search & Refresh */}
+            <div className="d-flex flex-wrap align-items-center gap-2">
+              <InputGroup size="sm" className="onboarding-search-input" style={{ width: "220px" }}>
+                <InputGroup.Text className="bg-light border-end-0 text-muted"><FaSearch /></InputGroup.Text>
+                <Form.Control
+                  placeholder="Search name, code, role..."
+                  value={directorySearch}
+                  onChange={(e) => handleDirectorySearchChange(e.target.value)}
+                  className="border-start-0 bg-light shadow-none"
+                />
+              </InputGroup>
+
+              <Form.Select
+                size="sm"
+                style={{ width: "140px" }}
+                value={directoryStatusFilter}
+                onChange={(e) => handleDirectoryStatusFilterChange(e.target.value)}
+                className="bg-light shadow-none border"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="ACTIVE">Active</option>
+                <option value="NO_LOGIN">No Login</option>
+                <option value="BLOCKED">Blocked</option>
+              </Form.Select>
+
+              {(directorySearch || directoryStatusFilter !== "ALL") && (
+                <Button
+                  variant="light"
+                  size="sm"
+                  className="border rounded-pill px-2.5 extra-small fw-semibold text-secondary shadow-xs"
+                  onClick={handleResetDirectoryFilters}
+                  title="Reset Search and Status Filters"
+                >
+                  <FaTimes className="me-1" /> Reset
+                </Button>
+              )}
+
+              <Button
+                variant="outline-success"
+                size="sm"
+                className="rounded-pill px-3 extra-small fw-semibold d-flex align-items-center gap-1.5 shadow-xs"
+                onClick={loadMasterData}
+                disabled={loadingDirectory}
+              >
+                <FaSyncAlt className={loadingDirectory ? "fa-spin" : ""} /> Refresh
+              </Button>
+            </div>
           </Card.Header>
 
           <div className="table-responsive">
             {loadingDirectory ? (
               <div className="text-center py-5">
-                <Spinner animation="border" variant="success" />
-                <div className="small text-muted mt-2">Loading employee directory...</div>
+                <Spinner animation="border" variant="success" size="sm" />
+                <div className="extra-small text-muted mt-2">Loading employee directory...</div>
               </div>
             ) : (
-              <Table hover align="middle" className="mb-0">
-                <thead className="table-light extra-small text-uppercase text-muted">
+              <Table hover align="middle" className="mb-0 small onboarding-directory-table">
+                <thead className="table-light extra-small text-uppercase text-muted border-bottom">
                   <tr>
-                    <th className="ps-4">Employee</th>
-                    <th>Code</th>
-                    <th>Department / Role</th>
-                    <th>Lifecycle</th>
-                    <th>Login Status</th>
-                    <th>Assigned Role</th>
-                    <th className="text-end pe-4">Account Action</th>
+                    <th className="ps-3 ps-md-4" style={{ width: "30%" }}>Employee</th>
+                    <th style={{ width: "12%" }}>Code</th>
+                    <th style={{ width: "20%" }}>Role & Dept</th>
+                    <th style={{ width: "16%" }}>Status</th>
+                    <th style={{ width: "14%" }}>Assigned Role</th>
+                    <th className="text-end pe-3 pe-md-4" style={{ width: "8%" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {employees.map((emp) => {
-                    const hasAccount = emp?.hasLoginAccess === true;
-                    const isOwner = emp?.role?.priority === 1 || emp?.role?.roleCode === "OWNER";
-                    const canManage = currentUser?.priority === 1 || (!isOwner && (isSystemAdmin || hasPermission("user.manage_roles")));
+                  {filteredEmployees.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-5 text-muted">
+                        <FaUsers size={32} className="text-secondary opacity-50 mb-2" />
+                        <div className="fw-semibold text-dark">No employees found</div>
+                        <p className="extra-small text-muted mb-0">No employee records match your search or filter criteria.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedEmployees.map((emp) => {
+                      const hasAccount = emp?.hasLoginAccess === true;
+                      const isOwner = emp?.role?.priority === 1 || emp?.role?.roleCode === "OWNER";
+                      const canManage = currentUser?.priority === 1 || (!isOwner && (isSystemAdmin || hasPermission("user.manage_roles")));
 
-                    return (
-                      <tr key={emp._id || emp.id}>
-                        <td className="ps-4">
-                          <div className="d-flex align-items-center gap-2">
-                            {emp.avatar ? (
-                              <Image src={emp.avatar} roundedCircle width={34} height={34} />
-                            ) : (
-                              <div className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-bold" style={{ width: 34, height: 34, fontSize: "0.8rem" }}>
-                                {emp.firstName ? emp.firstName[0] : "U"}
+                      return (
+                        <tr key={emp._id || emp.id}>
+                          <td className="ps-3 ps-md-4">
+                            <div className="d-flex align-items-center gap-2">
+                              {emp.avatar ? (
+                                <Image src={emp.avatar} roundedCircle width={32} height={32} className="flex-shrink-0" />
+                              ) : (
+                                <div className="onboarding-avatar-circle-32 shadow-xs">
+                                  {emp.firstName ? emp.firstName[0].toUpperCase() : "U"}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <div className="fw-semibold text-dark text-truncate onboarding-text-truncate-180" title={`${emp.firstName || ""} ${emp.lastName || ""}`.trim()}>
+                                  {emp.firstName} {emp.lastName}
+                                </div>
+                                <div className="extra-small text-muted text-truncate onboarding-text-truncate-160" title={emp.email || ""}>
+                                  {emp.email}
+                                </div>
                               </div>
-                            )}
-                            <div>
-                              <div className="fw-semibold text-dark">
-                                {emp.firstName} {emp.lastName}
-                              </div>
-                              <div className="extra-small text-muted">{emp.email}</div>
                             </div>
-                          </div>
-                        </td>
-                        <td>
-                          <code>{emp.employeeCode || "—"}</code>
-                        </td>
-                        <td>
-                          <div className="small text-dark fw-medium">{emp.department || "General"}</div>
-                          <div className="extra-small text-muted">{emp.designation || "Employee"}</div>
-                        </td>
-                        <td>
-                          <Badge bg={emp.lifecycleStatus === "ACTIVE" ? "success" : "info"} className="px-2 py-1">
-                            {emp.lifecycleStatus || "ACTIVE"}
-                          </Badge>
-                        </td>
-                        <td>
-                          {!hasAccount ? (
-                            <Badge bg="warning" text="dark" className="px-2 py-1 rounded-pill">
-                              No Login Access
-                            </Badge>
-                          ) : emp.isBlocked ? (
-                            <Badge bg="danger" className="px-2 py-1 rounded-pill">
-                              Blocked
-                            </Badge>
-                          ) : emp.isActive ? (
-                            <Badge bg="success" className="px-2 py-1 rounded-pill">
-                              <FaCheckCircle className="me-1" /> Active
-                            </Badge>
-                          ) : (
-                            <Badge bg="secondary" className="px-2 py-1 rounded-pill">
-                              Inactive
-                            </Badge>
-                          )}
-                        </td>
-                        <td>
-                          {emp.role ? (
-                            <Badge bg="light" text="dark" className="border px-2 py-1 rounded-pill">
-                              <FaKey className="me-1" /> {emp.role.roleName || "Employee"}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted small">Not Assigned</span>
-                          )}
-                        </td>
-                        <td className="text-end pe-4">
-                          {!hasAccount ? (
-                            (isSystemAdmin || hasPermission("user.provision_account")) && (
-                              <Button
-                                variant="success"
-                                size="sm"
-                                className="rounded-pill px-3 py-1 fw-semibold d-inline-flex align-items-center gap-1 shadow-sm"
-                                onClick={() => handleOpenProvision(emp)}
-                              >
-                                <FaUserPlus /> Provision Account
-                              </Button>
-                            )
-                          ) : (
-                            canManage && (
-                              <Button
-                                variant="outline-secondary"
-                                size="sm"
-                                className="rounded-pill px-3 py-1 d-inline-flex align-items-center gap-1"
-                                onClick={() => handleOpenManageModal(emp)}
-                              >
-                                <FaCog /> Manage
-                              </Button>
-                            )
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          </td>
+                          <td className="text-nowrap">
+                            <code>{emp.employeeCode || "—"}</code>
+                          </td>
+                          <td>
+                            <div className="small text-dark fw-medium text-truncate onboarding-text-truncate-160" title={emp.department || "General"}>
+                              {emp.department || "General"}
+                            </div>
+                            <div className="extra-small text-muted text-truncate onboarding-text-truncate-160" title={emp.designation || "Employee"}>
+                              {emp.designation || "Employee"}
+                            </div>
+                          </td>
+                          <td>
+                            <div className="d-flex align-items-center gap-1 flex-wrap">
+                              {!hasAccount ? (
+                                <Badge bg="warning" text="dark" className="px-2 py-0.5 rounded-pill extra-small">
+                                  No Login
+                                </Badge>
+                              ) : emp.isBlocked ? (
+                                <Badge bg="danger" className="px-2 py-0.5 rounded-pill extra-small">
+                                  Blocked
+                                </Badge>
+                              ) : emp.isActive ? (
+                                <Badge bg="success" className="px-2 py-0.5 rounded-pill extra-small d-inline-flex align-items-center gap-1">
+                                  <FaCheckCircle size={9} /> Active
+                                </Badge>
+                              ) : (
+                                <Badge bg="secondary" className="px-2 py-0.5 rounded-pill extra-small">
+                                  Inactive
+                                </Badge>
+                              )}
+                              {emp.lifecycleStatus && emp.lifecycleStatus !== "ACTIVE" && (
+                                <Badge bg="info" className="px-1.5 py-0.5 rounded-pill extra-small bg-opacity-10 text-info border">
+                                  {emp.lifecycleStatus}
+                                </Badge>
+                              )}
+                            </div>
+                          </td>
+                          <td className="text-nowrap">
+                            {emp.role ? (
+                              <Badge bg="light" text="dark" className="border px-2 py-1 rounded-pill extra-small">
+                                <FaKey className="me-1 text-muted" size={10} /> {emp.role.roleName || "Employee"}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted extra-small">Not Assigned</span>
+                            )}
+                          </td>
+                          <td className="text-end pe-3 pe-md-4 text-nowrap">
+                            {!hasAccount ? (
+                              (isSystemAdmin || hasPermission("user.provision_account")) && (
+                                <Button
+                                  variant="success"
+                                  size="sm"
+                                  className="rounded-pill px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1 shadow-sm extra-small text-nowrap"
+                                  onClick={() => handleOpenProvision(emp)}
+                                >
+                                  <FaUserPlus size={11} /> Provision
+                                </Button>
+                              )
+                            ) : (
+                              canManage && (
+                                <Button
+                                  variant="outline-secondary"
+                                  size="sm"
+                                  className="rounded-pill px-2.5 py-1 d-inline-flex align-items-center gap-1 extra-small text-nowrap"
+                                  onClick={() => handleOpenManageModal(emp)}
+                                >
+                                  <FaCog size={11} /> Manage
+                                </Button>
+                              )
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </Table>
             )}
           </div>
+          {renderDirectoryPagination()}
         </Card>
       )}
 
@@ -5678,14 +5802,7 @@ function HrOnboarding() {
               {candidateProfileData?.avatar ? (
                 <Image src={candidateProfileData.avatar} roundedCircle width={48} height={48} className="border border-success shadow-xs" />
               ) : (
-                <div
-                  className="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold fs-5 shadow-xs flex-shrink-0"
-                  style={{
-                    width: 48,
-                    height: 48,
-                    background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                  }}
-                >
+                <div className="onboarding-avatar-gradient-48 rounded-circle text-white d-flex align-items-center justify-content-center fw-bold fs-5 shadow-xs flex-shrink-0">
                   {candidateName[0]}
                 </div>
               )}
@@ -5739,18 +5856,8 @@ function HrOnboarding() {
               <Card className="border shadow-xs rounded-4 p-3 mb-3 bg-white">
                 <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
                   <div className="d-flex align-items-center gap-3">
-                    <div
-                      style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 10,
-                        background: "rgba(16, 185, 129, 0.1)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <FaShieldAlt style={{ fontSize: 20, color: "#10b981" }} />
+                    <div className="lifecycle-action-icon">
+                      <FaShieldAlt />
                     </div>
                     <div>
                       <h6 className="fw-bold mb-0 text-dark">
@@ -5777,8 +5884,7 @@ function HrOnboarding() {
                     {selectedOnboarding?.status === "READY_FOR_COMPLETION" && (
                       <Button
                         size="sm"
-                        className="rounded-pill px-3 py-1 extra-small fw-bold text-white d-flex align-items-center gap-1.5 shadow-xs"
-                        style={{ backgroundColor: "#2DC58A", borderColor: "#2DC58A" }}
+                        className="rounded-pill px-3 py-1 extra-small fw-bold text-white d-flex align-items-center gap-1.5 shadow-xs onboarding-btn-mint"
                         onClick={handleCompleteOnboarding}
                         disabled={actionLoading}
                       >
@@ -5801,8 +5907,7 @@ function HrOnboarding() {
                     {selectedOnboarding?.status === "COMPLETED" && !targetEmp.hasLoginAccess && (
                       <Button
                         size="sm"
-                        className="rounded-pill px-3 py-1 extra-small fw-bold text-white d-flex align-items-center gap-1.5 shadow-xs"
-                        style={{ backgroundColor: "#2DC58A", borderColor: "#2DC58A" }}
+                        className="rounded-pill px-3 py-1 extra-small fw-bold text-white d-flex align-items-center gap-1.5 shadow-xs onboarding-btn-mint"
                         onClick={() => handleOpenProvision(targetEmp)}
                       >
                         <FaKey size={11} /> Provision Login Account
@@ -6120,7 +6225,7 @@ function HrOnboarding() {
                                 <Table borderless size="sm" className="mb-0 align-middle">
                                   <tbody>
                                     <tr>
-                                      <td className="text-muted extra-small py-2 text-uppercase fw-semibold" style={{ width: "38%" }}>Full Name</td>
+                                      <td className="text-muted extra-small py-2 text-uppercase fw-semibold review-table-label-col">Full Name</td>
                                       <td className="fw-bold text-dark small py-2">{candidateProfileData.firstName} {candidateProfileData.middleName || ""} {candidateProfileData.lastName}</td>
                                     </tr>
                                     <tr className="border-top border-light-subtle">
@@ -6169,7 +6274,7 @@ function HrOnboarding() {
                                 <Table borderless size="sm" className="mb-0 align-middle">
                                   <tbody>
                                     <tr>
-                                      <td className="text-muted extra-small py-2 text-uppercase fw-semibold" style={{ width: "38%" }}>Designation</td>
+                                      <td className="text-muted extra-small py-2 text-uppercase fw-semibold review-table-label-col">Designation</td>
                                       <td className="fw-bold text-dark small py-2">{candidateProfileData.designation || selectedOnboarding?.designation || targetEmp.designation || "—"}</td>
                                     </tr>
                                     <tr className="border-top border-light-subtle">
@@ -6597,8 +6702,7 @@ function HrOnboarding() {
                                             <span className="extra-small fw-bold text-secondary">Document:</span>
                                             <Form.Select
                                               size="sm"
-                                              className="py-1 px-2 extra-small rounded-pill"
-                                              style={{ width: "160px" }}
+                                              className="py-1 px-2 extra-small rounded-pill onboarding-col-w160"
                                               value={prof.documentType || "OFFER_LETTER"}
                                               onChange={(e) => {
                                                 const arr = [...candidateProfileData.professional];
@@ -6886,12 +6990,11 @@ function HrOnboarding() {
                                         </Button>
                                       )}
                                       <label
-                                        className={`btn btn-sm rounded-pill mb-0 py-1 px-2.5 extra-small fw-semibold ${getEducationDoc(edu)?.url ? "btn-outline-secondary" : "btn-outline-success"}`}
-                                        style={{ cursor: uploadingEduIndex === i ? "not-allowed" : "pointer" }}
+                                        className={`btn btn-sm rounded-pill mb-0 py-1 px-2.5 extra-small fw-semibold ${getEducationDoc(edu)?.url ? "btn-outline-secondary" : "btn-outline-success"} ${uploadingEduIndex === i ? "cursor-not-allowed" : "cursor-pointer"}`}
                                       >
                                         {uploadingEduIndex === i ? (
                                           <>
-                                            <Spinner animation="border" size="sm" className="me-1" style={{ width: 10, height: 10 }} /> Uploading...
+                                            <Spinner animation="border" size="sm" className="me-1 spinner-mini" /> Uploading...
                                           </>
                                         ) : (
                                           <>
@@ -6956,12 +7059,11 @@ function HrOnboarding() {
                                             <span className="text-muted extra-small fst-italic me-1">No file</span>
                                           )}
                                           <label
-                                            className={`btn btn-sm rounded-pill mb-0 py-1 px-2.5 extra-small fw-semibold ${doc?.url ? "btn-outline-secondary" : "btn-outline-success"}`}
-                                            style={{ cursor: isUploading ? "not-allowed" : "pointer" }}
+                                            className={`btn btn-sm rounded-pill mb-0 py-1 px-2.5 extra-small fw-semibold ${doc?.url ? "btn-outline-secondary" : "btn-outline-success"} ${isUploading ? "cursor-not-allowed" : "cursor-pointer"}`}
                                           >
                                             {isUploading ? (
                                               <>
-                                                <Spinner animation="border" size="sm" className="me-1" style={{ width: 10, height: 10 }} /> Uploading...
+                                                <Spinner animation="border" size="sm" className="me-1 spinner-mini" /> Uploading...
                                               </>
                                             ) : (
                                               <>
@@ -7536,7 +7638,7 @@ function HrOnboarding() {
                                       <FaEye className="me-1" /> View Document
                                     </Button>
                                   )}
-                                  <label className="btn btn-outline-secondary btn-sm rounded-pill mb-0 py-0 px-2 extra-small" style={{ cursor: "pointer" }}>
+                                  <label className="btn btn-outline-secondary btn-sm rounded-pill mb-0 py-0 px-2 extra-small cursor-pointer">
                                     <FaFileUpload className="me-1" /> {getBankPassbookDoc()?.url ? "Re-upload" : "Upload Passbook / Cheque"}
                                     <input
                                       type="file"
@@ -7571,12 +7673,11 @@ function HrOnboarding() {
                                       </Button>
                                     )}
                                     <label
-                                      className={`btn btn-sm rounded-pill mb-0 py-0.5 px-2 extra-small fw-semibold ${getBankPassbookDoc()?.url ? "btn-outline-secondary" : "btn-outline-success"}`}
-                                      style={{ cursor: uploadingBankDoc ? "not-allowed" : "pointer" }}
+                                      className={`btn btn-sm rounded-pill mb-0 py-0.5 px-2 extra-small fw-semibold ${getBankPassbookDoc()?.url ? "btn-outline-secondary" : "btn-outline-success"} ${uploadingBankDoc ? "cursor-not-allowed" : "cursor-pointer"}`}
                                     >
                                       {uploadingBankDoc ? (
                                         <>
-                                          <Spinner animation="border" size="sm" className="me-1" style={{ width: 10, height: 10 }} /> Uploading...
+                                          <Spinner animation="border" size="sm" className="me-1 spinner-mini" /> Uploading...
                                         </>
                                       ) : (
                                         <>
@@ -7596,7 +7697,7 @@ function HrOnboarding() {
                                 <Table borderless size="sm" className="mb-0 align-middle">
                                   <tbody>
                                     <tr>
-                                      <td className="text-muted extra-small py-1.5 text-uppercase fw-semibold" style={{ width: "38%" }}>Bank Name</td>
+                                      <td className="text-muted extra-small py-1.5 text-uppercase fw-semibold review-table-label-col">Bank Name</td>
                                       <td className="fw-bold text-dark small py-1.5">{candidateProfileData.bankDetails?.bankName || "—"}</td>
                                     </tr>
                                     <tr className="border-top border-light-subtle">
@@ -7637,7 +7738,7 @@ function HrOnboarding() {
                                 <Table borderless size="sm" className="mb-0 align-middle">
                                   <tbody>
                                     <tr>
-                                      <td className="text-muted extra-small py-1.5 text-uppercase fw-semibold" style={{ width: "38%" }}>PAN Number</td>
+                                      <td className="text-muted extra-small py-1.5 text-uppercase fw-semibold review-table-label-col">PAN Number</td>
                                       <td className="fw-bold text-dark small py-1.5 font-monospace">{candidateProfileData.statutoryDetails?.panNo || "—"}</td>
                                     </tr>
                                     <tr className="border-top border-light-subtle">
@@ -7834,7 +7935,7 @@ function HrOnboarding() {
 
                   {detailDocs.length === 0 ? (
                     <div className="text-muted small text-center py-5">
-                      <FaFileAlt className="text-muted mb-2" style={{ fontSize: "2.5rem" }} />
+                      <FaFileAlt className="text-muted mb-2 doc-empty-icon" />
                       <div>No documents uploaded yet for this candidate.</div>
                       <Button
                         variant="outline-primary"
@@ -7984,7 +8085,7 @@ function HrOnboarding() {
                     <tbody>
                       {detailTasks.map((t) => (
                         <tr key={t._id || Math.random()}>
-                          <td style={{ width: 40 }}>
+                          <td className="onboarding-col-w40">
                             <Form.Check
                               type="checkbox"
                               checked={t.status === "COMPLETED" || t.isCompleted}
@@ -8022,19 +8123,8 @@ function HrOnboarding() {
                   {/* 1. Header & Controls */}
                   <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 p-3 bg-white border rounded-4 shadow-sm">
                     <div className="d-flex align-items-center gap-3">
-                      <div
-                        style={{
-                          width: 44,
-                          height: 44,
-                          borderRadius: 12,
-                          background: "linear-gradient(135deg, rgba(45,197,138,0.2) 0%, rgba(32,166,115,0.3) 100%)",
-                          border: "1px solid rgba(45, 197, 138, 0.4)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <MdDevices style={{ fontSize: 24, color: "#2DC58A" }} />
+                      <div className="onboarding-asset-header-icon">
+                        <MdDevices />
                       </div>
                       <div>
                         <h6 className="mb-0 fw-bold text-dark">Asset Management & Hardware Allocation</h6>
@@ -8053,21 +8143,16 @@ function HrOnboarding() {
                         disabled={assetLoading}
                         title="Refresh Inventory"
                       >
-                        <FaRedo className={assetLoading ? "fa-spin" : ""} style={{ fontSize: 11 }} />
+                        <FaRedo className={assetLoading ? "fa-spin" : ""} size={11} />
                         <span>Refresh</span>
                       </Button>
 
                       <Button
                         size="sm"
-                        className="d-flex align-items-center gap-1.5 shadow-xs rounded-pill px-3 py-1 extra-small fw-bold"
-                        style={{
-                          backgroundColor: "#2DC58A",
-                          borderColor: "#2DC58A",
-                          color: "#ffffff",
-                        }}
+                        className="d-flex align-items-center gap-1.5 shadow-xs rounded-pill px-3 py-1 extra-small fw-bold text-white onboarding-btn-mint"
                         onClick={() => setShowCreateAssetModal(true)}
                       >
-                        <FaPlus style={{ fontSize: 11 }} />
+                        <FaPlus size={11} />
                         <span>+ Add Asset</span>
                       </Button>
                     </div>
@@ -8082,18 +8167,8 @@ function HrOnboarding() {
                             <span className="text-muted extra-small fw-semibold text-uppercase">Total Assets</span>
                             <h4 className="mb-0 fw-bold mt-1 text-dark">{assetCounts.total}</h4>
                           </div>
-                          <div
-                            style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 8,
-                              background: "rgba(59, 130, 246, 0.1)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                            }}
-                          >
-                            <MdDevices style={{ fontSize: 20, color: "#3b82f6" }} />
+                          <div className="onboarding-asset-metric-icon blue">
+                            <MdDevices />
                           </div>
                         </div>
                       </Card>
@@ -8106,18 +8181,8 @@ function HrOnboarding() {
                             <span className="text-muted extra-small fw-semibold text-uppercase">Available</span>
                             <h4 className="mb-0 fw-bold mt-1 text-success">{assetCounts.available}</h4>
                           </div>
-                          <div
-                            style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 8,
-                              background: "rgba(16, 185, 129, 0.1)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                            }}
-                          >
-                            <FaCheckCircle style={{ fontSize: 18, color: "#10b981" }} />
+                          <div className="onboarding-asset-metric-icon green">
+                            <FaCheckCircle />
                           </div>
                         </div>
                       </Card>
@@ -8130,18 +8195,8 @@ function HrOnboarding() {
                             <span className="text-muted extra-small fw-semibold text-uppercase">Assigned (Candidate)</span>
                             <h4 className="mb-0 fw-bold mt-1 text-primary">{assetCounts.candidateAssigned}</h4>
                           </div>
-                          <div
-                            style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 8,
-                              background: "rgba(59, 130, 246, 0.1)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                            }}
-                          >
-                            <FaLaptop style={{ fontSize: 18, color: "#3b82f6" }} />
+                          <div className="onboarding-asset-metric-icon blue">
+                            <FaLaptop />
                           </div>
                         </div>
                       </Card>
@@ -8154,18 +8209,8 @@ function HrOnboarding() {
                             <span className="text-muted extra-small fw-semibold text-uppercase">Damaged / Repair</span>
                             <h4 className="mb-0 fw-bold mt-1 text-danger">{assetCounts.damaged}</h4>
                           </div>
-                          <div
-                            style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 8,
-                              background: "rgba(239, 68, 68, 0.1)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                            }}
-                          >
-                            <FaExclamationTriangle style={{ fontSize: 18, color: "#ef4444" }} />
+                          <div className="onboarding-asset-metric-icon red">
+                            <FaExclamationTriangle />
                           </div>
                         </div>
                       </Card>
@@ -8286,26 +8331,14 @@ function HrOnboarding() {
                       </div>
                     ) : filteredAssetsList.length === 0 ? (
                       <div className="p-5 text-center text-muted">
-                        <div
-                          className="mx-auto mb-3"
-                          style={{
-                            width: 50,
-                            height: 50,
-                            borderRadius: "50%",
-                            background: "rgba(100, 116, 139, 0.1)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <MdDevices style={{ fontSize: 24, color: "#64748b" }} />
+                        <div className="onboarding-asset-empty-icon mx-auto mb-3">
+                          <MdDevices />
                         </div>
                         <h6 className="fw-bold mb-1 text-dark">No Matching Assets Found</h6>
                         <p className="extra-small mb-3">Try adjusting your search criteria or register a new asset.</p>
                         <Button
                           size="sm"
-                          className="rounded-pill extra-small px-3 fw-bold"
-                          style={{ backgroundColor: "#2DC58A", borderColor: "#2DC58A", color: "#fff" }}
+                          className="rounded-pill extra-small px-3 fw-bold text-white onboarding-btn-mint"
                           onClick={() => setShowCreateAssetModal(true)}
                         >
                           <FaPlus className="me-1" /> Add New Asset
@@ -8391,8 +8424,7 @@ function HrOnboarding() {
                                   ) : asset.status === "AVAILABLE" ? (
                                     <Button
                                       size="sm"
-                                      className="rounded-pill py-0.5 px-2.5 extra-small fw-bold d-inline-flex align-items-center gap-1 text-white"
-                                      style={{ backgroundColor: "#2DC58A", borderColor: "#2DC58A" }}
+                                      className="rounded-pill py-0.5 px-2.5 extra-small fw-bold d-inline-flex align-items-center gap-1 text-white onboarding-btn-mint"
                                       onClick={() => {
                                         setSelectedAssetToAssign(asset);
                                         setShowAssignAssetModal(true);
@@ -8473,7 +8505,7 @@ function HrOnboarding() {
                           <td className="text-end">
                             <Form.Select
                               size="sm"
-                              style={{ width: 140, display: "inline-block" }}
+                              className="onboarding-col-w140"
                               value={acc.status || (acc.isProvisioned ? "ACTIVE" : "REQUESTED")}
                               onChange={(e) => handleUpdateAccessStatus(acc._id, e.target.value)}
                             >
@@ -8622,7 +8654,7 @@ function HrOnboarding() {
                           <td className="text-end">
                             <Form.Select
                               size="sm"
-                              style={{ width: 140, display: "inline-block" }}
+                              className="onboarding-col-w140"
                               value={trn.status || "NOT_STARTED"}
                               onChange={(e) => handleUpdateTrainingStatus(trn._id, e.target.value)}
                             >
@@ -9036,9 +9068,9 @@ function HrOnboarding() {
             )}
           </div>
         </Modal.Header>
-        <Modal.Body className="p-2 text-center bg-white position-relative" style={{ minHeight: "400px", maxHeight: "75vh", overflowY: "auto" }}>
+        <Modal.Body className="p-2 text-center bg-white position-relative doc-preview-modal-body">
           {docPreview.loading && (
-            <div className="position-absolute top-0 start-0 w-100 h-100 bg-white bg-opacity-75 d-flex justify-content-center align-items-center" style={{ zIndex: 10 }}>
+            <div className="doc-preview-loading-overlay">
               <div className="d-flex flex-column align-items-center gap-2">
                 <Spinner animation="border" variant="primary" size="sm" />
                 <span className="extra-small text-muted fw-semibold">Loading document preview...</span>
@@ -9074,8 +9106,7 @@ function HrOnboarding() {
                     <img
                       src={rawUrl}
                       alt={docPreview.title}
-                      className="img-fluid rounded border shadow-sm"
-                      style={{ maxHeight: "65vh", objectFit: "contain", maxWidth: "100%" }}
+                      className="img-fluid rounded border shadow-sm doc-preview-img-inline"
                     />
                   </div>
                 );
@@ -9090,7 +9121,7 @@ function HrOnboarding() {
                 : cleanUrl;
 
               return (
-                <div className="d-flex flex-column w-100" style={{ height: "65vh" }}>
+                <div className="d-flex flex-column w-100 doc-preview-iframe-wrapper">
                   <iframe
                     src={iframeSrc}
                     title={docPreview.title}
@@ -9204,7 +9235,7 @@ function HrOnboarding() {
 
           {uploadDocForm.file && (
             <div className="p-2 bg-light border rounded-3 d-flex align-items-center justify-content-between">
-              <span className="extra-small fw-semibold text-dark text-truncate" style={{ maxWidth: 220 }}>
+              <span className="extra-small fw-semibold text-dark text-truncate onboarding-col-w220">
                 {uploadDocForm.fileName}
               </span>
               <Button
@@ -9240,18 +9271,8 @@ function HrOnboarding() {
       <Modal show={showCreateAssetModal} onHide={() => setShowCreateAssetModal(false)} centered size="lg">
         <Modal.Header closeButton>
           <Modal.Title className="h6 fw-bold text-dark d-flex align-items-center gap-2">
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                background: "rgba(45,197,138,0.2)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <MdDevices style={{ fontSize: 18, color: "#2DC58A" }} />
+            <div className="asset-modal-title-icon">
+              <MdDevices />
             </div>
             <span>Register New Company Asset</span>
           </Modal.Title>
@@ -9345,9 +9366,8 @@ function HrOnboarding() {
               variant="success"
               size="sm"
               type="submit"
-              className="rounded-pill extra-small px-3 fw-bold text-white"
+              className="rounded-pill extra-small px-3 fw-bold text-white onboarding-btn-mint"
               disabled={createAssetSubmitting || !createAssetForm.name.trim()}
-              style={{ backgroundColor: "#2DC58A", borderColor: "#2DC58A" }}
             >
               {createAssetSubmitting ? <Spinner size="sm" animation="border" /> : <FaPlus className="me-1" />} Save & Register Asset
             </Button>
@@ -9415,9 +9435,8 @@ function HrOnboarding() {
           <Button
             variant="success"
             size="sm"
-            className="rounded-pill extra-small px-3 fw-bold text-white"
+            className="rounded-pill extra-small px-3 fw-bold text-white onboarding-btn-mint"
             disabled={assigningAssetLoading}
-            style={{ backgroundColor: "#2DC58A", borderColor: "#2DC58A" }}
             onClick={() => handleAssignAssetToCandidate(selectedAssetToAssign, assignAssetDetailForm.condition, assignAssetDetailForm.remarks)}
           >
             {assigningAssetLoading ? <Spinner size="sm" animation="border" /> : <FaPlus className="me-1" />} Confirm Assignment
@@ -9445,7 +9464,7 @@ function HrOnboarding() {
             <span>{docPreview.title || "Document Viewer"}</span>
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body className="p-0 bg-light position-relative d-flex flex-column align-items-center justify-content-center" style={{ minHeight: "75vh", maxHeight: "85vh", overflow: "hidden" }}>
+        <Modal.Body className="p-0 bg-light position-relative d-flex flex-column align-items-center justify-content-center doc-viewport-modal-body">
           {docPreview.url ? (
             (() => {
               const urlLower = (docPreview.url || "").toLowerCase();
@@ -9454,18 +9473,11 @@ function HrOnboarding() {
 
               if (isImage) {
                 return (
-                  <div className="w-100 h-100 p-3 d-flex align-items-center justify-content-center" style={{ maxHeight: "80vh", overflow: "auto" }}>
+                  <div className="w-100 h-100 p-3 d-flex align-items-center justify-content-center doc-viewport-img-wrapper">
                     <img
                       src={docPreview.url}
                       alt={docPreview.title || "Document Preview"}
-                      style={{
-                        maxWidth: "100%",
-                        maxHeight: "75vh",
-                        objectFit: "contain",
-                        borderRadius: "8px",
-                        boxShadow: "0 8px 30px rgba(0,0,0,0.15)",
-                        backgroundColor: "#fff",
-                      }}
+                      className="doc-viewport-image"
                     />
                   </div>
                 );
@@ -9473,18 +9485,13 @@ function HrOnboarding() {
 
               // PDF & Other Documents: Native Full Viewport Iframe
               return (
-                <div className="w-100 h-100 position-relative" style={{ height: "80vh", width: "100%" }}>
+                <div className="w-100 h-100 position-relative doc-viewport-iframe-wrapper">
                   <iframe
                     src={docPreview.url}
                     title={docPreview.title || "Document Preview"}
                     width="100%"
                     height="100%"
-                    style={{
-                      width: "100%",
-                      height: "80vh",
-                      border: "none",
-                      backgroundColor: "#ffffff",
-                    }}
+                    className="doc-viewport-iframe"
                   />
                 </div>
               );
@@ -9496,7 +9503,7 @@ function HrOnboarding() {
           )}
         </Modal.Body>
         <Modal.Footer className="py-2 px-3 bg-light border-top d-flex justify-content-between align-items-center">
-          <span className="extra-small text-muted text-truncate" style={{ maxWidth: "450px" }}>
+          <span className="extra-small text-muted text-truncate doc-preview-footer-title">
             {docPreview.title}
           </span>
           <div className="d-flex align-items-center gap-2">

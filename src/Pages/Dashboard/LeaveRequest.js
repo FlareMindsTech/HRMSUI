@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Container, Row, Col, Card, Form, Button, Badge, Table, Modal, Tab, Nav, Alert, Spinner
+  Container, Row, Col, Card, Form, Button, Table, Modal, Tab, Alert, Spinner, InputGroup, Pagination
 } from "react-bootstrap";
 import {
-  FaCalendarAlt, FaCalendarCheck, FaClock, FaCheckCircle,
-  FaTimesCircle, FaInfoCircle, FaPlus, FaBan, FaHistory, FaUserCheck, FaSearch, FaExclamationTriangle
+  FaCalendarAlt, FaClock, FaCheckCircle,
+  FaTimesCircle, FaPlus, FaBan, FaHistory, FaUserCheck, FaSearch, FaExclamationTriangle, FaUsers, FaUndo
 } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -18,6 +18,7 @@ import {
   rejectLeaveApi,
   fetchLeaveAuditApi
 } from "../../Api/leave/leave";
+import "./LeaveRequest.css";
 
 function LeaveRequest() {
   const { user, hasPermission } = useAuth();
@@ -68,9 +69,39 @@ function LeaveRequest() {
   const [auditData, setAuditData] = useState(null);
   const [auditLoading, setAuditLoading] = useState(false);
 
-  // Filters
+  // Filters & Pagination State
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 5;
+
+  const handleSearchChange = (val) => {
+    setSearchQuery(val);
+    setCurrentPage(1);
+  };
+
+  const handleStatusFilterChange = (val) => {
+    setStatusFilter(val);
+    setCurrentPage(1);
+  };
+
+  const handleTypeFilterChange = (val) => {
+    setTypeFilter(val);
+    setCurrentPage(1);
+  };
+
+  const handleTabChange = (k) => {
+    setActiveTab(k);
+    setCurrentPage(1);
+  };
+
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("ALL");
+    setTypeFilter("ALL");
+    setCurrentPage(1);
+  };
 
   // Load Balance
   const loadBalance = useCallback(async () => {
@@ -315,13 +346,13 @@ function LeaveRequest() {
   const getStatusBadge = (status) => {
     switch (status) {
       case "Approved":
-        return <Badge bg="success" className="px-2 py-1 rounded-pill"><FaCheckCircle className="me-1" /> Approved</Badge>;
+        return <span className="leave-badge leave-badge-approved"><FaCheckCircle className="me-1" /> Approved</span>;
       case "Rejected":
-        return <Badge bg="danger" className="px-2 py-1 rounded-pill"><FaTimesCircle className="me-1" /> Rejected</Badge>;
+        return <span className="leave-badge leave-badge-rejected"><FaTimesCircle className="me-1" /> Rejected</span>;
       case "Cancelled":
-        return <Badge bg="secondary" className="px-2 py-1 rounded-pill"><FaBan className="me-1" /> Cancelled</Badge>;
+        return <span className="leave-badge leave-badge-cancelled"><FaBan className="me-1" /> Cancelled</span>;
       default:
-        return <Badge bg="warning" className="text-dark px-2 py-1 rounded-pill"><FaClock className="me-1" /> Pending</Badge>;
+        return <span className="leave-badge leave-badge-pending"><FaClock className="me-1" /> Pending</span>;
     }
   };
 
@@ -329,10 +360,11 @@ function LeaveRequest() {
   const approvalSourceList = canReadAll ? allLeaves : canReadTeam ? teamLeaves : [];
   const pendingApprovalsList = (approvalSourceList || []).filter((l) => l.status === "Pending");
 
-  // Filtered List Helper
+  // Filtered List Helper (Status, Type & Multi-field text search)
   const filterList = (list) => {
-    return list.filter((item) => {
+    return (list || []).filter((item) => {
       const matchesStatus = statusFilter === "ALL" || item.status === statusFilter;
+      const matchesType = typeFilter === "ALL" || item.leaveType === typeFilter;
       const empName = item.employeeId
         ? `${item.employeeId.firstName || ""} ${item.employeeId.lastName || ""} ${item.employeeId.employeeCode || ""}`
         : "";
@@ -340,81 +372,201 @@ function LeaveRequest() {
         !searchQuery ||
         empName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (item.reason || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.leaveType || "").toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesStatus && matchesSearch;
+        (item.leaveType || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.title || "").toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesStatus && matchesType && matchesSearch;
     });
   };
 
-  return (
-    <Container fluid className="p-3 no-scrollbar" style={{ height: "calc(100vh - var(--header-height))", overflowY: "auto" }}>
-      {/* Top Banner / Alerts */}
-      {errorMsg && (
-        <Alert variant="danger" dismissible onClose={() => setErrorMsg("")} className="mb-3">
-          <FaExclamationTriangle className="me-2" />
-          {errorMsg}
-        </Alert>
-      )}
-      {successMsg && (
-        <Alert variant="success" dismissible onClose={() => setSuccessMsg("")} className="mb-3">
-          <FaCheckCircle className="me-2" />
-          {successMsg}
-        </Alert>
-      )}
+  // Reusable Compact Pagination Component (5 records per page)
+  const renderPagination = (totalRecords) => {
+    if (totalRecords === 0) return null;
+    const totalPages = Math.ceil(totalRecords / PAGE_SIZE) || 1;
+    const startIdx = (currentPage - 1) * PAGE_SIZE + 1;
+    const endIdx = Math.min(currentPage * PAGE_SIZE, totalRecords);
 
+    return (
+      <div className="leave-pagination-bar">
+        <div className="leave-pagination-info">
+          Showing <span className="fw-bold text-dark">{startIdx}–{endIdx}</span> of{" "}
+          <span className="fw-bold text-dark">{totalRecords}</span> records
+        </div>
+        {totalPages > 1 && (
+          <Pagination size="sm" className="leave-pagination mb-0">
+            <Pagination.Prev
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            >
+              Previous
+            </Pagination.Prev>
+            {[...Array(totalPages)].map((_, i) => {
+              const pg = i + 1;
+              if (totalPages > 7) {
+                if (pg !== 1 && pg !== totalPages && Math.abs(pg - currentPage) > 2) {
+                  if (pg === 2 || pg === totalPages - 1) {
+                    return <Pagination.Ellipsis key={`ell-${pg}`} disabled />;
+                  }
+                  return null;
+                }
+              }
+              return (
+                <Pagination.Item
+                  key={pg}
+                  active={pg === currentPage}
+                  onClick={() => setCurrentPage(pg)}
+                >
+                  {pg}
+                </Pagination.Item>
+              );
+            })}
+            <Pagination.Next
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Next
+            </Pagination.Next>
+          </Pagination>
+        )}
+      </div>
+    );
+  };
+
+  // Data sets for the active tabs
+  const filteredAllLeaves = filterList(allLeaves);
+  const paginatedAllLeaves = filteredAllLeaves.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const filteredTeamLeaves = filterList(teamLeaves);
+  const paginatedTeamLeaves = filteredTeamLeaves.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const filteredApprovals = filterList(pendingApprovalsList);
+  const paginatedApprovals = filteredApprovals.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const filteredMyLeaves = filterList(myLeaves);
+  const paginatedMyLeaves = filteredMyLeaves.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  return (
+    <Container fluid className="leave-container no-scrollbar">
       {/* Header Section */}
-      <Row className="mb-3 align-items-center">
+      <Row className="mb-2 align-items-center g-2">
         <Col>
-          <h4 className="fw-bold mb-0 text-primary d-flex align-items-center gap-2">
-            <FaCalendarAlt /> Leave Management
-          </h4>
-          <p className="text-muted small mb-0">
+          <div className="d-flex align-items-center gap-2">
+            <div className="leave-header-icon">
+              <FaCalendarAlt />
+            </div>
+            <h4 className="leave-page-title">
+              Leave Management
+            </h4>
+          </div>
+          <p className="text-muted extra-small mb-0 mt-1">
             {isOwner ? "View company leave requests, monitor approvals, and inspect workflow history." : "Apply for leaves, view balances, and manage team requests."}
           </p>
         </Col>
       </Row>
 
+      {/* Top Banner Alerts */}
+      {errorMsg && (
+        <Alert variant="danger" dismissible onClose={() => setErrorMsg("")} className="py-2 px-3 small mb-2 rounded-3 shadow-xs">
+          <FaExclamationTriangle className="me-2" />
+          {errorMsg}
+        </Alert>
+      )}
+      {successMsg && (
+        <Alert variant="success" dismissible onClose={() => setSuccessMsg("")} className="py-2 px-3 small mb-2 rounded-3 shadow-xs">
+          <FaCheckCircle className="me-2 text-success" />
+          {successMsg}
+        </Alert>
+      )}
+
       {/* Balance Summary Header Cards (Hidden for Owner) */}
       {canReadOwn && (
-        <Row className="g-3 mb-4">
+        <Row className="g-2 mb-3">
           <Col md={4}>
-            <Card className="border-0 shadow-sm rounded-3 bg-white p-3 border-start border-4 border-info">
+            <Card className="leave-balance-card sl">
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <span className="text-muted extra-small fw-bold uppercase">Sick Leave (SL)</span>
-                  <h4 className="fw-bold mb-0 text-dark">
-                    {balanceLoading ? <Spinner size="sm" animation="border" /> : `${balance?.SL?.remaining ?? 2.0} / ${balance?.SL?.allocated ?? 2.0} Days`}
-                  </h4>
-                  <small className="text-muted">2 days/month allocation</small>
+                  <span className="leave-balance-label">
+                    Sick Leave (SL)
+                  </span>
+                  <h5 className="leave-balance-value">
+                    {balanceLoading ? (
+                      <Spinner size="sm" animation="border" variant="info" />
+                    ) : (
+                      `${balance?.SL?.remaining ?? 2.0} / ${balance?.SL?.allocated ?? 2.0} Days`
+                    )}
+                  </h5>
+                  <span className="extra-small text-muted">2 days/month allocation</span>
                 </div>
-                <Badge bg="info" className="p-2 rounded-circle text-white">SL</Badge>
+                <div className="leave-balance-tag sl">
+                  SL
+                </div>
+              </div>
+              <div className="leave-progress-track">
+                <div
+                  className="leave-progress-bar sl"
+                  style={{
+                    width: `${Math.min(100, Math.max(0, ((balance?.SL?.remaining ?? 2.0) / (balance?.SL?.allocated ?? 2.0)) * 100))}%`
+                  }}
+                />
               </div>
             </Card>
           </Col>
           <Col md={4}>
-            <Card className="border-0 shadow-sm rounded-3 bg-white p-3 border-start border-4 border-warning">
+            <Card className="leave-balance-card cl">
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <span className="text-muted extra-small fw-bold uppercase">Casual Leave (CL)</span>
-                  <h4 className="fw-bold mb-0 text-dark">
-                    {balanceLoading ? <Spinner size="sm" animation="border" /> : `${balance?.CL?.remaining ?? 1.0} / ${balance?.CL?.allocated ?? 1.0} Days`}
-                  </h4>
-                  <small className="text-muted">1 day/month allocation</small>
+                  <span className="leave-balance-label">
+                    Casual Leave (CL)
+                  </span>
+                  <h5 className="leave-balance-value">
+                    {balanceLoading ? (
+                      <Spinner size="sm" animation="border" variant="warning" />
+                    ) : (
+                      `${balance?.CL?.remaining ?? 1.0} / ${balance?.CL?.allocated ?? 1.0} Days`
+                    )}
+                  </h5>
+                  <span className="extra-small text-muted">1 day/month allocation</span>
                 </div>
-                <Badge bg="warning" className="p-2 rounded-circle text-dark">CL</Badge>
+                <div className="leave-balance-tag cl">
+                  CL
+                </div>
+              </div>
+              <div className="leave-progress-track">
+                <div
+                  className="leave-progress-bar cl"
+                  style={{
+                    width: `${Math.min(100, Math.max(0, ((balance?.CL?.remaining ?? 1.0) / (balance?.CL?.allocated ?? 1.0)) * 100))}%`
+                  }}
+                />
               </div>
             </Card>
           </Col>
           <Col md={4}>
-            <Card className="border-0 shadow-sm rounded-3 bg-white p-3 border-start border-4 border-secondary">
+            <Card className="leave-balance-card lop">
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <span className="text-muted extra-small fw-bold uppercase">Unpaid Leave (LOP)</span>
-                  <h4 className="fw-bold mb-0 text-dark">
-                    {balanceLoading ? <Spinner size="sm" animation="border" /> : `${balance?.LOP?.used ?? 0} Days Used`}
-                  </h4>
-                  <small className="text-muted">Allocated: No Limit</small>
+                  <span className="leave-balance-label">
+                    Unpaid Leave (LOP)
+                  </span>
+                  <h5 className="leave-balance-value">
+                    {balanceLoading ? (
+                      <Spinner size="sm" animation="border" variant="secondary" />
+                    ) : (
+                      `${balance?.LOP?.used ?? 0} Days Used`
+                    )}
+                  </h5>
+                  <span className="extra-small text-muted">Subject to supervisor approval</span>
                 </div>
-                <Badge bg="secondary" className="p-2 rounded-circle">LOP</Badge>
+                <div className="leave-balance-tag lop">
+                  LOP
+                </div>
+              </div>
+              <div className="leave-progress-track">
+                <div
+                  className="leave-progress-bar lop"
+                  style={{
+                    width: `${Math.min(100, (balance?.LOP?.used ?? 0) * 15)}%`
+                  }}
+                />
               </div>
             </Card>
           </Col>
@@ -422,103 +574,112 @@ function LeaveRequest() {
       )}
 
       {/* Main Tabbed Layout */}
-      <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
-        <Card className="border-0 shadow-sm rounded-3 bg-white mb-4">
-          <Card.Header className="bg-white border-bottom p-0">
-            <Nav variant="tabs" className="px-3 border-bottom-0">
-              {canReadOwn && (
-                <Nav.Item>
-                  <Nav.Link eventKey="my-leave" className="fw-bold text-dark py-3">
-                    My Leave Requests
-                  </Nav.Link>
-                </Nav.Item>
+      <Tab.Container activeKey={activeTab} onSelect={(k) => handleTabChange(k)}>
+        {/* Segmented Compact Pill Navigation */}
+        <div className="leave-nav-pills">
+          {canReadOwn && (
+            <button
+              type="button"
+              className={`leave-nav-btn ${activeTab === "my-leave" ? "active" : ""}`}
+              onClick={() => handleTabChange("my-leave")}
+            >
+              <FaCalendarAlt className="me-2" /> My Leave Requests
+            </button>
+          )}
+          {(canApprove || canReject) && (
+            <button
+              type="button"
+              className={`leave-nav-btn ${activeTab === "approvals" ? "active" : ""}`}
+              onClick={() => handleTabChange("approvals")}
+            >
+              <FaUserCheck className="me-2" /> Pending Approvals
+              {pendingApprovalsList.length > 0 && (
+                <span className="leave-nav-badge">{pendingApprovalsList.length}</span>
               )}
-              {(canApprove || canReject) && (
-                <Nav.Item>
-                  <Nav.Link eventKey="approvals" className="fw-bold text-dark py-3 position-relative">
-                    Pending Approvals
-                    {pendingApprovalsList.length > 0 && (
-                      <Badge bg="danger" pill className="ms-2">{pendingApprovalsList.length}</Badge>
-                    )}
-                  </Nav.Link>
-                </Nav.Item>
-              )}
-              {canReadTeam && (
-                <Nav.Item>
-                  <Nav.Link eventKey="team" className="fw-bold text-dark py-3">
-                    Team Leave Requests
-                  </Nav.Link>
-                </Nav.Item>
-              )}
-              {canReadAll && (
-                <Nav.Item>
-                  <Nav.Link eventKey="all" className="fw-bold text-dark py-3">
-                    All Company Leaves
-                  </Nav.Link>
-                </Nav.Item>
-              )}
-              {(canReadTeam || canReadAll) && (
-                <Nav.Item>
-                  <Nav.Link eventKey="calendar" className="fw-bold text-dark py-3">
-                    Leave Schedule Calendar
-                  </Nav.Link>
-                </Nav.Item>
-              )}
-            </Nav>
-          </Card.Header>
+            </button>
+          )}
+          {canReadTeam && (
+            <button
+              type="button"
+              className={`leave-nav-btn ${activeTab === "team" ? "active" : ""}`}
+              onClick={() => handleTabChange("team")}
+            >
+              <FaUsers className="me-2" /> Team Requests
+            </button>
+          )}
+          {canReadAll && (
+            <button
+              type="button"
+              className={`leave-nav-btn ${activeTab === "all" ? "active" : ""}`}
+              onClick={() => handleTabChange("all")}
+            >
+              <FaUsers className="me-2" /> All Company Leaves
+            </button>
+          )}
+          {(canReadTeam || canReadAll) && (
+            <button
+              type="button"
+              className={`leave-nav-btn ${activeTab === "calendar" ? "active" : ""}`}
+              onClick={() => handleTabChange("calendar")}
+            >
+              <FaCalendarAlt className="me-2" /> Leave Schedule
+            </button>
+          )}
+        </div>
 
-          <Card.Body className="p-4">
+        <Card className="leave-main-card">
+          <Card.Body className="p-3">
             <Tab.Content>
               {/* TAB 1: MY LEAVE (Apply Form + History) */}
               {canReadOwn && (
                 <Tab.Pane eventKey="my-leave">
-                  <Row className="g-4">
+                  <Row className="g-3">
                     {/* Left: Apply Leave Form */}
                     {canCreateOwn && (
                       <Col lg={5}>
-                        <Card className="border shadow-none rounded-3 h-100">
-                          <Card.Body className="p-4">
-                            <h5 className="fw-bold mb-3 text-primary d-flex align-items-center gap-2">
-                              <FaPlus /> Apply for Leave
-                            </h5>
-                            {formValidationErr && (
-                              <Alert variant="warning" className="small py-2 mb-3">
-                                <FaExclamationTriangle className="me-1" /> {formValidationErr}
-                              </Alert>
-                            )}
+                        <div className="leave-apply-card">
+                          <h6 className="fw-bold mb-3 text-dark d-flex align-items-center gap-2">
+                            <FaPlus className="text-success" /> Apply for Leave
+                          </h6>
+                          {formValidationErr && (
+                            <Alert variant="warning" className="small py-1 px-2 mb-2 rounded-2">
+                              <FaExclamationTriangle className="me-1" /> {formValidationErr}
+                            </Alert>
+                          )}
 
-                            <Form onSubmit={handleSubmitLeave}>
-                              <Form.Group className="mb-3">
-                                <Form.Label className="small fw-bold">Leave Type</Form.Label>
-                                <Form.Select
-                                  name="leaveType"
-                                  value={formData.leaveType}
-                                  onChange={handleInputChange}
-                                  className="shadow-none form-control-sm"
-                                >
-                                  <option value="SL">Sick Leave (SL) — 2.0 days/mo</option>
-                                  <option value="CL">Casual Leave (CL) — 1.0 day/mo</option>
-                                  <option value="LOP">Unpaid Leave (LOP) — Subject to approval</option>
-                                </Form.Select>
-                              </Form.Group>
+                          <Form onSubmit={handleSubmitLeave}>
+                            <Form.Group className="mb-2">
+                              <Form.Label className="small fw-bold text-dark mb-1">Leave Type</Form.Label>
+                              <Form.Select
+                                name="leaveType"
+                                value={formData.leaveType}
+                                onChange={handleInputChange}
+                                className="form-select-sm shadow-none border"
+                              >
+                                <option value="SL">Sick Leave (SL) — 2.0 days/mo</option>
+                                <option value="CL">Casual Leave (CL) — 1.0 day/mo</option>
+                                <option value="LOP">Unpaid Leave (LOP) — Subject to approval</option>
+                              </Form.Select>
+                            </Form.Group>
 
-                              <Form.Group className="mb-3">
-                                <Form.Label className="small fw-bold">Requested Date</Form.Label>
-                                <Form.Control
-                                  type="date"
-                                  name="date"
-                                  min={todayStr}
-                                  value={formData.date}
-                                  onChange={handleInputChange}
-                                  className="shadow-none form-control-sm"
-                                  required
-                                />
-                                <Form.Text className="text-muted extra-small">
-                                  V1 requests represent exactly ONE calendar date. Sundays are non-working.
-                                </Form.Text>
-                              </Form.Group>
+                            <Form.Group className="mb-2">
+                              <Form.Label className="small fw-bold text-dark mb-1">Requested Date</Form.Label>
+                              <Form.Control
+                                type="date"
+                                name="date"
+                                min={todayStr}
+                                value={formData.date}
+                                onChange={handleInputChange}
+                                className="form-control-sm shadow-none border"
+                                required
+                              />
+                              <Form.Text className="text-muted extra-small">
+                                One working calendar date. Sundays are non-working.
+                              </Form.Text>
+                            </Form.Group>
 
-                              <Form.Group className="mb-3">
+                            <Form.Group className="mb-2">
+                              <div className="leave-halfday-box">
                                 <Form.Check
                                   type="checkbox"
                                   id="isHalfDay"
@@ -526,12 +687,12 @@ function LeaveRequest() {
                                   label="Apply as Half Day Leave (0.5 day)"
                                   checked={formData.isHalfDay}
                                   onChange={handleInputChange}
-                                  className="small text-dark fw-medium mb-2"
+                                  className="small text-dark fw-semibold"
                                 />
                                 {formData.isHalfDay && (
-                                  <div className="bg-light p-2 rounded border ms-3">
-                                    <Form.Label className="small fw-bold mb-1">Half Day Period</Form.Label>
-                                    <div className="d-flex gap-3">
+                                  <div className="mt-2 pt-2 border-top">
+                                    <Form.Label className="extra-small fw-bold text-muted mb-1 text-uppercase">Half Day Period</Form.Label>
+                                    <div className="d-flex gap-4">
                                       <Form.Check
                                         type="radio"
                                         name="halfDayPeriod"
@@ -555,115 +716,116 @@ function LeaveRequest() {
                                     </div>
                                   </div>
                                 )}
-                              </Form.Group>
+                              </div>
+                            </Form.Group>
 
-                              <Form.Group className="mb-4">
-                                <Form.Label className="small fw-bold">Reason for Leave</Form.Label>
-                                <Form.Control
-                                  as="textarea"
-                                  rows={3}
-                                  name="reason"
-                                  placeholder="Provide clear reason (at least 5 characters)..."
-                                  value={formData.reason}
-                                  onChange={handleInputChange}
-                                  className="shadow-none form-control-sm"
-                                  required
-                                />
-                              </Form.Group>
+                            <Form.Group className="mb-3">
+                              <Form.Label className="small fw-bold text-dark mb-1">Reason for Leave</Form.Label>
+                              <Form.Control
+                                as="textarea"
+                                rows={2}
+                                name="reason"
+                                placeholder="State reason clearly (minimum 5 characters)..."
+                                value={formData.reason}
+                                onChange={handleInputChange}
+                                className="form-control-sm shadow-none border"
+                                required
+                              />
+                            </Form.Group>
 
-                              <Button
-                                type="submit"
-                                variant="primary"
-                                disabled={submitting || Boolean(formValidationErr)}
-                                className="w-100 py-2 fw-bold d-flex align-items-center justify-content-center gap-2"
-                              >
-                                {submitting ? <Spinner size="sm" animation="border" /> : <><FaPlus /> Submit Request</>}
-                              </Button>
-                            </Form>
-                          </Card.Body>
-                        </Card>
+                            <button
+                              type="submit"
+                              disabled={submitting || Boolean(formValidationErr)}
+                              className="leave-submit-btn"
+                            >
+                              {submitting ? <Spinner size="sm" animation="border" /> : <><FaPlus /> Submit Application</>}
+                            </button>
+                          </Form>
+                        </div>
                       </Col>
                     )}
 
                     {/* Right: My Leave History */}
                     <Col lg={canCreateOwn ? 7 : 12}>
-                      <Card className="border shadow-none rounded-3 h-100">
-                        <Card.Body className="p-4">
-                          <h5 className="fw-bold mb-3 text-dark d-flex align-items-center gap-2">
-                            <FaHistory /> My Leave History
-                          </h5>
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <h6 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                          <FaHistory className="text-success" /> My Leave History
+                        </h6>
+                        <span className="leave-count-badge">
+                          {filteredMyLeaves.length} Records
+                        </span>
+                      </div>
 
-                          <div className="table-responsive">
-                            <Table borderless hover className="align-middle mb-0" style={{ fontSize: "0.85rem" }}>
-                              <thead className="bg-light border-bottom text-muted">
-                                <tr>
-                                  <th className="fw-bold py-2">Leave Type</th>
-                                  <th className="fw-bold py-2">Date & Duration</th>
-                                  <th className="fw-bold py-2">Reason</th>
-                                  <th className="fw-bold py-2 text-center">Status</th>
-                                  <th className="fw-bold py-2 text-end">Action</th>
+                      <div className="table-responsive">
+                        <Table hover className="leave-table align-middle mb-0">
+                          <thead>
+                            <tr>
+                              <th className="py-2 px-2">Leave Type</th>
+                              <th className="py-2 px-2">Date & Duration</th>
+                              <th className="py-2 px-2">Reason</th>
+                              <th className="py-2 px-2 text-center">Status</th>
+                              <th className="py-2 px-2 text-end">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {loading ? (
+                              <tr>
+                                <td colSpan={5} className="text-center py-4"><Spinner animation="border" size="sm" variant="success" /></td>
+                              </tr>
+                            ) : paginatedMyLeaves.length === 0 ? (
+                              <tr>
+                                <td colSpan={5} className="text-center py-4 text-muted">No personal leave applications found.</td>
+                              </tr>
+                            ) : (
+                              paginatedMyLeaves.map((item) => (
+                                <tr key={item._id}>
+                                  <td className="py-2 px-2">
+                                    <div className="fw-bold text-dark leave-emp-name">{item.leaveType === "SL" ? "Sick Leave" : item.leaveType === "CL" ? "Casual Leave" : "Unpaid Leave"}</div>
+                                    <small className="text-muted extra-small">{item.title}</small>
+                                  </td>
+                                  <td className="py-2 px-2">
+                                    <div className="fw-semibold text-dark leave-date-text">{new Date(item.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                                    <small className="text-muted extra-small">{item.isHalfDay ? `Half Day (${item.halfDayPeriod})` : "Full Day (1.0 Day)"}</small>
+                                  </td>
+                                  <td className="py-2 px-2 leave-reason-cell">
+                                    <span className="leave-reason-text" title={item.reason}>{item.reason}</span>
+                                  </td>
+                                  <td className="py-2 px-2 text-center">
+                                    {getStatusBadge(item.status)}
+                                  </td>
+                                  <td className="py-2 px-2 text-end">
+                                    <div className="d-flex justify-content-end align-items-center gap-1">
+                                      {canCancelOwn && item.status === "Pending" && (
+                                        <Button
+                                          variant="outline-danger"
+                                          size="sm"
+                                          className="p-1 px-2 extra-small rounded-pill"
+                                          disabled={actionLoading}
+                                          onClick={() => handleCancelRequest(item._id)}
+                                        >
+                                          Cancel
+                                        </Button>
+                                      )}
+                                      {canAudit && (
+                                        <Button
+                                          variant="light"
+                                          size="sm"
+                                          className="leave-audit-btn p-1 text-muted border-0 shadow-none"
+                                          title="View Audit Trail"
+                                          onClick={() => handleViewAudit(item._id)}
+                                        >
+                                          <FaHistory size={13} />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </td>
                                 </tr>
-                              </thead>
-                              <tbody>
-                                {loading ? (
-                                  <tr>
-                                    <td colSpan={5} className="text-center py-4"><Spinner animation="border" size="sm" /></td>
-                                  </tr>
-                                ) : myLeaves.length === 0 ? (
-                                  <tr>
-                                    <td colSpan={5} className="text-center py-4 text-muted">No leave applications found.</td>
-                                  </tr>
-                                ) : (
-                                  myLeaves.map((item) => (
-                                    <tr key={item._id} className="border-bottom-light">
-                                      <td className="py-3">
-                                        <div className="fw-bold text-dark">{item.leaveType === "SL" ? "Sick Leave" : item.leaveType === "CL" ? "Casual Leave" : "Unpaid Leave"}</div>
-                                        <small className="text-muted">{item.title}</small>
-                                      </td>
-                                      <td className="py-3">
-                                        <div className="fw-medium text-dark">{new Date(item.startDate).toLocaleDateString()}</div>
-                                        <small className="text-muted">{item.isHalfDay ? `Half Day (${item.halfDayPeriod})` : "Full Day (1.0 Day)"}</small>
-                                      </td>
-                                      <td className="py-3" style={{ maxWidth: "200px" }}>
-                                        <div className="text-truncate" title={item.reason}>{item.reason}</div>
-                                      </td>
-                                      <td className="py-3 text-center">
-                                        {getStatusBadge(item.status)}
-                                      </td>
-                                      <td className="py-3 text-end">
-                                        <div className="d-flex justify-content-end gap-2">
-                                          {canCancelOwn && item.status === "Pending" && (
-                                            <Button
-                                              variant="outline-danger"
-                                              size="sm"
-                                              className="py-0 px-2 small"
-                                              disabled={actionLoading}
-                                              onClick={() => handleCancelRequest(item._id)}
-                                            >
-                                              Cancel
-                                            </Button>
-                                          )}
-                                          {canAudit && (
-                                            <Button
-                                              variant="link"
-                                              size="sm"
-                                              className="p-0 text-muted shadow-none"
-                                              title="View Audit Log"
-                                              onClick={() => handleViewAudit(item._id)}
-                                            >
-                                              <FaHistory size={14} />
-                                            </Button>
-                                          )}
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  ))
-                                )}
-                              </tbody>
-                            </Table>
-                          </div>
-                        </Card.Body>
-                      </Card>
+                              ))
+                            )}
+                          </tbody>
+                        </Table>
+                      </div>
+                      {renderPagination(filteredMyLeaves.length)}
                     </Col>
                   </Row>
                 </Tab.Pane>
@@ -672,100 +834,164 @@ function LeaveRequest() {
               {/* TAB 2: PENDING APPROVALS */}
               {(canApprove || canReject) && (
                 <Tab.Pane eventKey="approvals">
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h5 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
-                      <FaUserCheck className="text-primary" /> Pending Leave Approvals
-                    </h5>
-                    <Badge bg="warning" className="text-dark">{pendingApprovalsList.length} Pending</Badge>
+                  <div className="leave-toolbar d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <div className="d-flex align-items-center gap-2">
+                      <h6 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                        <FaUserCheck className="text-success" /> Pending Leave Approvals
+                      </h6>
+                      <span className="leave-count-badge">
+                        {filteredApprovals.length} Action Required
+                      </span>
+                    </div>
+
+                    {pendingApprovalsList.length > 0 && (
+                      <div className="d-flex align-items-center gap-2 flex-wrap">
+                        <InputGroup size="sm" className="leave-search-group">
+                          <InputGroup.Text className="bg-white border-end-0 text-muted">
+                            <FaSearch size={12} />
+                          </InputGroup.Text>
+                          <Form.Control
+                            type="text"
+                            placeholder="Search pending..."
+                            value={searchQuery}
+                            onChange={(e) => handleSearchChange(e.target.value)}
+                            className="border-start-0 shadow-none leave-search-input"
+                          />
+                        </InputGroup>
+
+                        <Form.Select
+                          size="sm"
+                          value={typeFilter}
+                          onChange={(e) => handleTypeFilterChange(e.target.value)}
+                          className="leave-type-select shadow-none"
+                        >
+                          <option value="ALL">All Types</option>
+                          <option value="SL">Sick (SL)</option>
+                          <option value="CL">Casual (CL)</option>
+                          <option value="LOP">Unpaid (LOP)</option>
+                        </Form.Select>
+
+                        {(searchQuery || typeFilter !== "ALL") && (
+                          <Button
+                            variant="outline-secondary"
+                            size="sm"
+                            onClick={handleResetFilters}
+                            className="leave-reset-btn d-flex align-items-center gap-1"
+                            title="Reset filters"
+                          >
+                            <FaUndo size={11} /> Reset
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {pendingApprovalsList.length === 0 ? (
-                    <div className="text-center py-5 bg-light rounded-3">
-                      <FaCheckCircle size={32} className="text-success mb-2" />
-                      <p className="text-muted mb-0">No pending leave requests requiring approval.</p>
+                    <div className="text-center py-4 bg-light rounded-3">
+                      <FaCheckCircle size={30} className="text-success mb-2" />
+                      <h6 className="fw-bold text-dark mb-1">Queue is clear!</h6>
+                      <p className="text-muted extra-small mb-0">No pending leave requests requiring your review at this time.</p>
                     </div>
                   ) : (
-                    <div className="table-responsive">
-                      <Table borderless hover className="align-middle mb-0" style={{ fontSize: "0.85rem" }}>
-                        <thead className="bg-light border-bottom text-muted">
-                          <tr>
-                            <th className="fw-bold py-2">Employee</th>
-                            <th className="fw-bold py-2">Leave Type</th>
-                            <th className="fw-bold py-2">Requested Date</th>
-                            <th className="fw-bold py-2">Duration</th>
-                            <th className="fw-bold py-2">Reason</th>
-                            <th className="fw-bold py-2 text-end">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {pendingApprovalsList.map((item) => {
-                            const isSelf = item.employeeId?._id === user?.id || item.employeeId === user?.id;
-                            return (
-                              <tr key={item._id} className="border-bottom-light">
-                                <td className="py-3">
-                                  <div className="fw-bold text-dark">{item.employeeId?.firstName} {item.employeeId?.lastName}</div>
-                                  <small className="text-muted">{item.employeeId?.employeeCode || item.employeeId?.email || "Employee"}</small>
-                                </td>
-                                <td className="py-3">
-                                  <Badge bg={item.leaveType === "SL" ? "info" : item.leaveType === "CL" ? "warning" : "secondary"}>
-                                    {item.leaveType === "SL" ? "Sick Leave" : item.leaveType === "CL" ? "Casual Leave" : "Unpaid Leave"}
-                                  </Badge>
-                                </td>
-                                <td className="py-3 fw-medium">
-                                  {new Date(item.startDate).toLocaleDateString()}
-                                </td>
-                                <td className="py-3">
-                                  {item.isHalfDay ? `Half Day (${item.halfDayPeriod})` : "Full Day (1.0 Day)"}
-                                </td>
-                                <td className="py-3" style={{ maxWidth: "250px" }}>
-                                  <div title={item.reason}>{item.reason}</div>
-                                </td>
-                                <td className="py-3 text-end">
-                                  {isSelf ? (
-                                    <Badge bg="light" className="text-muted border">Self-approval Disabled</Badge>
-                                  ) : (
-                                    <div className="d-flex justify-content-end gap-2">
-                                      {canApprove && (
-                                        <Button
-                                          variant="success"
-                                          size="sm"
-                                          disabled={actionLoading}
-                                          onClick={() => handleApproveRequest(item._id)}
-                                          className="fw-bold px-3 py-1"
-                                        >
-                                          Approve
-                                        </Button>
-                                      )}
-                                      {canReject && (
-                                        <Button
-                                          variant="outline-danger"
-                                          size="sm"
-                                          disabled={actionLoading}
-                                          onClick={() => openRejectModal(item._id)}
-                                          className="fw-bold px-3 py-1"
-                                        >
-                                          Reject
-                                        </Button>
-                                      )}
-                                      {canAudit && (
-                                        <Button
-                                          variant="link"
-                                          size="sm"
-                                          className="p-0 text-muted shadow-none"
-                                          onClick={() => handleViewAudit(item._id)}
-                                        >
-                                          <FaHistory size={14} />
-                                        </Button>
-                                      )}
-                                    </div>
-                                  )}
+                    <>
+                      <div className="table-responsive">
+                        <Table hover className="leave-table align-middle mb-0">
+                          <thead>
+                            <tr>
+                              <th className="py-2 px-3">Employee</th>
+                              <th className="py-2 px-3">Leave Type</th>
+                              <th className="py-2 px-3">Requested Date</th>
+                              <th className="py-2 px-3">Duration</th>
+                              <th className="py-2 px-3">Reason</th>
+                              <th className="py-2 px-3 text-end">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {paginatedApprovals.length === 0 ? (
+                              <tr>
+                                <td colSpan={6} className="text-center py-4 text-muted">
+                                  No pending leave requests match your search criteria.
                                 </td>
                               </tr>
-                            );
-                          })}
-                        </tbody>
-                      </Table>
-                    </div>
+                            ) : (
+                              paginatedApprovals.map((item) => {
+                                const isSelf = item.employeeId?._id === user?.id || item.employeeId === user?.id;
+                                return (
+                                  <tr key={item._id}>
+                                    <td className="py-2 px-3">
+                                      <div className="d-flex align-items-center gap-2">
+                                        <div className="leave-avatar-chip">
+                                          {(item.employeeId?.firstName?.[0] || "E") + (item.employeeId?.lastName?.[0] || "")}
+                                        </div>
+                                        <div className="leave-emp-info">
+                                          <div className="fw-bold text-dark leave-emp-name">{item.employeeId?.firstName} {item.employeeId?.lastName}</div>
+                                          <span className="leave-emp-code">{item.employeeId?.employeeCode || item.employeeId?.email || "Employee"}</span>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="py-2 px-3">
+                                      <span className={`leave-type-badge ${item.leaveType === "SL" ? "sl" : item.leaveType === "CL" ? "cl" : "lop"}`}>
+                                        {item.leaveType === "SL" ? "Sick Leave" : item.leaveType === "CL" ? "Casual Leave" : "Unpaid Leave"}
+                                      </span>
+                                    </td>
+                                    <td className="py-2 px-3 fw-semibold text-dark leave-date-text">
+                                      {new Date(item.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    </td>
+                                    <td className="py-2 px-3 extra-small text-muted">
+                                      {item.isHalfDay ? `Half Day (${item.halfDayPeriod})` : "Full Day (1.0 Day)"}
+                                    </td>
+                                    <td className="py-2 px-3 leave-reason-cell-wide">
+                                      <span className="leave-reason-text" title={item.reason}>{item.reason}</span>
+                                    </td>
+                                    <td className="py-2 px-3 text-end">
+                                      {isSelf ? (
+                                        <span className="badge bg-light text-muted border px-2 py-1 rounded-pill extra-small">Self-approval Disabled</span>
+                                      ) : (
+                                        <div className="d-flex justify-content-end align-items-center gap-1">
+                                          {canApprove && (
+                                            <button
+                                              type="button"
+                                              disabled={actionLoading}
+                                              onClick={() => handleApproveRequest(item._id)}
+                                              className="leave-btn-approve"
+                                            >
+                                              Approve
+                                            </button>
+                                          )}
+                                          {canReject && (
+                                            <Button
+                                              variant="outline-danger"
+                                              size="sm"
+                                              disabled={actionLoading}
+                                              onClick={() => openRejectModal(item._id)}
+                                              className="leave-btn-reject"
+                                            >
+                                              Reject
+                                            </Button>
+                                          )}
+                                          {canAudit && (
+                                            <Button
+                                              variant="light"
+                                              size="sm"
+                                              className="leave-audit-btn p-1 text-muted border-0 shadow-none"
+                                              onClick={() => handleViewAudit(item._id)}
+                                              title="Audit Trail"
+                                            >
+                                              <FaHistory size={13} />
+                                            </Button>
+                                          )}
+                                        </div>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </Table>
+                      </div>
+                      {renderPagination(filteredApprovals.length)}
+                    </>
                   )}
                 </Tab.Pane>
               )}
@@ -773,78 +999,123 @@ function LeaveRequest() {
               {/* TAB 3: TEAM LEAVES */}
               {canReadTeam && (
                 <Tab.Pane eventKey="team">
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h5 className="fw-bold mb-0 text-dark">Team Leave Requests</h5>
-                    <div className="d-flex gap-2">
-                      <Form.Control
-                        type="text"
-                        placeholder="Search employee / reason..."
-                        size="sm"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        style={{ width: "200px" }}
-                      />
+                  <div className="leave-toolbar d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <div className="d-flex align-items-center gap-2">
+                      <h6 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                        <FaUsers className="text-success" /> Team Leave Requests
+                      </h6>
+                      <span className="leave-count-badge">
+                        {filteredTeamLeaves.length} Records
+                      </span>
+                    </div>
+
+                    <div className="d-flex align-items-center gap-2 flex-wrap">
+                      <InputGroup size="sm" className="leave-search-group">
+                        <InputGroup.Text className="bg-white border-end-0 text-muted">
+                          <FaSearch size={12} />
+                        </InputGroup.Text>
+                        <Form.Control
+                          type="text"
+                          placeholder="Search employee / reason..."
+                          value={searchQuery}
+                          onChange={(e) => handleSearchChange(e.target.value)}
+                          className="border-start-0 shadow-none leave-search-input"
+                        />
+                      </InputGroup>
+
                       <Form.Select
                         size="sm"
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        style={{ width: "130px" }}
+                        onChange={(e) => handleStatusFilterChange(e.target.value)}
+                        className="leave-status-select shadow-none"
                       >
-                        <option value="ALL">All Status</option>
+                        <option value="ALL">All Statuses</option>
                         <option value="Pending">Pending</option>
                         <option value="Approved">Approved</option>
                         <option value="Rejected">Rejected</option>
                         <option value="Cancelled">Cancelled</option>
                       </Form.Select>
+
+                      <Form.Select
+                        size="sm"
+                        value={typeFilter}
+                        onChange={(e) => handleTypeFilterChange(e.target.value)}
+                        className="leave-type-select shadow-none"
+                      >
+                        <option value="ALL">All Types</option>
+                        <option value="SL">Sick (SL)</option>
+                        <option value="CL">Casual (CL)</option>
+                        <option value="LOP">Unpaid (LOP)</option>
+                      </Form.Select>
+
+                      {(searchQuery || statusFilter !== "ALL" || typeFilter !== "ALL") && (
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          onClick={handleResetFilters}
+                          className="leave-reset-btn d-flex align-items-center gap-1"
+                          title="Reset filters"
+                        >
+                          <FaUndo size={11} /> Reset
+                        </Button>
+                      )}
                     </div>
                   </div>
 
                   <div className="table-responsive">
-                    <Table borderless hover className="align-middle mb-0" style={{ fontSize: "0.85rem" }}>
-                      <thead className="bg-light border-bottom text-muted">
+                    <Table hover className="leave-table align-middle mb-0">
+                      <thead>
                         <tr>
-                          <th className="fw-bold py-2">Employee</th>
-                          <th className="fw-bold py-2">Leave Type</th>
-                          <th className="fw-bold py-2">Date & Duration</th>
-                          <th className="fw-bold py-2">Reason</th>
-                          <th className="fw-bold py-2 text-center">Status</th>
-                          <th className="fw-bold py-2 text-end">Action</th>
+                          <th className="py-2 px-3">Employee</th>
+                          <th className="py-2 px-3">Leave Type</th>
+                          <th className="py-2 px-3">Date & Duration</th>
+                          <th className="py-2 px-3">Reason</th>
+                          <th className="py-2 px-3 text-center">Status</th>
+                          <th className="py-2 px-3 text-end">Action</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filterList(teamLeaves).length === 0 ? (
+                        {paginatedTeamLeaves.length === 0 ? (
                           <tr>
                             <td colSpan={6} className="text-center py-4 text-muted">No team leave records found.</td>
                           </tr>
                         ) : (
-                          filterList(teamLeaves).map((item) => (
-                            <tr key={item._id} className="border-bottom-light">
-                              <td className="py-3">
-                                <div className="fw-bold text-dark">{item.employeeId?.firstName} {item.employeeId?.lastName}</div>
-                                <small className="text-muted">{item.employeeId?.employeeCode || "Employee"}</small>
+                          paginatedTeamLeaves.map((item) => (
+                            <tr key={item._id}>
+                              <td className="py-2 px-3">
+                                <div className="d-flex align-items-center gap-2">
+                                  <div className="leave-avatar-chip">
+                                    {(item.employeeId?.firstName?.[0] || "E") + (item.employeeId?.lastName?.[0] || "")}
+                                  </div>
+                                  <div className="leave-emp-info">
+                                    <div className="fw-bold text-dark leave-emp-name">{item.employeeId?.firstName} {item.employeeId?.lastName}</div>
+                                    <span className="leave-emp-code">{item.employeeId?.employeeCode || "Employee"}</span>
+                                  </div>
+                                </div>
                               </td>
-                              <td className="py-3">
-                                <Badge bg={item.leaveType === "SL" ? "info" : item.leaveType === "CL" ? "warning" : "secondary"}>
+                              <td className="py-2 px-3">
+                                <span className={`leave-type-badge ${item.leaveType === "SL" ? "sl" : item.leaveType === "CL" ? "cl" : "lop"}`}>
                                   {item.leaveType === "SL" ? "Sick Leave" : item.leaveType === "CL" ? "Casual Leave" : "Unpaid Leave"}
-                                </Badge>
+                                </span>
                               </td>
-                              <td className="py-3">
-                                <div className="fw-medium text-dark">{new Date(item.startDate).toLocaleDateString()}</div>
-                                <small className="text-muted">{item.isHalfDay ? `Half Day (${item.halfDayPeriod})` : "Full Day"}</small>
+                              <td className="py-2 px-3">
+                                <div className="fw-semibold text-dark leave-date-text">{new Date(item.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                                <small className="text-muted extra-small">{item.isHalfDay ? `Half Day (${item.halfDayPeriod})` : "Full Day"}</small>
                               </td>
-                              <td className="py-3" style={{ maxWidth: "200px" }}>
-                                <div className="text-truncate" title={item.reason}>{item.reason}</div>
+                              <td className="py-2 px-3 leave-reason-cell">
+                                <span className="leave-reason-text" title={item.reason}>{item.reason}</span>
                               </td>
-                              <td className="py-3 text-center">{getStatusBadge(item.status)}</td>
-                              <td className="py-3 text-end">
+                              <td className="py-2 px-3 text-center">{getStatusBadge(item.status)}</td>
+                              <td className="py-2 px-3 text-end">
                                 {canAudit && (
                                   <Button
-                                    variant="link"
+                                    variant="light"
                                     size="sm"
-                                    className="p-0 text-muted shadow-none"
+                                    className="leave-audit-btn p-1 text-muted border-0 shadow-none"
                                     onClick={() => handleViewAudit(item._id)}
+                                    title="Audit Trail"
                                   >
-                                    <FaHistory size={14} />
+                                    <FaHistory size={13} />
                                   </Button>
                                 )}
                               </td>
@@ -854,90 +1125,137 @@ function LeaveRequest() {
                       </tbody>
                     </Table>
                   </div>
+                  {renderPagination(filteredTeamLeaves.length)}
                 </Tab.Pane>
               )}
 
-              {/* TAB 4: ALL COMPANY LEAVES */}
+              {/* TAB 4: ALL COMPANY LEAVES (Company-Wide Leave Directory - Main Focus) */}
               {canReadAll && (
                 <Tab.Pane eventKey="all">
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h5 className="fw-bold mb-0 text-dark">Company-Wide Leave Directory</h5>
-                    <div className="d-flex gap-2">
-                      <Form.Control
-                        type="text"
-                        placeholder="Search employee / code..."
-                        size="sm"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        style={{ width: "220px" }}
-                      />
+                  <div className="leave-toolbar d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <div className="d-flex align-items-center gap-2">
+                      <h6 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                        <FaUsers className="text-success" /> Company-Wide Leave Directory
+                      </h6>
+                      <span className="leave-count-badge">
+                        {filteredAllLeaves.length} Records
+                      </span>
+                    </div>
+
+                    {/* Single-Row Compact Filter Toolbar */}
+                    <div className="d-flex align-items-center gap-2 flex-wrap">
+                      <InputGroup size="sm" className="leave-search-group">
+                        <InputGroup.Text className="bg-white border-end-0 text-muted">
+                          <FaSearch size={12} />
+                        </InputGroup.Text>
+                        <Form.Control
+                          type="text"
+                          placeholder="Search employee / code..."
+                          value={searchQuery}
+                          onChange={(e) => handleSearchChange(e.target.value)}
+                          className="border-start-0 shadow-none leave-search-input"
+                        />
+                      </InputGroup>
+
                       <Form.Select
                         size="sm"
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        style={{ width: "130px" }}
+                        onChange={(e) => handleStatusFilterChange(e.target.value)}
+                        className="leave-status-select shadow-none"
                       >
-                        <option value="ALL">All Status</option>
+                        <option value="ALL">All Statuses</option>
                         <option value="Pending">Pending</option>
                         <option value="Approved">Approved</option>
                         <option value="Rejected">Rejected</option>
                         <option value="Cancelled">Cancelled</option>
                       </Form.Select>
+
+                      <Form.Select
+                        size="sm"
+                        value={typeFilter}
+                        onChange={(e) => handleTypeFilterChange(e.target.value)}
+                        className="leave-type-select shadow-none"
+                      >
+                        <option value="ALL">All Types</option>
+                        <option value="SL">Sick (SL)</option>
+                        <option value="CL">Casual (CL)</option>
+                        <option value="LOP">Unpaid (LOP)</option>
+                      </Form.Select>
+
+                      {(searchQuery || statusFilter !== "ALL" || typeFilter !== "ALL") && (
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          onClick={handleResetFilters}
+                          className="leave-reset-btn d-flex align-items-center gap-1"
+                          title="Reset filters"
+                        >
+                          <FaUndo size={11} /> Reset
+                        </Button>
+                      )}
                     </div>
                   </div>
 
                   <div className="table-responsive">
-                    <Table borderless hover className="align-middle mb-0" style={{ fontSize: "0.85rem" }}>
-                      <thead className="bg-light border-bottom text-muted">
+                    <Table hover className="leave-table align-middle mb-0">
+                      <thead>
                         <tr>
-                          <th className="fw-bold py-2">Employee</th>
-                          <th className="fw-bold py-2">Type</th>
-                          <th className="fw-bold py-2">Date & Duration</th>
-                          <th className="fw-bold py-2">Reason</th>
-                          <th className="fw-bold py-2 text-center">Status</th>
-                          <th className="fw-bold py-2">Approved / Handled By</th>
-                          <th className="fw-bold py-2 text-end">Audit</th>
+                          <th className="py-2 px-3">Employee</th>
+                          <th className="py-2 px-3">Type</th>
+                          <th className="py-2 px-3">Date & Duration</th>
+                          <th className="py-2 px-3">Reason</th>
+                          <th className="py-2 px-3 text-center">Status</th>
+                          <th className="py-2 px-3">Handled By</th>
+                          <th className="py-2 px-3 text-end">Audit</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filterList(allLeaves).length === 0 ? (
+                        {paginatedAllLeaves.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="text-center py-4 text-muted">No leave records found.</td>
+                            <td colSpan={7} className="text-center py-4 text-muted">No company leave records found matching current filters.</td>
                           </tr>
                         ) : (
-                          filterList(allLeaves).map((item) => (
-                            <tr key={item._id} className="border-bottom-light">
-                              <td className="py-3">
-                                <div className="fw-bold text-dark">{item.employeeId?.firstName} {item.employeeId?.lastName}</div>
-                                <small className="text-muted">{item.employeeId?.employeeCode || "Employee"}</small>
+                          paginatedAllLeaves.map((item) => (
+                            <tr key={item._id}>
+                              <td className="py-2 px-3">
+                                <div className="d-flex align-items-center gap-2">
+                                  <div className="leave-avatar-chip">
+                                    {(item.employeeId?.firstName?.[0] || "E") + (item.employeeId?.lastName?.[0] || "")}
+                                  </div>
+                                  <div className="leave-emp-info">
+                                    <div className="fw-bold text-dark leave-emp-name">{item.employeeId?.firstName} {item.employeeId?.lastName}</div>
+                                    <span className="leave-emp-code">{item.employeeId?.employeeCode || "Employee"}</span>
+                                  </div>
+                                </div>
                               </td>
-                              <td className="py-3">
-                                <Badge bg={item.leaveType === "SL" ? "info" : item.leaveType === "CL" ? "warning" : "secondary"}>
+                              <td className="py-2 px-3">
+                                <span className={`leave-type-badge ${item.leaveType === "SL" ? "sl" : item.leaveType === "CL" ? "cl" : "lop"}`}>
                                   {item.leaveType}
-                                </Badge>
+                                </span>
                               </td>
-                              <td className="py-3">
-                                <div className="fw-medium text-dark">{new Date(item.startDate).toLocaleDateString()}</div>
-                                <small className="text-muted">{item.isHalfDay ? `Half Day (${item.halfDayPeriod})` : "Full Day"}</small>
+                              <td className="py-2 px-3">
+                                <div className="fw-semibold text-dark leave-date-text">{new Date(item.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                                <small className="text-muted extra-small">{item.isHalfDay ? `Half Day (${item.halfDayPeriod})` : "Full Day"}</small>
                               </td>
-                              <td className="py-3" style={{ maxWidth: "200px" }}>
-                                <div className="text-truncate" title={item.reason}>{item.reason}</div>
+                              <td className="py-2 px-3 leave-reason-cell">
+                                <span className="leave-reason-text" title={item.reason}>{item.reason}</span>
                               </td>
-                              <td className="py-3 text-center">{getStatusBadge(item.status)}</td>
-                              <td className="py-3">
-                                <small className="text-dark fw-medium">
-                                  {item.approvedBy ? `${item.approvedBy.firstName} ${item.approvedBy.lastName}` : "-"}
-                                </small>
+                              <td className="py-2 px-3 text-center">{getStatusBadge(item.status)}</td>
+                              <td className="py-2 px-3">
+                                <span className="text-dark extra-small fw-medium">
+                                  {item.approvedBy ? `${item.approvedBy.firstName} ${item.approvedBy.lastName}` : "—"}
+                                </span>
                               </td>
-                              <td className="py-3 text-end">
+                              <td className="py-2 px-3 text-end">
                                 {canAudit && (
                                   <Button
-                                    variant="link"
+                                    variant="light"
                                     size="sm"
-                                    className="p-0 text-muted shadow-none"
+                                    className="leave-audit-btn p-1 text-muted border-0 shadow-none"
                                     onClick={() => handleViewAudit(item._id)}
+                                    title="Audit Trail"
                                   >
-                                    <FaHistory size={14} />
+                                    <FaHistory size={13} />
                                   </Button>
                                 )}
                               </td>
@@ -947,28 +1265,31 @@ function LeaveRequest() {
                       </tbody>
                     </Table>
                   </div>
+                  {renderPagination(filteredAllLeaves.length)}
                 </Tab.Pane>
               )}
 
               {/* TAB 5: LEAVE CALENDAR */}
               {(canReadTeam || canReadAll) && (
                 <Tab.Pane eventKey="calendar">
-                  <h5 className="fw-bold mb-3 text-dark">Approved Leave Schedule</h5>
-                  <div className="bg-light p-4 rounded-3 text-center">
-                    <p className="text-muted mb-2">Displaying scheduled approved employee leaves for the month.</p>
+                  <h6 className="fw-bold mb-2 text-dark d-flex align-items-center gap-2">
+                    <FaCalendarAlt className="text-success" /> Approved Leave Schedule
+                  </h6>
+                  <div className="bg-light p-3 rounded-3 text-center">
+                    <p className="text-muted extra-small mb-2">Displaying scheduled approved employee leaves for upcoming days.</p>
                     <div className="d-flex flex-wrap gap-2 justify-content-center">
                       {(allLeaves.length > 0 ? allLeaves : teamLeaves)
                         .filter((l) => l.status === "Approved")
                         .map((item) => (
-                          <Card key={item._id} className="border-0 shadow-sm p-3 text-start bg-white" style={{ minWidth: "220px" }}>
-                            <div className="fw-bold text-primary">{item.employeeId?.firstName} {item.employeeId?.lastName}</div>
-                            <small className="text-muted">{new Date(item.startDate).toLocaleDateString()}</small>
-                            <div className="mt-2">
-                              <Badge bg={item.leaveType === "SL" ? "info" : item.leaveType === "CL" ? "warning" : "secondary"}>
+                          <div key={item._id} className="leave-calendar-card text-start">
+                            <div className="fw-bold text-dark small">{item.employeeId?.firstName} {item.employeeId?.lastName}</div>
+                            <small className="text-muted extra-small">{new Date(item.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</small>
+                            <div className="mt-1">
+                              <span className={`leave-type-badge ${item.leaveType === "SL" ? "sl" : item.leaveType === "CL" ? "cl" : "lop"}`}>
                                 {item.leaveType === "SL" ? "Sick Leave" : item.leaveType === "CL" ? "Casual Leave" : "Unpaid Leave"} ({item.isHalfDay ? "0.5 Day" : "1.0 Day"})
-                              </Badge>
+                              </span>
                             </div>
-                          </Card>
+                          </div>
                         ))}
                     </div>
                   </div>
@@ -981,24 +1302,27 @@ function LeaveRequest() {
 
       {/* Reject Reason Modal */}
       <Modal show={showRejectModal} onHide={() => setShowRejectModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="h6 fw-bold">Reject Leave Request</Modal.Title>
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="h6 fw-bold text-danger d-flex align-items-center gap-2">
+            <FaTimesCircle /> Reject Leave Request
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form.Group>
-            <Form.Label className="small fw-bold">Rejection Reason</Form.Label>
+            <Form.Label className="small fw-bold text-dark">Rejection Reason</Form.Label>
             <Form.Control
               as="textarea"
               rows={3}
-              placeholder="Provide a brief explanation for rejection..."
+              placeholder="Provide a clear explanation for this rejection..."
               value={rejectionReasonInput}
               onChange={(e) => setRejectionReasonInput(e.target.value)}
+              className="rounded-3 shadow-none border"
             />
           </Form.Group>
         </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" size="sm" onClick={() => setShowRejectModal(false)}>Cancel</Button>
-          <Button variant="danger" size="sm" disabled={actionLoading} onClick={handleConfirmReject}>
+        <Modal.Footer className="border-0 pt-0">
+          <Button variant="light" size="sm" onClick={() => setShowRejectModal(false)}>Cancel</Button>
+          <Button variant="danger" size="sm" disabled={actionLoading} onClick={handleConfirmReject} className="fw-bold px-3">
             {actionLoading ? <Spinner size="sm" animation="border" /> : "Confirm Reject"}
           </Button>
         </Modal.Footer>
@@ -1006,38 +1330,38 @@ function LeaveRequest() {
 
       {/* Audit History Modal */}
       <Modal show={showAuditModal} onHide={() => setShowAuditModal(false)} centered size="lg">
-        <Modal.Header closeButton>
+        <Modal.Header closeButton className="border-0 pb-0">
           <Modal.Title className="h6 fw-bold d-flex align-items-center gap-2">
-            <FaHistory /> Leave Workflow Audit Log
+            <FaHistory className="text-secondary" /> Leave Workflow Audit Log
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {auditLoading ? (
-            <div className="text-center py-4"><Spinner animation="border" /></div>
+            <div className="text-center py-4"><Spinner animation="border" variant="success" /></div>
           ) : auditData ? (
             <div>
-              <div className="mb-3 p-2 bg-light rounded">
-                <div className="fw-bold">{auditData.title}</div>
+              <div className="mb-3 p-3 bg-light rounded-3 border">
+                <div className="fw-bold text-dark">{auditData.title}</div>
                 <small className="text-muted">Status: {auditData.status}</small>
               </div>
 
-              <h6 className="fw-bold small text-muted mb-3">Status Transition History</h6>
-              <div className="timeline ps-3 border-start border-2 border-primary">
+              <div className="leave-audit-heading">Status Transition History</div>
+              <div className="leave-audit-timeline">
                 {auditData.auditTrail?.map((log, idx) => (
-                  <div key={idx} className="mb-3 position-relative">
+                  <div key={idx} className="mb-2 position-relative">
                     <div className="fw-bold small text-dark">
-                      {log.action} : {log.oldStatus || "New"} &rarr; {log.newStatus}
+                      {log.action} : {log.oldStatus || "New"} &rarr; <span className="text-primary">{log.newStatus}</span>
                     </div>
-                    <small className="text-muted d-block">
+                    <small className="text-muted d-block extra-small">
                       By: {log.performedByName || log.performedBy?.firstName || "System"} at {new Date(log.performedAt).toLocaleString()}
                     </small>
-                    {log.reason && <small className="text-danger d-block">Reason: {log.reason}</small>}
+                    {log.reason && <small className="text-danger d-block mt-1 extra-small">Reason: {log.reason}</small>}
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <p className="text-muted mb-0">No audit records available.</p>
+            <p className="text-muted mb-0 text-center py-3">No audit records available.</p>
           )}
         </Modal.Body>
       </Modal>

@@ -4,10 +4,10 @@ import {
   FaGraduationCap,
   FaCheckCircle,
   FaClock,
-  FaFileAlt,
   FaAward,
   FaCertificate,
 } from "react-icons/fa";
+import "./Education.css";
 
 function EducationSummary({
   highestQualification = "UG",
@@ -20,19 +20,13 @@ function EducationSummary({
   },
 }) {
   return (
-    <Card className="border-0 rounded-4 shadow-sm mb-4 overflow-hidden" style={{ background: "#ffffff" }}>
-      <div
-        style={{
-          height: 4,
-          background: "linear-gradient(90deg, #2DC58A 0%, #20a673 50%, #157347 100%)",
-        }}
-      />
+    <Card className="border-0 rounded-4 shadow-sm mb-4 overflow-hidden edu-summary-card">
+      <div className="edu-summary-accent-bar" />
       <Card.Body className="p-3.5">
         <div className="d-flex align-items-center justify-content-between mb-3">
           <div className="d-flex align-items-center gap-2">
             <div
-              className="rounded-2 p-1.5 d-flex align-items-center justify-content-center text-white"
-              style={{ background: "#2DC58A" }}
+              className="rounded-2 p-1.5 d-flex align-items-center justify-content-center text-white edu-icon-summary"
             >
               <FaAward size={14} />
             </div>

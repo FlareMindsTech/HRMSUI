@@ -1,0 +1,80 @@
+/* ==========================================================================
+   Shared Education Stylesheet (Education.css)
+   Scoped styling for Education components with .edu-* prefix.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Shared Education Components / Section Cards
+   -------------------------------------------------------------------------- */
+.edu-section-card {
+  border-radius: 1rem;
+}
+
+.edu-section-header {
+  transition: background-color 0.2s ease;
+}
+
+/* --------------------------------------------------------------------------
+   Education Summary
+   -------------------------------------------------------------------------- */
+.edu-summary-card {
+  background: #ffffff;
+}
+
+.edu-summary-accent-bar {
+  height: 4px;
+  background: linear-gradient(90deg, #2DC58A 0%, #20a673 50%, #157347 100%);
+}
+
+.edu-icon-summary {
+  background: #2DC58A;
+}
+
+/* --------------------------------------------------------------------------
+   Education Section Icon Badges
+   -------------------------------------------------------------------------- */
+.edu-icon-sslc {
+  background: #2DC58A;
+}
+
+.edu-icon-hsc {
+  background: #20a673;
+}
+
+.edu-icon-iti {
+  background: #0d6efd;
+}
+
+.edu-icon-diploma {
+  background: #6f42c1;
+}
+
+.edu-icon-ug {
+  background: #2DC58A;
+}
+
+.edu-icon-pg {
+  background: #0dcaf0;
+}
+
+.edu-icon-phd {
+  background: #d63384;
+}
+
+/* --------------------------------------------------------------------------
+   Expandable Sections / Interactive Badges
+   -------------------------------------------------------------------------- */
+.edu-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+@media (max-width: 576px) {
+  .edu-summary-accent-bar {
+    height: 3px;
+  }
+}

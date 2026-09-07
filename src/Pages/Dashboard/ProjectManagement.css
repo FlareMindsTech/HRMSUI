@@ -606,15 +606,16 @@
 }
 
 /* ============================================================
-   DAILY REPORTS CHAT STYLES
+   DAILY REPORTS CHAT STYLES (Restored Original)
    ============================================================ */
 .pm-chat-card {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 160px);
-  min-height: 520px;
+  height: calc(100vh - 240px);
+  min-height: 480px;
   background: #ffffff;
   border-radius: 12px;
+  border: 1px solid var(--pm-border);
   overflow: hidden;
 }
 
@@ -666,53 +667,167 @@
   animation: spin 0.8s linear infinite;
 }
 
-/* Floating Chat Trigger Button */
-.pm-floating-chat-btn {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 1050;
-  background: linear-gradient(135deg, var(--pm-primary) 0%, #25b878 100%);
-  border: none;
-  color: #ffffff;
-  box-shadow: 0 8px 24px rgba(45, 197, 138, 0.4);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+/* ============================================================
+   TOP PROJECT WORKSPACE NAVIGATION & HEADER
+   ============================================================ */
+
+/* Project Search Bar in Sidebar */
+.pm-search-input-group {
+  position: relative;
+  margin-bottom: 12px;
 }
 
-.pm-floating-chat-btn:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 12px 28px rgba(45, 197, 138, 0.5);
-  background: linear-gradient(135deg, #25b878 0%, #1fa86b 100%);
-  color: #ffffff;
+.pm-search-input-group .form-control {
+  padding-left: 34px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  background-color: #f8fafb;
 }
 
-/* Floating Chat Widget Window */
-.pm-floating-chat-widget {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  width: 390px;
-  max-width: calc(100vw - 32px);
-  height: 540px;
-  max-height: calc(100vh - 80px);
-  z-index: 1060;
+.pm-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--pm-text-muted);
+  pointer-events: none;
+  font-size: 0.8rem;
+}
+
+/* Sticky Top Navigation Bar (Above Project Header) */
+.pm-top-nav-bar {
+  position: sticky;
+  top: 0;
+  z-index: 90;
   background: #ffffff;
+  border-radius: 10px;
   border: 1px solid var(--pm-border);
-  border-radius: 14px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  animation: pmSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  padding: 6px 10px;
+  margin-bottom: 14px;
 }
 
-@keyframes pmSlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+.pm-nav-pills-custom {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  overflow-x: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pm-nav-pills-custom .nav-item {
+  flex-shrink: 0;
+}
+
+.pm-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 18px !important;
+  border-radius: 20px !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  color: #4b5563 !important;
+  background-color: transparent !important;
+  border: 1px solid transparent !important;
+  transition: all 0.15s ease-in-out !important;
+  text-decoration: none !important;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pm-nav-link:hover {
+  background-color: #f0fdf4 !important;
+  color: #10b981 !important;
+}
+
+.pm-nav-link.active {
+  background: linear-gradient(135deg, var(--pm-primary) 0%, #25b878 100%) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+  box-shadow: 0 2px 8px rgba(45, 197, 138, 0.3) !important;
+}
+
+/* Compact Selected Project Header (Below Navigation) */
+.pm-selected-project-header {
+  padding: 4px 4px 12px 4px;
+  border-bottom: 1px solid var(--pm-border);
+  margin-bottom: 16px;
+}
+
+.pm-project-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pm-project-title-text {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.pm-project-meta-line {
+  font-size: 0.83rem;
+  color: var(--pm-text-muted);
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* My Tasks & Status Select Utilities */
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.pm-status-select {
+  border-radius: 6px;
+  font-weight: 500;
+  transition: var(--pm-transition);
+}
+
+.pm-status-select:focus {
+  border-color: var(--pm-primary);
+  box-shadow: 0 0 0 0.2rem rgba(45, 197, 138, 0.15);
+}
+
+/* ============================================================
+   SEMANTIC UTILITIES FOR CLEAN JSX SEPARATION
+   ============================================================ */
+.pm-avatar-chip {
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+}
+
+.pm-role-micro {
+  font-size: 10px;
+}
+
+.pm-desc-truncate {
+  max-width: 300px;
+}
+
+.pm-status-select-sm {
+  width: 110px;
+  font-size: 11px;
+}
+
+.pm-chat-member-select {
+  width: 130px;
+  font-size: 12px;
+}
+
+.pm-text-pre-wrap {
+  white-space: pre-wrap;
+}
+
+.pm-chat-reply-input {
+  font-size: 12px;
 }

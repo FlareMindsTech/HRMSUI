@@ -84,6 +84,7 @@
   padding: 0.75rem 2rem;
   border-radius: 99px;
   font-size: 0.95rem;
+  min-width: 180px;
   box-shadow: 0 4px 14px rgba(45, 197, 138, 0.35);
   transition: all 0.2s ease;
   display: inline-flex;
@@ -139,6 +140,7 @@
   padding: 0.75rem 2rem;
   border-radius: 99px;
   font-size: 0.95rem;
+  min-width: 180px;
   box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
   transition: all 0.2s ease;
   display: inline-flex;
@@ -223,3 +225,78 @@
     box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
   }
 }
+
+/* ── Semantic Utility Classes for AttendanceCard Modernization ── */
+
+.att-card-badge-sm {
+  font-size: 0.78rem;
+}
+
+.att-card-header-icon {
+  width: 42px;
+  height: 42px;
+  background: linear-gradient(135deg, rgba(45, 197, 138, 0.15) 0%, rgba(32, 166, 115, 0.2) 100%);
+  color: #2DC58A;
+  font-size: 1.2rem;
+}
+
+.att-card-title {
+  font-size: 0.98rem;
+  letter-spacing: -0.2px;
+}
+
+.att-card-date {
+  font-size: 0.78rem;
+}
+
+.att-card-state1-icon {
+  width: 68px;
+  height: 68px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(245, 158, 11, 0.2) 100%);
+  color: #f59e0b;
+}
+
+.att-card-state1-desc {
+  max-width: 320px;
+}
+
+.att-card-working-box {
+  background: linear-gradient(135deg, #f8fdfb 0%, #f0fdf4 100%);
+  border: 1px solid rgba(45, 197, 138, 0.25);
+}
+
+.att-card-sublabel {
+  font-size: 0.72rem;
+  letter-spacing: 0.5px;
+}
+
+.att-card-punch-time {
+  font-size: 1.25rem;
+}
+
+.att-card-badge-late {
+  font-size: 0.68rem;
+}
+
+.att-card-location-val {
+  font-size: 1.1rem;
+}
+
+.att-card-completed-box {
+  background: #f8faf9;
+  border: 1px solid #e8f0ec;
+}
+
+.att-card-metric-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.4px;
+}
+
+.att-card-metric-val {
+  font-size: 0.95rem;
+}
+
+.att-card-footer {
+  border-color: rgba(232, 240, 236, 0.8) !important;
+}
+
