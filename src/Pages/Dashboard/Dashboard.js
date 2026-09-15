@@ -29,14 +29,15 @@ import './Dashboard.css';
  * Strict Rule: No dummy/fake statistics or fake counts. Real router navigation shortcuts only.
  */
 function Dashboard() {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const navigate = useNavigate();
 
   const employeeName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Team Member';
   const roleCode = (user?.roleCode || user?.roleName || '').toUpperCase();
 
   // Admin and Owner roles do not have Punch In / Out widget on Dashboard
-  const isPunchTrackedRole = !(roleCode.includes('ADMIN') || roleCode.includes('OWNER'));
+  const isAdminOrOwner = roleCode.includes('ADMIN') || roleCode.includes('OWNER') || user?.priority === 1;
+  const isPunchTrackedRole = !isAdminOrOwner && (hasPermission('attendance.punch_in') || hasPermission('attendance.punch_out') || roleCode.includes('EMPLOYEE') || roleCode.includes('HR'));
 
   // Formatted date
   const todayFormatted = new Date().toLocaleDateString(undefined, {

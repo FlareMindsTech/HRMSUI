@@ -137,3 +137,20 @@ export const fetchTeamAttendanceToday = async () => {
   return result.data;
 };
 
+/**
+ * Manually create or override an attendance record (Admin / Owner).
+ * Supports past dates, today, future dates, weekends, and holidays.
+ * @param {{ userId: string, date: string, status: string, locationType?: string, loginTime?: string, logoutTime?: string, isLate?: boolean, reason: string }} overrideData
+ */
+export const postManualAttendanceOverride = async (overrideData) => {
+  const result = await apiFetch("/attendance/manual-override", {
+    method: "POST",
+    body: JSON.stringify(overrideData),
+  });
+
+  if (!result.ok) {
+    throw new Error(result.data?.message || "Failed to submit manual attendance override.");
+  }
+  return result.data;
+};
+

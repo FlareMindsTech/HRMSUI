@@ -230,6 +230,10 @@
   border: 1px solid #e8f0ec;
 }
 
+.day-detail-item--full {
+  grid-column: span 2;
+}
+
 .day-detail-label {
   font-size: 0.7rem;
   font-weight: 600;
@@ -468,6 +472,35 @@
 .att-badge-status { font-size: 0.74rem; }
 .att-badge-micro { font-size: 0.72rem; }
 .att-badge-late { font-size: 0.65rem; }
+
+.att-badge-auto {
+  background: rgba(201, 169, 97, 0.16);
+  color: #000000;
+  border: 1px solid #C9A961;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.16rem 0.55rem;
+  border-radius: 99px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.att-badge-manual {
+  background: #f1f5f3;
+  color: #4a6560;
+  border: 1px solid #dce5e0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.16rem 0.55rem;
+  border-radius: 99px;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  line-height: 1.2;
+}
 
 /* ── Page Layout & Header ── */
 .att-page-container {

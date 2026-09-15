@@ -14,6 +14,7 @@ import {
 import { fetchTodayAttendance, punchInUser, punchOutUser } from '../../Api/Attendance/attendance';
 import { getCurrentCoordinates } from '../../utils/geolocation';
 import { formatTime, formatFullDate } from '../../utils/dateFormatter';
+import { useAuth } from '../../context/AuthContext';
 import './AttendanceCard.css';
 
 /**
@@ -28,6 +29,12 @@ import './AttendanceCard.css';
  */
 function AttendanceCard() {
   const navigate = useNavigate();
+  const { user, hasPermission } = useAuth();
+  const roleCode = (user?.roleCode || user?.roleName || '').toUpperCase();
+  const isAdminOrOwner = roleCode.includes('ADMIN') || roleCode.includes('OWNER') || user?.priority === 1;
+  const canPunchIn = !isAdminOrOwner && (hasPermission('attendance.punch_in') || roleCode.includes('EMPLOYEE') || roleCode.includes('HR'));
+  const canPunchOut = !isAdminOrOwner && (hasPermission('attendance.punch_out') || roleCode.includes('EMPLOYEE') || roleCode.includes('HR'));
+
   const [attendance, setAttendance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionInProgress, setActionInProgress] = useState(false);
@@ -57,7 +64,7 @@ function AttendanceCard() {
 
   // ── Handle Punch In Action ──
   const handlePunchIn = async () => {
-    if (actionInProgress) return;
+    if (actionInProgress || !canPunchIn) return;
 
     setActionInProgress(true);
     setErrorMessage('');
@@ -98,7 +105,7 @@ function AttendanceCard() {
 
   // ── Handle Punch Out Action ──
   const handlePunchOut = async () => {
-    if (actionInProgress) return;
+    if (actionInProgress || !canPunchOut) return;
 
     setActionInProgress(true);
     setErrorMessage('');
@@ -177,10 +184,20 @@ function AttendanceCard() {
                 <span className="pulse-indicator" /> Currently Working
               </span>
             )}
-            {attendance && attendance.logoutTime && renderStatusBadge(attendance.status)}
+            {attendance && attendance.logoutTime && (
+              <div className="d-inline-flex align-items-center gap-1">
+                {renderStatusBadge(attendance.status)}
+                {attendance.logoutType === 'AUTO' && (
+                  <span className="att-badge-auto">Auto-Closed</span>
+                )}
+                {attendance.logoutType === 'MANUAL' && (
+                  <span className="att-badge-manual">Manual</span>
+                )}
+              </div>
+            )}
             {!attendance && (
               <span className="badge bg-light text-muted border px-3 py-1 rounded-pill fw-medium att-card-badge-sm">
-                Not Punched In
+                {isAdminOrOwner ? 'Management' : 'Not Punched In'}
               </span>
             )}
           </div>
@@ -224,24 +241,30 @@ function AttendanceCard() {
               You have not punched in for today yet. Record your start time with verified location.
             </p>
             <div>
-              <Button
-                variant="success"
-                className="btn-punch-in px-4 py-2 rounded-pill fw-bold shadow-sm"
-                onClick={handlePunchIn}
-                disabled={actionInProgress}
-              >
-                {actionInProgress ? (
-                  <span className="d-inline-flex align-items-center gap-2">
-                    <Spinner animation="border" size="sm" />
-                    <span>{actionStageText || 'Processing...'}</span>
-                  </span>
-                ) : (
-                  <span className="d-inline-flex align-items-center gap-2">
-                    <FaSignInAlt />
-                    <span>Punch In Now</span>
-                  </span>
-                )}
-              </Button>
+              {canPunchIn ? (
+                <Button
+                  variant="success"
+                  className="btn-punch-in px-4 py-2 rounded-pill fw-bold shadow-sm"
+                  onClick={handlePunchIn}
+                  disabled={actionInProgress}
+                >
+                  {actionInProgress ? (
+                    <span className="d-inline-flex align-items-center gap-2">
+                      <Spinner animation="border" size="sm" />
+                      <span>{actionStageText || 'Processing...'}</span>
+                    </span>
+                  ) : (
+                    <span className="d-inline-flex align-items-center gap-2">
+                      <FaSignInAlt />
+                      <span>Punch In Now</span>
+                    </span>
+                  )}
+                </Button>
+              ) : (
+                <div className="text-muted small py-2 px-3 bg-light rounded-pill d-inline-block fw-semibold border">
+                  {isAdminOrOwner ? 'Management user — shift punch not required' : 'Punch actions not enabled for this account'}
+                </div>
+              )}
             </div>
           </div>
         ) : !attendance.logoutTime ? (
@@ -278,26 +301,28 @@ function AttendanceCard() {
               </div>
             </div>
 
-            <div className="text-center">
-              <Button
-                variant="danger"
-                className="btn-punch-out px-4 py-2 rounded-pill fw-bold shadow-sm"
-                onClick={handlePunchOut}
-                disabled={actionInProgress}
-              >
-                {actionInProgress ? (
-                  <span className="d-inline-flex align-items-center gap-2">
-                    <Spinner animation="border" size="sm" />
-                    <span>{actionStageText || 'Punching out...'}</span>
-                  </span>
-                ) : (
-                  <span className="d-inline-flex align-items-center gap-2">
-                    <FaSignOutAlt />
-                    <span>Punch Out</span>
-                  </span>
-                )}
-              </Button>
-            </div>
+            {canPunchOut && (
+              <div className="text-center">
+                <Button
+                  variant="danger"
+                  className="btn-punch-out px-4 py-2 rounded-pill fw-bold shadow-sm"
+                  onClick={handlePunchOut}
+                  disabled={actionInProgress}
+                >
+                  {actionInProgress ? (
+                    <span className="d-inline-flex align-items-center gap-2">
+                      <Spinner animation="border" size="sm" />
+                      <span>{actionStageText || 'Punching out...'}</span>
+                    </span>
+                  ) : (
+                    <span className="d-inline-flex align-items-center gap-2">
+                      <FaSignOutAlt />
+                      <span>Punch Out</span>
+                    </span>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           /* ======================================================
@@ -341,9 +366,15 @@ function AttendanceCard() {
               </div>
             </div>
 
-            <div className="d-flex align-items-center justify-content-center gap-2 text-success fw-semibold small py-1">
+            <div className="d-flex align-items-center justify-content-center gap-2 text-success fw-semibold small py-1 flex-wrap">
               <FaCheckCircle />
               <span>Today's attendance session is completed</span>
+              {attendance.logoutType === 'AUTO' && (
+                <span className="att-badge-auto ms-1">Auto-Closed</span>
+              )}
+              {attendance.logoutType === 'MANUAL' && (
+                <span className="att-badge-manual ms-1">Manual</span>
+              )}
             </div>
           </div>
         )}

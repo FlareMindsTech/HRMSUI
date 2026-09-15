@@ -300,3 +300,33 @@
   border-color: rgba(232, 240, 236, 0.8) !important;
 }
 
+/* ── Logout Type Badges ── */
+.att-badge-auto {
+  background: rgba(201, 169, 97, 0.16);
+  color: #000000;
+  border: 1px solid #C9A961;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.16rem 0.55rem;
+  border-radius: 99px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.att-badge-manual {
+  background: #f1f5f3;
+  color: #4a6560;
+  border: 1px solid #dce5e0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.16rem 0.55rem;
+  border-radius: 99px;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+

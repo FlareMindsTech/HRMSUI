@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { fetchAuthContext } from "../services/rbacService";
 import { getAuthToken, setAuthToken, clearAuthToken } from "../config/api";
+import { store } from "../redux/store";
+import { setAuth, clearAuth } from "../redux/slices/authSlice";
 
 const AuthContext = createContext(null);
 
@@ -42,6 +44,13 @@ export const AuthProvider = ({ children }) => {
         });
         if (data.user) {
           localStorage.setItem("user", JSON.stringify(data.user));
+          store.dispatch(
+            setAuth({
+              user: data.user,
+              role: data.user?.roleCode || data.user?.roleName,
+              permissions: data.permissions || [],
+            })
+          );
         }
       }
     } catch (error) {
@@ -55,6 +64,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem("isAuthenticated");
         localStorage.removeItem("user");
         setAuthData({ user: null, menus: [], permissions: [], loading: false });
+        store.dispatch(clearAuth());
         window.location.href = "/login";
         return;
       }
@@ -91,6 +101,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("user");
     setAuthData({ user: null, menus: [], permissions: [], loading: false });
+    store.dispatch(clearAuth());
   }, []);
 
   // Permission Evaluation Helper

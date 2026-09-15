@@ -5,7 +5,7 @@ import {
 import {
   FaClock, FaCalendarAlt, FaCheckCircle, FaExclamationTriangle,
   FaSearch, FaEdit, FaHistory, FaUser, FaChevronLeft, FaChevronRight,
-  FaUsers, FaChartLine, FaMapMarkerAlt, FaExclamationCircle, FaArrowLeft
+  FaUsers, FaChartLine, FaMapMarkerAlt, FaExclamationCircle, FaArrowLeft, FaPlus
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -13,8 +13,10 @@ import {
   fetchTeamAttendance,
   fetchAttendanceAnalytics,
   updateAttendanceCorrection,
-  fetchTeamAttendanceToday
+  fetchTeamAttendanceToday,
+  postManualAttendanceOverride
 } from '../../Api/Attendance/attendance';
+import { fetchAllUsers } from '../../services/rbacService';
 import { formatTime, formatFullDate } from '../../utils/dateFormatter';
 import './Attendance.css';
 
@@ -25,7 +27,16 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-const getTodayString = () => new Date().toISOString().split('T')[0];
+// const getTodayString = () => new Date().toISOString().split('T')[0];
+const getTodayString = () => {
+  const now = new Date();
+
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
 
 const getCalendarDays = (month, year) => {
   const firstDay = new Date(year, month - 1, 1).getDay();
@@ -101,12 +112,15 @@ function AttendanceCalendar({ monthlyRecords, month, year, onMonthChange, onDayC
 
             const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const record = recordMap[dateStr];
-            const status = record?.status || '';
+            // const status = record?.status || '';
+             const status = record?.status || '';
+            const isLate = record?.isLate === true || status === 'Late';
             const isToday = dateStr === todayStr;
             const dayOfWeek = new Date(`${dateStr}T00:00:00`).getDay();
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
             const isFuture = dateStr > todayStr;
-            const dotClass = getStatusDotClass(status);
+            // const dotClass = getStatusDotClass(status);
+            const dotClass = isLate ? 'calendar-dot--late' : getStatusDotClass(status);
 
             return (
               <div
@@ -144,6 +158,7 @@ function SummaryCards({ records }) {
     if (['Present', 'Late', 'Half Day', 'Working'].includes(r.status)) stats.workDays++;
     if (r.status === 'Present') stats.present++;
     if (r.status === 'Late') { stats.late++; stats.present++; }
+    else if (r.isLate) { stats.late++; }
     if (r.status === 'Half Day') stats.halfDay++;
     if (r.status === 'Absent') stats.absent++;
     if (['Leave', 'Half Day Leave'].includes(r.status)) stats.leave++;
@@ -223,14 +238,39 @@ function DayDetailModal({ show, onHide, record }) {
               ) : '—'}
             </div>
           </div>
+          {record.logoutTime && (
+            <div className="day-detail-item day-detail-item--full">
+              <div className="day-detail-label">Logout Type</div>
+              <div className="day-detail-value">
+                {record.logoutType === 'AUTO' ? (
+                  <span className="att-badge-auto">Auto-Closed</span>
+                ) : (
+                  <span className="att-badge-manual">Manual</span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-        <div className="text-center mt-3">
+        <div className="text-center mt-3 d-flex justify-content-center align-items-center gap-2 flex-wrap">
           {renderStatusBadgeStatic(record.status)}
-          {record.isLate && <Badge bg="warning" text="dark" className="ms-2">Late Arrival</Badge>}
+          {renderLogoutTypeBadge(record.logoutType, record.logoutTime)}
+          {record.isLate && <Badge bg="warning" text="dark" className="ms-1 att-badge-late">Late Arrival</Badge>}
         </div>
       </Modal.Body>
     </Modal>
   );
+}
+
+// Helper: render logout type badge (Auto-Closed / Manual)
+function renderLogoutTypeBadge(logoutType, logoutTime) {
+  if (!logoutTime) return null;
+  if (logoutType === 'AUTO') {
+    return <span className="att-badge-auto">Auto-Closed</span>;
+  }
+  if (logoutType === 'MANUAL') {
+    return <span className="att-badge-manual">Manual</span>;
+  }
+  return null;
 }
 
 // Static status badge (outside component)
@@ -262,7 +302,7 @@ function Attendance() {
   const canViewAnalytics = hasPermission('attendance.analytics') || isAdminOrOwner;
   const canCorrect = hasPermission('attendance.modify') || isAdminOrOwner;
 
-  const defaultTab = isAdminOrOwner ? 'overview' : 'my-attendance';
+  const defaultTab = 'my-attendance';
   const [activeTab, setActiveTab] = useState(defaultTab);
 
   // ── Own Attendance States ──
@@ -279,6 +319,7 @@ function Attendance() {
   const [teamRecords, setTeamRecords] = useState([]);
   const [teamLoading, setTeamLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -311,6 +352,23 @@ function Attendance() {
 
   const [feedbackMessage, setFeedbackMessage] = useState({ type: '', text: '' });
 
+  // ── Manual Override Modal States ──
+  const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [overrideSubmitting, setOverrideSubmitting] = useState(false);
+  const [overrideError, setOverrideError] = useState('');
+  const [usersList, setUsersList] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [overrideForm, setOverrideForm] = useState({
+    userId: '',
+    date: getTodayString(),
+    status: 'Present',
+    locationType: 'Office',
+    loginTime: '',
+    logoutTime: '',
+    isLate: false,
+    reason: '',
+  });
+
   // ── Data Loading Functions ──
   const loadOwnMonthly = useCallback(async () => {
     setOwnLoading(true);
@@ -336,7 +394,7 @@ function Attendance() {
     setTeamLoading(true);
     try {
       const res = await fetchTeamAttendance({
-        search: searchQuery, status: statusFilter, date: dateFilter,
+        search: debouncedSearch, status: statusFilter, date: dateFilter,
         page: currentPage, limit: 10
       });
       if (res?.success) {
@@ -347,7 +405,7 @@ function Attendance() {
     } catch (err) {
       setFeedbackMessage({ type: 'danger', text: err.message || 'Failed to load team records.' });
     } finally { setTeamLoading(false); }
-  }, [searchQuery, statusFilter, dateFilter, currentPage]);
+  }, [debouncedSearch, statusFilter, dateFilter, currentPage]);
 
   const loadAnalytics = useCallback(async () => {
     setAnalyticsLoading(true);
@@ -368,28 +426,43 @@ function Attendance() {
     } finally { setDrillLoading(false); }
   }, []);
 
+  // ── Debounce Search (300ms) ──
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
   // ── Effects ──
   useEffect(() => {
     if (activeTab === 'my-attendance') loadOwnMonthly();
   }, [activeTab, loadOwnMonthly]);
 
+  // Load team summary ONLY when Team Attendance tab is activated
   useEffect(() => {
-    if (activeTab === 'team-attendance') {
+    if (activeTab === 'team-attendance' && canViewTeam && !drillEmployee) {
       loadTeamToday();
-      loadTeamRecords();
     }
-  }, [activeTab, loadTeamToday, loadTeamRecords]);
+  }, [activeTab, canViewTeam, drillEmployee, loadTeamToday]);
 
+  // Load analytics ONLY when Overview tab is activated
   useEffect(() => {
-    if (activeTab === 'overview') {
+    if (activeTab === 'overview' && canViewAnalytics) {
       loadAnalytics();
-      loadTeamRecords();
     }
-  }, [activeTab, loadAnalytics, loadTeamRecords]);
+  }, [activeTab, canViewAnalytics, loadAnalytics]);
+
+  // Load team records when a relevant table tab is active and filters/page change
+  const isTeamRecordsTab = (activeTab === 'team-attendance' && canViewTeam && !drillEmployee) ||
+                           (activeTab === 'overview' && canViewAnalytics) ||
+                           (activeTab === 'corrections' && canCorrect);
 
   useEffect(() => {
-    if (activeTab === 'corrections') loadTeamRecords();
-  }, [activeTab, loadTeamRecords]);
+    if (isTeamRecordsTab) {
+      loadTeamRecords();
+    }
+  }, [isTeamRecordsTab, loadTeamRecords]);
 
   useEffect(() => {
     if (drillEmployee) loadDrillDown(drillEmployee._id || drillEmployee.userId?._id, drillMonth, drillYear);
@@ -451,6 +524,115 @@ function Attendance() {
     setDrillYear(new Date().getFullYear());
   };
 
+  // ── Manual Override Handlers (Admin / Owner) ──
+  const handleOpenOverrideModal = async () => {
+    setOverrideError('');
+    setOverrideForm({
+      userId: '',
+      date: getTodayString(),
+      status: 'Present',
+      locationType: 'Office',
+      loginTime: '',
+      logoutTime: '',
+      isLate: false,
+      reason: '',
+    });
+    setShowOverrideModal(true);
+
+    if (usersList.length === 0) {
+      setUsersLoading(true);
+      try {
+        const usersData = await fetchAllUsers();
+        const list = Array.isArray(usersData)
+          ? usersData
+          : Array.isArray(usersData?.users)
+          ? usersData.users
+          : Array.isArray(usersData?.data)
+          ? usersData.data
+          : [];
+        setUsersList(list);
+      } catch (err) {
+        console.warn('Failed to load users for manual override:', err.message);
+      } finally {
+        setUsersLoading(false);
+      }
+    }
+  };
+
+  const handleOverrideStatusChange = (newStatus) => {
+    const isNonWorking = newStatus === 'Leave' || newStatus === 'Absent';
+    setOverrideForm((prev) => ({
+      ...prev,
+      status: newStatus,
+      loginTime: isNonWorking ? '' : prev.loginTime,
+      logoutTime: isNonWorking ? '' : prev.logoutTime,
+    }));
+  };
+
+  const handleSubmitOverride = async (e) => {
+    e.preventDefault();
+    if (!overrideForm.userId) {
+      setOverrideError('Please select an employee.');
+      return;
+    }
+    if (!overrideForm.date) {
+      setOverrideError('Please select a valid date.');
+      return;
+    }
+    if (!overrideForm.reason || overrideForm.reason.trim().length < 5) {
+      setOverrideError('Reason must be at least 5 characters.');
+      return;
+    }
+
+    const isNonWorking = overrideForm.status === 'Leave' || overrideForm.status === 'Absent';
+    const isFuture = overrideForm.date > getTodayString();
+
+    if (!isNonWorking && isFuture && (!overrideForm.loginTime || !overrideForm.logoutTime)) {
+      setOverrideError('Both Punch In and Punch Out times are required when creating future working records.');
+      return;
+    }
+
+    if (!isNonWorking && overrideForm.loginTime && overrideForm.logoutTime) {
+      if (new Date(overrideForm.logoutTime).getTime() < new Date(overrideForm.loginTime).getTime()) {
+        setOverrideError('Punch Out time cannot be earlier than Punch In time.');
+        return;
+      }
+    }
+
+    setOverrideSubmitting(true);
+    setOverrideError('');
+    try {
+      const payload = {
+        userId: overrideForm.userId,
+        date: overrideForm.date,
+        status: overrideForm.status,
+        locationType: overrideForm.locationType,
+        loginTime: isNonWorking ? null : (overrideForm.loginTime ? new Date(overrideForm.loginTime).toISOString() : null),
+        logoutTime: isNonWorking ? null : (overrideForm.logoutTime ? new Date(overrideForm.logoutTime).toISOString() : null),
+        isLate: overrideForm.isLate,
+        reason: overrideForm.reason.trim(),
+      };
+
+      const res = await postManualAttendanceOverride(payload);
+      if (res?.success) {
+        setFeedbackMessage({
+          type: 'success',
+          text: res.message || 'Manual attendance override saved successfully.',
+        });
+        setShowOverrideModal(false);
+        loadTeamRecords();
+        loadTeamToday();
+        loadOwnMonthly();
+        if (canViewAnalytics) loadAnalytics();
+      }
+    } catch (err) {
+      setOverrideError(err.message || 'Failed to apply manual override.');
+    } finally {
+      setOverrideSubmitting(false);
+    }
+  };
+
+
   // ── Render ──
   return (
     <Container fluid className="p-2.5 p-md-3 no-scrollbar att-page-container">
@@ -482,12 +664,10 @@ function Attendance() {
 
       {/* Tab Navigation */}
       <div className="attendance-tabs">
-        {!isAdminOrOwner && (
-          <button className={`attendance-tab ${activeTab === 'my-attendance' ? 'attendance-tab--active' : ''}`}
-            onClick={() => { setActiveTab('my-attendance'); setDrillEmployee(null); }}>
-            <FaUser size={13} /> My Attendance
-          </button>
-        )}
+        <button className={`attendance-tab ${activeTab === 'my-attendance' ? 'attendance-tab--active' : ''}`}
+          onClick={() => { setActiveTab('my-attendance'); setDrillEmployee(null); }}>
+          <FaUser size={13} /> My Attendance
+        </button>
         {canViewTeam && (
           <button className={`attendance-tab ${activeTab === 'team-attendance' ? 'attendance-tab--active' : ''}`}
             onClick={() => { setActiveTab('team-attendance'); setDrillEmployee(null); }}>
@@ -546,8 +726,9 @@ function Attendance() {
                         {item.logoutTime ? ` → ${formatTime(item.logoutTime)}` : item.loginTime ? ' → Working' : ''}
                       </div>
                     </div>
-                    <div className="text-end">
+                    <div className="text-end d-inline-flex align-items-center gap-1 flex-wrap justify-content-end">
                       {renderStatusBadgeStatic(item.status)}
+                      {renderLogoutTypeBadge(item.logoutType, item.logoutTime)}
                     </div>
                   </div>
                 ))}
@@ -565,7 +746,8 @@ function Attendance() {
       {/* ════════════════════════════════════════════════
           TAB: TEAM ATTENDANCE (HR / Admin)
           ════════════════════════════════════════════════ */}
-      {activeTab === 'team-attendance' && !drillEmployee && (
+      {/* {activeTab === 'team-attendance' && !drillEmployee && ( */}
+        {activeTab === 'team-attendance' && canViewTeam && !drillEmployee && (
         <>
           {/* Today Overview Cards */}
           {teamTodayLoading ? (
@@ -688,7 +870,7 @@ function Attendance() {
               </Col>
               <Col md={2}>
                 <Button variant="outline-secondary" size="sm" className="w-100 py-1 att-btn-reset"
-                  onClick={() => { setSearchQuery(''); setStatusFilter(''); setDateFilter(''); setCurrentPage(1); }}>
+                  onClick={() => { setSearchQuery(''); setDebouncedSearch(''); setStatusFilter(''); setDateFilter(''); setCurrentPage(1); }}>
                   Clear
                 </Button>
               </Col>
@@ -727,8 +909,11 @@ function Attendance() {
                           <td className="py-2 px-3 att-time-cell">{item.logoutTime ? formatTime(item.logoutTime) : item.loginTime ? <Badge bg="info-subtle" className="text-info border">Working</Badge> : '—'}</td>
                           <td className="py-2 px-3 att-time-cell fw-semibold">{item.totalHours ? `${item.totalHours}h` : '0h'}</td>
                           <td className="py-2 px-3">
-                            {renderStatusBadgeStatic(item.status)}
-                            {item.isLate && <Badge bg="warning" text="dark" className="ms-1 att-badge-late">Late</Badge>}
+                            <div className="d-inline-flex align-items-center gap-1 flex-wrap">
+                              {renderStatusBadgeStatic(item.status)}
+                              {renderLogoutTypeBadge(item.logoutType, item.logoutTime)}
+                              {item.isLate && <Badge bg="warning" text="dark" className="ms-1 att-badge-late">Late</Badge>}
+                            </div>
                           </td>
                           <td className="py-2 px-3 text-end">
                             <Button variant="outline-success" size="sm" className="p-1 px-2 extra-small rounded-pill"
@@ -810,7 +995,10 @@ function Attendance() {
                         <div className="fw-bold text-dark">{item.date}</div>
                         <div className="text-muted extra-small">{item.loginTime ? formatTime(item.loginTime) : '—'} → {item.logoutTime ? formatTime(item.logoutTime) : 'Working'}</div>
                       </div>
-                      {renderStatusBadgeStatic(item.status)}
+                      <div className="d-inline-flex align-items-center gap-1 flex-wrap justify-content-end">
+                        {renderStatusBadgeStatic(item.status)}
+                        {renderLogoutTypeBadge(item.logoutType, item.logoutTime)}
+                      </div>
                     </div>
                   ))}
                   {(!drillRecords || drillRecords.filter(r => r.loginTime).length === 0) && (
@@ -975,7 +1163,7 @@ function Attendance() {
                   variant="outline-secondary"
                   size="sm"
                   className="w-100 py-1 att-btn-reset"
-                  onClick={() => { setSearchQuery(''); setStatusFilter(''); setDateFilter(''); setCurrentPage(1); }}
+                  onClick={() => { setSearchQuery(''); setDebouncedSearch(''); setStatusFilter(''); setDateFilter(''); setCurrentPage(1); }}
                 >
                   Reset
                 </Button>
@@ -1033,10 +1221,13 @@ function Attendance() {
                               {item.logoutTime ? formatTime(item.logoutTime) : '—'}
                             </td>
                             <td className="py-2 px-3">
-                              {renderStatusBadgeStatic(item.status)}
-                              {item.isLate && (
-                                <Badge bg="warning" text="dark" className="ms-1 att-badge-late">Late</Badge>
-                              )}
+                              <div className="d-inline-flex align-items-center gap-1 flex-wrap">
+                                {renderStatusBadgeStatic(item.status)}
+                                {renderLogoutTypeBadge(item.logoutType, item.logoutTime)}
+                                {item.isLate && (
+                                  <Badge bg="warning" text="dark" className="ms-1 att-badge-late">Late</Badge>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -1103,9 +1294,19 @@ function Attendance() {
             <h6 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2 att-section-heading">
               <FaEdit className="text-success" /> Attendance Correction Portal
             </h6>
-            <span className="badge bg-light text-muted border px-2 py-1 rounded-pill extra-small fw-semibold">
-              {totalRecords} Total Records
-            </span>
+            <div className="d-flex align-items-center gap-2">
+              <span className="badge bg-light text-muted border px-2 py-1 rounded-pill extra-small fw-semibold">
+                {totalRecords} Total Records
+              </span>
+              <Button
+                variant="success"
+                size="sm"
+                className="d-flex align-items-center gap-1.5 py-1 px-2.5 rounded-2 shadow-xs"
+                onClick={handleOpenOverrideModal}
+              >
+                <FaPlus size={10} /> Manual Override
+              </Button>
+            </div>
           </div>
           <Row className="g-2 mb-2.5 align-items-center att-filters-row">
             <Col md={4}>
@@ -1124,7 +1325,7 @@ function Attendance() {
               </Form.Select>
             </Col>
             <Col md={3}><Form.Control type="date" size="sm" value={dateFilter} onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1); }} className="py-1 att-filter-input" /></Col>
-            <Col md={2}><Button variant="outline-secondary" size="sm" className="w-100 py-1 att-btn-reset" onClick={() => { setSearchQuery(''); setStatusFilter(''); setDateFilter(''); setCurrentPage(1); }}>Reset</Button></Col>
+            <Col md={2}><Button variant="outline-secondary" size="sm" className="w-100 py-1 att-btn-reset" onClick={() => { setSearchQuery(''); setDebouncedSearch(''); setStatusFilter(''); setDateFilter(''); setCurrentPage(1); }}>Reset</Button></Col>
           </Row>
 
           {teamLoading ? (
@@ -1157,7 +1358,12 @@ function Attendance() {
                         <td className="py-2 px-3 att-time-cell">{item.date}</td>
                         <td className="py-2 px-3 att-time-cell">{item.loginTime ? formatTime(item.loginTime) : '—'}</td>
                         <td className="py-2 px-3 att-time-cell">{item.logoutTime ? formatTime(item.logoutTime) : '—'}</td>
-                        <td className="py-2 px-3">{renderStatusBadgeStatic(item.status)}</td>
+                        <td className="py-2 px-3">
+                          <div className="d-inline-flex align-items-center gap-1 flex-wrap">
+                            {renderStatusBadgeStatic(item.status)}
+                            {renderLogoutTypeBadge(item.logoutType, item.logoutTime)}
+                          </div>
+                        </td>
                         <td className="py-2 px-3 text-end">
                           <div className="d-flex justify-content-end gap-1">
                             <Button variant="outline-primary" size="sm" className="p-1 px-2 extra-small rounded-pill" onClick={() => handleOpenCorrection(item)}>
@@ -1240,8 +1446,9 @@ function Attendance() {
                   <Form.Label className="fw-bold">Status</Form.Label>
                   <Form.Select size="sm" value={correctionForm.status}
                     onChange={(e) => setCorrectionForm({ ...correctionForm, status: e.target.value })}>
-                    <option value="Present">Present</option><option value="Late">Late</option>
-                    <option value="Half Day">Half Day</option><option value="Absent">Absent</option>
+                    <option value="Present">Present</option>
+                    <option value="Half Day">Half Day</option>
+                    <option value="Absent">Absent</option>
                     <option value="Working">Working</option>
                   </Form.Select>
                 </Form.Group>
@@ -1308,6 +1515,180 @@ function Attendance() {
             <p className="text-muted text-center my-3">No modification history recorded.</p>
           )}
         </Modal.Body>
+      </Modal>
+
+      {/* ════════════════════════════════════════════════
+          MODAL: MANUAL ATTENDANCE OVERRIDE (Admin / Owner)
+          ════════════════════════════════════════════════ */}
+      <Modal show={showOverrideModal} onHide={() => setShowOverrideModal(false)} centered size="lg">
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="h6 fw-bold">
+            <FaPlus className="me-2 text-success" /> Admin Manual Attendance Override
+          </Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleSubmitOverride}>
+          <Modal.Body className="small">
+            {overrideError && (
+              <Alert variant="danger" className="py-2 px-3 small mb-3 rounded-3">
+                {overrideError}
+              </Alert>
+            )}
+
+            <p className="text-muted extra-small mb-3">
+              Manually create or update an attendance record for any date (past, today, future, weekends, or company holidays).
+              Leave and Absent records do not require punch times.
+            </p>
+
+            <Row className="g-2 mb-3">
+              <Col md={7}>
+                <Form.Group>
+                  <Form.Label className="fw-bold">Employee *</Form.Label>
+                  {usersLoading ? (
+                    <div className="d-flex align-items-center gap-2 py-1 text-muted extra-small">
+                      <Spinner animation="border" size="sm" variant="success" /> Loading employees...
+                    </div>
+                  ) : (
+                    <Form.Select
+                      size="sm"
+                      value={overrideForm.userId}
+                      onChange={(e) => setOverrideForm({ ...overrideForm, userId: e.target.value })}
+                      required
+                    >
+                      <option value="">Select Employee...</option>
+                      {usersList.map((u) => (
+                        <option key={u._id} value={u._id}>
+                          {u.firstName} {u.lastName} ({u.employeeCode || u.email || 'N/A'})
+                        </option>
+                      ))}
+                    </Form.Select>
+                  )}
+                </Form.Group>
+              </Col>
+              <Col md={5}>
+                <Form.Group>
+                  <Form.Label className="fw-bold">Date *</Form.Label>
+                  <Form.Control
+                    type="date"
+                    size="sm"
+                    value={overrideForm.date}
+                    onChange={(e) => setOverrideForm({ ...overrideForm, date: e.target.value })}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Row className="g-2 mb-3">
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="fw-bold">Status *</Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={overrideForm.status}
+                    onChange={(e) => handleOverrideStatusChange(e.target.value)}
+                    required
+                  >
+                    <option value="Present">Present</option>
+                    <option value="Half Day">Half Day</option>
+                    <option value="Leave">Leave (Holiday / Approved Leave)</option>
+                    <option value="Absent">Absent</option>
+                    <option value="Late">Late</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="fw-bold">Location Type</Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={overrideForm.locationType}
+                    disabled={overrideForm.status === 'Leave' || overrideForm.status === 'Absent'}
+                    onChange={(e) => setOverrideForm({ ...overrideForm, locationType: e.target.value })}
+                  >
+                    <option value="Office">Office</option>
+                    <option value="WFH">WFH</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            {/* Time Fields (Disabled for Leave / Absent) */}
+            <Row className="g-2 mb-3">
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="fw-bold">
+                    Punch In Time {overrideForm.status !== 'Leave' && overrideForm.status !== 'Absent' && overrideForm.date > getTodayString() ? '*' : ''}
+                  </Form.Label>
+                  <Form.Control
+                    type="datetime-local"
+                    size="sm"
+                    value={overrideForm.loginTime}
+                    disabled={overrideForm.status === 'Leave' || overrideForm.status === 'Absent'}
+                    onChange={(e) => setOverrideForm({ ...overrideForm, loginTime: e.target.value })}
+                  />
+                  {(overrideForm.status === 'Leave' || overrideForm.status === 'Absent') && (
+                    <Form.Text className="text-muted extra-small">
+                      Not applicable for {overrideForm.status}.
+                    </Form.Text>
+                  )}
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="fw-bold">
+                    Punch Out Time {overrideForm.status !== 'Leave' && overrideForm.status !== 'Absent' && overrideForm.date > getTodayString() ? '*' : ''}
+                  </Form.Label>
+                  <Form.Control
+                    type="datetime-local"
+                    size="sm"
+                    value={overrideForm.logoutTime}
+                    disabled={overrideForm.status === 'Leave' || overrideForm.status === 'Absent'}
+                    onChange={(e) => setOverrideForm({ ...overrideForm, logoutTime: e.target.value })}
+                  />
+                  {(overrideForm.status === 'Leave' || overrideForm.status === 'Absent') && (
+                    <Form.Text className="text-muted extra-small">
+                      Not applicable for {overrideForm.status}.
+                    </Form.Text>
+                  )}
+                </Form.Group>
+              </Col>
+            </Row>
+
+            {overrideForm.status !== 'Leave' && overrideForm.status !== 'Absent' && (
+              <Form.Group className="mb-3">
+                <Form.Check
+                  type="checkbox"
+                  label="Mark as Late Arrival"
+                  checked={overrideForm.isLate}
+                  onChange={(e) => setOverrideForm({ ...overrideForm, isLate: e.target.checked })}
+                />
+              </Form.Group>
+            )}
+
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-bold text-danger">
+                Reason for Manual Override * (min 5 characters)
+              </Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                size="sm"
+                placeholder="E.g., Approved leave granted by management / Holiday declaration / Pre-scheduled shift..."
+                value={overrideForm.reason}
+                onChange={(e) => setOverrideForm({ ...overrideForm, reason: e.target.value })}
+                required
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer className="border-0 pt-0">
+            <Button variant="light" size="sm" onClick={() => setShowOverrideModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="success" size="sm" type="submit" disabled={overrideSubmitting}>
+              {overrideSubmitting ? <Spinner animation="border" size="sm" /> : 'Save Manual Override'}
+            </Button>
+          </Modal.Footer>
+        </Form>
       </Modal>
     </Container>
   );

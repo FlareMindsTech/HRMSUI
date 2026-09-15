@@ -15,6 +15,7 @@ export {
   fetchAttendanceAnalytics,
   updateAttendanceCorrection,
   fetchTeamAttendanceToday,
+  postManualAttendanceOverride,
 } from "../Api/Attendance/attendance";
 
 /**
