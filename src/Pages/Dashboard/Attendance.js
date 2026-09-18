@@ -5,7 +5,8 @@ import {
 import {
   FaClock, FaCalendarAlt, FaCheckCircle, FaExclamationTriangle,
   FaSearch, FaEdit, FaHistory, FaUser, FaChevronLeft, FaChevronRight,
-  FaUsers, FaChartLine, FaMapMarkerAlt, FaExclamationCircle, FaArrowLeft, FaPlus
+  FaUsers, FaChartLine, FaMapMarkerAlt, FaExclamationCircle, FaArrowLeft, FaPlus,
+  FaCalendarPlus, FaShieldAlt, FaInfoCircle
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -14,7 +15,9 @@ import {
   fetchAttendanceAnalytics,
   updateAttendanceCorrection,
   fetchTeamAttendanceToday,
-  postManualAttendanceOverride
+  postManualAttendanceOverride,
+  postBulkHoliday,
+  fetchHolidayPreview,
 } from '../../Api/Attendance/attendance';
 import { fetchAllUsers } from '../../services/rbacService';
 import { formatTime, formatFullDate } from '../../utils/dateFormatter';
@@ -369,6 +372,25 @@ function Attendance() {
     reason: '',
   });
 
+  // ── Company Holiday & Bulk Leave Modal States ──
+  const [showHolidayModal, setShowHolidayModal] = useState(false);
+  const [holidaySubmitting, setHolidaySubmitting] = useState(false);
+  const [holidayError, setHolidayError] = useState('');
+  const [holidayForm, setHolidayForm] = useState({
+    title: '',
+    date: getTodayString(),
+    holidayType: 'COMPANY_HOLIDAY',
+    scope: 'ALL',
+    targetDepartment: '',
+    selectedUserIds: [],
+    excludeAdmins: true,
+    reason: '',
+  });
+  const [holidayPreview, setHolidayPreview] = useState(null);
+  const [holidayPreviewLoading, setHolidayPreviewLoading] = useState(false);
+  const [departmentsList, setDepartmentsList] = useState([]);
+  const [holidayEmpSearch, setHolidayEmpSearch] = useState('');
+
   // ── Data Loading Functions ──
   const loadOwnMonthly = useCallback(async () => {
     setOwnLoading(true);
@@ -629,6 +651,172 @@ function Attendance() {
       setOverrideError(err.message || 'Failed to apply manual override.');
     } finally {
       setOverrideSubmitting(false);
+    }
+  };
+
+  // ── Company Holiday & Bulk Leave Handlers (Admin / Owner) ──
+  const loadHolidayPreview = useCallback(async (formData) => {
+    setHolidayPreviewLoading(true);
+    try {
+      const res = await fetchHolidayPreview({
+        date: formData.date,
+        scope: formData.scope,
+        targetDepartment: formData.targetDepartment,
+        selectedUserIds: formData.selectedUserIds,
+        excludeAdmins: formData.excludeAdmins,
+      });
+      if (res?.success && res.data) {
+        setHolidayPreview(res.data);
+        if (Array.isArray(res.data.departments) && res.data.departments.length > 0) {
+          setDepartmentsList(res.data.departments);
+        }
+      }
+    } catch (err) {
+      console.warn('Holiday preview load error:', err.message);
+    } finally {
+      setHolidayPreviewLoading(false);
+    }
+  }, []);
+
+  const handleOpenHolidayModal = async () => {
+    setHolidayError('');
+    const initialForm = {
+      title: '',
+      date: getTodayString(),
+      holidayType: 'COMPANY_HOLIDAY',
+      scope: 'ALL',
+      targetDepartment: '',
+      selectedUserIds: [],
+      excludeAdmins: true,
+      reason: '',
+    };
+    setHolidayForm(initialForm);
+    setShowHolidayModal(true);
+
+    // Load users if not already loaded
+    if (usersList.length === 0) {
+      setUsersLoading(true);
+      try {
+        const usersData = await fetchAllUsers();
+        const list = Array.isArray(usersData)
+          ? usersData
+          : Array.isArray(usersData?.users)
+          ? usersData.users
+          : Array.isArray(usersData?.data)
+          ? usersData.data
+          : [];
+        setUsersList(list);
+      } catch (err) {
+        console.warn('Failed to load users directory:', err.message);
+      } finally {
+        setUsersLoading(false);
+      }
+    }
+
+    // Trigger initial impact preview
+    loadHolidayPreview(initialForm);
+  };
+
+  const handleHolidayScopeChange = (newScope) => {
+    const updated = {
+      ...holidayForm,
+      scope: newScope,
+      holidayType:
+        newScope === 'DEPARTMENT'
+          ? 'DEPARTMENT_HOLIDAY'
+          : newScope === 'SELECTED_EMPLOYEES'
+          ? 'BULK_LEAVE'
+          : 'COMPANY_HOLIDAY',
+      targetDepartment: newScope === 'DEPARTMENT' ? holidayForm.targetDepartment : '',
+      selectedUserIds: newScope === 'SELECTED_EMPLOYEES' ? holidayForm.selectedUserIds : [],
+    };
+    setHolidayForm(updated);
+    loadHolidayPreview(updated);
+  };
+
+  const handleToggleEmployeeSelection = (empId) => {
+    const current = holidayForm.selectedUserIds || [];
+    const updatedIds = current.includes(empId)
+      ? current.filter((id) => id !== empId)
+      : [...current, empId];
+    const updated = { ...holidayForm, selectedUserIds: updatedIds };
+    setHolidayForm(updated);
+    loadHolidayPreview(updated);
+  };
+
+  const handleSelectAllEmployees = () => {
+    const eligibleIds = usersList
+      .filter((u) => {
+        if (holidayForm.excludeAdmins) {
+          const roleCode = (u.roleCode || u.roleName || '').toUpperCase();
+          if (roleCode.includes('ADMIN') || roleCode.includes('OWNER') || u.priority === 1) {
+            return false;
+          }
+        }
+        return u.isActive !== false;
+      })
+      .map((u) => u._id);
+
+    const allSelected = eligibleIds.every((id) => holidayForm.selectedUserIds.includes(id));
+    const updatedIds = allSelected ? [] : eligibleIds;
+    const updated = { ...holidayForm, selectedUserIds: updatedIds };
+    setHolidayForm(updated);
+    loadHolidayPreview(updated);
+  };
+
+  const handleSubmitHoliday = async (e) => {
+    e.preventDefault();
+    if (!holidayForm.title || holidayForm.title.trim().length < 2) {
+      setHolidayError('Please specify a valid holiday title (min 2 characters).');
+      return;
+    }
+    if (!holidayForm.date) {
+      setHolidayError('Please select a valid date.');
+      return;
+    }
+    if (holidayForm.scope === 'DEPARTMENT' && !holidayForm.targetDepartment) {
+      setHolidayError('Please select a target department.');
+      return;
+    }
+    if (holidayForm.scope === 'SELECTED_EMPLOYEES' && holidayForm.selectedUserIds.length === 0) {
+      setHolidayError('Please select at least one employee.');
+      return;
+    }
+    if (!holidayForm.reason || holidayForm.reason.trim().length < 5) {
+      setHolidayError('Reason must be at least 5 characters.');
+      return;
+    }
+
+    setHolidaySubmitting(true);
+    setHolidayError('');
+    try {
+      const res = await postBulkHoliday({
+        title: holidayForm.title.trim(),
+        date: holidayForm.date,
+        holidayType: holidayForm.holidayType,
+        scope: holidayForm.scope,
+        targetDepartment: holidayForm.scope === 'DEPARTMENT' ? holidayForm.targetDepartment.trim() : null,
+        selectedUserIds: holidayForm.scope === 'SELECTED_EMPLOYEES' ? holidayForm.selectedUserIds : [],
+        reason: holidayForm.reason.trim(),
+        excludeAdmins: holidayForm.excludeAdmins,
+      });
+
+      if (res?.success) {
+        setFeedbackMessage({
+          type: 'success',
+          text: res.message || 'Company holiday / bulk leave applied successfully.',
+        });
+        setShowHolidayModal(false);
+        // Refresh all attendance dashboards & calendar
+        loadTeamRecords();
+        loadTeamToday();
+        loadOwnMonthly();
+        if (canViewAnalytics) loadAnalytics();
+      }
+    } catch (err) {
+      setHolidayError(err.message || 'Failed to apply company holiday / bulk leave.');
+    } finally {
+      setHolidaySubmitting(false);
     }
   };
 
@@ -1306,6 +1494,14 @@ function Attendance() {
               >
                 <FaPlus size={10} /> Manual Override
               </Button>
+              <Button
+                variant="outline-success"
+                size="sm"
+                className="d-flex align-items-center gap-1.5 py-1 px-2.5 rounded-2 shadow-xs"
+                onClick={handleOpenHolidayModal}
+              >
+                <FaCalendarPlus size={11} /> Company Holiday / Bulk Leave
+              </Button>
             </div>
           </div>
           <Row className="g-2 mb-2.5 align-items-center att-filters-row">
@@ -1686,6 +1882,253 @@ function Attendance() {
             </Button>
             <Button variant="success" size="sm" type="submit" disabled={overrideSubmitting}>
               {overrideSubmitting ? <Spinner animation="border" size="sm" /> : 'Save Manual Override'}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* ════════════════════════════════════════════════
+          MODAL: COMPANY HOLIDAY & BULK LEAVE (Admin / Owner)
+          ════════════════════════════════════════════════ */}
+      <Modal show={showHolidayModal} onHide={() => setShowHolidayModal(false)} centered size="lg">
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="h6 fw-bold">
+            <FaCalendarPlus className="me-2 text-success" /> Declare Company Holiday / Bulk Leave
+          </Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleSubmitHoliday}>
+          <Modal.Body className="small">
+            {holidayError && (
+              <Alert variant="danger" className="py-2 px-3 small mb-3 rounded-3">
+                {holidayError}
+              </Alert>
+            )}
+
+            <p className="text-muted extra-small mb-3">
+              Declare an organization-wide holiday, department-specific holiday, or bulk leave for selected staff.
+              Existing actual work and pre-approved individual leaves will be strictly protected and preserved.
+            </p>
+
+            <Row className="g-2 mb-3">
+              <Col md={7}>
+                <Form.Group>
+                  <Form.Label className="fw-bold">Holiday / Leave Title *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    size="sm"
+                    placeholder="e.g. Owner's Daughter Marriage / Festival Holiday..."
+                    value={holidayForm.title}
+                    onChange={(e) => setHolidayForm({ ...holidayForm, title: e.target.value })}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={5}>
+                <Form.Group>
+                  <Form.Label className="fw-bold">Date *</Form.Label>
+                  <Form.Control
+                    type="date"
+                    size="sm"
+                    value={holidayForm.date}
+                    onChange={(e) => {
+                      const updated = { ...holidayForm, date: e.target.value };
+                      setHolidayForm(updated);
+                      loadHolidayPreview(updated);
+                    }}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Row className="g-2 mb-3">
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="fw-bold">Holiday Type</Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={holidayForm.holidayType}
+                    onChange={(e) => setHolidayForm({ ...holidayForm, holidayType: e.target.value })}
+                  >
+                    <option value="COMPANY_HOLIDAY">Company Holiday</option>
+                    <option value="DEPARTMENT_HOLIDAY">Department Holiday</option>
+                    <option value="BULK_LEAVE">Bulk Leave</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="fw-bold">Target Scope *</Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={holidayForm.scope}
+                    onChange={(e) => handleHolidayScopeChange(e.target.value)}
+                  >
+                    <option value="ALL">All Employees (Company-wide)</option>
+                    <option value="DEPARTMENT">Department-wise</option>
+                    <option value="SELECTED_EMPLOYEES">Selected Employees Only</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            {/* Department Selection (if Scope = DEPARTMENT) */}
+            {holidayForm.scope === 'DEPARTMENT' && (
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-bold">Select Department *</Form.Label>
+                <Form.Select
+                  size="sm"
+                  value={holidayForm.targetDepartment}
+                  onChange={(e) => {
+                    const updated = { ...holidayForm, targetDepartment: e.target.value };
+                    setHolidayForm(updated);
+                    loadHolidayPreview(updated);
+                  }}
+                  required
+                >
+                  <option value="">Choose Department...</option>
+                  {departmentsList.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            )}
+
+            {/* Employee Multi-Select List (if Scope = SELECTED_EMPLOYEES) */}
+            {holidayForm.scope === 'SELECTED_EMPLOYEES' && (
+              <Form.Group className="mb-3">
+                <div className="d-flex justify-content-between align-items-center mb-1">
+                  <Form.Label className="fw-bold mb-0">
+                    Select Employees ({holidayForm.selectedUserIds.length} selected) *
+                  </Form.Label>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="p-0 extra-small text-decoration-none"
+                    onClick={handleSelectAllEmployees}
+                  >
+                    Select / Deselect All
+                  </Button>
+                </div>
+                <Form.Control
+                  type="text"
+                  size="sm"
+                  placeholder="Filter employees by name or code..."
+                  value={holidayEmpSearch}
+                  onChange={(e) => setHolidayEmpSearch(e.target.value)}
+                  className="mb-2"
+                />
+                <div
+                  className="p-2 border rounded-2 bg-light overflow-auto"
+                  style={{ maxHeight: '160px' }}
+                >
+                  {usersList
+                    .filter((u) => {
+                      if (!holidayEmpSearch.trim()) return true;
+                      const q = holidayEmpSearch.toLowerCase();
+                      const name = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
+                      const code = (u.employeeCode || '').toLowerCase();
+                      const dept = (u.department || '').toLowerCase();
+                      return name.includes(q) || code.includes(q) || dept.includes(q);
+                    })
+                    .map((u) => (
+                      <Form.Check
+                        key={u._id}
+                        type="checkbox"
+                        id={`holiday-emp-${u._id}`}
+                        label={
+                          <span className="extra-small">
+                            <strong>{u.firstName} {u.lastName}</strong>{' '}
+                            <span className="text-muted">({u.employeeCode || 'N/A'} - {u.department || 'General'})</span>
+                          </span>
+                        }
+                        checked={holidayForm.selectedUserIds.includes(u._id)}
+                        onChange={() => handleToggleEmployeeSelection(u._id)}
+                        className="mb-1"
+                      />
+                    ))}
+                </div>
+              </Form.Group>
+            )}
+
+            <Form.Group className="mb-3">
+              <Form.Check
+                type="checkbox"
+                id="holiday-exclude-admins"
+                label="Exclude Admin & Owner accounts from receiving holiday attendance"
+                checked={holidayForm.excludeAdmins}
+                onChange={(e) => {
+                  const updated = { ...holidayForm, excludeAdmins: e.target.checked };
+                  setHolidayForm(updated);
+                  loadHolidayPreview(updated);
+                }}
+              />
+            </Form.Group>
+
+            {/* Impact Preview Card */}
+            <div className="p-3 mb-3 bg-light border rounded-3">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <span className="fw-bold extra-small text-dark d-flex align-items-center gap-1.5">
+                  <FaInfoCircle className="text-primary" /> Live Impact Preview
+                </span>
+                {holidayPreviewLoading && <Spinner animation="border" size="sm" variant="success" />}
+              </div>
+
+              {holidayPreview ? (
+                <div>
+                  <div className="d-flex gap-2 flex-wrap mb-2">
+                    <span className="badge bg-secondary-subtle text-secondary border px-2 py-1 rounded-pill extra-small">
+                      Eligible: {holidayPreview.totalEligible}
+                    </span>
+                    <span className="badge bg-success-subtle text-success border px-2 py-1 rounded-pill extra-small">
+                      Will Receive Holiday: {holidayPreview.willReceiveHolidayCount}
+                    </span>
+                    {holidayPreview.workingCount > 0 && (
+                      <span className="badge bg-warning-subtle text-warning border px-2 py-1 rounded-pill extra-small d-flex align-items-center gap-1">
+                        <FaShieldAlt size={10} /> Working Protected: {holidayPreview.workingCount}
+                      </span>
+                    )}
+                    {holidayPreview.existingLeaveCount > 0 && (
+                      <span className="badge bg-info-subtle text-info border px-2 py-1 rounded-pill extra-small d-flex align-items-center gap-1">
+                        <FaShieldAlt size={10} /> Leave Protected: {holidayPreview.existingLeaveCount}
+                      </span>
+                    )}
+                  </div>
+
+                  {Array.isArray(holidayPreview.warnings) && holidayPreview.warnings.map((w, idx) => (
+                    <div key={idx} className="extra-small text-danger d-flex align-items-center gap-1 mt-1">
+                      <FaShieldAlt size={10} /> {w}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="extra-small text-muted">Calculating impact preview...</div>
+              )}
+            </div>
+
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-bold text-danger">
+                Reason for Declaration * (min 5 characters)
+              </Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                size="sm"
+                placeholder="E.g., Special celebration holiday declared by company management / Official festival holiday..."
+                value={holidayForm.reason}
+                onChange={(e) => setHolidayForm({ ...holidayForm, reason: e.target.value })}
+                required
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer className="border-0 pt-0">
+            <Button variant="light" size="sm" onClick={() => setShowHolidayModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="success" size="sm" type="submit" disabled={holidaySubmitting}>
+              {holidaySubmitting ? <Spinner animation="border" size="sm" /> : 'Confirm & Declare Holiday'}
             </Button>
           </Modal.Footer>
         </Form>

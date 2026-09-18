@@ -993,7 +993,7 @@ function HrOnboarding() {
       let u = urlOrFile.trim().replace(/\\/g, "/");
       if (u) {
         if (!u.startsWith("http://") && !u.startsWith("https://") && !u.startsWith("blob:") && !u.startsWith("data:")) {
-          const backendBase = (process.env.REACT_APP_API_BASE_URL || "http://localhost:7800/api").replace(/\/api\/?$/, "");
+          const backendBase = (process.env.REACT_APP_API_BASE_URL || "https://3.6.122.34/api").replace(/\/api\/?$/, "");
           u = `${backendBase}/${u.replace(/^\/+/, "")}`;
         }
         // Remove invalid fl_inline from Cloudinary raw/upload paths if present

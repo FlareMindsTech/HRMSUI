@@ -16,6 +16,10 @@ export {
   updateAttendanceCorrection,
   fetchTeamAttendanceToday,
   postManualAttendanceOverride,
+  postBulkHoliday,
+  fetchHolidayPreview,
+  fetchDeclaredHolidays,
+  deleteDeclaredHoliday,
 } from "../Api/Attendance/attendance";
 
 /**

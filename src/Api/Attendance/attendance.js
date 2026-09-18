@@ -154,3 +154,73 @@ export const postManualAttendanceOverride = async (overrideData) => {
   return result.data;
 };
 
+/**
+ * Apply Company Holiday / Department Holiday / Bulk Leave (Admin / Owner).
+ * @param {{ title: string, date: string, holidayType?: string, scope?: string, targetDepartment?: string, selectedUserIds?: string[], reason: string, excludeAdmins?: boolean }} holidayData
+ */
+export const postBulkHoliday = async (holidayData) => {
+  const result = await apiFetch("/attendance/holidays/bulk-apply", {
+    method: "POST",
+    body: JSON.stringify(holidayData),
+  });
+
+  if (!result.ok) {
+    throw new Error(result.data?.message || "Failed to apply company holiday / bulk leave.");
+  }
+  return result.data;
+};
+
+/**
+ * Preview impact of a company holiday / bulk leave before declaration.
+ * @param {{ date: string, scope?: string, targetDepartment?: string, selectedUserIds?: string[], excludeAdmins?: boolean }} params
+ */
+export const fetchHolidayPreview = async (params) => {
+  const queryParams = new URLSearchParams();
+  if (params?.date) queryParams.append("date", params.date);
+  if (params?.scope) queryParams.append("scope", params.scope);
+  if (params?.targetDepartment) queryParams.append("targetDepartment", params.targetDepartment);
+  if (params?.selectedUserIds?.length) queryParams.append("selectedUserIds", params.selectedUserIds.join(","));
+  if (params?.excludeAdmins !== undefined) queryParams.append("excludeAdmins", String(params.excludeAdmins));
+
+  const qs = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  const result = await apiFetch(`/attendance/holidays/preview${qs}`, { method: "GET" });
+
+  if (!result.ok) {
+    throw new Error(result.data?.message || "Failed to load holiday preview.");
+  }
+  return result.data;
+};
+
+/**
+ * Fetch declared holidays list (Admin / Owner).
+ * @param {{ year?: string|number, month?: string|number, status?: string }} params
+ */
+export const fetchDeclaredHolidays = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  if (params?.year) queryParams.append("year", params.year);
+  if (params?.month) queryParams.append("month", params.month);
+  if (params?.status) queryParams.append("status", params.status);
+
+  const qs = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  const result = await apiFetch(`/attendance/holidays${qs}`, { method: "GET" });
+
+  if (!result.ok) {
+    throw new Error(result.data?.message || "Failed to fetch declared holidays.");
+  }
+  return result.data;
+};
+
+/**
+ * Cancel a declared company holiday and revert linked records.
+ * @param {string} id
+ */
+export const deleteDeclaredHoliday = async (id) => {
+  const result = await apiFetch(`/attendance/holidays/${id}`, { method: "DELETE" });
+
+  if (!result.ok) {
+    throw new Error(result.data?.message || "Failed to cancel holiday.");
+  }
+  return result.data;
+};
+
+
