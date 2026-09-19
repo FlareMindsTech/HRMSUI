@@ -43,6 +43,12 @@ const Login = ({ onLogin }) => {
         return;
       }
 
+      // Store tenant context if available
+      const tid = data.tenantId || data.user?.tenantId || data.user?.organizationId || data.user?.tenant?._id;
+      if (tid) {
+        localStorage.setItem("tenantId", tid);
+      }
+
       // Populate AuthContext synchronously with access context & token
       await loginUser(data.token, data.user);
 

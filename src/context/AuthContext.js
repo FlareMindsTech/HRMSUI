@@ -44,6 +44,10 @@ export const AuthProvider = ({ children }) => {
         });
         if (data.user) {
           localStorage.setItem("user", JSON.stringify(data.user));
+          const tid = data.user?.tenantId || data.user?.organizationId || data.tenantId || data.user?.tenant?._id;
+          if (tid) {
+            localStorage.setItem("tenantId", tid);
+          }
           store.dispatch(
             setAuth({
               user: data.user,
@@ -100,6 +104,8 @@ export const AuthProvider = ({ children }) => {
     clearAuthToken();
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("user");
+    localStorage.removeItem("tenantId");
+    localStorage.removeItem("organizationId");
     setAuthData({ user: null, menus: [], permissions: [], loading: false });
     store.dispatch(clearAuth());
   }, []);

@@ -78,6 +78,7 @@ function Sidebar() {
         onMouseLeave={() => setHovered(null)}
         role="button"
         tabIndex={0}
+        title={item.name}
       >
         <span className="sidebar-icon-wrap">
           <Icon className="sidebar-icon" />

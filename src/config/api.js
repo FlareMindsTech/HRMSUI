@@ -3,10 +3,17 @@
 // Connected to the live AWS backend API.
 // ============================================================
 
-// Reads from HRMSUI/.env -> REACT_APP_API_BASE_URL
-// Default fallback is the live AWS backend API endpoint
-export const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || "http://localhost:7800/api";
+// Reads from HRMSUI/.env or dynamically detects localhost
+const isLocalhost =
+  typeof window !== "undefined"
+    ? window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname.startsWith("192.168.")
+    : process.env.NODE_ENV !== "production";
+
+export const API_BASE_URL = isLocalhost
+  ? (process.env.REACT_APP_LOCAL_API_BASE_URL || "http://localhost:7800/api")
+  : (process.env.REACT_APP_API_BASE_URL || "https://3.6.122.34/api");
 
 // Token is stored under this key in localStorage after a real login.
 const TOKEN_KEY = "token";
@@ -17,10 +24,35 @@ export const setAuthToken = (token) => localStorage.setItem(TOKEN_KEY, token);
 
 export const clearAuthToken = () => localStorage.removeItem(TOKEN_KEY);
 
-// Standard Authorization header for authenticated requests.
-export const authHeaders = () => ({
-  Authorization: `Bearer ${getAuthToken()}`,
-});
+// Standard Authorization & Tenant header for authenticated requests.
+export const authHeaders = () => {
+  const token = getAuthToken();
+  const headers = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  // Multi-tenant SaaS support: attach x-tenant-id if present
+  const explicitTenant = localStorage.getItem("tenantId") || localStorage.getItem("organizationId");
+  if (explicitTenant) {
+    headers["x-tenant-id"] = explicitTenant;
+  } else {
+    try {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        const tid = parsed.tenantId || parsed.organizationId || parsed.tenant?._id || parsed.tenant;
+        if (tid && typeof tid === "string") {
+          headers["x-tenant-id"] = tid;
+        }
+      }
+    } catch (e) {
+      // Ignore JSON parse errors
+    }
+  }
+
+  return headers;
+};
 
 // Helper: fetch + safe JSON/text parse + auto auth header.
 // Usage: const data = await apiFetch("/project/getAllProjects");

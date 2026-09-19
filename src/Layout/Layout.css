@@ -44,18 +44,23 @@
   transform: translateY(0);
 }
 
-/* ── Sidebar Container ── */
+/* ── Sidebar Container (Collapsed by Default, Expands on Hover) ── */
 .app-layout-sidebar {
-  width: 230px;
+  width: 76px;
   height: 100vh;
   flex-shrink: 0;
   background: linear-gradient(180deg, #0f271d 0%, #091a13 100%);
   border-right: 1px solid rgba(45, 197, 138, 0.16);
-  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.28s ease;
   position: relative;
-  z-index: 100;
+  z-index: 1000;
   overflow: hidden;
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.25);
+}
+
+.app-layout-sidebar:not(.is-mobile):hover {
+  width: 245px;
+  box-shadow: 12px 0 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(45, 197, 138, 0.2);
 }
 
 /* Mobile Sidebar States */
@@ -86,6 +91,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
