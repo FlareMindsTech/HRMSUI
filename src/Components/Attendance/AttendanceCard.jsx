@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Alert, Spinner, Button } from 'react-bootstrap';
 import {
@@ -11,7 +11,7 @@ import {
   FaExclamationTriangle,
   FaArrowRight,
 } from 'react-icons/fa';
-import { fetchTodayAttendance, punchInUser, punchOutUser } from '../../Api/Attendance/attendance';
+import { fetchTodayAttendance, punchInUser, punchOutUser, sendGeofencePing } from '../../Api/Attendance/attendance';
 import { getCurrentCoordinates } from '../../utils/geolocation';
 import { formatTime, formatFullDate } from '../../utils/dateFormatter';
 import { useAuth } from '../../context/AuthContext';
@@ -62,6 +62,66 @@ function AttendanceCard() {
     loadTodayAttendance();
   }, [loadTodayAttendance]);
 
+  // ── Foreground Geofence Periodic Ping ──
+  const isPingingRef = useRef(false);
+
+  useEffect(() => {
+    // Only active if employee has punched in, not punched out, and is not Admin/Owner
+    const hasActiveAttendance = Boolean(attendance?._id && !attendance?.logoutTime && !isAdminOrOwner);
+    if (!hasActiveAttendance) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const performGeofencePing = async () => {
+      // Guard against overlapping geolocation or API requests
+      if (isPingingRef.current || !isMounted) {
+        return;
+      }
+
+      isPingingRef.current = true;
+      try {
+        const coords = await getCurrentCoordinates();
+        if (!isMounted) return;
+
+        const pingResult = await sendGeofencePing({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          accuracy: coords.accuracy || 0,
+        });
+
+        if (isMounted && pingResult?.success && pingResult?.data) {
+          // Update attendance state with latest backend geofence verification
+          setAttendance((prev) => {
+            if (!prev || prev.logoutTime) return prev;
+            return {
+              ...prev,
+              isSessionPaused: pingResult.data.isSessionPaused,
+            };
+          });
+        }
+      } catch (pingError) {
+        // Safe, non-intrusive logging for background pings (no alert popups, no auto-logout)
+        console.warn('Geofence ping notice:', pingError.message);
+      } finally {
+        isPingingRef.current = false;
+      }
+    };
+
+    // 1. Send one immediate geofence ping after starting
+    performGeofencePing();
+
+    // 2. Periodic pings every 3 minutes (180,000 ms)
+    const intervalId = setInterval(performGeofencePing, 3 * 60 * 1000);
+
+    // 3. Stop interval on punch-out, state transition, or unmount
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, [attendance?._id, attendance?.logoutTime, isAdminOrOwner]);
+
   // ── Handle Punch In Action ──
   const handlePunchIn = async () => {
     if (actionInProgress || !canPunchIn) return;
@@ -110,15 +170,31 @@ function AttendanceCard() {
     setActionInProgress(true);
     setErrorMessage('');
     setSuccessMessage('');
-    setActionStageText('Punching out...');
+    setActionStageText('Getting location...');
 
     try {
-      // 1. Call backend Punch Out API
-      await punchOutUser();
+      // 1. Request browser geolocation on-demand
+      let coords;
+      try {
+        coords = await getCurrentCoordinates();
+      } catch (geoError) {
+        setErrorMessage(geoError.message || 'Location permission is required to punch out. Please allow location access in your browser.');
+        setActionInProgress(false);
+        setActionStageText('');
+        return;
+      }
+
+      // 2. Call backend Punch Out API with verified coordinates
+      setActionStageText('Punching out...');
+      await punchOutUser({
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        accuracy: coords.accuracy || 0,
+      });
 
       setSuccessMessage('Punched out successfully! Workday session completed.');
 
-      // 2. Refresh from backend as source of truth to transition to State 3
+      // 3. Refresh from backend as source of truth to transition to State 3
       await loadTodayAttendance();
     } catch (apiError) {
       setErrorMessage(apiError.message || 'Failed to punch out. Please try again.');
@@ -161,7 +237,7 @@ function AttendanceCard() {
   return (
     <Card className="attendance-card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
       {/* Card Header */}
-      <div className="attendance-card-header d-flex justify-content-between align-items-center p-3 px-4 border-bottom">
+      <div className="attendance-card-header d-flex flex-wrap justify-content-between align-items-center gap-2 p-3 px-4 border-bottom">
         <div className="d-flex align-items-center gap-3">
           <div className="d-flex align-items-center justify-content-center rounded-3 shadow-xs att-card-header-icon">
             <FaCalendarCheck />
@@ -180,9 +256,15 @@ function AttendanceCard() {
         {!loading && (
           <div>
             {attendance && !attendance.logoutTime && (
-              <span className="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill d-inline-flex align-items-center fw-semibold att-card-badge-sm">
-                <span className="pulse-indicator" /> Currently Working
-              </span>
+              attendance.isSessionPaused ? (
+                <span className="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-1 rounded-pill d-inline-flex align-items-center fw-semibold att-card-badge-sm">
+                  Outside Office (Session Paused)
+                </span>
+              ) : (
+                <span className="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill d-inline-flex align-items-center fw-semibold att-card-badge-sm">
+                  <span className="pulse-indicator" /> Inside Office (Active)
+                </span>
+              )
             )}
             {attendance && attendance.logoutTime && (
               <div className="d-inline-flex align-items-center gap-1">
@@ -296,7 +378,18 @@ function AttendanceCard() {
                     <FaMapMarkerAlt size={16} className={attendance.locationType === 'WFH' ? 'text-primary' : 'text-danger'} />
                     <span>{attendance.locationType || 'Office'}</span>
                   </div>
-                  <span className="text-muted extra-small">GPS Verified</span>
+                  <div className="d-flex align-items-center justify-content-center justify-content-sm-start flex-wrap gap-2 mt-1">
+                    <span className="text-muted extra-small">GPS Verified</span>
+                    {attendance.isSessionPaused ? (
+                      <span className="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-0 rounded-pill fw-semibold att-card-badge-sm">
+                        Outside Office (Session Paused)
+                      </span>
+                    ) : (
+                      <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-0 rounded-pill fw-semibold att-card-badge-sm">
+                        Inside Office (Active)
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

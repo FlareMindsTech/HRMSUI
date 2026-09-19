@@ -9,6 +9,7 @@ export {
   fetchTodayAttendance,
   punchInUser,
   punchOutUser,
+  sendGeofencePing,
   fetchMyAttendance,
   fetchAttendanceByMonth,
   fetchTeamAttendance,

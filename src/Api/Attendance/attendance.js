@@ -35,8 +35,8 @@ export const punchInUser = async ({ latitude, longitude, accuracy = 0 }) => {
 };
 
 /**
- * Punch Out for today with optional coordinates.
- * @param {{ latitude?: number, longitude?: number, accuracy?: number }} [coords]
+ * Punch Out for today with verified coordinates.
+ * @param {{ latitude: number, longitude: number, accuracy?: number }} coords
  */
 export const punchOutUser = async (coords = {}) => {
   const result = await apiFetch("/attendance/punch-out", {
@@ -46,6 +46,22 @@ export const punchOutUser = async (coords = {}) => {
 
   if (!result.ok) {
     throw new Error(result.data?.message || "Punch Out request failed.");
+  }
+  return result.data;
+};
+
+/**
+ * Send periodic geofence heartbeat ping with verified coordinates.
+ * @param {{ latitude: number, longitude: number, accuracy?: number }} coords
+ */
+export const sendGeofencePing = async ({ latitude, longitude, accuracy = 0 }) => {
+  const result = await apiFetch("/attendance/geofence/ping", {
+    method: "POST",
+    body: JSON.stringify({ latitude, longitude, accuracy }),
+  });
+
+  if (!result.ok) {
+    throw new Error(result.data?.message || "Geofence ping request failed.");
   }
   return result.data;
 };
