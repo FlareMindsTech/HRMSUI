@@ -388,7 +388,9 @@ function BranchesSection() {
                   <td>
                     <div className="small">
                       <FaMapMarkerAlt className="text-danger me-1" />
-                      {b.city ? `${b.city}, ${b.state || b.country}` : b.country || "N/A"}
+                      {typeof b.city === 'string' ? b.city : (b.address?.city || "")}
+                      {(b.city || b.address?.city) ? ", " : ""}
+                      {typeof b.state === 'string' ? b.state : (typeof b.country === 'string' ? b.country : (b.address?.country || "N/A"))}
                     </div>
                     {b.latitude && b.longitude && (
                       <div className="text-muted font-monospace" style={{ fontSize: "0.75rem" }}>

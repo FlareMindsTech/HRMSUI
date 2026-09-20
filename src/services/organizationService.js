@@ -22,8 +22,33 @@ const buildQuery = (params = {}) => {
 
 export const fetchMyOrganization = async () => {
   const res = await apiFetch("/organization/me", { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch organization details");
-  return res.data?.data;
+  if (!res.ok) {
+    // If not found or error, return null so UI can detect no data
+    if (res.status === 404) return null;
+    throw new Error(res.data?.message || "Failed to fetch organization details");
+  }
+  return res.data?.data || res.data;
+};
+
+export const createOrganization = async (payload) => {
+  let res = await apiFetch("/organization", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    res = await apiFetch("/organization/create", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+  if (!res.ok) {
+    res = await apiFetch("/organization/me", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  }
+  if (!res.ok) throw new Error(res.data?.message || "Failed to create organization");
+  return res.data;
 };
 
 export const updateMyOrganization = async (payload) => {

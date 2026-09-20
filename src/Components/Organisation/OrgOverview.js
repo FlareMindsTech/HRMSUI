@@ -7,6 +7,8 @@ import {
   Form,
   Spinner,
   Alert,
+  Nav,
+  Tab,
 } from "react-bootstrap";
 import {
   FaBuilding,
@@ -17,26 +19,91 @@ import {
   FaUsers,
   FaSitemap,
   FaLayerGroup,
-  FaCalendarWeek,
   FaCog,
-  FaArrowRight,
   FaPlus,
   FaBriefcase,
   FaChartBar,
   FaUserFriends,
   FaUserTie,
   FaRegBuilding,
+  FaChevronRight,
+  FaCalendarAlt,
+  FaEdit,
+  FaGlobe,
+  FaRocket,
+  FaShieldAlt,
+  FaCopy,
+  FaExternalLinkAlt,
 } from "react-icons/fa";
 import {
   fetchMyOrganization,
+  createOrganization,
   updateMyOrganization,
   fetchOrganizationStructure,
   fetchReportingTree,
 } from "../../services/organizationService";
 import { useAuth } from "../../context/AuthContext";
-import bannerBuildingImg from "../../assets/org_banner_building.jpg";
 
-function OrgOverview({ onNavigateTab }) {
+const ORG_TYPES = ["COMPANY", "LLP", "PARTNERSHIP", "PROPRIETORSHIP", "OTHER"];
+const ORG_STATUSES = ["ACTIVE", "SUSPENDED", "INACTIVE"];
+
+const INITIAL_FORM_STATE = {
+  organizationName: "",
+  organizationCode: "",
+  legalName: "",
+  displayName: "",
+  organizationType: "",
+  registrationNumber: "",
+  pan: "",
+  tan: "",
+  gstin: "",
+  incorporationDate: "",
+  industry: "",
+  website: "",
+  email: "",
+  phone: "",
+  logo: "",
+  address: "",
+  country: "",
+  state: "",
+  city: "",
+  pincode: "",
+  currency: "",
+  timeZone: "",
+  financialYearStart: "",
+  status: "",
+};
+
+// Safe helper to extract and format any data type into a displayable string
+const getStr = (val, fallback = "") => {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === "string") return val.trim();
+  if (typeof val === "number" || typeof val === "boolean") return String(val);
+  if (typeof val === "object") {
+    // Handle { month, day } e.g. financialYearStart
+    if (val.month !== undefined && val.day !== undefined) {
+      const mm = String(val.month).padStart(2, "0");
+      const dd = String(val.day).padStart(2, "0");
+      return `${mm}-${dd}`;
+    }
+    // Handle street/address objects
+    if (val.street || val.addressLine1 || val.line1) {
+      return [val.street || val.addressLine1 || val.line1, val.city, val.state, val.country, val.pincode || val.zip]
+        .filter(Boolean)
+        .join(", ");
+    }
+    if (val.name) return String(val.name);
+    if (val.code) return String(val.code);
+    if (val.label) return String(val.label);
+    if (val.title) return String(val.title);
+    if (val.value) return String(val.value);
+    if (val.url) return String(val.url);
+    return fallback;
+  }
+  return fallback;
+};
+
+function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOrgUpdated }) {
   const { isSystemAdmin, user, hasPermission } = useAuth();
   const [orgData, setOrgData] = useState(null);
   const [structureData, setStructureData] = useState(null);
@@ -45,32 +112,94 @@ function OrgOverview({ onNavigateTab }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // Edit Modal State
-  const [showEditModal, setShowEditModal] = useState(false);
+
+  // Modal State for Create / Edit
+  const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState("create"); // "create" or "edit"
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState("");
-  const [formData, setFormData] = useState({
-    displayName: "",
-    legalName: "",
-    organizationType: "COMPANY",
-    industry: "",
-    registrationNumber: "",
-    pan: "",
-    tan: "",
-    gstin: "",
-    website: "",
-    email: "",
-    phone: "",
-    address: "",
-    city: "",
-    state: "",
-    pincode: "",
-    country: "India",
-    currency: "INR",
-    timeZone: "Asia/Kolkata",
-  });
+  const [modalActiveTab, setModalActiveTab] = useState("basic");
+  const [formData, setFormData] = useState(INITIAL_FORM_STATE);
 
   const canEdit = isSystemAdmin || hasPermission("organization.update");
+  const canCreate = isSystemAdmin || hasPermission("organization.create") || user?.roleCode === "OWNER";
+
+  // Check if organization data actually exists
+  const hasOrgData = useMemo(() => {
+    return Boolean(orgData && (orgData.organizationName || orgData.organizationCode || orgData._id));
+  }, [orgData]);
+
+  const [copiedField, setCopiedField] = useState("");
+
+  const copyToClipboard = (text, fieldName) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    if (fieldName) {
+      setCopiedField(fieldName);
+      setTimeout(() => setCopiedField(""), 2500);
+    }
+  };
+
+  const populateFormWithOrg = useCallback((org) => {
+    if (!org) {
+      setFormData(INITIAL_FORM_STATE);
+      return;
+    }
+    const addrObj = typeof org.address === "object" && org.address !== null ? org.address : {};
+    let incDate = "";
+    if (org.incorporationDate) {
+      try {
+        incDate = new Date(org.incorporationDate).toISOString().split("T")[0];
+      } catch (e) {
+        incDate = getStr(org.incorporationDate);
+      }
+    }
+
+    setFormData({
+      organizationName: getStr(org.organizationName || org.displayName || org.legalName),
+      organizationCode: getStr(org.organizationCode),
+      legalName: getStr(org.legalName),
+      displayName: getStr(org.displayName),
+      organizationType: getStr(org.organizationType),
+      registrationNumber: getStr(org.registrationNumber),
+      pan: getStr(org.pan),
+      tan: getStr(org.tan),
+      gstin: getStr(org.gstin),
+      incorporationDate: incDate,
+      industry: getStr(org.industry),
+      website: getStr(org.website),
+      email: getStr(org.email),
+      phone: getStr(org.phone),
+      logo: getStr(typeof org.logo === "object" && org.logo !== null ? org.logo.url || org.logo.path : org.logo),
+      address: getStr(typeof org.address === "string" ? org.address : addrObj.street || addrObj.addressLine1 || ""),
+      country: getStr(typeof org.country === "string" ? org.country : addrObj.country || ""),
+      state: getStr(org.state || addrObj.state || ""),
+      city: getStr(org.city || addrObj.city || ""),
+      pincode: getStr(org.pincode || addrObj.pincode || ""),
+      currency: getStr(org.currency),
+      timeZone: getStr(org.timeZone),
+      financialYearStart: getStr(org.financialYearStart),
+      status: getStr(org.status),
+    });
+  }, []);
+
+  // Handle external trigger for edit/create modal
+  useEffect(() => {
+    if (triggerEditModal) {
+      if (hasOrgData) {
+        setModalMode("edit");
+        populateFormWithOrg(orgData);
+      } else {
+        setModalMode("create");
+        setFormData(INITIAL_FORM_STATE);
+      }
+      setModalActiveTab("basic");
+      setModalError("");
+      setShowModal(true);
+      if (onEditModalHandled) onEditModalHandled();
+    }
+  }, [triggerEditModal, hasOrgData, orgData, onEditModalHandled, populateFormWithOrg]);
+
 
   const loadData = useCallback(async () => {
     try {
@@ -91,29 +220,14 @@ function OrgOverview({ onNavigateTab }) {
         }),
       ]);
 
-      if (org) {
+      if (org && (org.organizationName || org.organizationCode || org._id)) {
         setOrgData(org);
-        setFormData({
-          displayName: org.displayName || org.organizationName || "",
-          legalName: org.legalName || org.organizationName || "",
-          organizationType: org.organizationType || "COMPANY",
-          industry: org.industry || "Technology",
-          registrationNumber: org.registrationNumber || "",
-          pan: org.pan || "",
-          tan: org.tan || "",
-          gstin: org.gstin || "",
-          website: org.website || "",
-          email: org.email || "contact@organization.com",
-          phone: org.phone || "+91 80 1234 5678",
-          address: org.address || "",
-          city: org.city || "Bengaluru",
-          state: org.state || "Karnataka",
-          pincode: org.pincode || "560001",
-          country: org.country || "India",
-          currency: org.currency || "INR",
-          timeZone: org.timeZone || "Asia/Kolkata",
-        });
+        populateFormWithOrg(org);
+      } else {
+        setOrgData(null);
+        setFormData(INITIAL_FORM_STATE);
       }
+
       if (structure) {
         setStructureData(structure);
       }
@@ -125,30 +239,105 @@ function OrgOverview({ onNavigateTab }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [populateFormWithOrg]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  const handleUpdate = async (e) => {
+  const handleOpenCreateModal = () => {
+    setModalMode("create");
+    setFormData(INITIAL_FORM_STATE);
+    setModalActiveTab("basic");
+    setModalError("");
+    setShowModal(true);
+  };
+
+  const handleOpenEditModal = () => {
+    setModalMode("edit");
+    populateFormWithOrg(orgData);
+    setModalActiveTab("basic");
+    setModalError("");
+    setShowModal(true);
+  };
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        setModalError("Logo file size must be less than 2MB");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prev) => ({ ...prev, logo: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.organizationName.trim()) {
+      setModalError("Organization name is required");
+      return;
+    }
+    if (!formData.organizationCode.trim()) {
+      setModalError("Organization code is required");
+      return;
+    }
+
     try {
       setModalLoading(true);
       setModalError("");
-      const res = await updateMyOrganization(formData);
-      setSuccess(res.message || "Organization profile updated successfully");
-      setShowEditModal(false);
-      loadData();
+
+      const payload = {
+        organizationName: formData.organizationName.trim(),
+        organizationCode: formData.organizationCode.trim().toUpperCase(),
+        legalName: formData.legalName.trim(),
+        displayName: formData.displayName.trim() || formData.organizationName.trim(),
+        organizationType: formData.organizationType,
+        registrationNumber: formData.registrationNumber.trim(),
+        pan: formData.pan.trim().toUpperCase(),
+        tan: formData.tan.trim().toUpperCase(),
+        gstin: formData.gstin.trim().toUpperCase(),
+        incorporationDate: formData.incorporationDate ? new Date(formData.incorporationDate) : null,
+        industry: formData.industry.trim(),
+        website: formData.website.trim(),
+        email: formData.email.trim().toLowerCase(),
+        phone: formData.phone.trim(),
+        logo: formData.logo,
+        address: formData.address.trim(),
+        country: formData.country.trim(),
+        state: formData.state.trim(),
+        city: formData.city.trim(),
+        pincode: formData.pincode.trim(),
+        currency: formData.currency.trim().toUpperCase(),
+        timeZone: formData.timeZone.trim(),
+        financialYearStart: formData.financialYearStart.trim(),
+        status: formData.status || "ACTIVE",
+      };
+
+      if (modalMode === "create") {
+        const res = await createOrganization(payload);
+        setSuccess(res?.message || "Organization created successfully!");
+      } else {
+        const res = await updateMyOrganization(payload);
+        setSuccess(res?.message || "Organization profile updated successfully!");
+      }
+
+      setShowModal(false);
+      await loadData();
+      if (onOrgUpdated) onOrgUpdated();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
-      setModalError(err.message || "Failed to update profile");
+      setModalError(err.message || `Failed to ${modalMode} organization`);
     } finally {
       setModalLoading(false);
     }
   };
 
-  // 10 Quick Access Modules Config (5 rows x 2 columns)
+  // 10 Quick Access Modules Config
   const quickAccessItems = [
     {
       title: "Branches",
@@ -217,7 +406,7 @@ function OrgOverview({ onNavigateTab }) {
     {
       title: "Work Calendars",
       desc: "Set working days & shifts",
-      icon: FaCalendarWeek,
+      icon: FaCalendarAlt,
       color: "#ec4899",
       bgColor: "#fdf2f8",
       key: "work-calendars",
@@ -234,20 +423,20 @@ function OrgOverview({ onNavigateTab }) {
 
   const stats = useMemo(() => {
     return {
-      branches: orgData?.stats?.branchCount || structureData?.branches?.length || 12,
-      departments: orgData?.stats?.departmentCount || structureData?.departments?.length || 18,
-      employees: orgData?.stats?.employeeCount || 247,
-      teams: orgData?.stats?.teamCount || structureData?.teams?.length || 32,
-      locations: orgData?.stats?.locationCount || structureData?.locations?.length || 6,
-      shifts: orgData?.stats?.shiftCount || 8,
+      branches: orgData?.stats?.branchCount ?? structureData?.branches?.length ?? (hasOrgData ? 1 : 0),
+      departments: orgData?.stats?.departmentCount ?? structureData?.departments?.length ?? (hasOrgData ? 1 : 0),
+      employees: orgData?.stats?.employeeCount ?? (hasOrgData ? 1 : 0),
+      teams: orgData?.stats?.teamCount ?? structureData?.teams?.length ?? (hasOrgData ? 1 : 0),
+      locations: orgData?.stats?.locationCount ?? structureData?.locations?.length ?? (hasOrgData ? 1 : 0),
+      shifts: orgData?.stats?.shiftCount ?? (hasOrgData ? 1 : 0),
     };
-  }, [orgData, structureData]);
+  }, [orgData, structureData, hasOrgData]);
 
   if (loading) {
     return (
-      <div className="text-center py-5 text-muted">
-        <Spinner animation="border" variant="success" size="sm" className="me-2" />
-        Loading organization control center...
+      <div className="org-loader-container">
+        <Spinner animation="border" variant="success" size="lg" />
+        <p className="mt-3 fw-semibold text-muted">Loading Enterprise Organization Hub...</p>
       </div>
     );
   }
@@ -257,208 +446,550 @@ function OrgOverview({ onNavigateTab }) {
       {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
       {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
 
-      {/* ── 1. Hero Banner ── */}
-      <div className="org-hero-banner">
-        <div className="org-hero-left">
-          <div className="org-hero-greeting">Welcome back,</div>
-          <h1 className="org-hero-title">Organization Management</h1>
-          <p className="org-hero-sub">
-            Manage your enterprise structure, offices, departments, teams, and organizational settings.
-          </p>
-          <div className="org-hero-actions">
-            <Button
-              className="org-btn-hero-primary"
-              onClick={() => onNavigateTab("branches")}
-            >
-              <FaPlus className="me-1" /> Add New
-            </Button>
-            <Button
-              variant="outline-light"
-              className="org-btn-hero-secondary"
-              onClick={() => onNavigateTab("reporting-hierarchy")}
-            >
-              <FaSitemap className="me-2 text-success" /> View Hierarchy
-            </Button>
+      {/* ── CASE 1: NO ORGANISATION DATA (FIRST TIME ONBOARDING VIEW) ── */}
+      {!hasOrgData ? (
+        <div className="org-empty-onboarding-container">
+          <div className="org-empty-onboarding-card">
+            <div className="org-empty-icon-circle">
+              <FaRocket className="org-empty-rocket-icon" />
+            </div>
+            <h2 className="org-empty-title">Setup Your Enterprise Organization</h2>
+            <p className="org-empty-desc">
+              Welcome to the HRMS Platform! No organization profile was detected.
+              Please create your organization to configure your enterprise hierarchy,
+              branches, departments, job roles, attendance, and employee management.
+            </p>
+
+            <div className="org-empty-steps-grid">
+              <div className="org-empty-step-item">
+                <div className="org-empty-step-badge">1</div>
+                <div className="org-empty-step-title">Organization Profile</div>
+                <div className="org-empty-step-sub">Name, Code, Legal entity & Industry</div>
+              </div>
+              <div className="org-empty-step-item">
+                <div className="org-empty-step-badge">2</div>
+                <div className="org-empty-step-title">Tax & Compliance</div>
+                <div className="org-empty-step-sub">CIN, PAN, TAN, GSTIN & Reg Details</div>
+              </div>
+              <div className="org-empty-step-item">
+                <div className="org-empty-step-badge">3</div>
+                <div className="org-empty-step-title">HQ & Localization</div>
+                <div className="org-empty-step-sub">Address, Currency, Timezone & FY Start</div>
+              </div>
+            </div>
+
+            <div className="org-empty-cta-actions">
+              {canCreate ? (
+                <Button
+                  className="org-btn-hero-primary org-empty-create-btn"
+                  size="lg"
+                  onClick={handleOpenCreateModal}
+                >
+                  <FaPlus className="me-2" /> Create Organization Now
+                </Button>
+              ) : (
+                <Alert variant="warning" className="mb-0">
+                  You do not have administrative permission to initialize the organization profile. Please contact your system administrator.
+                </Alert>
+              )}
+            </div>
           </div>
         </div>
+      ) : (
+        /* ── CASE 2: ORGANISATION DATA EXISTS (KPI & DETAILED SECTIONS) ── */
+        <>
 
-        <div className="org-hero-right">
-          <div className="org-hero-art-wrapper">
-            <img src={bannerBuildingImg} alt="Corporate Headquarters" className="org-hero-building-img" />
-            <div className="org-hero-art-overlay"></div>
-            <div className="org-hero-slogan">
-              <div className="org-slogan-bold">People</div>
-              <div className="org-slogan-bold">Process</div>
-              <div className="org-slogan-bold">Progress</div>
-              <div className="org-slogan-sub">A better workplace for a brighter tomorrow</div>
+          {/* ── 2. KPI Metric Cards ── */}
+          <div className="org-kpi-row">
+            {/* Branches */}
+            <div className="org-kpi-card" onClick={() => onNavigateTab("branches")} role="button">
+              <div className="org-kpi-top">
+                <div className="org-kpi-icon-wrap" style={{ background: "#ecfdf5", color: "#10b981" }}>
+                  <FaRegBuilding />
+                </div>
+                <div className="org-kpi-info">
+                  <div className="org-kpi-label">Branches</div>
+                  <div className="org-kpi-val">{stats.branches}</div>
+                  <div className="org-kpi-badge text-success">Active Offices</div>
+                </div>
+              </div>
+              <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
+                <path d="M0,22 Q25,8 50,18 T100,6" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M0,22 Q25,8 50,18 T100,6 L100,28 L0,28 Z" fill="url(#sparkGreen)" opacity="0.18" />
+                <defs>
+                  <linearGradient id="sparkGreen" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+
+            {/* Departments */}
+            <div className="org-kpi-card" onClick={() => onNavigateTab("departments")} role="button">
+              <div className="org-kpi-top">
+                <div className="org-kpi-icon-wrap" style={{ background: "#eff6ff", color: "#3b82f6" }}>
+                  <FaUsers />
+                </div>
+                <div className="org-kpi-info">
+                  <div className="org-kpi-label">Departments</div>
+                  <div className="org-kpi-val">{stats.departments}</div>
+                  <div className="org-kpi-badge text-primary">Configured</div>
+                </div>
+              </div>
+              <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
+                <path d="M0,24 Q25,10 50,20 T100,8" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M0,24 Q25,10 50,20 T100,8 L100,28 L0,28 Z" fill="url(#sparkBlue)" opacity="0.18" />
+                <defs>
+                  <linearGradient id="sparkBlue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+
+            {/* Employees */}
+            <div className="org-kpi-card" onClick={() => onNavigateTab("reporting-hierarchy")} role="button">
+              <div className="org-kpi-top">
+                <div className="org-kpi-icon-wrap" style={{ background: "#fdf2f8", color: "#ec4899" }}>
+                  <FaUserFriends />
+                </div>
+                <div className="org-kpi-info">
+                  <div className="org-kpi-label">Employees</div>
+                  <div className="org-kpi-val">{stats.employees}</div>
+                  <div className="org-kpi-badge" style={{ color: "#ec4899" }}>Workforce</div>
+                </div>
+              </div>
+              <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
+                <path d="M0,25 Q30,8 60,22 T100,10" fill="none" stroke="#ec4899" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M0,25 Q30,8 60,22 T100,10 L100,28 L0,28 Z" fill="url(#sparkPink)" opacity="0.18" />
+                <defs>
+                  <linearGradient id="sparkPink" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#ec4899" />
+                    <stop offset="100%" stopColor="#ec4899" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+
+            {/* Teams */}
+            <div className="org-kpi-card" onClick={() => onNavigateTab("teams")} role="button">
+              <div className="org-kpi-top">
+                <div className="org-kpi-icon-wrap" style={{ background: "#f5f3ff", color: "#8b5cf6" }}>
+                  <FaUsers />
+                </div>
+                <div className="org-kpi-info">
+                  <div className="org-kpi-label">Teams</div>
+                  <div className="org-kpi-val">{stats.teams}</div>
+                  <div className="org-kpi-badge" style={{ color: "#8b5cf6" }}>Squads</div>
+                </div>
+              </div>
+              <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
+                <path d="M0,24 Q30,6 60,18 T100,8" fill="none" stroke="#8b5cf6" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M0,24 Q30,6 60,18 T100,8 L100,28 L0,28 Z" fill="url(#sparkPurple)" opacity="0.18" />
+                <defs>
+                  <linearGradient id="sparkPurple" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#8b5cf6" />
+                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+
+            {/* Locations */}
+            <div className="org-kpi-card" onClick={() => onNavigateTab("locations")} role="button">
+              <div className="org-kpi-top">
+                <div className="org-kpi-icon-wrap" style={{ background: "#fff7ed", color: "#f97316" }}>
+                  <FaMapMarkerAlt />
+                </div>
+                <div className="org-kpi-info">
+                  <div className="org-kpi-label">Locations</div>
+                  <div className="org-kpi-val">{stats.locations}</div>
+                  <div className="org-kpi-badge text-warning">Geofenced</div>
+                </div>
+              </div>
+              <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
+                <path d="M0,25 Q30,12 60,22 T100,9" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M0,25 Q30,12 60,22 T100,9 L100,28 L0,28 Z" fill="url(#sparkOrange)" opacity="0.18" />
+                <defs>
+                  <linearGradient id="sparkOrange" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f97316" />
+                    <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+
+            {/* Active Shifts */}
+            <div className="org-kpi-card" onClick={() => onNavigateTab("shifts")} role="button">
+              <div className="org-kpi-top">
+                <div className="org-kpi-icon-wrap" style={{ background: "#fefce8", color: "#eab308" }}>
+                  <FaClock />
+                </div>
+                <div className="org-kpi-info">
+                  <div className="org-kpi-label">Active Shifts</div>
+                  <div className="org-kpi-val">{stats.shifts}</div>
+                  <div className="org-kpi-badge text-muted">Rosters</div>
+                </div>
+              </div>
+              <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
+                <path d="M0,20 Q30,20 60,16 T100,12" fill="none" stroke="#eab308" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M0,20 Q30,20 60,16 T100,12 L100,28 L0,28 Z" fill="url(#sparkYellow)" opacity="0.18" />
+                <defs>
+                  <linearGradient id="sparkYellow" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#eab308" />
+                    <stop offset="100%" stopColor="#eab308" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+              </svg>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* ── 2. 6 KPI Metric Cards with Sparkline Waves ── */}
-      <div className="org-kpi-row">
-        {/* Branches */}
-        <div className="org-kpi-card" onClick={() => onNavigateTab("branches")} role="button">
-          <div className="org-kpi-top">
-            <div className="org-kpi-icon-wrap" style={{ background: "#ecfdf5", color: "#10b981" }}>
-              <FaRegBuilding />
-            </div>
-            <div className="org-kpi-info">
-              <div className="org-kpi-label">Branches</div>
-              <div className="org-kpi-val">{stats.branches}</div>
-              <div className="org-kpi-badge text-success">&uarr; +2 this month</div>
-            </div>
-          </div>
-          <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
-            <path d="M0,22 Q25,8 50,18 T100,6" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" />
-            <path d="M0,22 Q25,8 50,18 T100,6 L100,28 L0,28 Z" fill="url(#sparkGreen)" opacity="0.18" />
-            <defs>
-              <linearGradient id="sparkGreen" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#10b981" />
-                <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
+          {/* ── 3. Comprehensive Bento Grid: 4 Modern Pillars ── */}
+          <Row className="g-3 mb-3">
+            {/* Card 1: Corporate & Entity Identification */}
+            <Col lg={6}>
+              <div className="org-bento-card h-100">
+                <div className="org-bento-header">
+                  <div className="d-flex align-items-center gap-2">
+                    <div className="org-bento-icon green">
+                      <FaBuilding />
+                    </div>
+                    <div>
+                      <h4 className="org-bento-title">Corporate & Legal Identity</h4>
+                      <div className="org-bento-sub">Registration, branding & corporate type</div>
+                    </div>
+                  </div>
+                  {canEdit && (
+                    <Button variant="light" size="sm" className="org-bento-edit-btn" onClick={handleOpenEditModal}>
+                      <FaEdit />
+                    </Button>
+                  )}
+                </div>
 
-        {/* Departments */}
-        <div className="org-kpi-card" onClick={() => onNavigateTab("departments")} role="button">
-          <div className="org-kpi-top">
-            <div className="org-kpi-icon-wrap" style={{ background: "#eff6ff", color: "#3b82f6" }}>
-              <FaUsers />
-            </div>
-            <div className="org-kpi-info">
-              <div className="org-kpi-label">Departments</div>
-              <div className="org-kpi-val">{stats.departments}</div>
-              <div className="org-kpi-badge text-primary">&uarr; +3 this month</div>
-            </div>
-          </div>
-          <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
-            <path d="M0,24 Q25,10 50,20 T100,8" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" />
-            <path d="M0,24 Q25,10 50,20 T100,8 L100,28 L0,28 Z" fill="url(#sparkBlue)" opacity="0.18" />
-            <defs>
-              <linearGradient id="sparkBlue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#3b82f6" />
-                <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
+                <div className="org-bento-list">
+                  <div className="org-bento-row">
+                    <span className="org-bento-label">Organization Name</span>
+                    <span className="org-bento-val fw-bold">{getStr(orgData.organizationName, "—")}</span>
+                  </div>
+                  <div className="org-bento-row">
+                    <span className="org-bento-label">Organization Code</span>
+                    <span className="org-code-pill font-monospace">{getStr(orgData.organizationCode, "—")}</span>
+                  </div>
+                  <div className="org-bento-row">
+                    <span className="org-bento-label">Legal Registered Name</span>
+                    <span className="org-bento-val">{getStr(orgData.legalName, "—")}</span>
+                  </div>
+                  <div className="org-bento-row">
+                    <span className="org-bento-label">Display / Brand Name</span>
+                    <span className="org-bento-val">{getStr(orgData.displayName, "—")}</span>
+                  </div>
+                  <div className="org-bento-row">
+                    <span className="org-bento-label">Entity Type</span>
+                    <span className="org-badge-entity">{getStr(orgData.organizationType, "—")}</span>
+                  </div>
+                  <div className="org-bento-row">
+                    <span className="org-bento-label">Industry Domain</span>
+                    <span className="org-bento-val">{getStr(orgData.industry, "—")}</span>
+                  </div>
+                  <div className="org-bento-row">
+                    <span className="org-bento-label">Operating Status</span>
+                    {getStr(orgData.status) ? (
+                      <span className="org-hero-pill-status">
+                        <span className="org-hero-green-circle" /> {getStr(orgData.status)}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </div>
+                </div>
+              </div>
+            </Col>
 
-        {/* Employees */}
-        <div className="org-kpi-card" onClick={() => onNavigateTab("reporting-hierarchy")} role="button">
-          <div className="org-kpi-top">
-            <div className="org-kpi-icon-wrap" style={{ background: "#fdf2f8", color: "#ec4899" }}>
-              <FaUserFriends />
-            </div>
-            <div className="org-kpi-info">
-              <div className="org-kpi-label">Employees</div>
-              <div className="org-kpi-val">{stats.employees}</div>
-              <div className="org-kpi-badge" style={{ color: "#ec4899" }}>&uarr; +12 this month</div>
-            </div>
-          </div>
-          <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
-            <path d="M0,25 Q30,8 60,22 T100,10" fill="none" stroke="#ec4899" strokeWidth="2.5" strokeLinecap="round" />
-            <path d="M0,25 Q30,8 60,22 T100,10 L100,28 L0,28 Z" fill="url(#sparkPink)" opacity="0.18" />
-            <defs>
-              <linearGradient id="sparkPink" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#ec4899" />
-                <stop offset="100%" stopColor="#ec4899" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
+            {/* Card 2: Statutory, Tax & Compliance */}
+            <Col lg={6}>
+              <div className="org-bento-card h-100">
+                <div className="org-bento-header">
+                  <div className="d-flex align-items-center gap-2">
+                    <div className="org-bento-icon purple">
+                      <FaShieldAlt />
+                    </div>
+                    <div>
+                      <h4 className="org-bento-title">Tax & Regulatory Compliance</h4>
+                      <div className="org-bento-sub">CIN, PAN, TAN, GSTIN & incorporation</div>
+                    </div>
+                  </div>
+                  {canEdit && (
+                    <Button variant="light" size="sm" className="org-bento-edit-btn" onClick={handleOpenEditModal}>
+                      <FaEdit />
+                    </Button>
+                  )}
+                </div>
 
-        {/* Teams */}
-        <div className="org-kpi-card" onClick={() => onNavigateTab("teams")} role="button">
-          <div className="org-kpi-top">
-            <div className="org-kpi-icon-wrap" style={{ background: "#f5f3ff", color: "#8b5cf6" }}>
-              <FaUsers />
-            </div>
-            <div className="org-kpi-info">
-              <div className="org-kpi-label">Teams</div>
-              <div className="org-kpi-val">{stats.teams}</div>
-              <div className="org-kpi-badge" style={{ color: "#8b5cf6" }}>&uarr; +4 this month</div>
-            </div>
-          </div>
-          <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
-            <path d="M0,24 Q30,6 60,18 T100,8" fill="none" stroke="#8b5cf6" strokeWidth="2.5" strokeLinecap="round" />
-            <path d="M0,24 Q30,6 60,18 T100,8 L100,28 L0,28 Z" fill="url(#sparkPurple)" opacity="0.18" />
-            <defs>
-              <linearGradient id="sparkPurple" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#8b5cf6" />
-                <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
+                <div className="org-bento-list">
+                  <div className="org-bento-row">
+                    <span className="org-bento-label">Registration / CIN No</span>
+                    <span className="org-bento-val font-monospace">{getStr(orgData.registrationNumber, "—")}</span>
+                  </div>
+                  <div className="org-bento-row">
+                    <span className="org-bento-label">PAN (Income Tax)</span>
+                    <div className="d-flex align-items-center gap-1">
+                      <span className="org-tax-pill">{getStr(orgData.pan, "—")}</span>
+                      {getStr(orgData.pan) && (
+                        <button
+                          type="button"
+                          className="org-copy-icon-btn"
+                          onClick={() => copyToClipboard(getStr(orgData.pan), "pan")}
+                          title="Copy PAN"
+                        >
+                          <FaCopy size={11} />
+                        </button>
+                      )}
+                      {copiedField === "pan" && <span className="badge bg-dark ms-1" style={{ fontSize: "0.65rem" }}>Copied!</span>}
+                    </div>
+                  </div>
+                  <div className="org-bento-row">
+                    <span className="org-bento-label">TAN (Tax Deduction)</span>
+                    <div className="d-flex align-items-center gap-1">
+                      <span className="org-tax-pill">{getStr(orgData.tan, "—")}</span>
+                      {getStr(orgData.tan) && (
+                        <button
+                          type="button"
+                          className="org-copy-icon-btn"
+                          onClick={() => copyToClipboard(getStr(orgData.tan), "tan")}
+                          title="Copy TAN"
+                        >
+                          <FaCopy size={11} />
+                        </button>
+                      )}
+                      {copiedField === "tan" && <span className="badge bg-dark ms-1" style={{ fontSize: "0.65rem" }}>Copied!</span>}
+                    </div>
+                  </div>
+                  <div className="org-bento-row">
+                    <span className="org-bento-label">GSTIN / Tax ID</span>
+                    <div className="d-flex align-items-center gap-1">
+                      <span className="org-tax-pill font-monospace">{getStr(orgData.gstin, "—")}</span>
+                      {getStr(orgData.gstin) && (
+                        <button
+                          type="button"
+                          className="org-copy-icon-btn"
+                          onClick={() => copyToClipboard(getStr(orgData.gstin), "gstin")}
+                          title="Copy GSTIN"
+                        >
+                          <FaCopy size={11} />
+                        </button>
+                      )}
+                      {copiedField === "gstin" && <span className="badge bg-dark ms-1" style={{ fontSize: "0.65rem" }}>Copied!</span>}
+                    </div>
+                  </div>
+                  <div className="org-bento-row">
+                    <span className="org-bento-label">Date of Incorporation</span>
+                    <span className="org-bento-val">
+                      {orgData.incorporationDate
+                        ? new Date(orgData.incorporationDate).toLocaleDateString("en-IN", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : "—"}
+                    </span>
+                  </div>
+                  <div className="org-bento-row">
+                    <span className="org-bento-label">Financial Year Period</span>
+                    <span className="org-bento-val fw-semibold">
+                      {getStr(orgData.financialYearStart, "04-01")} (Starts {getStr(orgData.financialYearStart) === "01-01" ? "Jan 1" : "Apr 1"})
+                    </span>
+                  </div>
+                  <div className="org-bento-row">
+                    <span className="org-bento-label">Currency & Timezone</span>
+                    <span className="org-bento-val">
+                      {[getStr(orgData.currency), getStr(orgData.timeZone)].filter(Boolean).join(" • ") || "—"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Col>
+          </Row>
 
-        {/* Locations */}
-        <div className="org-kpi-card" onClick={() => onNavigateTab("locations")} role="button">
-          <div className="org-kpi-top">
-            <div className="org-kpi-icon-wrap" style={{ background: "#fff7ed", color: "#f97316" }}>
-              <FaMapMarkerAlt />
-            </div>
-            <div className="org-kpi-info">
-              <div className="org-kpi-label">Locations</div>
-              <div className="org-kpi-val">{stats.locations}</div>
-              <div className="org-kpi-badge text-warning">&uarr; +1 this month</div>
-            </div>
-          </div>
-          <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
-            <path d="M0,25 Q30,12 60,22 T100,9" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" />
-            <path d="M0,25 Q30,12 60,22 T100,9 L100,28 L0,28 Z" fill="url(#sparkOrange)" opacity="0.18" />
-            <defs>
-              <linearGradient id="sparkOrange" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#f97316" />
-                <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
+          <Row className="g-3 mb-3">
+            {/* Card 3: Contact & Headquarters Location */}
+            <Col lg={6}>
+              <div className="org-bento-card h-100">
+                <div className="org-bento-header">
+                  <div className="d-flex align-items-center gap-2">
+                    <div className="org-bento-icon orange">
+                      <FaMapMarkerAlt />
+                    </div>
+                    <div>
+                      <h4 className="org-bento-title">Headquarters & Contact</h4>
+                      <div className="org-bento-sub">Official communications & physical address</div>
+                    </div>
+                  </div>
+                </div>
 
-        {/* Active Shifts */}
-        <div className="org-kpi-card" onClick={() => onNavigateTab("shifts")} role="button">
-          <div className="org-kpi-top">
-            <div className="org-kpi-icon-wrap" style={{ background: "#fefce8", color: "#eab308" }}>
-              <FaClock />
-            </div>
-            <div className="org-kpi-info">
-              <div className="org-kpi-label">Active Shifts</div>
-              <div className="org-kpi-val">{stats.shifts}</div>
-              <div className="org-kpi-badge text-muted">&minus; No change</div>
-            </div>
-          </div>
-          <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
-            <path d="M0,20 Q30,20 60,16 T100,12" fill="none" stroke="#eab308" strokeWidth="2.5" strokeLinecap="round" />
-            <path d="M0,20 Q30,20 60,16 T100,12 L100,28 L0,28 Z" fill="url(#sparkYellow)" opacity="0.18" />
-            <defs>
-              <linearGradient id="sparkYellow" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#eab308" />
-                <stop offset="100%" stopColor="#eab308" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-      </div>
+                <div className="org-bento-list">
+                  <div className="org-bento-row">
+                    <span className="org-bento-label d-flex align-items-center gap-1">
+                      <FaEnvelope className="text-muted" size={12} /> Official Email
+                    </span>
+                    <span className="org-bento-val text-truncate" style={{ maxWidth: "240px" }}>
+                      {getStr(orgData.email) ? (
+                        <a href={`mailto:${getStr(orgData.email)}`} className="text-primary text-decoration-none">
+                          {getStr(orgData.email)}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </span>
+                  </div>
+                  <div className="org-bento-row">
+                    <span className="org-bento-label d-flex align-items-center gap-1">
+                      <FaPhone className="text-muted" size={12} /> Contact Phone
+                    </span>
+                    <span className="org-bento-val">{getStr(orgData.phone, "—")}</span>
+                  </div>
+                  <div className="org-bento-row">
+                    <span className="org-bento-label d-flex align-items-center gap-1">
+                      <FaGlobe className="text-muted" size={12} /> Official Website
+                    </span>
+                    <span className="org-bento-val text-truncate" style={{ maxWidth: "240px" }}>
+                      {getStr(orgData.website) ? (
+                        <a
+                          href={getStr(orgData.website).startsWith("http") ? getStr(orgData.website) : `https://${getStr(orgData.website)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary text-decoration-none d-inline-flex align-items-center gap-1"
+                        >
+                          {getStr(orgData.website)}
+                          <FaExternalLinkAlt size={10} />
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </span>
+                  </div>
+                  <div className="org-bento-row">
+                    <span className="org-bento-label">Street Address</span>
+                    <span className="org-bento-val">{getStr(typeof orgData.address === "string" ? orgData.address : orgData.address?.street || orgData.address?.addressLine1, "—")}</span>
+                  </div>
+                  <div className="org-bento-row">
+                    <span className="org-bento-label">City / State</span>
+                    <span className="org-bento-val">
+                      {[getStr(orgData.city || orgData.address?.city), getStr(orgData.state || orgData.address?.state)].filter(Boolean).join(", ") || "—"}
+                    </span>
+                  </div>
+                  <div className="org-bento-row">
+                    <span className="org-bento-label">Country & PIN</span>
+                    <span className="org-bento-val">
+                      {[getStr(orgData.country || orgData.address?.country), getStr(orgData.pincode || orgData.address?.pincode)].filter(Boolean).join(" - ") || "—"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Col>
 
-      {/* ── 3. Middle Section: Quick Access Modules & Organization Overview ── */}
-      <Row className="g-3 mb-3">
-        {/* Quick Access Modules (Left) */}
-        <Col lg={8}>
-          <div className="org-white-card h-100">
-            <div className="org-card-title-bar">
+            {/* Card 4: Structure Hierarchy Visual */}
+            <Col lg={6}>
+              <div className="org-bento-card h-100">
+                <div className="org-bento-header">
+                  <div className="d-flex align-items-center gap-2">
+                    <div className="org-bento-icon blue">
+                      <FaSitemap />
+                    </div>
+                    <div>
+                      <h4 className="org-bento-title">Organization Structure</h4>
+                      <div className="org-bento-sub">Hierarchy tree & department distribution</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="org-link-btn"
+                    onClick={() => onNavigateTab("reporting-hierarchy")}
+                  >
+                    Full Tree &rarr;
+                  </button>
+                </div>
+
+                <div className="org-mini-tree-container">
+                  <div className="org-mini-tree-root">
+                    <div className="org-mini-tree-root-box">
+                      <div className="org-mini-tree-root-avatar">
+                        <FaUserTie />
+                      </div>
+                      <div>
+                        <div className="org-mini-tree-root-name">
+                          {user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : "Organization Owner"}
+                        </div>
+                        <div className="org-mini-tree-root-role">
+                          {user?.roleName || "Owner / Executive"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="org-mini-tree-line-v"></div>
+                  <div className="org-mini-tree-line-h"></div>
+
+                  <div className="org-mini-tree-children">
+                    <div
+                      className="org-mini-tree-child-box"
+                      onClick={() => onNavigateTab("branches")}
+                      role="button"
+                    >
+                      <div className="org-mini-child-icon text-primary"><FaBuilding /></div>
+                      <div className="org-mini-child-title">Branches</div>
+                      <div className="org-mini-child-count">{stats.branches} offices</div>
+                    </div>
+
+                    <div
+                      className="org-mini-tree-child-box"
+                      onClick={() => onNavigateTab("departments")}
+                      role="button"
+                    >
+                      <div className="org-mini-child-icon text-success"><FaSitemap /></div>
+                      <div className="org-mini-child-title">Departments</div>
+                      <div className="org-mini-child-count">{stats.departments} depts</div>
+                    </div>
+
+                    <div
+                      className="org-mini-tree-child-box"
+                      onClick={() => onNavigateTab("teams")}
+                      role="button"
+                    >
+                      <div className="org-mini-child-icon" style={{ color: "#8b5cf6" }}><FaUsers /></div>
+                      <div className="org-mini-child-title">Teams</div>
+                      <div className="org-mini-child-count">{stats.teams} squads</div>
+                    </div>
+
+                    <div
+                      className="org-mini-tree-child-box"
+                      onClick={() => onNavigateTab("reporting-hierarchy")}
+                      role="button"
+                    >
+                      <div className="org-mini-child-icon" style={{ color: "#ec4899" }}><FaUserFriends /></div>
+                      <div className="org-mini-child-title">Employees</div>
+                      <div className="org-mini-child-count">{stats.employees} users</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Col>
+          </Row>
+
+          {/* ── 4. Quick Access Modules (Full Width Grid) ── */}
+          <div className="org-bento-card mb-3">
+            <div className="org-bento-header">
               <div>
-                <h4 className="org-card-title">Quick Access Modules</h4>
-                <div className="org-card-subtitle">Jump to the modules you use most</div>
+                <h4 className="org-bento-title">Organization Modules & Sub-systems</h4>
+                <div className="org-bento-sub">Access and configure departments, branches, job grades, and shifts</div>
               </div>
               <button
                 type="button"
                 className="org-link-btn"
                 onClick={() => onNavigateTab("settings")}
               >
-                <FaCog className="me-1" /> Customize Modules
+                <FaCog className="me-1" /> Global Settings
               </button>
             </div>
 
@@ -482,413 +1013,489 @@ function OrgOverview({ onNavigateTab }) {
                       <div className="org-module-box-title">{item.title}</div>
                       <div className="org-module-box-desc">{item.desc}</div>
                     </div>
-                    <FaArrowRight className="org-module-box-arrow" />
+                    <FaChevronRight className="org-module-box-arrow" />
                   </div>
                 );
               })}
             </div>
           </div>
-        </Col>
+        </>
+      )}
 
-        {/* Organization Overview (Right) */}
-        <Col lg={4}>
-          <div className="org-white-card h-100">
-            <div className="org-card-title-bar">
-              <div>
-                <h4 className="org-card-title">Organization Overview</h4>
-                <div className="org-card-subtitle">Your company at a glance</div>
-              </div>
-              <button
-                type="button"
-                className="org-link-btn text-primary"
-                onClick={() => setShowEditModal(true)}
-              >
-                View Details &rarr;
-              </button>
-            </div>
-
-            <div className="org-overview-detail-list">
-              <div className="org-overview-detail-row">
-                <div className="org-detail-label-wrap">
-                  <FaBuilding className="text-secondary me-2" />
-                  <span>Organization Code</span>
-                </div>
-                <div className="org-detail-value-wrap font-monospace fw-semibold">
-                  {orgData?.organizationCode || "ORG-001"}
-                </div>
-              </div>
-
-              <div className="org-overview-detail-row">
-                <div className="org-detail-label-wrap">
-                  <FaBriefcase className="text-secondary me-2" />
-                  <span>Industry</span>
-                </div>
-                <div className="org-detail-value-wrap">
-                  {orgData?.industry || "Technology"}
-                </div>
-              </div>
-
-              <div className="org-overview-detail-row">
-                <div className="org-detail-label-wrap">
-                  <FaEnvelope className="text-secondary me-2" />
-                  <span>Contact Email</span>
-                </div>
-                <div className="org-detail-value-wrap text-truncate" style={{ maxWidth: "160px" }}>
-                  {orgData?.email || "contact@organization.com"}
-                </div>
-              </div>
-
-              <div className="org-overview-detail-row">
-                <div className="org-detail-label-wrap">
-                  <FaPhone className="text-secondary me-2" />
-                  <span>Phone</span>
-                </div>
-                <div className="org-detail-value-wrap">
-                  {orgData?.phone || "+91 80 1234 5678"}
-                </div>
-              </div>
-
-              <div className="org-overview-detail-row">
-                <div className="org-detail-label-wrap">
-                  <FaMapMarkerAlt className="text-secondary me-2" />
-                  <span>Headquarters</span>
-                </div>
-                <div className="org-detail-value-wrap">
-                  {orgData?.country || "India"}
-                </div>
-              </div>
-
-              <div className="org-overview-detail-row">
-                <div className="org-detail-label-wrap">
-                  <FaCalendarWeek className="text-secondary me-2" />
-                  <span>Established</span>
-                </div>
-                <div className="org-detail-value-wrap">
-                  2020
-                </div>
-              </div>
-            </div>
-          </div>
-        </Col>
-      </Row>
-
-      {/* ── 4. Bottom Section: Structure Tree, Recent Activities & CTA Feature Card ── */}
-      <Row className="g-3">
-        {/* Column 1: Organization Structure Visual */}
-        <Col lg={4}>
-          <div className="org-white-card h-100">
-            <div className="org-card-title-bar">
-              <div>
-                <h4 className="org-card-title">Organization Structure</h4>
-                <div className="org-card-subtitle">Visualize your organizational hierarchy</div>
-              </div>
-              <button
-                type="button"
-                className="org-link-btn"
-                onClick={() => onNavigateTab("reporting-hierarchy")}
-              >
-                View Full Hierarchy &rarr;
-              </button>
-            </div>
-
-            {/* Visual Mini Org Chart */}
-            <div className="org-mini-tree-container">
-              {/* Root Owner Box */}
-              <div className="org-mini-tree-root">
-                <div className="org-mini-tree-root-box">
-                  <div className="org-mini-tree-root-avatar">
-                    <FaUserTie />
-                  </div>
-                  <div>
-                    <div className="org-mini-tree-root-name">
-                      {user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : "System Owner"}
-                    </div>
-                    <div className="org-mini-tree-root-role">
-                      {user?.roleName || "Owner"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tree Branch Lines */}
-              <div className="org-mini-tree-line-v"></div>
-              <div className="org-mini-tree-line-h"></div>
-
-              {/* Child Nodes Row */}
-              <div className="org-mini-tree-children">
-                <div
-                  className="org-mini-tree-child-box"
-                  onClick={() => onNavigateTab("branches")}
-                  role="button"
-                >
-                  <div className="org-mini-child-icon text-primary"><FaBuilding /></div>
-                  <div className="org-mini-child-title">Branches</div>
-                  <div className="org-mini-child-count">{stats.branches} offices</div>
-                </div>
-
-                <div
-                  className="org-mini-tree-child-box"
-                  onClick={() => onNavigateTab("departments")}
-                  role="button"
-                >
-                  <div className="org-mini-child-icon text-success"><FaSitemap /></div>
-                  <div className="org-mini-child-title">Departments</div>
-                  <div className="org-mini-child-count">{stats.departments} departments</div>
-                </div>
-
-                <div
-                  className="org-mini-tree-child-box"
-                  onClick={() => onNavigateTab("teams")}
-                  role="button"
-                >
-                  <div className="org-mini-child-icon text-purple" style={{ color: "#8b5cf6" }}><FaUsers /></div>
-                  <div className="org-mini-child-title">Teams</div>
-                  <div className="org-mini-child-count">{stats.teams} teams</div>
-                </div>
-
-                <div
-                  className="org-mini-tree-child-box"
-                  onClick={() => onNavigateTab("reporting-hierarchy")}
-                  role="button"
-                >
-                  <div className="org-mini-child-icon text-pink" style={{ color: "#ec4899" }}><FaUserFriends /></div>
-                  <div className="org-mini-child-title">Employees</div>
-                  <div className="org-mini-child-count">{stats.employees} people</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Col>
-
-        {/* Column 2: Recent Activities */}
-        <Col lg={4}>
-          <div className="org-white-card h-100">
-            <div className="org-card-title-bar">
-              <div>
-                <h4 className="org-card-title">Recent Activities</h4>
-                <div className="org-card-subtitle">Latest changes in your organization</div>
-              </div>
-              <button
-                type="button"
-                className="org-link-btn"
-                onClick={() => onNavigateTab("departments")}
-              >
-                View All
-              </button>
-            </div>
-
-            <div className="org-activity-list">
-              <div className="org-activity-item">
-                <div className="org-activity-dot-icon" style={{ background: "#ecfdf5", color: "#10b981" }}>
-                  <FaSitemap size={12} />
-                </div>
-                <div className="org-activity-content">
-                  <div className="org-activity-title">New department created</div>
-                  <div className="org-activity-desc">Research & Development</div>
-                  <div className="org-activity-time">2 hours ago by System Owner</div>
-                </div>
-              </div>
-
-              <div className="org-activity-item">
-                <div className="org-activity-dot-icon" style={{ background: "#fff7ed", color: "#f97316" }}>
-                  <FaMapMarkerAlt size={12} />
-                </div>
-                <div className="org-activity-content">
-                  <div className="org-activity-title">Location added</div>
-                  <div className="org-activity-desc">Chennai Office</div>
-                  <div className="org-activity-time">5 hours ago by Admin</div>
-                </div>
-              </div>
-
-              <div className="org-activity-item">
-                <div className="org-activity-dot-icon" style={{ background: "#f5f3ff", color: "#8b5cf6" }}>
-                  <FaBriefcase size={12} />
-                </div>
-                <div className="org-activity-content">
-                  <div className="org-activity-title">Designation updated</div>
-                  <div className="org-activity-desc">Senior Developer</div>
-                  <div className="org-activity-time">1 day ago by HR Manager</div>
-                </div>
-              </div>
-
-              <div className="org-activity-item">
-                <div className="org-activity-dot-icon" style={{ background: "#eff6ff", color: "#3b82f6" }}>
-                  <FaUsers size={12} />
-                </div>
-                <div className="org-activity-content">
-                  <div className="org-activity-title">Team created</div>
-                  <div className="org-activity-desc">Product Team</div>
-                  <div className="org-activity-time">2 days ago by System Owner</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Col>
-
-        {/* Column 3: CTA Card */}
-        <Col lg={4}>
-          <div className="org-cta-card h-100">
-            <div className="org-cta-icon-circle">
-              <FaUsers size={22} />
-            </div>
-            <h3 className="org-cta-title">Build a Stronger Organization</h3>
-            <p className="org-cta-desc">
-              Streamline your structure, empower your teams, and achieve your goals together.
-            </p>
-            <button
-              type="button"
-              className="org-cta-btn"
-              onClick={() => onNavigateTab("settings")}
-            >
-              Explore Features &rarr;
-            </button>
-
-            <div className="org-cta-metrics-row">
-              <div className="org-cta-stat">
-                <div className="org-cta-stat-label">People</div>
-                <div className="org-cta-stat-val">{stats.employees}</div>
-              </div>
-              <div className="org-cta-stat-divider"></div>
-              <div className="org-cta-stat">
-                <div className="org-cta-stat-label">Teams</div>
-                <div className="org-cta-stat-val">{stats.teams}</div>
-              </div>
-              <div className="org-cta-stat-divider"></div>
-              <div className="org-cta-stat">
-                <div className="org-cta-stat-label">Locations</div>
-                <div className="org-cta-stat-val">{stats.locations}</div>
-              </div>
-              <div className="org-cta-stat-divider"></div>
-              <div className="org-cta-stat">
-                <div className="org-cta-stat-label">Growth</div>
-                <div className="org-cta-stat-val text-lime">+18%</div>
-              </div>
-            </div>
-          </div>
-        </Col>
-      </Row>
-
-      {/* ── 5. Edit Organization Details Modal ── */}
-      <Modal show={showEditModal} onHide={() => setShowEditModal(false)} size="lg" centered backdrop="static">
-        <Form onSubmit={handleUpdate}>
-          <Modal.Header closeButton>
-            <Modal.Title className="d-flex align-items-center gap-2">
+      {/* ── 5. Create / Edit Organization Modal ── */}
+      <Modal
+        show={showModal}
+        onHide={() => setShowModal(false)}
+        size="lg"
+        centered
+        backdrop="static"
+        className="org-modal"
+      >
+        <Form onSubmit={handleFormSubmit}>
+          <Modal.Header closeButton className="border-bottom px-4 py-3">
+            <Modal.Title className="d-flex align-items-center gap-2 fs-5 fw-bold text-dark">
               <FaBuilding className="text-success" />
-              Organization Profile & Legal Settings
+              {modalMode === "create" ? "Create Enterprise Organization" : "Edit Organization Profile"}
             </Modal.Title>
           </Modal.Header>
-          <Modal.Body>
-            {modalError && <Alert variant="danger">{modalError}</Alert>}
 
-            <div className="org-form-section-title">Corporate Information</div>
-            <Row className="g-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Organization Display Name <span className="text-danger">*</span></Form.Label>
-                  <Form.Control
-                    required
-                    value={formData.displayName}
-                    onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Legal / Registered Entity Name <span className="text-danger">*</span></Form.Label>
-                  <Form.Control
-                    required
-                    value={formData.legalName}
-                    onChange={(e) => setFormData({ ...formData, legalName: e.target.value })}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Industry Sector</Form.Label>
-                  <Form.Control
-                    placeholder="e.g. Technology, Healthcare, Finance"
-                    value={formData.industry}
-                    onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Corporate Website</Form.Label>
-                  <Form.Control
-                    placeholder="https://organization.com"
-                    value={formData.website}
-                    onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
+          <Modal.Body className="p-0">
+            {modalError && <Alert variant="danger" className="m-3 mb-0">{modalError}</Alert>}
 
-            <div className="org-form-section-title mt-4">Contact & Physical Headquarters</div>
-            <Row className="g-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Official Email Address</Form.Label>
-                  <Form.Control
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Official Contact Phone</Form.Label>
-                  <Form.Control
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={12}>
-                <Form.Group>
-                  <Form.Label>Headquarters Street Address</Form.Label>
-                  <Form.Control
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group>
-                  <Form.Label>City</Form.Label>
-                  <Form.Control
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group>
-                  <Form.Label>State</Form.Label>
-                  <Form.Control
-                    value={formData.state}
-                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group>
-                  <Form.Label>Country</Form.Label>
-                  <Form.Control
-                    value={formData.country}
-                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
+            <Tab.Container activeKey={modalActiveTab} onSelect={(k) => setModalActiveTab(k || "basic")}>
+              <Nav variant="tabs" className="px-3 pt-2 bg-light border-bottom org-modal-nav">
+                <Nav.Item>
+                  <Nav.Link eventKey="basic" className="fw-semibold">
+                    <FaBuilding className="me-1" /> 1. Entity & Corporate
+                  </Nav.Link>
+                </Nav.Item>
+                <Nav.Item>
+                  <Nav.Link eventKey="statutory" className="fw-semibold">
+                    <FaShieldAlt className="me-1" /> 2. Tax & Legal
+                  </Nav.Link>
+                </Nav.Item>
+                <Nav.Item>
+                  <Nav.Link eventKey="contact" className="fw-semibold">
+                    <FaEnvelope className="me-1" /> 3. Contact & Web
+                  </Nav.Link>
+                </Nav.Item>
+                <Nav.Item>
+                  <Nav.Link eventKey="address" className="fw-semibold">
+                    <FaMapMarkerAlt className="me-1" /> 4. Headquarters Address
+                  </Nav.Link>
+                </Nav.Item>
+                <Nav.Item>
+                  <Nav.Link eventKey="localization" className="fw-semibold">
+                    <FaCog className="me-1" /> 5. Localization & FY
+                  </Nav.Link>
+                </Nav.Item>
+              </Nav>
+
+              <Tab.Content className="p-4">
+                {/* ── Tab 1: Entity & Corporate Details ── */}
+                <Tab.Pane eventKey="basic">
+                  <div className="org-form-section-title">Core Organization Identity</div>
+                  <Row className="g-3">
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">
+                          Organization Name <span className="text-danger">*</span>
+                        </Form.Label>
+                        <Form.Control
+                          required
+                          maxLength={100}
+                          placeholder="Enter organization name"
+                          value={formData.organizationName}
+                          onChange={(e) =>
+                            setFormData({ ...formData, organizationName: e.target.value })
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">
+                          Organization Code <span className="text-danger">*</span>
+                        </Form.Label>
+                        <Form.Control
+                          required
+                          maxLength={30}
+                          placeholder="e.g. FLMT_CORP"
+                          value={formData.organizationCode}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              organizationCode: e.target.value.toUpperCase().replace(/\s+/g, ""),
+                            })
+                          }
+                        />
+                        <Form.Text className="text-muted">Unique corporate ID code in uppercase</Form.Text>
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">Legal / Registered Entity Name</Form.Label>
+                        <Form.Control
+                          maxLength={150}
+                          placeholder="Registered legal entity name"
+                          value={formData.legalName}
+                          onChange={(e) =>
+                            setFormData({ ...formData, legalName: e.target.value })
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">Display / Trade Name</Form.Label>
+                        <Form.Control
+                          maxLength={100}
+                          placeholder="Brand / Display name"
+                          value={formData.displayName}
+                          onChange={(e) =>
+                            setFormData({ ...formData, displayName: e.target.value })
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={4}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">Organization Type</Form.Label>
+                        <Form.Select
+                          value={formData.organizationType}
+                          onChange={(e) =>
+                            setFormData({ ...formData, organizationType: e.target.value })
+                          }
+                        >
+                          <option value="">Select Organization Type</option>
+                          {ORG_TYPES.map((type) => (
+                            <option key={type} value={type}>
+                              {type}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={4}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">Industry Sector</Form.Label>
+                        <Form.Control
+                          placeholder="e.g. Information Technology"
+                          value={formData.industry}
+                          onChange={(e) =>
+                            setFormData({ ...formData, industry: e.target.value })
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={4}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">Status</Form.Label>
+                        <Form.Select
+                          value={formData.status}
+                          onChange={(e) =>
+                            setFormData({ ...formData, status: e.target.value })
+                          }
+                        >
+                          <option value="">Select Status</option>
+                          {ORG_STATUSES.map((st) => (
+                            <option key={st} value={st}>
+                              {st}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={12}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">Organization Logo (URL or Upload Image)</Form.Label>
+                        <div className="d-flex align-items-center gap-3">
+                          <Form.Control
+                            placeholder="https://example.com/logo.png"
+                            value={formData.logo}
+                            onChange={(e) =>
+                              setFormData({ ...formData, logo: e.target.value })
+                            }
+                          />
+                          <Form.Control
+                            type="file"
+                            accept="image/*"
+                            onChange={handleLogoChange}
+                            style={{ maxWidth: "220px" }}
+                          />
+                        </div>
+                        {formData.logo && (
+                          <div className="mt-2 d-flex align-items-center gap-2">
+                            <span className="text-muted small">Preview:</span>
+                            <img
+                              src={formData.logo}
+                              alt="Logo Preview"
+                              style={{ height: "40px", maxWidth: "120px", objectFit: "contain", borderRadius: "6px" }}
+                            />
+                          </div>
+                        )}
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                </Tab.Pane>
+
+                {/* ── Tab 2: Statutory & Tax Compliance ── */}
+                <Tab.Pane eventKey="statutory">
+                  <div className="org-form-section-title">Statutory & Legal Compliance</div>
+                  <Row className="g-3">
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">Registration / CIN Number</Form.Label>
+                        <Form.Control
+                          placeholder="Enter Registration / CIN number"
+                          value={formData.registrationNumber}
+                          onChange={(e) =>
+                            setFormData({ ...formData, registrationNumber: e.target.value })
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">Date of Incorporation</Form.Label>
+                        <Form.Control
+                          type="date"
+                          value={formData.incorporationDate}
+                          onChange={(e) =>
+                            setFormData({ ...formData, incorporationDate: e.target.value })
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={4}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">PAN (Permanent Account Number)</Form.Label>
+                        <Form.Control
+                          placeholder="Enter PAN"
+                          value={formData.pan}
+                          onChange={(e) =>
+                            setFormData({ ...formData, pan: e.target.value.toUpperCase() })
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={4}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">TAN (Tax Deduction Account No)</Form.Label>
+                        <Form.Control
+                          placeholder="Enter TAN"
+                          value={formData.tan}
+                          onChange={(e) =>
+                            setFormData({ ...formData, tan: e.target.value.toUpperCase() })
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={4}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">GSTIN</Form.Label>
+                        <Form.Control
+                          placeholder="Enter GSTIN"
+                          value={formData.gstin}
+                          onChange={(e) =>
+                            setFormData({ ...formData, gstin: e.target.value.toUpperCase() })
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                </Tab.Pane>
+
+                {/* ── Tab 3: Contact & Web Details ── */}
+                <Tab.Pane eventKey="contact">
+                  <div className="org-form-section-title">Official Communications</div>
+                  <Row className="g-3">
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">Official Email Address</Form.Label>
+                        <Form.Control
+                          type="email"
+                          placeholder="contact@company.com"
+                          value={formData.email}
+                          onChange={(e) =>
+                            setFormData({ ...formData, email: e.target.value.toLowerCase() })
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">Official Contact Phone</Form.Label>
+                        <Form.Control
+                          placeholder="Enter contact phone"
+                          value={formData.phone}
+                          onChange={(e) =>
+                            setFormData({ ...formData, phone: e.target.value })
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={12}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">Corporate Website</Form.Label>
+                        <Form.Control
+                          placeholder="https://company.com"
+                          value={formData.website}
+                          onChange={(e) =>
+                            setFormData({ ...formData, website: e.target.value })
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                </Tab.Pane>
+
+                {/* ── Tab 4: Headquarters Physical Address ── */}
+                <Tab.Pane eventKey="address">
+                  <div className="org-form-section-title">Registered Headquarters Location</div>
+                  <Row className="g-3">
+                    <Col md={12}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">Street Address</Form.Label>
+                        <Form.Control
+                          placeholder="Enter street address"
+                          value={formData.address}
+                          onChange={(e) =>
+                            setFormData({ ...formData, address: e.target.value })
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">City</Form.Label>
+                        <Form.Control
+                          placeholder="Enter city"
+                          value={formData.city}
+                          onChange={(e) =>
+                            setFormData({ ...formData, city: e.target.value })
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">State / Province</Form.Label>
+                        <Form.Control
+                          placeholder="Enter state"
+                          value={formData.state}
+                          onChange={(e) =>
+                            setFormData({ ...formData, state: e.target.value })
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">Country</Form.Label>
+                        <Form.Control
+                          placeholder="Enter country"
+                          value={formData.country}
+                          onChange={(e) =>
+                            setFormData({ ...formData, country: e.target.value })
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">PIN / Postal Code</Form.Label>
+                        <Form.Control
+                          placeholder="Enter PIN code"
+                          value={formData.pincode}
+                          onChange={(e) =>
+                            setFormData({ ...formData, pincode: e.target.value })
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                </Tab.Pane>
+
+                {/* ── Tab 5: Localization & Financial Settings ── */}
+                <Tab.Pane eventKey="localization">
+                  <div className="org-form-section-title">System Localization & Financial Defaults</div>
+                  <Row className="g-3">
+                    <Col md={4}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">Operating Currency</Form.Label>
+                        <Form.Select
+                          value={formData.currency}
+                          onChange={(e) =>
+                            setFormData({ ...formData, currency: e.target.value })
+                          }
+                        >
+                          <option value="">Select Currency</option>
+                          <option value="INR">INR (₹ - Indian Rupee)</option>
+                          <option value="USD">USD ($ - US Dollar)</option>
+                          <option value="EUR">EUR (€ - Euro)</option>
+                          <option value="GBP">GBP (£ - British Pound)</option>
+                          <option value="AED">AED (د.إ - UAE Dirham)</option>
+                          <option value="SGD">SGD (S$ - Singapore Dollar)</option>
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={4}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">Timezone</Form.Label>
+                        <Form.Select
+                          value={formData.timeZone}
+                          onChange={(e) =>
+                            setFormData({ ...formData, timeZone: e.target.value })
+                          }
+                        >
+                          <option value="">Select Time Zone</option>
+                          <option value="Asia/Kolkata">Asia/Kolkata (IST +05:30)</option>
+                          <option value="Asia/Dubai">Asia/Dubai (GST +04:00)</option>
+                          <option value="Asia/Singapore">Asia/Singapore (SGT +08:00)</option>
+                          <option value="Europe/London">Europe/London (GMT/BST)</option>
+                          <option value="America/New_York">America/New_York (EST/EDT)</option>
+                          <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={4}>
+                      <Form.Group>
+                        <Form.Label className="fw-semibold">Financial Year Start (MM-DD)</Form.Label>
+                        <Form.Select
+                          value={formData.financialYearStart}
+                          onChange={(e) =>
+                            setFormData({ ...formData, financialYearStart: e.target.value })
+                          }
+                        >
+                          <option value="">Select FY Start</option>
+                          <option value="04-01">04-01 (April 1st)</option>
+                          <option value="01-01">01-01 (January 1st)</option>
+                          <option value="07-01">07-01 (July 1st)</option>
+                          <option value="10-01">10-01 (October 1st)</option>
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                </Tab.Pane>
+              </Tab.Content>
+            </Tab.Container>
           </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" size="sm" onClick={() => setShowEditModal(false)}>
+
+          <Modal.Footer className="bg-light px-4 py-3 border-top">
+            <Button variant="secondary" size="sm" onClick={() => setShowModal(false)}>
               Cancel
             </Button>
-            <Button variant="success" size="sm" type="submit" disabled={modalLoading}>
-              {modalLoading ? "Saving Changes..." : "Save Changes"}
+            <Button variant="success" size="sm" type="submit" disabled={modalLoading} className="px-3">
+              {modalLoading ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-1" />
+                  Saving...
+                </>
+              ) : modalMode === "create" ? (
+                "Create Organization"
+              ) : (
+                "Save Changes"
+              )}
             </Button>
           </Modal.Footer>
         </Form>

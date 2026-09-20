@@ -367,8 +367,14 @@ function LocationsSection() {
                     )}
                   </td>
                   <td>
-                    <div className="small">{loc.city ? `${loc.city}, ${loc.state || loc.country}` : loc.country}</div>
-                    <div className="text-muted text-truncate small" style={{ maxWidth: "200px" }}>{loc.address || "-"}</div>
+                    <div className="small">
+                      {typeof loc.city === 'string' ? loc.city : (loc.address?.city || "")}
+                      {(loc.city || loc.address?.city) ? ", " : ""}
+                      {typeof loc.state === 'string' ? loc.state : (typeof loc.country === 'string' ? loc.country : (loc.address?.country || loc.address?.state || ""))}
+                    </div>
+                    <div className="text-muted text-truncate small" style={{ maxWidth: "200px" }}>
+                      {typeof loc.address === 'string' ? loc.address : (loc.address?.street || "-")}
+                    </div>
                   </td>
                   <td>
                     <div className="d-flex align-items-center gap-1 font-monospace small">
