@@ -1,22 +1,24 @@
 /* ============================================================
    Dashboard Modernization Styles
-   TeamHub Mint Design System
+   TeamHub Gold & Black Luxury Design System
    Dedicated stylesheet for src/Pages/Dashboard/Dashboard.js
    ============================================================ */
 
 /* ── Hero Welcome Banner Elements ── */
 .dash-role-badge {
-  background: rgba(45, 197, 138, 0.2) !important;
-  color: #4ade80 !important;
+  background: rgba(196, 154, 85, 0.2) !important;
+  color: #C79D58 !important;
+  border: 1px solid rgba(196, 154, 85, 0.35) !important;
+  font-weight: 600;
 }
 
 .dash-date-text {
   font-size: 0.8rem;
-  color: rgba(200, 230, 215, 0.7);
+  color: #C7C5C0;
 }
 
 .dash-hero-desc {
-  color: rgba(200, 230, 215, 0.8);
+  color: #D4D0C8;
   max-width: 640px;
 }
 
@@ -25,43 +27,23 @@
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: rgba(45, 197, 138, 0.12);
-  color: #2DC58A;
+  background: #F5EFE3;
+  color: #C49A55;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-/* ── Console Quick Card Icon Thematic Colors ── */
-.dash-icon-mint {
-  background: rgba(45, 197, 138, 0.12) !important;
-  color: #2DC58A !important;
-}
-
-.dash-icon-purple {
-  background: rgba(139, 92, 246, 0.12) !important;
-  color: #8b5cf6 !important;
-}
-
-.dash-icon-sky {
-  background: rgba(14, 165, 233, 0.12) !important;
-  color: #0ea5e9 !important;
-}
-
-.dash-icon-amber {
-  background: rgba(245, 158, 11, 0.12) !important;
-  color: #f59e0b !important;
-}
-
-.dash-icon-pink {
-  background: rgba(236, 72, 153, 0.12) !important;
-  color: #ec4899 !important;
-}
-
+/* ── Console Quick Card Icon Thematic Colors (Warm Gold / Cream palette) ── */
+.dash-icon-mint,
+.dash-icon-purple,
+.dash-icon-sky,
+.dash-icon-amber,
+.dash-icon-pink,
 .dash-icon-emerald {
-  background: rgba(16, 185, 129, 0.12) !important;
-  color: #10b981 !important;
+  background: #F5EFE3 !important;
+  color: #C49A55 !important;
 }
 
 /* ── System Environment Information Card ── */
@@ -69,8 +51,8 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: rgba(45, 197, 138, 0.12);
-  color: #2DC58A;
+  background: #F5EFE3;
+  color: #C49A55;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -80,14 +62,18 @@
 
 /* ── Quick Card Transitions & Hover ── */
 .app-quick-card {
+  background: #FFFFFF !important;
+  border: 1px solid #E8E2D5 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 1px 4px rgba(28, 29, 29, 0.03) !important;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   cursor: pointer;
 }
 
 .app-quick-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
-  border-color: rgba(45, 197, 138, 0.35) !important;
+  box-shadow: 0 6px 18px rgba(196, 154, 85, 0.15) !important;
+  border-color: #C49A55 !important;
 }
 
 /* ── Responsive Refinements ── */

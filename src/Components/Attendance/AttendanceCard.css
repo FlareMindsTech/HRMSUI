@@ -26,7 +26,7 @@
 
 /* State 1: Punch In Action */
 .btn-punch-in {
-  background: var(--primary-gradient, linear-gradient(135deg, #2DC58A 0%, #20a673 100%));
+  background: linear-gradient(135deg, #C79D58 0%, #C49A55 100%);
   border: none;
   color: #ffffff;
   font-weight: 700;
@@ -34,7 +34,7 @@
   border-radius: 99px;
   font-size: 0.95rem;
   min-width: 180px;
-  box-shadow: 0 4px 14px rgba(45, 197, 138, 0.35);
+  box-shadow: 0 4px 14px rgba(199, 157, 88, 0.35);
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
@@ -43,7 +43,7 @@
 
 .btn-punch-in:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(45, 197, 138, 0.45);
+  box-shadow: 0 6px 18px rgba(199, 157, 88, 0.45);
   color: #ffffff;
 }
 
@@ -54,7 +54,7 @@
 
 /* State 2: Punch Out Action */
 .btn-punch-out {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  background: linear-gradient(135deg, #D94A32 0%, #B83A24 100%);
   border: none;
   color: #ffffff;
   font-weight: 700;
@@ -62,7 +62,7 @@
   border-radius: 99px;
   font-size: 0.95rem;
   min-width: 180px;
-  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 4px 14px rgba(217, 74, 50, 0.35);
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
@@ -71,7 +71,7 @@
 
 .btn-punch-out:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.4);
+  box-shadow: 0 6px 18px rgba(217, 74, 50, 0.45);
   color: #ffffff;
 }
 
@@ -86,8 +86,8 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  background: #72A83B;
+  box-shadow: 0 0 0 0 rgba(114, 168, 59, 0.7);
   animation: pulse-green 1.8s infinite;
   margin-right: 6px;
 }
@@ -95,15 +95,15 @@
 @keyframes pulse-green {
   0% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+    box-shadow: 0 0 0 0 rgba(114, 168, 59, 0.7);
   }
   70% {
     transform: scale(1);
-    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+    box-shadow: 0 0 0 6px rgba(114, 168, 59, 0);
   }
   100% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    box-shadow: 0 0 0 0 rgba(114, 168, 59, 0);
   }
 }
 
@@ -116,8 +116,8 @@
 .att-card-header-icon {
   width: 42px;
   height: 42px;
-  background: linear-gradient(135deg, rgba(45, 197, 138, 0.15) 0%, rgba(32, 166, 115, 0.2) 100%);
-  color: #2DC58A;
+  background: #F5EFE3;
+  color: #C49A55;
   font-size: 1.2rem;
 }
 
@@ -133,8 +133,8 @@
 .att-card-state1-icon {
   width: 68px;
   height: 68px;
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(245, 158, 11, 0.2) 100%);
-  color: #f59e0b;
+  background: rgba(217, 169, 40, 0.15);
+  color: #D9A928;
 }
 
 .att-card-state1-desc {
@@ -142,8 +142,8 @@
 }
 
 .att-card-working-box {
-  background: linear-gradient(135deg, #f8fdfb 0%, #f0fdf4 100%);
-  border: 1px solid rgba(45, 197, 138, 0.25);
+  background: #FAF7F0;
+  border: 1px solid #E8E2D5;
 }
 
 .att-card-sublabel {

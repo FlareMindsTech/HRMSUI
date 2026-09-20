@@ -1,5 +1,5 @@
 /* ============================================================
-   User & Role Management Styles — TeamHub Mint Design System
+   User & Role Management Styles — TeamHub Gold & Cream System
    Dedicated stylesheet for src/Pages/Dashboard/UserManagement.js
    ============================================================ */
 
@@ -11,31 +11,32 @@
 
 /* ── Primary Create Button ── */
 .user-mgmt-create-btn {
-  background: linear-gradient(135deg, #2DC58A 0%, #20a673 100%) !important;
+  background: #C49A55 !important;
   border: none !important;
   font-size: 0.84rem !important;
   transition: all 0.15s ease-in-out !important;
 }
 
 .user-mgmt-create-btn:hover {
-  box-shadow: 0 4px 12px rgba(45, 197, 138, 0.35) !important;
+  background: #b58c49 !important;
+  box-shadow: 0 4px 12px rgba(196, 154, 85, 0.35) !important;
   transform: translateY(-1px);
 }
 
 /* ── KPI Stat Cards ── */
 .user-mgmt-kpi-card {
   background: #ffffff;
-  border: 1px solid rgba(220, 235, 228, 0.8);
-  border-radius: 16px;
+  border: 1px solid #E8E2D5;
+  border-radius: 14px;
   padding: 1rem 1.2rem;
   height: 100%;
-  box-shadow: 0 2px 8px rgba(0, 40, 20, 0.03);
+  box-shadow: 0 2px 8px rgba(28, 29, 29, 0.03);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .user-mgmt-kpi-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 40, 20, 0.06);
+  box-shadow: 0 6px 18px rgba(196, 154, 85, 0.1);
 }
 
 .user-mgmt-kpi-icon {
@@ -50,18 +51,18 @@
 }
 
 .user-mgmt-kpi-icon.icon-employees {
-  background: rgba(45, 197, 138, 0.12);
-  color: #2DC58A;
+  background: #F5EFE3;
+  color: #C49A55;
 }
 
 .user-mgmt-kpi-icon.icon-active {
-  background: rgba(16, 185, 129, 0.12);
-  color: #10b981;
+  background: rgba(114, 168, 59, 0.12);
+  color: #72A83B;
 }
 
 .user-mgmt-kpi-icon.icon-provision {
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
+  background: rgba(217, 169, 40, 0.12);
+  color: #D9A928;
 }
 
 .user-mgmt-kpi-icon.icon-roles {
@@ -79,7 +80,7 @@
 .user-mgmt-kpi-lbl {
   font-size: 0.68rem;
   font-weight: 700;
-  color: var(--text-muted, #8ba49d);
+  color: #77736B;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   margin-top: 0.2rem;
@@ -91,14 +92,14 @@
   padding: 4px 6px;
   border-radius: 9999px;
   display: inline-flex;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #E8E2D5;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .user-mgmt-nav-tab {
   font-size: 0.82rem !important;
   font-weight: 600 !important;
-  padding: 6px 18px !important;
+  padding: 7px 18px !important;
   border-radius: 9999px !important;
   transition: all 0.15s ease-in-out !important;
   border: none !important;
@@ -108,19 +109,19 @@
 }
 
 .user-mgmt-nav-tab.active {
-  background: linear-gradient(135deg, #2DC58A 0%, #20a673 100%) !important;
+  background: #C49A55 !important;
   color: #ffffff !important;
-  box-shadow: 0 2px 6px rgba(45, 197, 138, 0.35) !important;
+  box-shadow: 0 2px 6px rgba(196, 154, 85, 0.3) !important;
 }
 
 .user-mgmt-nav-tab:not(.active) {
   background: transparent !important;
-  color: #64748b !important;
+  color: #1C1D1D !important;
 }
 
 .user-mgmt-nav-tab:not(.active):hover {
-  background: #f1f5f9 !important;
-  color: #1e293b !important;
+  background: #F7F5F0 !important;
+  color: #1C1D1D !important;
 }
 
 .user-mgmt-tab-count {
@@ -132,16 +133,16 @@
 /* ── Table Card & Header ── */
 .user-mgmt-table-card {
   background: #ffffff;
-  border: 1px solid rgba(220, 235, 228, 0.8);
-  border-radius: 16px;
+  border: 1px solid #E8E2D5;
+  border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0, 40, 20, 0.03);
+  box-shadow: 0 4px 16px rgba(28, 29, 29, 0.03);
   margin-bottom: 2rem;
 }
 
 .user-mgmt-filter-header {
   padding: 0.85rem 1.15rem;
-  border-bottom: 1px solid rgba(220, 235, 228, 0.7);
+  border-bottom: 1px solid #E8E2D5;
   background: #ffffff;
 }
 
@@ -149,6 +150,7 @@
   height: 32px !important;
   font-size: 0.8rem !important;
   border-radius: 6px !important;
+  border-color: #E8E2D5 !important;
 }
 
 /* ── Compact Table Styling (Eliminating Horizontal Scrolling) ── */
@@ -157,18 +159,22 @@
 }
 
 .user-mgmt-table th {
-  padding: 0.65rem 0.85rem !important;
+  padding: 0.75rem 0.95rem !important;
   white-space: nowrap;
   vertical-align: middle;
-  letter-spacing: 0.3px;
-  background-color: #f8faf9 !important;
-  border-bottom: 1px solid #e8f0eb !important;
+  letter-spacing: 0.4px;
+  background-color: #F1E8D6 !important;
+  color: #1C1D1D !important;
+  font-weight: 700 !important;
+  border-bottom: 1px solid #E8E2D5 !important;
+  text-transform: uppercase;
+  font-size: 0.72rem;
 }
 
 .user-mgmt-table td {
-  padding: 0.65rem 0.85rem !important;
+  padding: 0.75rem 0.95rem !important;
   vertical-align: middle;
-  border-bottom: 1px solid #f1f5f3;
+  border-bottom: 1px solid #F7F5F0;
 }
 
 .user-mgmt-table tr:last-child td {
@@ -233,13 +239,13 @@
 }
 
 .user-mgmt-avatar-chip.account-active {
-  background: linear-gradient(135deg, #2DC58A 0%, #1f9d6c 100%);
+  background: #C49A55;
   color: #ffffff;
 }
 
 .user-mgmt-avatar-chip.account-none {
-  background: #e2ede8;
-  color: #4a6560;
+  background: #F1E8D6;
+  color: #77736B;
 }
 
 /* ── Interactive Checkbox Cards (Role Modal) ── */
@@ -247,31 +253,31 @@
   cursor: pointer;
   transition: all 0.15s ease;
   border-radius: 8px;
-  border: 1px solid #d5e6de;
+  border: 1px solid #E8E2D5;
   background: #ffffff;
 }
 
 .user-mgmt-checkbox-item:hover {
-  border-color: #2DC58A;
-  box-shadow: 0 2px 6px rgba(45, 197, 138, 0.1);
+  border-color: #C49A55;
+  box-shadow: 0 2px 6px rgba(196, 154, 85, 0.15);
 }
 
 .user-mgmt-checkbox-item.selected {
-  border-color: #2DC58A;
-  background: #f7fbf9;
+  border-color: #C49A55;
+  background: #F7F5F0;
 }
 
 /* ── Pagination Bar & Controls ── */
 .user-mgmt-pagination-bar {
   background: #ffffff;
-  border-top: 1px solid #eef2f0;
+  border-top: 1px solid #E8E2D5;
 }
 
 .user-mgmt-pagination .page-link {
-  padding: 3px 9px;
+  padding: 4px 10px;
   font-size: 0.78rem;
-  color: #475569;
-  border-color: #e2e8e5;
+  color: #77736B;
+  border-color: #E8E2D5;
   box-shadow: none !important;
   border-radius: 6px;
   margin: 0 2px;
@@ -279,22 +285,22 @@
 }
 
 .user-mgmt-pagination .page-item.active .page-link {
-  background-color: #2DC58A;
-  border-color: #2DC58A;
+  background-color: #C49A55;
+  border-color: #C49A55;
   color: #ffffff;
   font-weight: 700;
 }
 
 .user-mgmt-pagination .page-link:hover:not(.active) {
-  background-color: #f0fdf4;
-  color: #10b981;
-  border-color: #a7f3d0;
+  background-color: #F5EFE3;
+  color: #C49A55;
+  border-color: #C49A55;
 }
 
 .user-mgmt-pagination .page-item.disabled .page-link {
-  color: #94a3b8;
-  background-color: #f8fafc;
-  border-color: #e2e8e5;
+  color: #BDB9B2;
+  background-color: #FAF7F0;
+  border-color: #E8E2D5;
 }
 
 /* ── Responsive Adjustments ── */

@@ -10,7 +10,7 @@
   font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
   position: relative;
   overflow: hidden;
-  background: #0d2218;
+  background: #1C1D1D;
 }
 
 /* ── Mobile Hamburger Toggle Button ── */
@@ -19,7 +19,7 @@
   top: 12px;
   left: 12px;
   z-index: 1250;
-  background: linear-gradient(135deg, #2DC58A 0%, #20a673 100%);
+  background: linear-gradient(135deg, #C79D58 0%, #C49A55 100%);
   color: #ffffff;
   border: none;
   border-radius: 10px;
@@ -29,7 +29,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(45, 197, 138, 0.38);
+  box-shadow: 0 4px 14px rgba(199, 157, 88, 0.38);
   font-size: 18px;
   font-weight: 700;
   transition: all 0.2s ease;
@@ -37,30 +37,28 @@
 
 .app-layout-menu-toggle:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(45, 197, 138, 0.48);
+  box-shadow: 0 6px 18px rgba(199, 157, 88, 0.48);
 }
 
 .app-layout-menu-toggle:active {
   transform: translateY(0);
 }
 
-/* ── Sidebar Container (Collapsed by Default, Expands on Hover) ── */
+/* ── Sidebar Container (Fixed 230px width on desktop matching sample image) ── */
 .app-layout-sidebar {
-  width: 76px;
+  width: 230px;
   height: 100vh;
   flex-shrink: 0;
-  background: linear-gradient(180deg, #0f271d 0%, #091a13 100%);
-  border-right: 1px solid rgba(45, 197, 138, 0.16);
-  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.28s ease;
+  background: #1C1D1D;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  transition: width 0.25s ease, box-shadow 0.25s ease;
   position: relative;
   z-index: 1000;
   overflow: hidden;
-  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.25);
 }
 
 .app-layout-sidebar:not(.is-mobile):hover {
-  width: 245px;
-  box-shadow: 12px 0 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(45, 197, 138, 0.2);
+  width: 230px;
 }
 
 /* Mobile Sidebar States */
@@ -72,15 +70,15 @@
 }
 
 .app-layout-sidebar.is-mobile.sidebar-open {
-  width: 250px;
-  box-shadow: 10px 0 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(45, 197, 138, 0.12);
+  width: 240px;
+  box-shadow: 10px 0 40px rgba(0, 0, 0, 0.5);
 }
 
 /* ── Mobile Backdrop ── */
 .app-layout-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(5, 15, 10, 0.55);
+  background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   z-index: 1150;
@@ -105,16 +103,15 @@
   min-width: 0;
   height: 100vh;
   overflow: hidden;
-  background: #f3f6f4;
+  background: #F7F5F0;
 }
 
 /* ── Header Wrapper ── */
 .app-layout-header-wrapper {
   height: 64px;
   flex-shrink: 0;
-  background: #ffffff;
-  border-bottom: 1px solid #e4ece7;
-  box-shadow: 0 1px 4px rgba(0, 30, 15, 0.04);
+  background: #F7F5F0;
+  border-bottom: 1px solid rgba(196, 154, 85, 0.12);
   z-index: 900;
   transition: height 0.2s ease;
 }
@@ -127,7 +124,7 @@
 .app-layout-content {
   flex: 1;
   padding: 20px 28px;
-  background: #f3f6f4;
+  background: #F7F5F0;
   overflow-y: auto;
   transition: padding 0.2s ease;
 }
@@ -138,10 +135,10 @@
 
 /* ── Footer Wrapper ── */
 .app-layout-footer-wrapper {
-  height: 36px;
+  height: 38px;
   flex-shrink: 0;
-  background: #ffffff;
-  border-top: 1px solid #e4ece7;
+  background: #F7F5F0;
+  border-top: 1px solid rgba(196, 154, 85, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;

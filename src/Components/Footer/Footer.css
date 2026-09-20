@@ -4,8 +4,8 @@
    ========================================================================== */
 
 .app-footer {
-  font-size: 11.5px;
-  color: #8ba49d;
+  font-size: 12px;
+  color: #77736B;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -14,15 +14,16 @@
 }
 
 .app-footer-brand {
-  color: #2DC58A;
+  color: #C49A55;
   font-weight: 700;
 }
 
 .app-footer-dot {
-  color: #d5e6de;
+  color: #C49A55;
 }
 
 .app-footer-copy {
+  color: #77736B;
   white-space: nowrap;
 }
 

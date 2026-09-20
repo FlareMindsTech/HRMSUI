@@ -46,50 +46,65 @@ body {
   font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f0f4f2;
-  color: #1a2e2a;
+  background-color: #F7F5F0;
+  color: #1C1D1D;
   font-size: 14px;
   line-height: 1.6;
 }
 
-/* ── Design Tokens ── */
+/* ── Design Tokens: TeamHub Gold + Black + Cream Palette ── */
 :root {
-  /* Brand Green */
-  --primary: #2DC58A;
-  --primary-dark: #20a673;
-  --primary-darker: #178a5e;
-  --primary-light: #52d9a4;
-  --primary-subtle: rgba(45, 197, 138, 0.1);
-  --primary-subtle2: rgba(45, 197, 138, 0.06);
-  --primary-gradient: linear-gradient(135deg, #2DC58A 0%, #20a673 100%);
+  /* Key Brand Combination */
+  --brand-gold: #C79D58;
+  --brand-gold-outer: #C49A55;
+  --brand-cream: #F1E8D6;
+  --brand-cream-light: #F7F5F0;
+  --brand-dark: #1C1D1D;
+  --brand-dark-card: #242525;
+  --brand-text-secondary: #77736B;
+  --brand-card-bg: #FFFFFF;
 
-  /* Sidebar (white-based) */
-  --sidebar-bg: #ffffff;
-  --sidebar-border: #e8f0ec;
-  --sidebar-active-bg: rgba(45, 197, 138, 0.12);
-  --sidebar-active-text: #2DC58A;
-  --sidebar-text: #6b7e77;
-  --sidebar-hover: rgba(45, 197, 138, 0.07);
+  /* Primary Theme Aliases */
+  --primary: #C79D58;
+  --primary-dark: #C49A55;
+  --primary-darker: #a37c38;
+  --primary-light: #dfb97a;
+  --primary-subtle: rgba(199, 157, 88, 0.12);
+  --primary-subtle2: rgba(199, 157, 88, 0.06);
+  --primary-gradient: linear-gradient(135deg, #C79D58 0%, #C49A55 100%);
+
+  /* Sidebar (Dark #1C1D1D based) */
+  --sidebar-bg: #1C1D1D;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-active-bg: rgba(196, 154, 85, 0.14);
+  --sidebar-active-text: #FFFFFF;
+  --sidebar-text: #C7C5C0;
+  --sidebar-hover: rgba(255, 255, 255, 0.06);
 
   /* Surface */
-  --page-bg: #f0f4f2;
-  --card-bg: #ffffff;
-  --card-border: rgba(220, 235, 228, 0.9);
-  --header-bg: #ffffff;
+  --page-bg: #F7F5F0;
+  --card-bg: #FFFFFF;
+  --card-border: #E8E2D5;
+  --header-bg: #F7F5F0;
 
   /* Text */
-  --text-primary: #1a2e2a;
-  --text-secondary: #4a6560;
-  --text-muted: #8ba49d;
+  --text-primary: #1C1D1D;
+  --text-secondary: #77736B;
+  --text-muted: #8E8A82;
 
-  /* Status */
-  --success: #2DC58A;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --info: #06b6d4;
+  /* Chart & Status Palette */
+  --chart-red: #D94A32;
+  --chart-blue: #4F83D9;
+  --chart-green: #72A83B;
+  --chart-yellow: #D9A928;
+
+  --success: #72A83B;
+  --warning: #D9A928;
+  --danger: #D94A32;
+  --info: #4F83D9;
 
   /* Layout */
-  --sidebar-width: 220px;
+  --sidebar-width: 230px;
   --header-height: 64px;
 
   /* Radius */
@@ -100,11 +115,11 @@ body {
   --radius-xl: 20px;
 
   /* Shadows */
-  --shadow-xs: 0 1px 3px rgba(0, 40, 20, 0.06);
-  --shadow-sm: 0 2px 8px rgba(0, 40, 20, 0.07), 0 1px 3px rgba(0, 40, 20, 0.04);
-  --shadow-md: 0 6px 20px rgba(0, 40, 20, 0.08), 0 2px 6px rgba(0, 40, 20, 0.04);
-  --shadow-lg: 0 12px 32px rgba(0, 40, 20, 0.1), 0 4px 10px rgba(0, 40, 20, 0.04);
-  --shadow-green: 0 6px 18px rgba(45, 197, 138, 0.3);
+  --shadow-xs: 0 1px 3px rgba(28, 29, 29, 0.04);
+  --shadow-sm: 0 2px 8px rgba(28, 29, 29, 0.05), 0 1px 2px rgba(28, 29, 29, 0.03);
+  --shadow-md: 0 6px 20px rgba(28, 29, 29, 0.07), 0 2px 6px rgba(28, 29, 29, 0.03);
+  --shadow-lg: 0 12px 32px rgba(28, 29, 29, 0.1), 0 4px 10px rgba(28, 29, 29, 0.04);
+  --shadow-gold: 0 4px 16px rgba(199, 157, 88, 0.3);
 }
 
 /* ── Custom Scrollbar ── */
@@ -237,12 +252,12 @@ code {
   background: var(--primary-gradient) !important;
   border: none !important;
   color: #fff !important;
-  box-shadow: var(--shadow-green);
+  box-shadow: var(--shadow-gold);
 }
 
 .btn-primary:hover {
   filter: brightness(1.07);
-  box-shadow: 0 8px 22px rgba(45, 197, 138, 0.4) !important;
+  box-shadow: 0 8px 22px rgba(199, 157, 88, 0.4) !important;
   transform: translateY(-1px);
 }
 
@@ -260,16 +275,16 @@ code {
 .btn-outline-primary:hover {
   background: var(--primary) !important;
   color: #fff !important;
-  box-shadow: var(--shadow-green);
+  box-shadow: var(--shadow-gold);
 }
 
 /* ── Form Controls (Bootstrap override) ── */
 .form-control,
 .form-select {
-  border-color: #d5e6de !important;
+  border-color: #E8E2D5 !important;
   border-radius: var(--radius-sm) !important;
   color: var(--text-primary) !important;
-  background-color: #fafcfb !important;
+  background-color: #FFFFFF !important;
   font-size: 0.875rem !important;
   transition: all 0.2s ease !important;
 }
@@ -277,7 +292,7 @@ code {
 .form-control:focus,
 .form-select:focus {
   border-color: var(--primary) !important;
-  box-shadow: 0 0 0 3px rgba(45, 197, 138, 0.15) !important;
+  box-shadow: 0 0 0 3px rgba(199, 157, 88, 0.18) !important;
   background-color: #fff !important;
 }
 
@@ -455,14 +470,14 @@ code {
 
 /* ── Hero Welcome Card ── */
 .app-hero-card {
-  background: linear-gradient(135deg, #0e271c 0%, #153c2b 50%, #0d261b 100%);
+  background: linear-gradient(135deg, #1C1D1D 0%, #2A2A2A 50%, #161717 100%);
   border-radius: var(--radius-lg);
   padding: 1.75rem 2rem;
   color: #ffffff;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(14, 39, 28, 0.18);
-  border: 1px solid rgba(45, 197, 138, 0.22);
+  box-shadow: 0 10px 30px rgba(28, 29, 29, 0.25);
+  border: 1px solid rgba(199, 157, 88, 0.28);
   margin-bottom: 1.5rem;
 }
 
@@ -474,7 +489,7 @@ code {
   width: 220px;
   height: 220px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(45, 197, 138, 0.25) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(199, 157, 88, 0.2) 0%, transparent 70%);
   pointer-events: none;
 }
 
@@ -489,7 +504,7 @@ code {
 
 .app-card-header {
   padding: 1.1rem 1.35rem;
-  border-bottom: 1px solid #edf4f0;
+  border-bottom: 1px solid #E8E2D5;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -519,7 +534,7 @@ code {
 .app-quick-card:hover {
   transform: translateY(-2px);
   border-color: var(--primary);
-  box-shadow: 0 8px 24px rgba(45, 197, 138, 0.12);
+  box-shadow: 0 8px 24px rgba(199, 157, 88, 0.16);
 }
 
 .app-quick-icon {
@@ -531,7 +546,7 @@ code {
   justify-content: center;
   font-size: 1.25rem;
   flex-shrink: 0;
-  background: rgba(45, 197, 138, 0.1);
+  background: #F5EFE3;
   color: var(--primary);
   transition: all 0.2s ease;
 }
@@ -554,25 +569,25 @@ code {
 }
 
 .app-pill-success {
-  background: rgba(45, 197, 138, 0.12);
-  color: #178a5e;
-  border: 1px solid rgba(45, 197, 138, 0.25);
+  background: #F5EFE3;
+  color: #C49A55;
+  border: 1px solid rgba(196, 154, 85, 0.3);
 }
 
 .app-pill-primary {
-  background: rgba(14, 165, 233, 0.1);
-  color: #0284c7;
-  border: 1px solid rgba(14, 165, 233, 0.2);
+  background: rgba(79, 131, 217, 0.12);
+  color: #4F83D9;
+  border: 1px solid rgba(79, 131, 217, 0.25);
 }
 
 .app-pill-warning {
-  background: rgba(245, 158, 11, 0.12);
+  background: rgba(217, 169, 40, 0.12);
   color: #b45309;
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  border: 1px solid rgba(217, 169, 40, 0.25);
 }
 
 .app-pill-muted {
-  background: #f1f5f3;
-  color: #556963;
-  border: 1px solid #e1ebe6;
+  background: #F1E8D6;
+  color: #77736B;
+  border: 1px solid #E8E2D5;
 }

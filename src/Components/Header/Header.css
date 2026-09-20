@@ -7,8 +7,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
-  background: #ffffff;
+  padding: 0 24px;
+  background: #F7F5F0;
   user-select: none;
 }
 
@@ -24,7 +24,7 @@
   width: 26px;
   height: 26px;
   border-radius: 7px;
-  background: linear-gradient(135deg, #2DC58A 0%, #20a673 100%);
+  background: #C49A55;
   color: #ffffff;
   font-weight: 800;
   font-size: 13px;
@@ -36,7 +36,7 @@
 .header-mobile-brand-text {
   font-size: 15px;
   font-weight: 700;
-  color: #1a2e2a;
+  color: #1C1D1D;
   letter-spacing: -0.01em;
 }
 
@@ -45,24 +45,24 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #f4f8f6;
-  border: 1px solid #dfede6;
+  background: #FFFFFF;
+  border: 1px solid #E8E2D5;
   border-radius: 10px;
-  padding: 6px 12px;
-  width: 280px;
+  padding: 6px 14px;
+  width: 320px;
   transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .header-search-wrap--focused {
-  width: 360px;
+  width: 380px;
   background: #ffffff;
-  border-color: #2DC58A;
-  box-shadow: 0 0 0 3px rgba(45, 197, 138, 0.15);
+  border-color: #C79D58;
+  box-shadow: 0 0 0 3px rgba(199, 157, 88, 0.18);
 }
 
 .header-search-icon {
   font-size: 18px;
-  color: #769287;
+  color: #77736B;
   flex-shrink: 0;
 }
 
@@ -70,19 +70,19 @@
   background: transparent;
   border: none;
   outline: none;
-  color: #1a2e2a;
+  color: #1C1D1D;
   font-size: 13px;
   flex: 1;
 }
 
 .header-search-input::placeholder {
-  color: #8ba49d;
+  color: #8E8A82;
 }
 
 .header-search-kbd {
   font-size: 11px;
-  color: #8ba49d;
-  background: #e9f2ee;
+  color: #77736B;
+  background: #F1E8D6;
   padding: 2px 6px;
   border-radius: 4px;
   font-weight: 600;
@@ -92,7 +92,7 @@
 .header-right-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
 .header-menu-anchor {
@@ -113,7 +113,7 @@
 }
 
 .header-icon-btn:hover {
-  background: #f0f6f3;
+  background: #EFECE6;
 }
 
 .header-icon-badge-anchor {
@@ -123,7 +123,7 @@
 
 .header-notif-bell-icon {
   font-size: 20px;
-  color: #526960;
+  color: #77736B;
 }
 
 .header-notif-badge {
@@ -133,7 +133,7 @@
   width: 15px;
   height: 15px;
   border-radius: 50%;
-  background: #ef4444;
+  background: #D94A32;
   color: #ffffff;
   font-size: 9px;
   font-weight: 700;
@@ -141,53 +141,52 @@
   align-items: center;
   justify-content: center;
   border: 1.5px solid #ffffff;
-  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 2px 4px rgba(217, 74, 50, 0.35);
 }
 
 .header-vertical-sep {
   width: 1px;
   height: 24px;
-  background: #e6efe9;
+  background: #E8E2D5;
   margin: 0 4px;
 }
 
-/* ── Profile Chip ── */
+/* ── Profile Chip (Capsule button matching screenshot) ── */
 .header-profile-chip {
   display: flex;
   align-items: center;
   gap: 9px;
-  background: #f5f9f7;
-  border: 1px solid #dfede6;
-  border-radius: 10px;
-  padding: 4px 10px 4px 6px;
+  background: #FFFFFF;
+  border: 1px solid #E8E2D5;
+  border-radius: 999px;
+  padding: 4px 12px 4px 5px;
   cursor: pointer;
   transition: all 0.18s ease;
 }
 
 .header-profile-chip:hover {
-  background: #edf6f2;
-  border-color: #c9e2d6;
+  background: #FAF7F0;
+  border-color: #D1C7B7;
 }
 
 .header-profile-chip--active {
-  background: #edf6f2;
-  border-color: #2DC58A;
-  box-shadow: 0 0 0 2px rgba(45, 197, 138, 0.12);
+  background: #FAF7F0;
+  border-color: #C79D58;
+  box-shadow: 0 0 0 2px rgba(199, 157, 88, 0.18);
 }
 
 .header-avatar {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #2DC58A 0%, #1f9d6c 100%);
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: #C49A55;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 700;
   color: #ffffff;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(45, 197, 138, 0.28);
 }
 
 .header-profile-info {

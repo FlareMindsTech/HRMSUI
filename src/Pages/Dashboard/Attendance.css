@@ -459,13 +459,14 @@
 .legend-dot.dot-working { background: #06b6d4; animation: pulse-dot 1.8s infinite; }
 .legend-dot.dot-weekend { background: #d1d5db; }
 
-/* ── Metric Value & Status Text Colors ── */
-.metric-val-success { color: #22c55e; }
-.metric-val-danger { color: #ef4444; }
-.metric-val-primary { color: #3b82f6; }
-.metric-val-warning { color: #f59e0b; }
+/* ── Metric Value & Status Text Colors (Brand Chart Palette) ── */
+.metric-val-success { color: #72A83B; }
+.metric-val-danger { color: #D94A32; }
+.metric-val-primary { color: #4F83D9; }
+.metric-val-warning { color: #D9A928; }
 .metric-val-purple { color: #8b5cf6; }
-.metric-val-info { color: #06b6d4; }
+.metric-val-info { color: #4F83D9; }
+.metric-val-gold { color: #C79D58; }
 .text-purple-val { color: #8b5cf6; }
 
 /* ── Badges ── */
@@ -855,46 +856,46 @@
   font-size: 0.82rem;
 }
 
-/* ── Analytics Stat Icons ── */
+/* ── Analytics Stat Icons (Brand Palette) ── */
 .analytics-icon-users {
-  background: rgba(45, 197, 138, 0.1);
-  color: #2DC58A;
+  background: rgba(79, 131, 217, 0.12);
+  color: #4F83D9;
 }
 
 .analytics-icon-check {
-  background: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
+  background: rgba(114, 168, 59, 0.12);
+  color: #72A83B;
 }
 
 .analytics-icon-warn {
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
+  background: rgba(217, 169, 40, 0.12);
+  color: #D9A928;
 }
 
 .analytics-icon-chart {
-  background: rgba(6, 182, 212, 0.1);
-  color: #06b6d4;
+  background: #F5EFE3;
+  color: #C49A55;
 }
 
-/* ── Monthly Stats Progress Bar Segments ── */
+/* ── Monthly Stats Progress Bar Segments (Brand Chart Palette) ── */
 .monthly-stat-bar .progress-bar.att-bar-present,
 .monthly-stat-bar-slim .progress-bar.att-bar-present {
-  background-color: #22c55e;
+  background-color: #72A83B;
 }
 
 .monthly-stat-bar .progress-bar.att-bar-late,
 .monthly-stat-bar-slim .progress-bar.att-bar-late {
-  background-color: #f59e0b;
+  background-color: #D9A928;
 }
 
 .monthly-stat-bar .progress-bar.att-bar-halfday,
 .monthly-stat-bar-slim .progress-bar.att-bar-halfday {
-  background-color: #8b5cf6;
+  background-color: #C79D58;
 }
 
 .monthly-stat-bar .progress-bar.att-bar-working,
 .monthly-stat-bar-slim .progress-bar.att-bar-working {
-  background-color: #06b6d4;
+  background-color: #4F83D9;
 }
 
 
