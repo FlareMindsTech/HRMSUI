@@ -94,6 +94,10 @@ export const fetchAttendanceByMonth = async (month, year, targetUserId = "") => 
  * Fetch team / all employee attendance records with search, date range, status, pagination.
  * @param {{ search?: string, date?: string, startDate?: string, endDate?: string, status?: string, page?: number, limit?: number }} params
  */
+/**
+ * Fetch team / all employee attendance records with search, date range, status, branch, department, location, shift, attendanceSource, pagination.
+ * @param {{ search?: string, date?: string, startDate?: string, endDate?: string, status?: string, branchId?: string, departmentId?: string, locationId?: string, shiftId?: string, attendanceSource?: string, page?: number, limit?: number }} params
+ */
 export const fetchTeamAttendance = async (params = {}) => {
   const queryParams = new URLSearchParams();
   if (params.search) queryParams.append("search", params.search);
@@ -101,6 +105,11 @@ export const fetchTeamAttendance = async (params = {}) => {
   if (params.startDate) queryParams.append("startDate", params.startDate);
   if (params.endDate) queryParams.append("endDate", params.endDate);
   if (params.status) queryParams.append("status", params.status);
+  if (params.branchId) queryParams.append("branchId", params.branchId);
+  if (params.departmentId) queryParams.append("departmentId", params.departmentId);
+  if (params.locationId) queryParams.append("locationId", params.locationId);
+  if (params.shiftId) queryParams.append("shiftId", params.shiftId);
+  if (params.attendanceSource) queryParams.append("attendanceSource", params.attendanceSource);
   if (params.page) queryParams.append("page", params.page);
   if (params.limit) queryParams.append("limit", params.limit);
 
@@ -114,12 +123,183 @@ export const fetchTeamAttendance = async (params = {}) => {
 };
 
 /**
- * Fetch Attendance Analytics overview metrics (Admin / Owner).
+ * Fetch Attendance Analytics overview metrics.
  */
-export const fetchAttendanceAnalytics = async () => {
-  const result = await apiFetch("/attendance/analytics", { method: "GET" });
+export const fetchAttendanceAnalytics = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  if (params.branchId) queryParams.append("branchId", params.branchId);
+  if (params.departmentId) queryParams.append("departmentId", params.departmentId);
+  if (params.locationId) queryParams.append("locationId", params.locationId);
+  if (params.startDate) queryParams.append("startDate", params.startDate);
+  if (params.endDate) queryParams.append("endDate", params.endDate);
+
+  const qs = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  const result = await apiFetch(`/attendance/analytics${qs}`, { method: "GET" });
+
   if (!result.ok) {
     throw new Error(result.data?.message || "Failed to load attendance analytics.");
+  }
+  return result.data;
+};
+
+/**
+ * Fetch team attendance overview for today.
+ */
+export const fetchTeamAttendanceToday = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  if (params.branchId) queryParams.append("branchId", params.branchId);
+  if (params.departmentId) queryParams.append("departmentId", params.departmentId);
+  if (params.locationId) queryParams.append("locationId", params.locationId);
+
+  const qs = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  const result = await apiFetch(`/attendance/team/today${qs}`, { method: "GET" });
+
+  if (!result.ok) {
+    throw new Error(result.data?.message || "Failed to load team attendance overview.");
+  }
+  return result.data;
+};
+
+/**
+ * Fetch Attendance Exceptions (Missing Punch Out, Late, Geofence violation, Short Hours).
+ */
+export const fetchAttendanceExceptions = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  if (params.date) queryParams.append("date", params.date);
+  if (params.branchId) queryParams.append("branchId", params.branchId);
+  if (params.departmentId) queryParams.append("departmentId", params.departmentId);
+  if (params.locationId) queryParams.append("locationId", params.locationId);
+  if (params.exceptionType) queryParams.append("exceptionType", params.exceptionType);
+
+  const qs = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  const result = await apiFetch(`/attendance/exceptions${qs}`, { method: "GET" });
+
+  if (!result.ok) {
+    throw new Error(result.data?.message || "Failed to load attendance exceptions.");
+  }
+  return result.data;
+};
+
+/**
+ * Fetch Overtime Report.
+ */
+export const fetchOvertimeReport = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  if (params.branchId) queryParams.append("branchId", params.branchId);
+  if (params.departmentId) queryParams.append("departmentId", params.departmentId);
+  if (params.startDate) queryParams.append("startDate", params.startDate);
+  if (params.endDate) queryParams.append("endDate", params.endDate);
+  if (params.page) queryParams.append("page", params.page);
+  if (params.limit) queryParams.append("limit", params.limit);
+
+  const qs = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  const result = await apiFetch(`/attendance/overtime${qs}`, { method: "GET" });
+
+  if (!result.ok) {
+    throw new Error(result.data?.message || "Failed to load overtime report.");
+  }
+  return result.data;
+};
+
+/**
+ * Fetch Attendance Audit Log.
+ */
+export const fetchAttendanceAuditLog = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  if (params.search) queryParams.append("search", params.search);
+  if (params.page) queryParams.append("page", params.page);
+  if (params.limit) queryParams.append("limit", params.limit);
+
+  const qs = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  const result = await apiFetch(`/attendance/audit-log${qs}`, { method: "GET" });
+
+  if (!result.ok) {
+    throw new Error(result.data?.message || "Failed to load attendance audit log.");
+  }
+  return result.data;
+};
+
+/**
+ * Fetch Attendance Regularization Requests.
+ */
+export const fetchRegularizationRequests = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  if (params.status) queryParams.append("status", params.status);
+  if (params.page) queryParams.append("page", params.page);
+  if (params.limit) queryParams.append("limit", params.limit);
+
+  const qs = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  const result = await apiFetch(`/attendance/regularization${qs}`, { method: "GET" });
+
+  if (!result.ok) {
+    throw new Error(result.data?.message || "Failed to load regularization requests.");
+  }
+  return result.data;
+};
+
+/**
+ * Submit Regularization Request.
+ */
+export const submitRegularizationRequest = async (payload) => {
+  const result = await apiFetch("/attendance/regularization", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+  if (!result.ok) {
+    throw new Error(result.data?.message || "Failed to submit regularization request.");
+  }
+  return result.data;
+};
+
+/**
+ * Review / Approve / Reject Regularization Request.
+ */
+export const reviewRegularizationRequest = async (id, { status, rejectionReason }) => {
+  const result = await apiFetch(`/attendance/regularization/${id}/review`, {
+    method: "PUT",
+    body: JSON.stringify({ status, rejectionReason }),
+  });
+
+  if (!result.ok) {
+    throw new Error(result.data?.message || "Failed to review regularization request.");
+  }
+  return result.data;
+};
+
+/**
+ * Fetch My Team Attendance (Project Manager).
+ */
+export const fetchMyTeamAttendance = async () => {
+  const result = await apiFetch("/attendance/my-team", { method: "GET" });
+  if (!result.ok) {
+    throw new Error(result.data?.message || "Failed to load my team attendance.");
+  }
+  return result.data;
+};
+
+/**
+ * Fetch Attendance Settings / Policy.
+ */
+export const fetchAttendanceSettings = async () => {
+  const result = await apiFetch("/attendance/settings", { method: "GET" });
+  if (!result.ok) {
+    throw new Error(result.data?.message || "Failed to load attendance settings.");
+  }
+  return result.data;
+};
+
+/**
+ * Update Attendance Settings / Policy (Admin / Owner).
+ */
+export const updateAttendanceSettings = async (payload) => {
+  const result = await apiFetch("/attendance/settings", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+
+  if (!result.ok) {
+    throw new Error(result.data?.message || "Failed to update attendance settings.");
   }
   return result.data;
 };
@@ -137,18 +317,6 @@ export const updateAttendanceCorrection = async (id, updateData) => {
 
   if (!result.ok) {
     throw new Error(result.data?.message || "Failed to correct attendance record.");
-  }
-  return result.data;
-};
-
-/**
- * Fetch team attendance overview for today (HR / Admin / Owner).
- * Returns present/absent/late/working counts and needs-attention lists.
- */
-export const fetchTeamAttendanceToday = async () => {
-  const result = await apiFetch("/attendance/team/today", { method: "GET" });
-  if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to load team attendance overview.");
   }
   return result.data;
 };
