@@ -663,6 +663,7 @@ function EducationManagement() {
               onChange={handleFieldChange}
               errors={errors}
               file={docFiles.sslcDocument}
+              docUrl={formData.sslcDocumentUrl || formData.sslcDocument}
               onFileChange={(f) => handleFileChange("sslcDocument", f)}
               onFileRemove={() => handleFileRemove("sslcDocument")}
             />
@@ -673,6 +674,7 @@ function EducationManagement() {
               onChange={handleFieldChange}
               errors={errors}
               file={docFiles.hscDocument}
+              docUrl={formData.hscDocumentUrl || formData.hscDocument}
               onFileChange={(f) => handleFileChange("hscDocument", f)}
               onFileRemove={() => handleFileRemove("hscDocument")}
             />
@@ -683,6 +685,7 @@ function EducationManagement() {
               onChange={handleFieldChange}
               errors={errors}
               file={docFiles.itiDocument}
+              docUrl={formData.itiDocumentUrl || formData.itiDocument}
               onFileChange={(f) => handleFileChange("itiDocument", f)}
               onFileRemove={() => handleFileRemove("itiDocument")}
               isOpen={expandedSections.iti}
@@ -696,6 +699,7 @@ function EducationManagement() {
               onChange={handleFieldChange}
               errors={errors}
               file={docFiles.diplomaDocument}
+              docUrl={formData.diplomaDocumentUrl || formData.diplomaDocument}
               onFileChange={(f) => handleFileChange("diplomaDocument", f)}
               onFileRemove={() => handleFileRemove("diplomaDocument")}
               isOpen={expandedSections.diploma}
@@ -709,6 +713,7 @@ function EducationManagement() {
               onChange={handleFieldChange}
               errors={errors}
               file={docFiles.ugDocument}
+              docUrl={formData.ugDocumentUrl || formData.ugDocument}
               onFileChange={(f) => handleFileChange("ugDocument", f)}
               onFileRemove={() => handleFileRemove("ugDocument")}
             />
@@ -719,6 +724,7 @@ function EducationManagement() {
               onChange={handleFieldChange}
               errors={errors}
               file={docFiles.pgDocument}
+              docUrl={formData.pgDocumentUrl || formData.pgDocument}
               onFileChange={(f) => handleFileChange("pgDocument", f)}
               onFileRemove={() => handleFileRemove("pgDocument")}
               isOpen={expandedSections.pg}
@@ -732,6 +738,7 @@ function EducationManagement() {
               onChange={handleFieldChange}
               errors={errors}
               file={docFiles.phdDocument}
+              docUrl={formData.phdDocumentUrl || formData.phdDocument}
               onFileChange={(f) => handleFileChange("phdDocument", f)}
               onFileRemove={() => handleFileRemove("phdDocument")}
               isOpen={expandedSections.phd}

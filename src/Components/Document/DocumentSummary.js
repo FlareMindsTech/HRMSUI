@@ -11,7 +11,12 @@ import {
 } from "react-icons/fa";
 
 const DocumentSummary = ({ docData }) => {
-  const hasBank = Boolean(docData?.accountNo && docData?.ifsc);
+  const isUnpaid = Boolean(
+    docData?.compensationType === "UNPAID" ||
+    docData?.isUnpaid ||
+    (Array.isArray(docData?.professional) && docData.professional.some((p) => p.compensationType === "UNPAID" || p.isUnpaid))
+  );
+  const hasBank = isUnpaid || Boolean(docData?.accountNo && docData?.ifsc);
   const hasIdentity = Boolean(docData?.aadhaarNo && docData?.panNo);
   const hasStatutory = Boolean(docData?.uanNo || docData?.pfNo || docData?.esiNo);
   const attachedCount = [
@@ -26,7 +31,7 @@ const DocumentSummary = ({ docData }) => {
       <div
         style={{
           height: 4,
-          background: "linear-gradient(90deg, #2DC58A 0%, #20a673 50%, #157347 100%)",
+          background: "linear-gradient(90deg, #E2C278 0%, #C49A55 50%, #9B7229 100%)",
         }}
       />
       <Card.Body className="p-3.5">
@@ -34,7 +39,7 @@ const DocumentSummary = ({ docData }) => {
           <div className="d-flex align-items-center gap-2">
             <div
               className="rounded-2 p-1.5 d-flex align-items-center justify-content-center text-white"
-              style={{ background: "#2DC58A" }}
+              style={{ background: "linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%)" }}
             >
               <FaAward size={14} />
             </div>
@@ -54,24 +59,32 @@ const DocumentSummary = ({ docData }) => {
                 <div
                   className="rounded-circle p-1.5 d-flex align-items-center justify-content-center"
                   style={{
-                    background: hasBank ? "rgba(45, 197, 138, 0.15)" : "rgba(245, 158, 11, 0.15)",
-                    color: hasBank ? "#2DC58A" : "#D97706",
+                    background: isUnpaid
+                      ? "rgba(196, 154, 85, 0.15)"
+                      : hasBank
+                      ? "rgba(196, 154, 85, 0.15)"
+                      : "rgba(245, 158, 11, 0.15)",
+                    color: isUnpaid ? "#C49A55" : hasBank ? "#C49A55" : "#D97706",
                   }}
                 >
                   <FaUniversity size={14} />
                 </div>
                 <div>
                   <div className="fw-bold text-dark small text-truncate" style={{ maxWidth: 130 }}>
-                    {hasBank ? (docData?.bankName || "Bank Added") : "Not Added"}
+                    {isUnpaid ? "Exempted (Unpaid)" : hasBank ? (docData?.bankName || "Bank Added") : "Not Added"}
                   </div>
                 </div>
               </div>
               <div className="d-flex align-items-center justify-content-between mt-auto">
                 <span className="extra-small text-muted">
-                  {hasBank && docData?.accountNo ? `•••${String(docData.accountNo).slice(-4)}` : "Salary A/C"}
+                  {isUnpaid ? "Unpaid Engagement" : hasBank && docData?.accountNo ? `•••${String(docData.accountNo).slice(-4)}` : "Salary A/C"}
                 </span>
-                {hasBank ? (
-                  <Badge bg="success-subtle" className="text-success border border-success-subtle extra-small rounded-pill">
+                {isUnpaid ? (
+                  <Badge style={{ backgroundColor: "rgba(196, 154, 85, 0.15)", color: "#8E651F", border: "1px solid rgba(196, 154, 85, 0.3)" }} className="extra-small rounded-pill">
+                    <FaCheckCircle className="me-1" /> Exempted
+                  </Badge>
+                ) : hasBank ? (
+                  <Badge style={{ backgroundColor: "rgba(196, 154, 85, 0.15)", color: "#8E651F", border: "1px solid rgba(196, 154, 85, 0.3)" }} className="extra-small rounded-pill">
                     <FaCheckCircle className="me-1" /> Added
                   </Badge>
                 ) : (
@@ -93,8 +106,8 @@ const DocumentSummary = ({ docData }) => {
                 <div
                   className="rounded-circle p-1.5 d-flex align-items-center justify-content-center"
                   style={{
-                    background: hasIdentity ? "rgba(45, 197, 138, 0.15)" : "rgba(239, 68, 68, 0.12)",
-                    color: hasIdentity ? "#2DC58A" : "#EF4444",
+                    background: hasIdentity ? "rgba(196, 154, 85, 0.15)" : "rgba(239, 68, 68, 0.12)",
+                    color: hasIdentity ? "#C49A55" : "#EF4444",
                   }}
                 >
                   <FaIdCard size={14} />
@@ -110,7 +123,7 @@ const DocumentSummary = ({ docData }) => {
                   {docData?.panNo ? `PAN: ${docData.panNo}` : "Govt IDs"}
                 </span>
                 {hasIdentity ? (
-                  <Badge bg="success-subtle" className="text-success border border-success-subtle extra-small rounded-pill">
+                  <Badge style={{ backgroundColor: "rgba(196, 154, 85, 0.15)", color: "#8E651F", border: "1px solid rgba(196, 154, 85, 0.3)" }} className="extra-small rounded-pill">
                     <FaCheckCircle className="me-1" /> Added
                   </Badge>
                 ) : (
@@ -132,8 +145,8 @@ const DocumentSummary = ({ docData }) => {
                 <div
                   className="rounded-circle p-1.5 d-flex align-items-center justify-content-center"
                   style={{
-                    background: hasStatutory ? "rgba(45, 197, 138, 0.15)" : "rgba(107, 114, 128, 0.12)",
-                    color: hasStatutory ? "#2DC58A" : "#6B7280",
+                    background: hasStatutory ? "rgba(196, 154, 85, 0.15)" : "rgba(107, 114, 128, 0.12)",
+                    color: hasStatutory ? "#C49A55" : "#6B7280",
                   }}
                 >
                   <FaFileContract size={14} />
@@ -149,7 +162,7 @@ const DocumentSummary = ({ docData }) => {
                   {docData?.uanNo ? `UAN: ${docData.uanNo}` : "EPF / ESI"}
                 </span>
                 {hasStatutory ? (
-                  <Badge bg="success-subtle" className="text-success border border-success-subtle extra-small rounded-pill">
+                  <Badge style={{ backgroundColor: "rgba(196, 154, 85, 0.15)", color: "#8E651F", border: "1px solid rgba(196, 154, 85, 0.3)" }} className="extra-small rounded-pill">
                     <FaCheckCircle className="me-1" /> Configured
                   </Badge>
                 ) : (
@@ -171,8 +184,8 @@ const DocumentSummary = ({ docData }) => {
                 <div
                   className="rounded-circle p-1.5 d-flex align-items-center justify-content-center"
                   style={{
-                    background: attachedCount > 0 ? "rgba(45, 197, 138, 0.15)" : "rgba(107, 114, 128, 0.12)",
-                    color: attachedCount > 0 ? "#2DC58A" : "#6B7280",
+                    background: attachedCount > 0 ? "rgba(196, 154, 85, 0.15)" : "rgba(107, 114, 128, 0.12)",
+                    color: attachedCount > 0 ? "#C49A55" : "#6B7280",
                   }}
                 >
                   <FaPaperclip size={14} />
@@ -185,7 +198,7 @@ const DocumentSummary = ({ docData }) => {
               </div>
               <div className="d-flex align-items-center justify-content-between mt-auto">
                 <span className="extra-small text-muted">Passbook / Cheque</span>
-                <Badge bg={attachedCount > 0 ? "success-subtle" : "secondary-subtle"} className={attachedCount > 0 ? "text-success border border-success-subtle extra-small rounded-pill" : "text-secondary border extra-small rounded-pill"}>
+                <Badge style={attachedCount > 0 ? { backgroundColor: "rgba(196, 154, 85, 0.15)", color: "#8E651F", border: "1px solid rgba(196, 154, 85, 0.3)" } : {}} bg={attachedCount > 0 ? "" : "secondary-subtle"} className={attachedCount > 0 ? "extra-small rounded-pill" : "text-secondary border extra-small rounded-pill"}>
                   {attachedCount > 0 ? "Ready" : "Pending"}
                 </Badge>
               </div>

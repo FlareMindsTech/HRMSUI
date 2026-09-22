@@ -44,21 +44,24 @@
   transform: translateY(0);
 }
 
-/* ── Sidebar Container (Fixed 230px width on desktop matching sample image) ── */
+/* ── Sidebar Container (Mini 70px width on desktop, smoothly expands to 225px on hover) ── */
 .app-layout-sidebar {
-  width: 230px;
+  width: 70px;
   height: 100vh;
   flex-shrink: 0;
-  background: #1C1D1D;
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
-  transition: width 0.25s ease, box-shadow 0.25s ease;
+  background: #181919;
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  transition: width 0.32s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.32s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   z-index: 1000;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: hidden;
 }
 
-.app-layout-sidebar:not(.is-mobile):hover {
-  width: 230px;
+.app-layout-sidebar:not(.is-mobile):hover,
+.app-layout-sidebar:not(.is-mobile).is-hovered {
+  width: 225px;
+  box-shadow: 8px 0 32px rgba(0, 0, 0, 0.55);
 }
 
 /* Mobile Sidebar States */
@@ -70,8 +73,8 @@
 }
 
 .app-layout-sidebar.is-mobile.sidebar-open {
-  width: 240px;
-  box-shadow: 10px 0 40px rgba(0, 0, 0, 0.5);
+  width: 225px;
+  box-shadow: 12px 0 45px rgba(0, 0, 0, 0.6);
 }
 
 /* ── Mobile Backdrop ── */
@@ -123,14 +126,17 @@
 /* ── Content Container ── */
 .app-layout-content {
   flex: 1;
-  padding: 20px 28px;
+  padding: 20px 24px;
   background: #F7F5F0;
   overflow-y: auto;
+  overflow-x: hidden !important;
+  max-width: 100%;
+  width: 100%;
   transition: padding 0.2s ease;
 }
 
 .app-layout-content.is-mobile {
-  padding: 14px;
+  padding: 12px;
 }
 
 /* ── Footer Wrapper ── */

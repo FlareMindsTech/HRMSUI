@@ -22,7 +22,7 @@ function EducationVerification({
         <div className="d-flex align-items-center gap-2">
           <div
             className="rounded-circle p-2 d-flex align-items-center justify-content-center text-white"
-            style={{ background: isVerified ? "#2DC58A" : "#f59e0b" }}
+            style={{ background: isVerified ? "linear-gradient(135deg, #E2C278 0%, #C49A55 50%, #B8860B 100%)" : "#f59e0b", color: isVerified ? "#ffffff" : "#fff" }}
           >
             <FaUserShield size={15} />
           </div>
@@ -52,7 +52,7 @@ function EducationVerification({
             className="rounded-pill px-3 py-1 extra-small fw-semibold shadow-xs"
             onClick={onToggleVerification}
             disabled={savingVerification}
-            style={!isVerified ? { background: "#2DC58A", borderColor: "#2DC58A" } : {}}
+            style={!isVerified ? { background: "linear-gradient(135deg, #C49A55 0%, #B8860B 100%)", borderColor: "#C49A55", color: "#1C1D1D" } : {}}
           >
             {isVerified ? (
               <>
@@ -123,7 +123,7 @@ function EducationVerification({
                   as="textarea"
                   rows={3}
                   size="sm"
-                  placeholder="e.g. Verified SSLC, HSC, and UG marks cards with Anna University portal. Originals verified on onboarding."
+                  placeholder="Enter verification notes / HR remarks (e.g., certificates verified against official portal)..."
                   value={remarks || ""}
                   onChange={(e) => onChangeRemarks(e.target.value)}
                   className="rounded-3"

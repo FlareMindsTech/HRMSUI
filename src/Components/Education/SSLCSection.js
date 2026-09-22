@@ -1,14 +1,19 @@
 import React from "react";
 import { Card, Row, Col, Form, Badge } from "react-bootstrap";
 import { FaSchool, FaCheckCircle } from "react-icons/fa";
+import DocumentUploadBox from "./DocumentUploadBox";
 import "./Education.css";
 
 function SSLCSection({
   data = {},
   onChange,
   errors = {},
+  file = null,
+  docUrl = "",
+  onFileChange,
+  onFileRemove,
 }) {
-  const isFilled = Boolean(data.sslcSchoolName?.trim() || data.sslcBoard?.trim() || data.sslcYearOfPassing || data.sslcPercentage);
+  const isFilled = Boolean(data.sslcSchoolName?.trim() || data.sslcBoard?.trim() || data.sslcYearOfPassing || data.sslcPercentage || file || docUrl || data.sslcDocumentUrl || data.sslcDocument);
 
   return (
     <Card className="border-0 rounded-4 shadow-sm mb-4 bg-white overflow-hidden">
@@ -26,7 +31,6 @@ function SSLCSection({
                 Primary / Mandatory
               </Badge>
             </div>
-            <span className="extra-small text-muted">10th Standard / Matriculation Education Details</span>
           </div>
         </div>
 
@@ -47,7 +51,7 @@ function SSLCSection({
               </Form.Label>
               <Form.Control
                 size="sm"
-                placeholder="e.g. St. Joseph Higher Secondary School"
+                placeholder="Enter School Name"
                 value={data.sslcSchoolName || ""}
                 onChange={(e) => onChange("sslcSchoolName", e.target.value)}
                 isInvalid={Boolean(errors.sslcSchoolName)}
@@ -67,7 +71,7 @@ function SSLCSection({
               </Form.Label>
               <Form.Control
                 size="sm"
-                placeholder="e.g. State Board, CBSE, ICSE, Matriculation"
+                placeholder="Enter Board / Examination Authority (e.g., State Board, CBSE, ICSE)"
                 value={data.sslcBoard || ""}
                 onChange={(e) => onChange("sslcBoard", e.target.value)}
                 isInvalid={Boolean(errors.sslcBoard)}
@@ -88,7 +92,7 @@ function SSLCSection({
               <Form.Control
                 size="sm"
                 type="number"
-                placeholder="e.g. 2018"
+                placeholder="Enter Passing Year (YYYY)"
                 min="1960"
                 max={new Date().getFullYear()}
                 value={data.sslcYearOfPassing || ""}
@@ -114,7 +118,7 @@ function SSLCSection({
                 step="0.01"
                 min="0"
                 max="100"
-                placeholder="e.g. 88.5"
+                placeholder="Enter Percentage (%)"
                 value={data.sslcPercentage || ""}
                 onChange={(e) => onChange("sslcPercentage", e.target.value)}
                 isInvalid={Boolean(errors.sslcPercentage)}
@@ -126,6 +130,21 @@ function SSLCSection({
             </Form.Group>
           </Col>
         </Row>
+
+        {/* Optional Document Upload */}
+        {(onFileChange || docUrl || file || data.sslcDocumentUrl || data.sslcDocument) && (
+          <div className="mt-3 pt-3 border-top">
+            <DocumentUploadBox
+              label="Upload SSLC / 10th Marksheet (Optional)"
+              docUrl={docUrl || data.sslcDocumentUrl || data.sslcDocument}
+              file={file}
+              onFileChange={onFileChange}
+              onFileRemove={onFileRemove}
+              fieldName="sslcDocument"
+              required={false}
+            />
+          </div>
+        )}
       </Card.Body>
     </Card>
   );

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import Header from "../Components/Header/Header";
 import Sidebar from "../Components/Sidebar/Sidebar";
 import Footer from "../Components/Footer/Footer";
 import { Outlet, useLocation } from "react-router-dom";
@@ -8,6 +7,7 @@ import "./Layout.css";
 function Layout() {
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarHovered, setSidebarHovered] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -24,11 +24,10 @@ function Layout() {
     if (isMobile) setSidebarOpen(false);
   }, [location.pathname, isMobile]);
 
-  const toggleSidebar = () => setSidebarOpen(p => !p);
+  const toggleSidebar = () => setSidebarOpen((p) => !p);
 
   return (
     <div className="app-layout">
-
       {/* ── Mobile hamburger ── */}
       {isMobile && (
         <button
@@ -40,27 +39,24 @@ function Layout() {
         </button>
       )}
 
-      {/* ── Sidebar ── */}
-      <div className={`app-layout-sidebar${isMobile ? " is-mobile" : ""}${sidebarOpen ? " sidebar-open" : ""}`}>
-        {(!isMobile || sidebarOpen) && <Sidebar />}
+      {/* ── Sidebar (Mini collapsed by default, smoothly expands on hover) ── */}
+      <div
+        className={`app-layout-sidebar${isMobile ? " is-mobile" : ""}${sidebarOpen ? " sidebar-open" : ""}${sidebarHovered ? " is-hovered" : ""}`}
+        onMouseEnter={() => !isMobile && setSidebarHovered(true)}
+        onMouseLeave={() => !isMobile && setSidebarHovered(false)}
+      >
+        {(!isMobile || sidebarOpen) && (
+          <Sidebar isExpanded={sidebarHovered || sidebarOpen || isMobile} />
+        )}
       </div>
 
       {/* ── Backdrop (mobile) ── */}
       {isMobile && sidebarOpen && (
-        <div
-          onClick={toggleSidebar}
-          className="app-layout-backdrop"
-        />
+        <div onClick={toggleSidebar} className="app-layout-backdrop" />
       )}
 
       {/* ── Main Workspace ── */}
       <div className="app-layout-main">
-
-        {/* Header */}
-        <div className={`app-layout-header-wrapper${isMobile ? " is-mobile" : ""}`}>
-          <Header isMobile={isMobile} />
-        </div>
-
         {/* Content */}
         <div className={`app-layout-content no-scrollbar${isMobile ? " is-mobile" : ""}`}>
           <Outlet />

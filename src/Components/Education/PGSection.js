@@ -1,12 +1,17 @@
 import React from "react";
 import { Card, Row, Col, Form, Button, Badge } from "react-bootstrap";
 import { FaUserGraduate, FaPlus, FaTrash, FaCheckCircle } from "react-icons/fa";
+import DocumentUploadBox from "./DocumentUploadBox";
 import "./Education.css";
 
 function PGSection({
   data = {},
   onChange,
   errors = {},
+  file = null,
+  docUrl = "",
+  onFileChange,
+  onFileRemove,
   isOpen = false,
   onToggle,
   onClear,
@@ -17,7 +22,11 @@ function PGSection({
     data.pgDegree?.trim() ||
     data.pgDepartmentCourse?.trim() ||
     data.pgYearOfPassing ||
-    data.pgCgpa
+    data.pgCgpa ||
+    file ||
+    docUrl ||
+    data.pgDocumentUrl ||
+    data.pgDocument
   );
 
   return (
@@ -36,7 +45,6 @@ function PGSection({
                 Optional Qualification
               </Badge>
             </div>
-            <span className="extra-small text-muted">Master's Degree Education Details (M.E, M.Tech, MBA, MCA, M.Sc, etc.)</span>
           </div>
         </div>
 
@@ -92,7 +100,7 @@ function PGSection({
                 </Form.Label>
                 <Form.Control
                   size="sm"
-                  placeholder="e.g. National Institute of Technology"
+                  placeholder="Enter College / Institute Name"
                   value={data.pgInstituteName || ""}
                   onChange={(e) => onChange("pgInstituteName", e.target.value)}
                   isInvalid={Boolean(errors.pgInstituteName)}
@@ -112,7 +120,7 @@ function PGSection({
                 </Form.Label>
                 <Form.Control
                   size="sm"
-                  placeholder="e.g. Anna University, Madras University"
+                  placeholder="Enter Affiliated University"
                   value={data.pgUniversityName || ""}
                   onChange={(e) => onChange("pgUniversityName", e.target.value)}
                   isInvalid={Boolean(errors.pgUniversityName)}
@@ -132,7 +140,7 @@ function PGSection({
                 </Form.Label>
                 <Form.Control
                   size="sm"
-                  placeholder="e.g. MBA, MCA, M.Tech, M.Sc"
+                  placeholder="Enter Post Graduation Degree (e.g., MBA, MCA, M.Tech, M.Sc)"
                   value={data.pgDegree || ""}
                   onChange={(e) => onChange("pgDegree", e.target.value)}
                   isInvalid={Boolean(errors.pgDegree)}
@@ -152,7 +160,7 @@ function PGSection({
                 </Form.Label>
                 <Form.Control
                   size="sm"
-                  placeholder="e.g. Finance, Software Engineering, Data Science"
+                  placeholder="Enter Department / Specialization (e.g., Data Science, Finance)"
                   value={data.pgDepartmentCourse || ""}
                   onChange={(e) => onChange("pgDepartmentCourse", e.target.value)}
                   isInvalid={Boolean(errors.pgDepartmentCourse)}
@@ -173,7 +181,7 @@ function PGSection({
                 <Form.Control
                   size="sm"
                   type="number"
-                  placeholder="e.g. 2026"
+                  placeholder="Enter Passing Year (YYYY)"
                   min="1960"
                   max={new Date().getFullYear() + 4}
                   value={data.pgYearOfPassing || ""}
@@ -198,7 +206,7 @@ function PGSection({
                   step="0.01"
                   min="0"
                   max="10"
-                  placeholder="e.g. 8.9"
+                  placeholder="Enter CGPA (e.g., 8.5)"
                   value={data.pgCgpa || ""}
                   onChange={(e) => onChange("pgCgpa", e.target.value)}
                   isInvalid={Boolean(errors.pgCgpa)}
@@ -210,6 +218,21 @@ function PGSection({
               </Form.Group>
             </Col>
           </Row>
+
+          {/* Optional Document Upload */}
+          {(onFileChange || docUrl || file || data.pgDocumentUrl || data.pgDocument) && (
+            <div className="mt-3 pt-3 border-top">
+              <DocumentUploadBox
+                label="Upload PG Degree Certificate / Consolidated Marksheet (Optional)"
+                docUrl={docUrl || data.pgDocumentUrl || data.pgDocument}
+                file={file}
+                onFileChange={onFileChange}
+                onFileRemove={onFileRemove}
+                fieldName="pgDocument"
+                required={false}
+              />
+            </div>
+          )}
         </Card.Body>
       )}
     </Card>

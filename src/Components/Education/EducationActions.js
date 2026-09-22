@@ -38,10 +38,10 @@ function EducationActions({
         </Button>
 
         <Button
-          variant="success"
+          variant="dark"
           size="sm"
           className="rounded-pill px-4 py-2 small fw-semibold text-white shadow-sm"
-          style={{ background: "linear-gradient(135deg, #2DC58A 0%, #20a673 100%)", border: "none" }}
+          style={{ background: "linear-gradient(135deg, #C49A55 0%, #B8860B 100%)", border: "none", color: "#1C1D1D" }}
           onClick={onSave}
           disabled={saving}
         >

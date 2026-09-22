@@ -1,12 +1,17 @@
 import React from "react";
 import { Card, Row, Col, Form, Button, Badge } from "react-bootstrap";
 import { FaCertificate, FaPlus, FaTrash, FaCheckCircle } from "react-icons/fa";
+import DocumentUploadBox from "./DocumentUploadBox";
 import "./Education.css";
 
 function DiplomaSection({
   data = {},
   onChange,
   errors = {},
+  file = null,
+  docUrl = "",
+  onFileChange,
+  onFileRemove,
   isOpen = false,
   onToggle,
   onClear,
@@ -16,7 +21,11 @@ function DiplomaSection({
     data.diplomacourse?.trim() ||
     data.diplomaduration?.trim() ||
     data.diplomayearOfPassing ||
-    data.diplomapercentage
+    data.diplomapercentage ||
+    file ||
+    docUrl ||
+    data.diplomaDocumentUrl ||
+    data.diplomaDocument
   );
 
   return (
@@ -35,7 +44,6 @@ function DiplomaSection({
                 Optional Qualification
               </Badge>
             </div>
-            <span className="extra-small text-muted">Technical / Professional Diploma Program</span>
           </div>
         </div>
 
@@ -91,7 +99,7 @@ function DiplomaSection({
                 </Form.Label>
                 <Form.Control
                   size="sm"
-                  placeholder="e.g. Government Polytechnic College"
+                  placeholder="Enter Polytechnic / Diploma Institute Name"
                   value={data.diplomainstitution || ""}
                   onChange={(e) => onChange("diplomainstitution", e.target.value)}
                   isInvalid={Boolean(errors.diplomainstitution)}
@@ -111,7 +119,7 @@ function DiplomaSection({
                 </Form.Label>
                 <Form.Control
                   size="sm"
-                  placeholder="e.g. Diploma in Computer Engineering, Mechanical, EEE"
+                  placeholder="Enter Diploma Branch / Specialization (e.g., Computer Engineering)"
                   value={data.diplomacourse || ""}
                   onChange={(e) => onChange("diplomacourse", e.target.value)}
                   isInvalid={Boolean(errors.diplomacourse)}
@@ -131,7 +139,7 @@ function DiplomaSection({
                 </Form.Label>
                 <Form.Control
                   size="sm"
-                  placeholder="e.g. 3 Years / Lateral Entry (2 Years)"
+                  placeholder="Enter Duration (e.g., 3 Years)"
                   value={data.diplomaduration || ""}
                   onChange={(e) => onChange("diplomaduration", e.target.value)}
                   isInvalid={Boolean(errors.diplomaduration)}
@@ -152,7 +160,7 @@ function DiplomaSection({
                 <Form.Control
                   size="sm"
                   type="number"
-                  placeholder="e.g. 2021"
+                  placeholder="Enter Passing Year (YYYY)"
                   min="1960"
                   max={new Date().getFullYear()}
                   value={data.diplomayearOfPassing || ""}
@@ -178,7 +186,7 @@ function DiplomaSection({
                   step="0.01"
                   min="0"
                   max="100"
-                  placeholder="e.g. 85.0"
+                  placeholder="Enter Percentage (%)"
                   value={data.diplomapercentage || ""}
                   onChange={(e) => onChange("diplomapercentage", e.target.value)}
                   isInvalid={Boolean(errors.diplomapercentage)}
@@ -190,6 +198,21 @@ function DiplomaSection({
               </Form.Group>
             </Col>
           </Row>
+
+          {/* Optional Document Upload */}
+          {(onFileChange || docUrl || file || data.diplomaDocumentUrl || data.diplomaDocument) && (
+            <div className="mt-3 pt-3 border-top">
+              <DocumentUploadBox
+                label="Upload Polytechnic / Diploma Certificate (Optional)"
+                docUrl={docUrl || data.diplomaDocumentUrl || data.diplomaDocument}
+                file={file}
+                onFileChange={onFileChange}
+                onFileRemove={onFileRemove}
+                fieldName="diplomaDocument"
+                required={false}
+              />
+            </div>
+          )}
         </Card.Body>
       )}
     </Card>

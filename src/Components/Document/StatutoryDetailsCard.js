@@ -48,11 +48,12 @@ const StatutoryDetailsCard = ({
           <div
             className="rounded-circle d-flex align-items-center justify-content-center"
             style={{
-              width: 36,
-              height: 36,
-              background: "rgba(245, 158, 11, 0.12)",
-              color: "#D97706",
-              fontSize: 16,
+              width: 38,
+              height: 38,
+              background: "linear-gradient(135deg, rgba(226, 194, 120, 0.25) 0%, rgba(196, 154, 85, 0.18) 100%)",
+              color: "#C49A55",
+              fontSize: 18,
+              border: "1px solid rgba(196, 154, 85, 0.3)",
             }}
           >
             <FaFileContract />
@@ -64,7 +65,7 @@ const StatutoryDetailsCard = ({
         </div>
         <div>
           {hasAnyStatutory ? (
-            <Badge bg="success-subtle" className="text-success border border-success-subtle rounded-pill extra-small px-2.5 py-1">
+            <Badge style={{ backgroundColor: "rgba(196, 154, 85, 0.15)", color: "#8E651F", border: "1px solid rgba(196, 154, 85, 0.3)" }} className="rounded-pill extra-small px-2.5 py-1">
               <FaCheck className="me-1" /> Configured
             </Badge>
           ) : (
@@ -86,7 +87,7 @@ const StatutoryDetailsCard = ({
                   </Form.Label>
                   <Form.Control
                     size="sm"
-                    placeholder="12 digits Universal Account Number"
+                    placeholder="e.g. 100123456789 (12 digits)"
                     maxLength={12}
                     value={data?.uanNo || ""}
                     isInvalid={Boolean(errors.uanNo)}
@@ -138,7 +139,7 @@ const StatutoryDetailsCard = ({
                   </Form.Label>
                   <Form.Control
                     size="sm"
-                    placeholder="17 digits ESIC identifier"
+                    placeholder="e.g. 31000123450000101 (17 digits)"
                     maxLength={17}
                     value={data?.esiNo || ""}
                     isInvalid={Boolean(errors.esiNo)}
@@ -161,9 +162,9 @@ const StatutoryDetailsCard = ({
             {onSave && (
               <div className="d-flex justify-content-end pt-2 border-top">
                 <Button
-                  variant="success"
                   size="sm"
-                  className="rounded-pill px-4 extra-small d-flex align-items-center gap-1.5 shadow-xs"
+                  className="rounded-pill px-4 extra-small d-flex align-items-center gap-1.5 shadow-xs text-white"
+                  style={{ background: "linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%)", border: "none" }}
                   onClick={handleSaveClick}
                   disabled={saving}
                 >

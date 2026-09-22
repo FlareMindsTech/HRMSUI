@@ -170,7 +170,7 @@ function DocumentUploadBox({
           <div className="d-flex flex-column align-items-center justify-content-center py-1">
             <div
               className="rounded-circle p-2 mb-1.5 d-flex align-items-center justify-content-center"
-              style={{ background: "rgba(45, 197, 138, 0.12)", color: "#2DC58A" }}
+              style={{ background: "rgba(196, 154, 85, 0.15)", color: "#C49A55" }}
             >
               <FaFileUpload size={18} />
             </div>
