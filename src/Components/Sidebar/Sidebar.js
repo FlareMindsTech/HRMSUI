@@ -33,7 +33,7 @@ const menuItems = [
   { name: 'MIS', path: '/mis', menuCode: 'MIS', icon: MdAssessment, section: 'manage' },
 ];
 
-function Sidebar() {
+function Sidebar({ isExpanded = false }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { hasMenu, isSystemAdmin, user, logoutUserLocal } = useAuth();
@@ -94,7 +94,7 @@ function Sidebar() {
   };
 
   return (
-    <div className="sidebar">
+    <div className={`sidebar${isExpanded ? ' is-expanded' : ''}`}>
       {/* ── Brand Header ── */}
       <div className="sidebar-header">
         <div className="sidebar-logo">

@@ -52,17 +52,17 @@ function EducationViewProfile({
       <Card className="border-0 rounded-4 shadow-sm mb-4 bg-white overflow-hidden">
         <div
           className="p-4 text-white d-flex align-items-center justify-content-between flex-wrap gap-3"
-          style={{ background: "linear-gradient(135deg, #0f2a1e 0%, #154530 100%)" }}
+          style={{ background: "linear-gradient(135deg, #1C1D1D 0%, #2A2B2B 100%)" }}
         >
           <div className="d-flex align-items-center gap-3">
             <div
               className="rounded-3 p-3 text-white d-flex align-items-center justify-content-center"
-              style={{ background: "rgba(45, 197, 138, 0.25)", border: "1px solid rgba(45, 197, 138, 0.4)" }}
+              style={{ background: "rgba(196, 154, 85, 0.25)", border: "1px solid rgba(196, 154, 85, 0.4)" }}
             >
-              <FaGraduationCap size={28} style={{ color: "#2DC58A" }} />
+              <FaGraduationCap size={28} style={{ color: "#E2C278" }} />
             </div>
             <div>
-              <div className="extra-small text-uppercase tracking-wider" style={{ color: "#2DC58A" }}>
+              <div className="extra-small text-uppercase tracking-wider" style={{ color: "#C49A55" }}>
                 Employee Educational Portfolio
               </div>
               <h5 className="fw-bold mb-0">Highest Qualification: {data.highestQualification || "UG"}</h5>

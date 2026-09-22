@@ -1,14 +1,19 @@
 import React from "react";
 import { Card, Row, Col, Form, Badge } from "react-bootstrap";
 import { FaSchool, FaCheckCircle } from "react-icons/fa";
+import DocumentUploadBox from "./DocumentUploadBox";
 import "./Education.css";
 
 function HSCSection({
   data = {},
   onChange,
   errors = {},
+  file = null,
+  docUrl = "",
+  onFileChange,
+  onFileRemove,
 }) {
-  const isFilled = Boolean(data.hscSchoolName?.trim() || data.hscBoard?.trim() || data.hscYearOfPassing || data.hscPercentage);
+  const isFilled = Boolean(data.hscSchoolName?.trim() || data.hscBoard?.trim() || data.hscYearOfPassing || data.hscPercentage || file || docUrl || data.hscDocumentUrl || data.hscDocument);
 
   return (
     <Card className="border-0 rounded-4 shadow-sm mb-4 bg-white overflow-hidden">
@@ -26,7 +31,6 @@ function HSCSection({
                 Primary / Mandatory
               </Badge>
             </div>
-            <span className="extra-small text-muted">12th Standard / Pre-University Education Details</span>
           </div>
         </div>
 
@@ -47,7 +51,7 @@ function HSCSection({
               </Form.Label>
               <Form.Control
                 size="sm"
-                placeholder="e.g. Model Higher Secondary School"
+                placeholder="Enter School / College Name"
                 value={data.hscSchoolName || ""}
                 onChange={(e) => onChange("hscSchoolName", e.target.value)}
                 isInvalid={Boolean(errors.hscSchoolName)}
@@ -67,7 +71,7 @@ function HSCSection({
               </Form.Label>
               <Form.Control
                 size="sm"
-                placeholder="e.g. State Board, CBSE, ISC, PUC"
+                placeholder="Enter Board / Council (e.g., State Board, CBSE, ISC, PUC)"
                 value={data.hscBoard || ""}
                 onChange={(e) => onChange("hscBoard", e.target.value)}
                 isInvalid={Boolean(errors.hscBoard)}
@@ -88,7 +92,7 @@ function HSCSection({
               <Form.Control
                 size="sm"
                 type="number"
-                placeholder="e.g. 2020"
+                placeholder="Enter Passing Year (YYYY)"
                 min="1960"
                 max={new Date().getFullYear()}
                 value={data.hscYearOfPassing || ""}
@@ -114,7 +118,7 @@ function HSCSection({
                 step="0.01"
                 min="0"
                 max="100"
-                placeholder="e.g. 91.2"
+                placeholder="Enter Percentage (%)"
                 value={data.hscPercentage || ""}
                 onChange={(e) => onChange("hscPercentage", e.target.value)}
                 isInvalid={Boolean(errors.hscPercentage)}
@@ -126,6 +130,21 @@ function HSCSection({
             </Form.Group>
           </Col>
         </Row>
+
+        {/* Optional Document Upload */}
+        {(onFileChange || docUrl || file || data.hscDocumentUrl || data.hscDocument) && (
+          <div className="mt-3 pt-3 border-top">
+            <DocumentUploadBox
+              label="Upload HSC / 12th Marksheet (Optional)"
+              docUrl={docUrl || data.hscDocumentUrl || data.hscDocument}
+              file={file}
+              onFileChange={onFileChange}
+              onFileRemove={onFileRemove}
+              fieldName="hscDocument"
+              required={false}
+            />
+          </div>
+        )}
       </Card.Body>
     </Card>
   );

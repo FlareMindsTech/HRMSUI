@@ -1,12 +1,17 @@
 import React from "react";
 import { Card, Row, Col, Form, Button, Badge } from "react-bootstrap";
 import { FaBook, FaPlus, FaTrash, FaCheckCircle } from "react-icons/fa";
+import DocumentUploadBox from "./DocumentUploadBox";
 import "./Education.css";
 
 function PhDSection({
   data = {},
   onChange,
   errors = {},
+  file = null,
+  docUrl = "",
+  onFileChange,
+  onFileRemove,
   isOpen = false,
   onToggle,
   onClear,
@@ -15,7 +20,11 @@ function PhDSection({
     data.phdInstituteName?.trim() ||
     data.phdUniversityName?.trim() ||
     data.phdResearchArea?.trim() ||
-    data.phdYearOfPassing
+    data.phdYearOfPassing ||
+    file ||
+    docUrl ||
+    data.phdDocumentUrl ||
+    data.phdDocument
   );
 
   return (
@@ -34,7 +43,6 @@ function PhDSection({
                 Optional Qualification
               </Badge>
             </div>
-            <span className="extra-small text-muted">Doctoral Research & Thesis Award Details</span>
           </div>
         </div>
 
@@ -90,7 +98,7 @@ function PhDSection({
                 </Form.Label>
                 <Form.Control
                   size="sm"
-                  placeholder="e.g. Indian Institute of Science (IISc)"
+                  placeholder="Enter Institute / Research Centre Name"
                   value={data.phdInstituteName || ""}
                   onChange={(e) => onChange("phdInstituteName", e.target.value)}
                   isInvalid={Boolean(errors.phdInstituteName)}
@@ -110,7 +118,7 @@ function PhDSection({
                 </Form.Label>
                 <Form.Control
                   size="sm"
-                  placeholder="e.g. IISc Bangalore, IIT Madras"
+                  placeholder="Enter Awarding University"
                   value={data.phdUniversityName || ""}
                   onChange={(e) => onChange("phdUniversityName", e.target.value)}
                   isInvalid={Boolean(errors.phdUniversityName)}
@@ -130,7 +138,7 @@ function PhDSection({
                 </Form.Label>
                 <Form.Control
                   size="sm"
-                  placeholder="e.g. Machine Learning, Distributed Systems, Nanotechnology"
+                  placeholder="Enter Research Area / Thesis Topic"
                   value={data.phdResearchArea || ""}
                   onChange={(e) => onChange("phdResearchArea", e.target.value)}
                   isInvalid={Boolean(errors.phdResearchArea)}
@@ -151,7 +159,7 @@ function PhDSection({
                 <Form.Control
                   size="sm"
                   type="number"
-                  placeholder="e.g. 2026"
+                  placeholder="Enter Year of Award (YYYY)"
                   min="1960"
                   max={new Date().getFullYear() + 5}
                   value={data.phdYearOfPassing || ""}
@@ -165,6 +173,21 @@ function PhDSection({
               </Form.Group>
             </Col>
           </Row>
+
+          {/* Optional Document Upload */}
+          {(onFileChange || docUrl || file || data.phdDocumentUrl || data.phdDocument) && (
+            <div className="mt-3 pt-3 border-top">
+              <DocumentUploadBox
+                label="Upload PhD Degree Certificate / Provisional Certificate (Optional)"
+                docUrl={docUrl || data.phdDocumentUrl || data.phdDocument}
+                file={file}
+                onFileChange={onFileChange}
+                onFileRemove={onFileRemove}
+                fieldName="phdDocument"
+                required={false}
+              />
+            </div>
+          )}
         </Card.Body>
       )}
     </Card>

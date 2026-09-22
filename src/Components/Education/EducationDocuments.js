@@ -121,7 +121,7 @@ function EducationDocuments({
         <div className="d-flex align-items-center gap-2">
           <div
             className="rounded-circle p-2 d-flex align-items-center justify-content-center text-white"
-            style={{ background: "#2DC58A" }}
+            style={{ background: "linear-gradient(135deg, #E2C278 0%, #C49A55 50%, #B8860B 100%)", boxShadow: "0 2px 6px rgba(196, 154, 85, 0.28)" }}
           >
             <FaFolderOpen size={15} />
           </div>

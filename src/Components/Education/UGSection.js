@@ -1,12 +1,17 @@
 import React from "react";
 import { Card, Row, Col, Form, Badge } from "react-bootstrap";
 import { FaGraduationCap, FaCheckCircle } from "react-icons/fa";
+import DocumentUploadBox from "./DocumentUploadBox";
 import "./Education.css";
 
 function UGSection({
   data = {},
   onChange,
   errors = {},
+  file = null,
+  docUrl = "",
+  onFileChange,
+  onFileRemove,
 }) {
   const isFilled = Boolean(
     data.ugInstituteName?.trim() ||
@@ -14,7 +19,11 @@ function UGSection({
     data.ugDegree?.trim() ||
     data.ugDepartmentCourse?.trim() ||
     data.ugYearOfPassing ||
-    data.ugCgpa
+    data.ugCgpa ||
+    file ||
+    docUrl ||
+    data.ugDocumentUrl ||
+    data.ugDocument
   );
 
   return (
@@ -33,7 +42,6 @@ function UGSection({
                 Primary / Mandatory
               </Badge>
             </div>
-            <span className="extra-small text-muted">Bachelor's Degree Education Details (B.E, B.Tech, B.Sc, BCA, B.Com, BBA, etc.)</span>
           </div>
         </div>
 
@@ -54,7 +62,7 @@ function UGSection({
               </Form.Label>
               <Form.Control
                 size="sm"
-                placeholder="e.g. PSG College of Technology"
+                placeholder="Enter College / Institute Name"
                 value={data.ugInstituteName || ""}
                 onChange={(e) => onChange("ugInstituteName", e.target.value)}
                 isInvalid={Boolean(errors.ugInstituteName)}
@@ -74,7 +82,7 @@ function UGSection({
               </Form.Label>
               <Form.Control
                 size="sm"
-                placeholder="e.g. Anna University, Bharathiar University"
+                placeholder="Enter Affiliated University"
                 value={data.ugUniversityName || ""}
                 onChange={(e) => onChange("ugUniversityName", e.target.value)}
                 isInvalid={Boolean(errors.ugUniversityName)}
@@ -94,7 +102,7 @@ function UGSection({
               </Form.Label>
               <Form.Control
                 size="sm"
-                placeholder="e.g. B.E, B.Tech, BCA, B.Sc, B.Com"
+                placeholder="Enter Degree (e.g., B.E, B.Tech, BCA, B.Sc, B.Com)"
                 value={data.ugDegree || ""}
                 onChange={(e) => onChange("ugDegree", e.target.value)}
                 isInvalid={Boolean(errors.ugDegree)}
@@ -114,7 +122,7 @@ function UGSection({
               </Form.Label>
               <Form.Control
                 size="sm"
-                placeholder="e.g. Computer Science and Engineering, IT"
+                placeholder="Enter Department / Specialization (e.g., Computer Science)"
                 value={data.ugDepartmentCourse || ""}
                 onChange={(e) => onChange("ugDepartmentCourse", e.target.value)}
                 isInvalid={Boolean(errors.ugDepartmentCourse)}
@@ -135,7 +143,7 @@ function UGSection({
               <Form.Control
                 size="sm"
                 type="number"
-                placeholder="e.g. 2024"
+                placeholder="Enter Passing Year (YYYY)"
                 min="1960"
                 max={new Date().getFullYear() + 4}
                 value={data.ugYearOfPassing || ""}
@@ -160,7 +168,7 @@ function UGSection({
                 step="0.01"
                 min="0"
                 max="10"
-                placeholder="e.g. 8.75"
+                placeholder="Enter CGPA (e.g., 8.5)"
                 value={data.ugCgpa || ""}
                 onChange={(e) => onChange("ugCgpa", e.target.value)}
                 isInvalid={Boolean(errors.ugCgpa)}
@@ -172,6 +180,21 @@ function UGSection({
             </Form.Group>
           </Col>
         </Row>
+
+        {/* Optional Document Upload */}
+        {(onFileChange || docUrl || file || data.ugDocumentUrl || data.ugDocument) && (
+          <div className="mt-3 pt-3 border-top">
+            <DocumentUploadBox
+              label="Upload UG Degree Certificate / Consolidated Marksheet (Optional)"
+              docUrl={docUrl || data.ugDocumentUrl || data.ugDocument}
+              file={file}
+              onFileChange={onFileChange}
+              onFileRemove={onFileRemove}
+              fieldName="ugDocument"
+              required={false}
+            />
+          </div>
+        )}
       </Card.Body>
     </Card>
   );

@@ -23,42 +23,45 @@
 
 .edu-summary-accent-bar {
   height: 4px;
-  background: linear-gradient(90deg, #2DC58A 0%, #20a673 50%, #157347 100%);
+  background: linear-gradient(90deg, #C49A55 0%, #E2C278 50%, #B8860B 100%);
 }
 
 .edu-icon-summary {
-  background: #2DC58A;
+  background: linear-gradient(135deg, #E2C278 0%, #C49A55 50%, #B8860B 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(196, 154, 85, 0.28);
 }
 
 /* --------------------------------------------------------------------------
-   Education Section Icon Badges
+   Education Section Icon Badges (Theme Gold)
    -------------------------------------------------------------------------- */
-.edu-icon-sslc {
-  background: #2DC58A;
+.edu-icon-sslc,
+.edu-icon-hsc,
+.edu-icon-iti,
+.edu-icon-diploma,
+.edu-icon-ug,
+.edu-icon-pg,
+.edu-icon-phd,
+.edu-icon-gold {
+  background: linear-gradient(135deg, #E2C278 0%, #C49A55 50%, #B8860B 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(196, 154, 85, 0.28) !important;
+  width: 32px;
+  height: 32px;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
-.edu-icon-hsc {
-  background: #20a673;
-}
-
-.edu-icon-iti {
-  background: #0d6efd;
-}
-
-.edu-icon-diploma {
-  background: #6f42c1;
-}
-
-.edu-icon-ug {
-  background: #2DC58A;
-}
-
-.edu-icon-pg {
-  background: #0dcaf0;
-}
-
-.edu-icon-phd {
-  background: #d63384;
+.edu-icon-sslc svg,
+.edu-icon-hsc svg,
+.edu-icon-iti svg,
+.edu-icon-diploma svg,
+.edu-icon-ug svg,
+.edu-icon-pg svg,
+.edu-icon-phd svg,
+.edu-icon-gold svg {
+  color: #ffffff !important;
 }
 
 /* --------------------------------------------------------------------------

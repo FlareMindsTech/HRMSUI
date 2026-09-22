@@ -347,42 +347,54 @@ const DocumentManagement = () => {
           </div>
         ) : (
           <div>
-            {/* Overview Summary */}
-            <DocumentSummary docData={docData} />
+            {(() => {
+              const selectedEmp = employees.find((e) => (e._id || e.id) === selectedUserId);
+              const isUnpaid = Boolean(
+                selectedEmp?.isUnpaid ||
+                selectedEmp?.compensationType === "UNPAID" ||
+                selectedEmp?.salary === "UNPAID" ||
+                docData?.isUnpaid
+              );
 
-            {/* If no record and not edit mode */}
-            {!hasRecord && !isEditMode ? (
-              <div className="p-5 text-center bg-white rounded-4 shadow-sm my-4 border">
-                <h5 className="fw-bold text-dark mb-1">No Document Record Found</h5>
-                <p className="text-muted small mb-3">
-                  No banking, identity, or statutory information is recorded for{" "}
-                  <strong>{selectedEmployeeName || "this employee"}</strong>.
-                </p>
-                <Button
-                  variant="success"
-                  className="rounded-pill px-4 extra-small shadow-xs text-white"
-                  onClick={() => setIsEditMode(true)}
-                >
-                  <FaPlus className="me-1" /> Add Document Information
-                </Button>
-              </div>
-            ) : (
-              <div>
-                <Row className="g-4">
-                  {/* Left Column: Bank & Statutory */}
-                  <Col lg={6} xs={12}>
-                    <BankDetailsCard
-                      data={docData}
-                      isEditMode={isEditMode}
-                      onChange={handleFieldChange}
-                      onSave={handleSaveDocument}
-                      saving={saving}
-                    />
+              return (
+                <>
+                  {/* Overview Summary */}
+                  <DocumentSummary docData={docData} isUnpaid={isUnpaid} />
 
-                    <StatutoryDetailsCard
-                      data={docData}
-                      isEditMode={isEditMode}
-                      onChange={handleFieldChange}
+                  {/* If no record and not edit mode */}
+                  {!hasRecord && !isEditMode ? (
+                    <div className="p-5 text-center bg-white rounded-4 shadow-sm my-4 border">
+                      <h5 className="fw-bold text-dark mb-1">No Document Record Found</h5>
+                      <p className="text-muted small mb-3">
+                        No banking, identity, or statutory information is recorded for{" "}
+                        <strong>{selectedEmployeeName || "this employee"}</strong>.
+                      </p>
+                      <Button
+                        variant="success"
+                        className="rounded-pill px-4 extra-small shadow-xs text-white"
+                        onClick={() => setIsEditMode(true)}
+                      >
+                        <FaPlus className="me-1" /> Add Document Information
+                      </Button>
+                    </div>
+                  ) : (
+                    <div>
+                      <Row className="g-4">
+                        {/* Left Column: Bank & Statutory */}
+                        <Col lg={6} xs={12}>
+                          <BankDetailsCard
+                            data={docData}
+                            isEditMode={isEditMode}
+                            isUnpaid={isUnpaid}
+                            onChange={handleFieldChange}
+                            onSave={handleSaveDocument}
+                            saving={saving}
+                          />
+
+                          <StatutoryDetailsCard
+                            data={docData}
+                            isEditMode={isEditMode}
+                            onChange={handleFieldChange}
                       onSave={handleSaveDocument}
                       saving={saving}
                     />
@@ -413,8 +425,11 @@ const DocumentManagement = () => {
                 </Row>
               </div>
             )}
-          </div>
-        )}
+          </>
+        );
+      })()}
+    </div>
+  )}
 
         {/* Upload Document Modal */}
         <UploadDocumentModal

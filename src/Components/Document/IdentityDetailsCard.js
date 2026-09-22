@@ -75,11 +75,12 @@ const IdentityDetailsCard = ({
           <div
             className="rounded-circle d-flex align-items-center justify-content-center"
             style={{
-              width: 36,
-              height: 36,
-              background: "rgba(59, 130, 246, 0.12)",
-              color: "#2563EB",
-              fontSize: 16,
+              width: 38,
+              height: 38,
+              background: "linear-gradient(135deg, rgba(226, 194, 120, 0.25) 0%, rgba(196, 154, 85, 0.18) 100%)",
+              color: "#C49A55",
+              fontSize: 18,
+              border: "1px solid rgba(196, 154, 85, 0.3)",
             }}
           >
             <FaIdCard />
@@ -94,7 +95,7 @@ const IdentityDetailsCard = ({
             <FaLock className="me-1 text-secondary" /> Masked in View
           </Badge>
           {data?.aadhaarNo && data?.panNo ? (
-            <Badge bg="success-subtle" className="text-success border border-success-subtle rounded-pill extra-small px-2.5 py-1">
+            <Badge style={{ backgroundColor: "rgba(196, 154, 85, 0.15)", color: "#8E651F", border: "1px solid rgba(196, 154, 85, 0.3)" }} className="rounded-pill extra-small px-2.5 py-1">
               <FaCheck className="me-1" /> Added
             </Badge>
           ) : (
@@ -116,7 +117,7 @@ const IdentityDetailsCard = ({
                   </Form.Label>
                   <Form.Control
                     size="sm"
-                    placeholder="XXXX XXXX XXXX (12 digits)"
+                    placeholder="e.g. 5432 1234 6789 (12 digits)"
                     maxLength={12}
                     value={data?.aadhaarNo || ""}
                     isInvalid={Boolean(errors.aadhaarNo)}
@@ -142,7 +143,7 @@ const IdentityDetailsCard = ({
                   </Form.Label>
                   <Form.Control
                     size="sm"
-                    placeholder="ABCDE1234F (10 characters)"
+                    placeholder="e.g. ABCDE1234F (10 characters)"
                     maxLength={10}
                     value={data?.panNo || ""}
                     isInvalid={Boolean(errors.panNo)}
@@ -168,7 +169,7 @@ const IdentityDetailsCard = ({
                   </Form.Label>
                   <Form.Control
                     size="sm"
-                    placeholder="A1234567 (8 characters)"
+                    placeholder="e.g. A1234567 (8 characters)"
                     maxLength={8}
                     value={data?.passportNo || ""}
                     isInvalid={Boolean(errors.passportNo)}
@@ -191,9 +192,9 @@ const IdentityDetailsCard = ({
             {onSave && (
               <div className="d-flex justify-content-end pt-2 border-top">
                 <Button
-                  variant="success"
                   size="sm"
-                  className="rounded-pill px-4 extra-small d-flex align-items-center gap-1.5 shadow-xs"
+                  className="rounded-pill px-4 extra-small d-flex align-items-center gap-1.5 shadow-xs text-white"
+                  style={{ background: "linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%)", border: "none" }}
                   onClick={handleSaveClick}
                   disabled={saving}
                 >

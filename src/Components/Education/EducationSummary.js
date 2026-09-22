@@ -43,7 +43,7 @@ function EducationSummary({
                 Highest Qualification
               </span>
               <div className="d-flex align-items-center gap-2 mt-1">
-                <FaGraduationCap className="text-primary" size={20} />
+                <FaGraduationCap style={{ color: "#C49A55" }} size={20} />
                 <span className="h5 fw-bold text-dark mb-0">
                   {highestQualification || "Not Specified"}
                 </span>

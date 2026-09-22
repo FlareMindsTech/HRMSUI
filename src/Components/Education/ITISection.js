@@ -1,12 +1,17 @@
 import React from "react";
 import { Card, Row, Col, Form, Button, Badge } from "react-bootstrap";
 import { FaTools, FaPlus, FaTrash, FaCheckCircle } from "react-icons/fa";
+import DocumentUploadBox from "./DocumentUploadBox";
 import "./Education.css";
 
 function ITISection({
   data = {},
   onChange,
   errors = {},
+  file = null,
+  docUrl = "",
+  onFileChange,
+  onFileRemove,
   isOpen = false,
   onToggle,
   onClear,
@@ -16,7 +21,11 @@ function ITISection({
     data.iticourse?.trim() ||
     data.itiduration?.trim() ||
     data.itiyearOfPassing ||
-    data.itipercentage
+    data.itipercentage ||
+    file ||
+    docUrl ||
+    data.itiDocumentUrl ||
+    data.itiDocument
   );
 
   return (
@@ -35,7 +44,6 @@ function ITISection({
                 Optional Qualification
               </Badge>
             </div>
-            <span className="extra-small text-muted">Vocational & Technical Training Certificate</span>
           </div>
         </div>
 
@@ -91,7 +99,7 @@ function ITISection({
                 </Form.Label>
                 <Form.Control
                   size="sm"
-                  placeholder="e.g. Government Industrial Training Institute"
+                  placeholder="Enter ITI Institute Name"
                   value={data.itiinstituteName || ""}
                   onChange={(e) => onChange("itiinstituteName", e.target.value)}
                   isInvalid={Boolean(errors.itiinstituteName)}
@@ -111,7 +119,7 @@ function ITISection({
                 </Form.Label>
                 <Form.Control
                   size="sm"
-                  placeholder="e.g. Electrician, Fitter, Mechanic, Draughtsman"
+                  placeholder="Enter ITI Trade / Course (e.g., Electrician, Fitter, Mechanic)"
                   value={data.iticourse || ""}
                   onChange={(e) => onChange("iticourse", e.target.value)}
                   isInvalid={Boolean(errors.iticourse)}
@@ -131,7 +139,7 @@ function ITISection({
                 </Form.Label>
                 <Form.Control
                   size="sm"
-                  placeholder="e.g. 2 Years / 1 Year"
+                  placeholder="Enter Duration (e.g., 2 Years)"
                   value={data.itiduration || ""}
                   onChange={(e) => onChange("itiduration", e.target.value)}
                   isInvalid={Boolean(errors.itiduration)}
@@ -152,7 +160,7 @@ function ITISection({
                 <Form.Control
                   size="sm"
                   type="number"
-                  placeholder="e.g. 2021"
+                  placeholder="Enter Passing Year (YYYY)"
                   min="1960"
                   max={new Date().getFullYear()}
                   value={data.itiyearOfPassing || ""}
@@ -178,7 +186,7 @@ function ITISection({
                   step="0.01"
                   min="0"
                   max="100"
-                  placeholder="e.g. 82.4"
+                  placeholder="Enter Percentage (%)"
                   value={data.itipercentage || ""}
                   onChange={(e) => onChange("itipercentage", e.target.value)}
                   isInvalid={Boolean(errors.itipercentage)}
@@ -190,6 +198,21 @@ function ITISection({
               </Form.Group>
             </Col>
           </Row>
+
+          {/* Optional Document Upload */}
+          {(onFileChange || docUrl || file || data.itiDocumentUrl || data.itiDocument) && (
+            <div className="mt-3 pt-3 border-top">
+              <DocumentUploadBox
+                label="Upload ITI Certificate / Marksheet (Optional)"
+                docUrl={docUrl || data.itiDocumentUrl || data.itiDocument}
+                file={file}
+                onFileChange={onFileChange}
+                onFileRemove={onFileRemove}
+                fieldName="itiDocument"
+                required={false}
+              />
+            </div>
+          )}
         </Card.Body>
       )}
     </Card>

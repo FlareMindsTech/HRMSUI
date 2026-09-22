@@ -138,9 +138,9 @@ export const fetchEmployeeInfo = async (id) => {
       email: emp.email || data.email || "",
       mobileNo: emp.mobileNo || data.mobileNo || "",
       dob: emp.dob || data.dob || "",
-      gender: emp.gender || data.gender || "Male",
-      marriageStatus: emp.marriageStatus || data.marriageStatus || "Unmarried",
-      bloodGroup: emp.bloodGroup || data.bloodGroup || "O+",
+      gender: emp.gender || data.gender || "",
+      marriageStatus: emp.marriageStatus || data.marriageStatus || "",
+      bloodGroup: emp.bloodGroup || data.bloodGroup || "",
       department: emp.department || data.department || "",
       designation: emp.designation || data.designation || "",
       avatar: emp.avatar || emp.avatarUrl || data.avatar || "",
@@ -466,7 +466,73 @@ export const updatePayroll = async (id, payload) => {
   if (!res.ok) {
     throw new Error(res.data?.message || "Failed to update payroll details.");
   }
-  return res.data;
+};
+
+/**
+ * Fetch candidate compensation structure from backend
+ * @param {string} id - Onboarding record ID
+ */
+export const fetchCandidateCompensation = async (id) => {
+  try {
+    const res = await apiFetch(`/onboarding/${id}/compensation`, { method: "GET" });
+    if (res.ok && res.data) return res.data?.data || res.data;
+  } catch (e) {
+    // fallback to main record
+  }
+  const mainRes = await apiFetch(`/onboarding/${id}`, { method: "GET" });
+  const data = mainRes.data?.data || mainRes.data || {};
+  const emp = data.employeeId || data.employee || data.user || {};
+  return (
+    data.compensation ||
+    emp.compensation ||
+    emp.salaryStructure ||
+    data.profileDetails?.compensation ||
+    {
+      compensationType: emp.compensationType || data.compensationType || (emp.isUnpaid || data.isUnpaid ? "UNPAID" : "SALARY"),
+      annualCtc: emp.salary || data.salary || emp.compensationAmount || data.compensationAmount || "",
+      isUnpaid: Boolean(emp.isUnpaid || data.isUnpaid || emp.compensationType === "UNPAID"),
+    }
+  );
+};
+
+/**
+ * Update candidate compensation details in backend
+ * @param {string} id - Onboarding record ID
+ * @param {Object} payload - Compensation details object
+ */
+export const updateCandidateCompensation = async (id, payload) => {
+  try {
+    const res = await apiFetch(`/onboarding/${id}/compensation`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) return res.data;
+  } catch (e) {
+    console.warn("Dedicated /compensation endpoint notice:", e.message);
+  }
+
+  // Fallback / sync with /employee-info and /payroll
+  return updateEmployeeInfo(id, {
+    compensation: payload,
+    compensationType: payload.compensationType || "SALARY",
+    compensationAmount: payload.annualCtc || payload.monthlyGross || payload.basicSalary || payload.stipendAmount || payload.contractRate || "",
+    salary: payload.compensationType === "UNPAID" ? "UNPAID" : (payload.annualCtc || payload.monthlyGross || payload.basicSalary || payload.stipendAmount || payload.contractRate || ""),
+    isUnpaid: payload.compensationType === "UNPAID",
+  });
+};
+
+/**
+ * Fetch compensation details by Employee / User ID
+ * @param {string} employeeId - User/Employee ID
+ */
+export const fetchCompensationByEmployeeId = async (employeeId) => {
+  try {
+    const res = await apiFetch(`/compensation/employee/${employeeId}`, { method: "GET" });
+    if (res.ok) return res.data;
+  } catch (e) {
+    console.warn("fetchCompensationByEmployeeId notice:", e.message);
+  }
+  return null;
 };
 
 /**

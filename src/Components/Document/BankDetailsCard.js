@@ -44,6 +44,12 @@ const BankDetailsCard = ({
     return `•••• •••• ${str.slice(-4)}`;
   };
 
+  const isUnpaid = Boolean(
+    data?.compensationType === "UNPAID" ||
+    data?.isUnpaid ||
+    (Array.isArray(data?.professional) && data.professional.some((p) => p.compensationType === "UNPAID" || p.isUnpaid))
+  );
+
   return (
     <Card className="border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden">
       <Card.Header className="bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
@@ -51,11 +57,12 @@ const BankDetailsCard = ({
           <div
             className="rounded-circle d-flex align-items-center justify-content-center"
             style={{
-              width: 36,
-              height: 36,
-              background: "rgba(16, 185, 129, 0.12)",
-              color: "#059669",
-              fontSize: 16,
+              width: 38,
+              height: 38,
+              background: "linear-gradient(135deg, rgba(226, 194, 120, 0.25) 0%, rgba(196, 154, 85, 0.18) 100%)",
+              color: "#C49A55",
+              fontSize: 18,
+              border: "1px solid rgba(196, 154, 85, 0.3)",
             }}
           >
             <FaUniversity />
@@ -66,8 +73,12 @@ const BankDetailsCard = ({
           </div>
         </div>
         <div>
-          {data?.accountNo && data?.ifsc ? (
-            <Badge bg="success-subtle" className="text-success border border-success-subtle rounded-pill extra-small px-2.5 py-1">
+          {isUnpaid ? (
+            <Badge style={{ backgroundColor: "rgba(196, 154, 85, 0.15)", color: "#8E651F", border: "1px solid rgba(196, 154, 85, 0.3)" }} className="rounded-pill extra-small px-2.5 py-1">
+              <FaCheck className="me-1" /> Exempted (Unpaid)
+            </Badge>
+          ) : data?.accountNo && data?.ifsc ? (
+            <Badge style={{ backgroundColor: "rgba(196, 154, 85, 0.15)", color: "#8E651F", border: "1px solid rgba(196, 154, 85, 0.3)" }} className="rounded-pill extra-small px-2.5 py-1">
               <FaCheck className="me-1" /> Added
             </Badge>
           ) : (
@@ -79,6 +90,12 @@ const BankDetailsCard = ({
       </Card.Header>
 
       <Card.Body className="p-4">
+        {isUnpaid && (
+          <div className="p-2.5 mb-3 rounded-3 border extra-small d-flex align-items-center gap-2" style={{ background: "rgba(196, 154, 85, 0.08)", borderColor: "rgba(196, 154, 85, 0.25)", color: "#8E651F" }}>
+            <span className="badge text-white" style={{ background: "linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%)" }}>UNPAID</span>
+            <span>Bank details are exempted for Unpaid engagements. (Optional: you may still enter bank details below if needed).</span>
+          </div>
+        )}
         {isEditMode ? (
           <div>
             <Row className="g-3 mb-3">
@@ -89,7 +106,7 @@ const BankDetailsCard = ({
                   </Form.Label>
                   <Form.Control
                     size="sm"
-                    placeholder="e.g. State Bank of India, HDFC Bank, ICICI Bank"
+                    placeholder="e.g. HDFC Bank, State Bank of India, ICICI Bank"
                     value={data?.bankName || ""}
                     onChange={(e) => onChange("bankName", e.target.value)}
                   />
@@ -102,7 +119,7 @@ const BankDetailsCard = ({
                   </Form.Label>
                   <Form.Control
                     size="sm"
-                    placeholder="e.g. Koramangala Branch, T. Nagar Branch"
+                    placeholder="e.g. Koramangala Branch, Bangalore"
                     value={data?.branchName || ""}
                     onChange={(e) => onChange("branchName", e.target.value)}
                   />
@@ -118,7 +135,7 @@ const BankDetailsCard = ({
                   </Form.Label>
                   <Form.Control
                     size="sm"
-                    placeholder="9 to 18 digits account number"
+                    placeholder="e.g. 50100234567890 (9 to 18 digits)"
                     maxLength={18}
                     value={data?.accountNo || ""}
                     isInvalid={Boolean(errors.accountNo)}
@@ -144,7 +161,7 @@ const BankDetailsCard = ({
                   </Form.Label>
                   <Form.Control
                     size="sm"
-                    placeholder="e.g. SBIN0001234"
+                    placeholder="e.g. HDFC0001234 (11 characters)"
                     maxLength={11}
                     value={data?.ifsc || ""}
                     isInvalid={Boolean(errors.ifsc)}
@@ -169,19 +186,19 @@ const BankDetailsCard = ({
               <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <div>
                   <span className="extra-small fw-bold text-dark d-flex align-items-center gap-1.5 mb-0.5">
-                    <FaFileAlt className="text-success" /> Bank Passbook / Cancelled Cheque (Optional)
+                    <FaFileAlt style={{ color: "#C49A55" }} /> Bank Passbook / Cancelled Cheque (Optional)
                   </span>
                   <span className="extra-small text-muted">Upload scan of bank passbook or cancelled cheque leaf</span>
                 </div>
                 <div className="d-flex align-items-center gap-2 flex-wrap">
                   {data?.passbookFileName && (
-                    <Badge bg="success-subtle" className="text-success border border-success-subtle extra-small py-1 px-2.5 rounded-pill">
+                    <Badge style={{ backgroundColor: "rgba(196, 154, 85, 0.15)", color: "#8E651F", border: "1px solid rgba(196, 154, 85, 0.3)" }} className="extra-small py-1 px-2.5 rounded-pill">
                       <FaCheck className="me-1" /> {data.passbookFileName}
                     </Badge>
                   )}
                   {onPassbookPreview && data?.passbookFile && (
                     <Button
-                      variant="outline-primary"
+                      variant="outline-secondary"
                       size="sm"
                       className="py-1 px-3 extra-small rounded-pill shadow-xs d-flex align-items-center gap-1"
                       onClick={() => onPassbookPreview(data.passbookFile, data.passbookFileName || "Bank Passbook")}
@@ -190,7 +207,7 @@ const BankDetailsCard = ({
                     </Button>
                   )}
                   {onPassbookChange && (
-                    <label className="btn btn-outline-success btn-sm py-1 px-3 extra-small rounded-pill mb-0 cursor-pointer shadow-xs d-flex align-items-center gap-1">
+                    <label className="btn btn-sm py-1 px-3 extra-small rounded-pill mb-0 cursor-pointer shadow-xs d-flex align-items-center gap-1" style={{ border: "1px solid #C49A55", color: "#8E651F", background: "rgba(196, 154, 85, 0.08)" }}>
                       <FaFileUpload /> {data?.passbookFileName ? "Change File" : "Upload File"}
                       <input
                         type="file"
@@ -212,9 +229,9 @@ const BankDetailsCard = ({
             {onSave && (
               <div className="d-flex justify-content-end pt-2 border-top">
                 <Button
-                  variant="success"
                   size="sm"
-                  className="rounded-pill px-4 extra-small d-flex align-items-center gap-1.5 shadow-xs"
+                  className="rounded-pill px-4 extra-small d-flex align-items-center gap-1.5 shadow-xs text-white"
+                  style={{ background: "linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%)", border: "none" }}
                   onClick={handleSaveClick}
                   disabled={saving}
                 >
