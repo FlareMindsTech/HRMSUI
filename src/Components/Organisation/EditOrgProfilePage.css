@@ -1,0 +1,574 @@
+/* ============================================================
+   Enterprise HRMS - Edit Organization Profile Page Styles
+   Theme: TeamHub Gold & Cream Luxury System
+   ============================================================ */
+
+.edit-org-page {
+  padding: 0;
+  color: #1c1d1d;
+  animation: fadeInEditOrg 0.22s ease-in-out;
+}
+
+@keyframes fadeInEditOrg {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Sticky Top Header Bar ── */
+.edit-org-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #e8e2d5;
+  border-radius: 16px;
+  padding: 1rem 1.4rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 18px rgba(196, 154, 85, 0.08);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.edit-org-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.edit-org-back-btn {
+  background: #f5efe3 !important;
+  color: #9b7229 !important;
+  border: 1px solid rgba(196, 154, 85, 0.25) !important;
+  font-weight: 600 !important;
+  font-size: 0.85rem !important;
+  padding: 0.5rem 0.95rem !important;
+  border-radius: 10px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.45rem !important;
+  transition: all 0.2s ease !important;
+}
+
+.edit-org-back-btn:hover {
+  background: #e9dec9 !important;
+  color: #785314 !important;
+  transform: translateX(-2px);
+}
+
+.edit-org-title-group h2 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #1c1d1d;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.edit-org-title-group p {
+  font-size: 0.82rem;
+  color: #77736b;
+  margin: 0.15rem 0 0 0;
+}
+
+.edit-org-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.edit-org-btn-discard {
+  background: #ffffff !important;
+  color: #55524c !important;
+  border: 1px solid #dcd7cc !important;
+  font-weight: 600 !important;
+  font-size: 0.85rem !important;
+  padding: 0.55rem 1.15rem !important;
+  border-radius: 10px !important;
+  transition: all 0.18s ease !important;
+}
+
+.edit-org-btn-discard:hover {
+  background: #f7f5f0 !important;
+  color: #1c1d1d !important;
+  border-color: #c49a55 !important;
+}
+
+.edit-org-btn-save {
+  background: linear-gradient(135deg, #c79d58 0%, #c49a55 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  font-weight: 700 !important;
+  font-size: 0.88rem !important;
+  padding: 0.55rem 1.4rem !important;
+  border-radius: 10px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  box-shadow: 0 4px 14px rgba(196, 154, 85, 0.28) !important;
+  transition: all 0.18s ease !important;
+}
+
+.edit-org-btn-save:hover {
+  background: linear-gradient(135deg, #b38845 0%, #9b7229 100%) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(196, 154, 85, 0.38) !important;
+}
+
+.edit-org-btn-save:disabled {
+  opacity: 0.7 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+/* ── Main Layout Container ── */
+.edit-org-body-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 991px) {
+  .edit-org-body-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Left Navigation Sidebar ── */
+.edit-org-nav-card {
+  background: #ffffff;
+  border: 1px solid #e8e2d5;
+  border-radius: 16px;
+  padding: 1.1rem;
+  box-shadow: 0 4px 16px rgba(28, 29, 29, 0.03);
+  position: sticky;
+  top: 85px;
+}
+
+.edit-org-nav-title {
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9b7229;
+  margin-bottom: 0.75rem;
+  padding-left: 0.4rem;
+}
+
+.edit-org-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.edit-org-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 11px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #45433e;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.16s ease;
+  width: 100%;
+}
+
+.edit-org-nav-item:hover {
+  background: #fdfbf7;
+  border-color: #f0e9dc;
+  color: #1c1d1d;
+}
+
+.edit-org-nav-item.active {
+  background: #f5efe3;
+  border-color: rgba(196, 154, 85, 0.4);
+  color: #9b7229;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(196, 154, 85, 0.1);
+}
+
+.edit-org-nav-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  transition: all 0.16s ease;
+}
+
+.edit-org-nav-item.active .edit-org-nav-icon {
+  background: #c49a55 !important;
+  color: #ffffff !important;
+}
+
+.edit-org-nav-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.edit-org-nav-heading {
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.edit-org-nav-subline {
+  font-size: 0.72rem;
+  color: #8c8880;
+}
+
+/* ── Live Preview Box in Sidebar ── */
+.edit-org-preview-card {
+  margin-top: 1.25rem;
+  background: #faf8f5;
+  border: 1px dashed #dcd7cc;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.edit-org-preview-header {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #9b7229;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.edit-org-preview-badge {
+  background: #e6f7eb;
+  color: #15803d;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+}
+
+.edit-org-preview-logo-name {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.5rem;
+}
+
+.edit-org-preview-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  object-fit: contain;
+  background: #ffffff;
+  border: 1px solid #e8e2d5;
+  padding: 2px;
+}
+
+.edit-org-preview-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #c49a55;
+  color: #ffffff;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+}
+
+.edit-org-preview-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1c1d1d;
+  line-height: 1.2;
+}
+
+.edit-org-preview-code {
+  font-size: 0.72rem;
+  font-family: monospace;
+  color: #77736b;
+}
+
+.edit-org-preview-meta {
+  font-size: 0.74rem;
+  color: #65625b;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  border-top: 1px solid #eae5db;
+  padding-top: 0.5rem;
+}
+
+/* ── Form Section Panels ── */
+.edit-org-content-card {
+  background: #ffffff;
+  border: 1px solid #e8e2d5;
+  border-radius: 16px;
+  padding: 1.75rem;
+  box-shadow: 0 4px 18px rgba(28, 29, 29, 0.03);
+  margin-bottom: 1.5rem;
+}
+
+.edit-org-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid #f0e9dc;
+}
+
+.edit-org-section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.edit-org-section-icon-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+}
+
+.edit-org-section-icon-badge.gold {
+  background: #f5efe3;
+  color: #c49a55;
+}
+
+.edit-org-section-icon-badge.purple {
+  background: #f5f3ff;
+  color: #8b5cf6;
+}
+
+.edit-org-section-icon-badge.blue {
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+.edit-org-section-icon-badge.orange {
+  background: #fff7ed;
+  color: #f97316;
+}
+
+.edit-org-section-icon-badge.teal {
+  background: #f0fdfa;
+  color: #0d9488;
+}
+
+.edit-org-section-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #1c1d1d;
+  margin: 0;
+}
+
+.edit-org-section-subtitle {
+  font-size: 0.8rem;
+  color: #77736b;
+  margin: 0.1rem 0 0 0;
+}
+
+/* ── Modern Form Controls ── */
+.edit-org-form-group {
+  margin-bottom: 1rem;
+}
+
+.edit-org-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #333230;
+  margin-bottom: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.edit-org-label-req {
+  color: #e11d48;
+  font-weight: 800;
+}
+
+.edit-org-input,
+.edit-org-select {
+  border-radius: 10px !important;
+  border: 1px solid #dcd7cc !important;
+  background-color: #ffffff !important;
+  color: #1c1d1d !important;
+  font-size: 0.875rem !important;
+  padding: 0.55rem 0.85rem !important;
+  transition: all 0.18s ease !important;
+  box-shadow: none !important;
+}
+
+.edit-org-input:focus,
+.edit-org-select:focus {
+  border-color: #c49a55 !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(196, 154, 85, 0.18) !important;
+}
+
+.edit-org-input::placeholder {
+  color: #a8a49c !important;
+  font-size: 0.84rem !important;
+}
+
+.edit-org-helper-text {
+  font-size: 0.74rem;
+  color: #8c8880;
+  margin-top: 0.3rem;
+  display: block;
+}
+
+/* ── Quick Chips / Suggestion Buttons ── */
+.edit-org-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.edit-org-chip-btn {
+  background: #f7f5f0;
+  border: 1px solid #e8e2d5;
+  border-radius: 20px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #55524c;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.edit-org-chip-btn:hover {
+  background: #f5efe3;
+  color: #9b7229;
+  border-color: #c49a55;
+}
+
+/* ── Logo Uploader Container ── */
+.edit-org-logo-zone {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  background: #faf8f5;
+  border: 1.5px dashed #dcd7cc;
+  border-radius: 12px;
+  padding: 1.15rem;
+  transition: all 0.2s ease;
+}
+
+.edit-org-logo-zone:hover {
+  border-color: #c49a55;
+  background: #fdfbf7;
+}
+
+.edit-org-logo-preview-box {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e8e2d5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(28, 29, 29, 0.04);
+}
+
+.edit-org-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 4px;
+}
+
+.edit-org-logo-placeholder {
+  color: #c49a55;
+  font-size: 1.75rem;
+}
+
+.edit-org-logo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  flex: 1;
+}
+
+.edit-org-logo-btn-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.edit-org-upload-btn {
+  background: #ffffff !important;
+  color: #1c1d1d !important;
+  border: 1px solid #dcd7cc !important;
+  font-weight: 600 !important;
+  font-size: 0.8rem !important;
+  padding: 0.4rem 0.9rem !important;
+  border-radius: 8px !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.16s ease;
+}
+
+.edit-org-upload-btn:hover {
+  background: #f5efe3 !important;
+  color: #9b7229 !important;
+  border-color: #c49a55 !important;
+}
+
+.edit-org-remove-btn {
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
+  border: 1px solid #fecaca !important;
+  font-weight: 600 !important;
+  font-size: 0.8rem !important;
+  padding: 0.4rem 0.8rem !important;
+  border-radius: 8px !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.edit-org-remove-btn:hover {
+  background: #fee2e2 !important;
+}
+
+/* ── Bottom Sticky Action Bar ── */
+.edit-org-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #e8e2d5;
+  border-radius: 16px;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 -4px 18px rgba(196, 154, 85, 0.06);
+  margin-top: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}

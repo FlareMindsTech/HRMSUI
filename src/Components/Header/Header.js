@@ -10,12 +10,22 @@ import {
   MdAdminPanelSettings,
   MdCheckCircle,
 } from 'react-icons/md';
+import { FaBuilding, FaCodeBranch, FaCheck } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
+import { useBranch } from '../../context/BranchContext';
 import { logoutUser } from '../../services/attendanceService';
 import './Header.css';
 
 function Header({ isMobile }) {
   const { user, isSystemAdmin, logoutUserLocal } = useAuth();
+  const {
+    organization,
+    branches,
+    accessLevel,
+    selectedBranchId,
+    setSelectedBranchId,
+    selectedBranchObj,
+  } = useBranch();
   const navigate = useNavigate();
 
   const [searchVal, setSearchVal] = useState('');
@@ -23,9 +33,13 @@ function Header({ isMobile }) {
   const [notifCount] = useState(3);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
+  const [showBranchMenu, setShowBranchMenu] = useState(false);
 
   const profileMenuRef = useRef(null);
   const notifMenuRef = useRef(null);
+  const branchMenuRef = useRef(null);
+
+  const orgDisplayName = organization?.organizationName || organization?.displayName || organization?.legalName || "Organization";
 
   const fullName = user?.firstName
     ? `${user.firstName} ${user.lastName || ''}`.trim()
@@ -46,6 +60,9 @@ function Header({ isMobile }) {
       }
       if (notifMenuRef.current && !notifMenuRef.current.contains(e.target)) {
         setShowNotifMenu(false);
+      }
+      if (branchMenuRef.current && !branchMenuRef.current.contains(e.target)) {
+        setShowBranchMenu(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -86,8 +103,139 @@ function Header({ isMobile }) {
         </div>
       )}
 
-      {/* ── Right: Notifications & Profile ── */}
+      {/* ── Right: Organization, Branch Switcher, Notifications & Profile ── */}
       <div className="header-right-actions">
+        {/* Organization Indicator */}
+        {organization && (
+          <div
+            className="header-org-chip"
+            onClick={() => (isSystemAdmin || user?.roleCode === 'OWNER') && navigate('/organisation')}
+            title={`Organization: ${orgDisplayName}`}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="header-org-icon-wrap">
+              <FaBuilding size={12} />
+            </div>
+            {!isMobile && (
+              <div className="header-org-info">
+                <span className="header-org-name">{orgDisplayName}</span>
+                {organization.organizationCode && (
+                  <span className="header-org-code">{organization.organizationCode}</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Dynamic Branch Selector Dropdown */}
+        {branches.length > 0 && (
+          <div className="header-menu-anchor" ref={branchMenuRef}>
+            {branches.length === 1 ? (
+              <div className="header-single-branch-chip" title={`Branch: ${branches[0].branchName}`}>
+                <FaCodeBranch className="text-success" size={12} />
+                <span className="header-branch-name text-truncate">
+                  {branches[0].branchName}
+                </span>
+              </div>
+            ) : (
+              <div
+                className={`header-branch-chip ${showBranchMenu ? 'header-branch-chip--active' : ''}`}
+                onClick={() => {
+                  setShowBranchMenu((p) => !p);
+                  setShowProfileMenu(false);
+                  setShowNotifMenu(false);
+                }}
+                role="button"
+                tabIndex={0}
+                title="Switch Active Branch Filter"
+              >
+                <div className="header-branch-icon-wrap">
+                  <FaCodeBranch size={12} />
+                </div>
+                <div className="header-branch-info">
+                  <span className="header-branch-label">BRANCH</span>
+                  <span className="header-branch-name text-truncate">
+                    {selectedBranchObj ? selectedBranchObj.branchName : 'All Branches'}
+                  </span>
+                </div>
+                <MdKeyboardArrowDown
+                  className={`header-branch-chevron ${showBranchMenu ? 'header-branch-chevron--open' : ''}`}
+                />
+              </div>
+            )}
+
+            {/* Branch Selector Dropdown Panel */}
+            {showBranchMenu && branches.length > 1 && (
+              <div className="header-dropdown-panel header-dropdown-panel--branch">
+                <div className="header-dropdown-header">
+                  <span className="header-dropdown-title">Branch Access & Filter</span>
+                  <span className="header-dropdown-tag">{branches.length} Available</span>
+                </div>
+
+                <div className="header-branch-list">
+                  {/* Option: All Accessible Branches (available for org-wide or multi-branch users) */}
+                  {(accessLevel === 'ORGANIZATION' || branches.length > 1) && (
+                    <div
+                      className={`header-branch-item ${!selectedBranchId ? 'header-branch-item--active' : ''}`}
+                      onClick={() => {
+                        setSelectedBranchId('');
+                        setShowBranchMenu(false);
+                      }}
+                    >
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="header-branch-item-icon">
+                          <FaBuilding size={12} />
+                        </div>
+                        <div>
+                          <div className="header-branch-item-name">All Accessible Branches</div>
+                          <div className="header-branch-item-sub">View aggregated data across branches</div>
+                        </div>
+                      </div>
+                      {!selectedBranchId && <FaCheck size={11} className="text-success ms-auto" />}
+                    </div>
+                  )}
+
+                  <div className="header-dropdown-divider" />
+
+                  {/* Individual Authorized Branches */}
+                  {branches.map((b) => {
+                    const bId = String(b._id || b.id);
+                    const isSelected = String(selectedBranchId) === bId;
+
+                    return (
+                      <div
+                        key={bId}
+                        className={`header-branch-item ${isSelected ? 'header-branch-item--active' : ''}`}
+                        onClick={() => {
+                          setSelectedBranchId(bId);
+                          setShowBranchMenu(false);
+                        }}
+                      >
+                        <div className="d-flex align-items-center gap-2 min-w-0">
+                          <div className={`header-branch-item-icon ${isSelected ? 'icon-active' : ''}`}>
+                            <FaCodeBranch size={12} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="header-branch-item-name text-truncate">{b.branchName}</div>
+                            <div className="header-branch-item-sub text-truncate">
+                              <code>{b.branchCode}</code> {b.city ? `• ${b.city}` : ''}
+                            </div>
+                          </div>
+                        </div>
+                        {isSelected && <FaCheck size={11} className="text-success ms-auto flex-shrink-0" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Separator */}
+        <div className="header-vertical-sep" />
+
         {/* Notification Bell */}
         <div className="header-menu-anchor" ref={notifMenuRef}>
           <button

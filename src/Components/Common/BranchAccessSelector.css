@@ -1,0 +1,155 @@
+/* ── Branch Access Selector Stylesheet ── */
+
+.branch-access-selector-card {
+  width: 100%;
+}
+
+.branch-access-header-wrap {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* ── Access Level Cards ── */
+.access-level-card {
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  user-select: none;
+}
+
+.access-level-card:hover:not(.disabled) {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  transform: translateY(-1px);
+}
+
+.access-level-card.selected {
+  border-color: #10b981;
+  background: #f0fdf4;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
+}
+
+.access-level-card.disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.access-level-radio {
+  padding-top: 2px;
+}
+
+.radio-indicator {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.radio-indicator.checked {
+  border-color: #10b981;
+}
+
+.radio-indicator.checked::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+/* ── Branch-specific Panel ── */
+.branch-specific-panel {
+  animation: fadeInDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  border-color: #e2e8f0 !important;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.branch-select-ctrl {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.branch-select-ctrl:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+/* ── Branch Checklist Items ── */
+.branch-checklist-scroll {
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.branch-checklist-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.branch-checklist-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.branch-check-item {
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.branch-check-item:hover:not(.disabled) {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.branch-check-item.checked {
+  border-color: #10b981;
+  background: #ffffff;
+}
+
+.branch-check-item.primary-item {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.branch-check-item.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.branch-custom-check .form-check-input {
+  cursor: pointer;
+  border-radius: 4px;
+  border-color: #94a3b8;
+  width: 16px;
+  height: 16px;
+}
+
+.branch-custom-check .form-check-input:checked {
+  background-color: #10b981;
+  border-color: #10b981;
+}

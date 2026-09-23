@@ -13,6 +13,7 @@ import {
   Alert,
   InputGroup,
   Pagination,
+  Nav,
 } from "react-bootstrap";
 import {
   FaUserShield,
@@ -35,6 +36,8 @@ import {
   FaSearch,
   FaTimes,
   FaLock,
+  FaBuilding,
+  FaCodeBranch,
 } from "react-icons/fa";
 import {
   fetchAllRoles,
@@ -51,11 +54,27 @@ import {
   updateAccountStatus,
   resetAccountCredentials,
 } from "../../services/rbacService";
+import { fetchUserAccess, updateUserAccess } from "../../services/accessService";
+import {
+  fetchOnboardings,
+  completeOnboarding,
+  activateEmployee,
+  provisionOnboardingAccount,
+} from "../../Api/Hr/hr";
 import { useAuth } from "../../context/AuthContext";
+import { useBranch } from "../../context/BranchContext";
+import BranchAccessSelector from "../../Components/Common/BranchAccessSelector";
 import "./UserManagement.css";
+
+const getInitials = (first, last) => {
+  const f = (first || "").trim().charAt(0).toUpperCase();
+  const l = (last || "").trim().charAt(0).toUpperCase();
+  return `${f}${l}` || "U";
+};
 
 function UserManagement() {
   const { isSystemAdmin, hasPermission, user: currentUser, refreshAuthContext } = useAuth();
+  const { organization, branches: contextBranches } = useBranch();
 
   // ── Tab State: Exclusive rendering ("users" or "roles") ──
   const [activeTab, setActiveTab] = useState("users");
@@ -98,6 +117,7 @@ function UserManagement() {
   // ── Manage Account Modal State ──
   const [showManageModal, setShowManageModal] = useState(false);
   const [managingUser, setManagingUser] = useState(null);
+  const [manageModalTab, setManageModalTab] = useState("account"); // "account" | "access"
   const [manageForm, setManageForm] = useState({
     roleId: "",
     isActive: true,
@@ -105,6 +125,14 @@ function UserManagement() {
     newPassword: "",
     showPass: false,
   });
+  const [manageAccessData, setManageAccessData] = useState({
+    organizationId: "",
+    accessLevel: "ORGANIZATION",
+    primaryBranchId: "",
+    branchIds: [],
+  });
+  const [manageAccessValidation, setManageAccessValidation] = useState({ isValid: true, errors: [] });
+  const [loadingAccess, setLoadingAccess] = useState(false);
 
   // ── Search & Filter State: Employee Directory ──
   const [userSearch, setUserSearch] = useState("");
@@ -307,8 +335,48 @@ function UserManagement() {
     setModalLoading(true);
     setErrorMessage("");
     try {
+      const empId = provisioningUser._id || provisioningUser.id;
+
+      // If employee is in onboarding lifecycle, attempt activation & provisioning via onboarding
+      if (provisioningUser.lifecycleStatus && provisioningUser.lifecycleStatus !== "ACTIVE") {
+        try {
+          const onboardingsRes = await fetchOnboardings();
+          const list = Array.isArray(onboardingsRes) ? onboardingsRes : (onboardingsRes?.data || []);
+          const match = list.find((o) => {
+            const oEmpId = o.employeeId?._id || o.employeeId || o.employee || o.userId;
+            return oEmpId === empId || o._id === empId;
+          });
+          if (match?._id) {
+            try {
+              await activateEmployee(match._id);
+            } catch (actErr) {
+              console.warn("Auto-activation attempt 1:", actErr);
+              try {
+                await completeOnboarding(match._id);
+                await activateEmployee(match._id);
+              } catch (compErr) {
+                console.warn("Auto-completion prior to activation:", compErr);
+              }
+            }
+            await provisionOnboardingAccount(match._id, {
+              roleId: provisionForm.roleId,
+              password: provisionForm.password,
+              isActive: provisionForm.isActive,
+            });
+            setSuccessMessage(
+              `Login account successfully provisioned for ${provisioningUser.firstName} ${provisioningUser.lastName}.`
+            );
+            setShowProvisionModal(false);
+            await loadData();
+            return;
+          }
+        } catch (onbErr) {
+          console.warn("Onboarding provision fallback:", onbErr);
+        }
+      }
+
       await provisionUserAccount({
-        employeeId: provisioningUser._id || provisioningUser.id,
+        employeeId: empId,
         roleId: provisionForm.roleId,
         password: provisionForm.password,
         isActive: provisionForm.isActive,
@@ -327,8 +395,9 @@ function UserManagement() {
   };
 
   // ── Open Manage Account Modal ──
-  const handleOpenManageModal = (employee) => {
+  const handleOpenManageModal = async (employee) => {
     setManagingUser(employee);
+    setManageModalTab("account");
     setManageForm({
       roleId: employee.role?._id || employee.role || "",
       isActive: employee.isActive !== false,
@@ -337,12 +406,58 @@ function UserManagement() {
       showPass: false,
     });
     setShowManageModal(true);
+
+    // Fetch user's current organization/branch access
+    const userId = employee._id || employee.id;
+    setLoadingAccess(true);
+    try {
+      const accessRes = await fetchUserAccess(userId);
+      const access = accessRes?.data || accessRes || {};
+      setManageAccessData({
+        organizationId: access.organizationId || employee.organizationId || (organization?._id || ""),
+        accessLevel: access.accessLevel || (employee.role?.roleCode === "OWNER" ? "ORGANIZATION" : "BRANCH"),
+        primaryBranchId: access.primaryBranchId || employee.primaryBranchId || "",
+        branchIds: Array.isArray(access.branchIds)
+          ? access.branchIds
+          : Array.isArray(employee.branchIds)
+          ? employee.branchIds
+          : Array.isArray(employee.branches)
+          ? employee.branches.map((b) => b._id || b)
+          : [],
+      });
+    } catch (err) {
+      console.warn("Failed to load user access config:", err);
+      setManageAccessData({
+        organizationId: employee.organizationId || (organization?._id || ""),
+        accessLevel: employee.accessLevel || (employee.role?.roleCode === "OWNER" ? "ORGANIZATION" : "BRANCH"),
+        primaryBranchId: employee.primaryBranchId || "",
+        branchIds: employee.branchIds || [],
+      });
+    } finally {
+      setLoadingAccess(false);
+    }
   };
 
   // ── Submit Manage Account Changes ──
   const handleManageSubmit = async (e) => {
     e.preventDefault();
     if (!managingUser) return;
+
+    // Validate branch access if BRANCH mode
+    if (manageAccessData.accessLevel === "BRANCH") {
+      if (!manageAccessData.primaryBranchId) {
+        setErrorMessage("Please select a Primary Branch for branch-specific access.");
+        return;
+      }
+      if (!manageAccessData.branchIds || manageAccessData.branchIds.length === 0) {
+        setErrorMessage("Please select at least one branch for branch-specific access.");
+        return;
+      }
+      if (!manageAccessData.branchIds.includes(manageAccessData.primaryBranchId)) {
+        setErrorMessage("Primary Branch must be included in the Accessible Branches list.");
+        return;
+      }
+    }
 
     setModalLoading(true);
     setErrorMessage("");
@@ -366,8 +481,16 @@ function UserManagement() {
         await resetAccountCredentials(userId, manageForm.newPassword.trim());
       }
 
+      // 4. Update Organization & Branch Access
+      await updateUserAccess(userId, {
+        organizationId: manageAccessData.organizationId || organization?._id,
+        accessLevel: manageAccessData.accessLevel,
+        primaryBranchId: manageAccessData.accessLevel === "ORGANIZATION" ? null : manageAccessData.primaryBranchId,
+        branchIds: manageAccessData.accessLevel === "ORGANIZATION" ? [] : manageAccessData.branchIds,
+      });
+
       setSuccessMessage(
-        `Account settings updated for ${managingUser.firstName} ${managingUser.lastName}.`
+        `Account and access settings updated for ${managingUser.firstName} ${managingUser.lastName}.`
       );
       setShowManageModal(false);
       await loadData();
@@ -820,11 +943,12 @@ function UserManagement() {
               <Table hover align="middle" className="mb-0 small user-mgmt-table">
                 <thead className="table-light extra-small text-uppercase text-muted">
                   <tr>
-                    <th className="ps-3 ps-md-4" style={{ width: "30%" }}>Employee</th>
-                    <th style={{ width: "15%" }}>Employee Code</th>
-                    <th style={{ width: "18%" }}>Department / Role</th>
-                    <th style={{ width: "15%" }}>Login Status</th>
-                    <th style={{ width: "12%" }}>Assigned Role</th>
+                    <th className="ps-3 ps-md-4" style={{ width: "24%" }}>Employee</th>
+                    <th style={{ width: "11%" }}>Employee Code</th>
+                    <th style={{ width: "14%" }}>Department / Role</th>
+                    <th style={{ width: "18%" }}>Branch Access</th>
+                    <th style={{ width: "12%" }}>Login Status</th>
+                    <th style={{ width: "11%" }}>Assigned Role</th>
                     <th className="text-end pe-3 pe-md-4" style={{ width: "10%" }}>Account Action</th>
                   </tr>
                 </thead>
@@ -836,6 +960,18 @@ function UserManagement() {
                       currentUser?.priority === 1 ||
                       (!isOwnerUser && (isSystemAdmin || hasPermission("user.manage_roles")));
                     const initials = getInitials(u.firstName, u.lastName);
+                    const isOrgWide = u.accessLevel === "ORGANIZATION" || (!u.accessLevel && isOwnerUser);
+                    const branchCount = Array.isArray(u.branchIds)
+                      ? u.branchIds.length
+                      : Array.isArray(u.branches)
+                      ? u.branches.length
+                      : 0;
+                    const pBranchName =
+                      u.primaryBranch?.branchName ||
+                      u.primaryBranchId?.branchName ||
+                      u.primaryBranchName ||
+                      contextBranches.find((b) => b._id === (u.primaryBranchId || u.primaryBranch))?.branchName ||
+                      "Branch";
 
                     return (
                       <tr key={u._id || u.id}>
@@ -860,6 +996,32 @@ function UserManagement() {
                         <td>
                           <div className="small text-dark fw-medium text-truncate">{u.department || "General"}</div>
                           <div className="extra-small text-muted text-truncate">{u.designation || "Employee"}</div>
+                        </td>
+                        <td>
+                          {isOrgWide ? (
+                            <div>
+                              <Badge bg="primary" className="bg-opacity-10 text-primary border border-primary-subtle rounded-pill px-2 py-0.5 fw-medium">
+                                <FaBuilding size={9} className="me-1" /> All Branches
+                              </Badge>
+                              <div className="extra-small text-muted mt-0.5">Org-wide Access</div>
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="d-flex align-items-center gap-1">
+                                <Badge bg="light" text="dark" className="border rounded-pill px-2 py-0.5 fw-medium text-truncate" style={{ maxWidth: "150px" }}>
+                                  <FaCodeBranch size={9} className="me-1 text-success" />
+                                  {pBranchName}
+                                </Badge>
+                              </div>
+                              {branchCount > 1 ? (
+                                <div className="extra-small text-muted mt-0.5">
+                                  +{branchCount - 1} additional branch{branchCount - 1 > 1 ? "es" : ""}
+                                </div>
+                              ) : (
+                                <div className="extra-small text-muted mt-0.5">Single Branch</div>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td className="text-nowrap">
                           {!hasAccount ? (
@@ -1237,105 +1399,163 @@ function UserManagement() {
       </Modal>
 
       {/* ========================================================
-          MODAL: MANAGE ACCOUNT (Role, Status, Password Reset)
+          MODAL: MANAGE ACCOUNT (Role, Status, Password Reset & Branch Access)
           ======================================================== */}
       <Modal
         show={showManageModal}
         onHide={() => setShowManageModal(false)}
+        size="lg"
         centered
         backdrop="static"
+        scrollable
       >
-        <Modal.Header closeButton className="border-0 pb-0">
-          <Modal.Title className="h6 fw-bold d-flex align-items-center gap-2">
-            <FaCog className="text-primary" /> Manage Employee Account
+        <Modal.Header closeButton className="border-bottom pb-3">
+          <Modal.Title className="h6 fw-bold d-flex align-items-center gap-2 mb-0">
+            <FaCog className="text-primary" /> Manage Employee Account & Access
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleManageSubmit}>
-          <Modal.Body className="p-4">
-            <div className="mb-3 p-3 bg-light rounded-3">
-              <h6 className="fw-bold mb-0 text-dark">
-                {managingUser?.firstName} {managingUser?.lastName}
-              </h6>
-              <div className="extra-small text-muted">
-                {managingUser?.email} | <code>{managingUser?.employeeCode}</code>
+          <Modal.Body className="p-3 p-md-4">
+            {/* User Info Header */}
+            <div className="mb-3 p-3 bg-light rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <div>
+                <h6 className="fw-bold mb-1 text-dark">
+                  {managingUser?.firstName} {managingUser?.lastName}
+                </h6>
+                <div className="extra-small text-muted">
+                  {managingUser?.email} | <code>{managingUser?.employeeCode || "N/A"}</code> | {managingUser?.department || "General"}
+                </div>
               </div>
+              <Badge bg="secondary" className="px-2.5 py-1.5 rounded-pill fw-medium extra-small">
+                {managingUser?.role?.roleName || "Employee"}
+              </Badge>
             </div>
 
-            {/* Role Reassignment */}
-            <Form.Group className="mb-3">
-              <Form.Label className="small fw-bold">Assigned Role</Form.Label>
-              <Form.Select
-                value={manageForm.roleId}
-                onChange={(e) => setManageForm({ ...manageForm, roleId: e.target.value })}
-                required
-                className="shadow-none"
-              >
-                <option value="">-- Choose Role --</option>
-                {assignableRoles.map((r) => (
-                  <option key={r._id} value={r._id}>
-                    {r.roleName} (Level {r.priority})
-                  </option>
-                ))}
-              </Form.Select>
-            </Form.Group>
-
-            {/* Status Checks */}
-            <Row className="g-2 mb-3">
-              <Col xs={6}>
-                <Form.Group>
-                  <Form.Label className="small fw-bold">Account Status</Form.Label>
-                  <Form.Select
-                    value={manageForm.isActive ? "true" : "false"}
-                    onChange={(e) => setManageForm({ ...manageForm, isActive: e.target.value === "true" })}
-                    className="shadow-none"
-                  >
-                    <option value="true">Active</option>
-                    <option value="false">Inactive / Suspended</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col xs={6}>
-                <Form.Group>
-                  <Form.Label className="small fw-bold">Access Lock</Form.Label>
-                  <Form.Select
-                    value={manageForm.isBlocked ? "true" : "false"}
-                    onChange={(e) => setManageForm({ ...manageForm, isBlocked: e.target.value === "true" })}
-                    className="shadow-none"
-                  >
-                    <option value="false">Normal Access</option>
-                    <option value="true">Blocked / Locked</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            {/* Reset Password */}
-            <Form.Group className="mb-2">
-              <Form.Label className="small fw-bold">Reset Password (Optional)</Form.Label>
-              <InputGroup>
-                <Form.Control
-                  type={manageForm.showPass ? "text" : "password"}
-                  value={manageForm.newPassword}
-                  onChange={(e) => setManageForm({ ...manageForm, newPassword: e.target.value })}
-                  placeholder="Leave blank to keep existing password"
-                  className="shadow-none"
-                />
-                <Button
-                  variant="outline-secondary"
-                  onClick={() => setManageForm((p) => ({ ...p, showPass: !p.showPass }))}
+            {/* Modal Navigation Tabs */}
+            <Nav variant="tabs" className="mb-3">
+              <Nav.Item>
+                <Nav.Link
+                  active={manageModalTab === "account"}
+                  onClick={() => setManageModalTab("account")}
+                  className="small fw-semibold py-2"
                 >
-                  {manageForm.showPass ? <FaEyeSlash /> : <FaEye />}
-                </Button>
-              </InputGroup>
-            </Form.Group>
+                  <FaKey className="me-1.5 text-primary" /> Account & Credentials
+                </Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link
+                  active={manageModalTab === "access"}
+                  onClick={() => setManageModalTab("access")}
+                  className="small fw-semibold py-2"
+                >
+                  <FaBuilding className="me-1.5 text-success" /> Organization & Branch Access
+                </Nav.Link>
+              </Nav.Item>
+            </Nav>
+
+            {/* TAB 1: Account & Credentials */}
+            {manageModalTab === "account" && (
+              <div>
+                {/* Role Reassignment */}
+                <Form.Group className="mb-3">
+                  <Form.Label className="small fw-bold">Assigned Security Role</Form.Label>
+                  <Form.Select
+                    value={manageForm.roleId}
+                    onChange={(e) => setManageForm({ ...manageForm, roleId: e.target.value })}
+                    required
+                    className="shadow-none"
+                  >
+                    <option value="">-- Choose Role --</option>
+                    {assignableRoles.map((r) => (
+                      <option key={r._id} value={r._id}>
+                        {r.roleName} (Level {r.priority})
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+
+                {/* Status Checks */}
+                <Row className="g-3 mb-3">
+                  <Col xs={6}>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold">Account Status</Form.Label>
+                      <Form.Select
+                        value={manageForm.isActive ? "true" : "false"}
+                        onChange={(e) => setManageForm({ ...manageForm, isActive: e.target.value === "true" })}
+                        className="shadow-none"
+                      >
+                        <option value="true">Active</option>
+                        <option value="false">Inactive / Suspended</option>
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col xs={6}>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold">Access Lock</Form.Label>
+                      <Form.Select
+                        value={manageForm.isBlocked ? "true" : "false"}
+                        onChange={(e) => setManageForm({ ...manageForm, isBlocked: e.target.value === "true" })}
+                        className="shadow-none"
+                      >
+                        <option value="false">Normal Access</option>
+                        <option value="true">Blocked / Locked</option>
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                {/* Reset Password */}
+                <Form.Group className="mb-2">
+                  <Form.Label className="small fw-bold">Reset Password (Optional)</Form.Label>
+                  <InputGroup>
+                    <Form.Control
+                      type={manageForm.showPass ? "text" : "password"}
+                      value={manageForm.newPassword}
+                      onChange={(e) => setManageForm({ ...manageForm, newPassword: e.target.value })}
+                      placeholder="Leave blank to keep existing password"
+                      className="shadow-none"
+                    />
+                    <Button
+                      variant="outline-secondary"
+                      onClick={() => setManageForm((p) => ({ ...p, showPass: !p.showPass }))}
+                    >
+                      {manageForm.showPass ? <FaEyeSlash /> : <FaEye />}
+                    </Button>
+                  </InputGroup>
+                </Form.Group>
+              </div>
+            )}
+
+            {/* TAB 2: Organization & Branch Access */}
+            {manageModalTab === "access" && (
+              <div>
+                {loadingAccess ? (
+                  <div className="text-center py-4">
+                    <Spinner animation="border" variant="success" size="sm" />
+                    <div className="extra-small text-muted mt-2">Loading user branch access settings...</div>
+                  </div>
+                ) : (
+                  <BranchAccessSelector
+                    value={manageAccessData}
+                    onChange={setManageAccessData}
+                    onValidationChange={setManageAccessValidation}
+                  />
+                )}
+              </div>
+            )}
           </Modal.Body>
 
-          <Modal.Footer className="border-0 pt-0">
+          <Modal.Footer className="border-top pt-3">
             <Button variant="light" size="sm" onClick={() => setShowManageModal(false)}>
               Cancel
             </Button>
-            <Button variant="primary" size="sm" type="submit" disabled={modalLoading}>
-              {modalLoading ? "Saving..." : "Save Account Changes"}
+            <Button
+              variant="primary"
+              size="sm"
+              type="submit"
+              disabled={modalLoading || (manageModalTab === "access" && !manageAccessValidation.isValid)}
+            >
+              {modalLoading ? "Saving..." : "Save Changes"}
             </Button>
           </Modal.Footer>
         </Form>

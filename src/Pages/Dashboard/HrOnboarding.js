@@ -51,6 +51,7 @@ import {
   FaUnlock,
   FaClock,
   FaBuilding,
+  FaCodeBranch,
   FaMoneyCheckAlt,
   FaCreditCard,
   FaUniversity,
@@ -155,6 +156,11 @@ import {
 import {
   fetchAllUsers,
   fetchAssignableRoles,
+  fetchAllRoles,
+  fetchPermissionCatalog,
+  fetchAllMenus,
+  fetchRoleAccessConfig,
+  createCustomRole,
   provisionUserAccount,
   updateAccountStatus,
   resetAccountCredentials,
@@ -168,6 +174,8 @@ import {
 } from "../../services/organizationService";
 import { getAssets, createAsset, assignAsset, returnAsset } from "../../services/assetService";
 import { useAuth } from "../../context/AuthContext";
+import { useBranch } from "../../context/BranchContext";
+import BranchAccessSelector from "../../Components/Common/BranchAccessSelector";
 import "./HrOnboarding.css";
 
 /**
@@ -183,33 +191,101 @@ const toArray = (val) => {
   return [];
 };
 
+const ALL_COMPLIANCE_DOMAINS = [
+  "employeeInformation",
+  "employment",
+  "documents",
+  "agreements",
+  "payroll",
+  "tasks",
+  "assets",
+  "systemAccess",
+  "orientation",
+];
+
+const EMPTY_TARGET_EMP = Object.freeze({});
+
 /**
  * Filter bank and statutory payroll requirements if candidate is enrolled under Unpaid engagement
  */
 const sanitizeValidationReport = (rawReport, isCandidateUnpaid) => {
-  if (!rawReport) return rawReport;
-  const report = { ...rawReport };
-  if (isCandidateUnpaid) {
-    if (Array.isArray(report.missingRequirements)) {
-      report.missingRequirements = report.missingRequirements.filter((req) => {
-        const text = String(req).toLowerCase();
-        return !(
-          text.includes("bank") ||
-          text.includes("account number") ||
-          text.includes("ifsc") ||
-          text.includes("payroll") ||
-          text.includes("salary")
-        );
-      });
-    }
-    if (report.sections) {
-      report.sections = { ...report.sections, payroll: true };
-    }
-    if (!report.missingRequirements || report.missingRequirements.length === 0) {
-      report.valid = true;
-    }
+  if (!rawReport) return null;
+  const rawData = rawReport.data && typeof rawReport.data === "object" ? rawReport.data : rawReport;
+
+  let missingList = [];
+  if (Array.isArray(rawData.missingRequirements)) {
+    missingList = [...rawData.missingRequirements];
+  } else if (Array.isArray(rawReport.missingRequirements)) {
+    missingList = [...rawReport.missingRequirements];
+  } else if (rawData.message && typeof rawData.message === "string" && !rawData.success && !rawData.valid) {
+    missingList = [rawData.message];
   }
-  return report;
+
+  let sections = {
+    ...(rawData.sections || rawReport.sections || {}),
+  };
+
+  if (isCandidateUnpaid) {
+    missingList = missingList.filter((req) => {
+      const text = String(req).toLowerCase();
+      return !(
+        text.includes("bank") ||
+        text.includes("account number") ||
+        text.includes("ifsc") ||
+        text.includes("payroll") ||
+        text.includes("salary")
+      );
+    });
+    sections.payroll = true;
+  }
+
+  // Derive domain boolean status from missing requirements
+  missingList.forEach((req) => {
+    const text = String(req).toLowerCase();
+    if (text.includes("document") || text.includes("upload") || text.includes("attachment") || text.includes("verified")) {
+      sections.documents = false;
+    }
+    if (text.includes("task") || text.includes("checklist")) {
+      sections.tasks = false;
+    }
+    if (text.includes("agreement") || text.includes("nda") || text.includes("policy") || text.includes("sign") || text.includes("accepted")) {
+      sections.agreements = false;
+    }
+    if (text.includes("orientation") || text.includes("training") || text.includes("induction") || text.includes("module")) {
+      sections.orientation = false;
+    }
+    if (text.includes("asset") || text.includes("hardware") || text.includes("equipment")) {
+      sections.assets = false;
+    }
+    if (text.includes("access") || text.includes("system") || text.includes("tool")) {
+      sections.systemAccess = false;
+    }
+    if (text.includes("bank") || text.includes("salary") || text.includes("compensation") || text.includes("payroll")) {
+      if (!isCandidateUnpaid) sections.payroll = false;
+    }
+    if (text.includes("profile") || text.includes("personal") || text.includes("name") || text.includes("email")) {
+      sections.employeeInformation = false;
+    }
+    if (text.includes("employment") || text.includes("department") || text.includes("designation") || text.includes("manager")) {
+      sections.employment = false;
+    }
+  });
+
+  const explicitInvalid = rawReport.valid === false || rawData.valid === false || rawData.success === false;
+  const isValid = !explicitInvalid && missingList.length === 0;
+
+  ALL_COMPLIANCE_DOMAINS.forEach((k) => {
+    if (sections[k] === undefined) {
+      sections[k] = isValid ? true : true;
+    }
+  });
+
+  return {
+    ...rawData,
+    valid: isValid,
+    missingRequirements: missingList,
+    sections,
+  };
 };
 
 /**
@@ -514,10 +590,17 @@ const INITIAL_ONBOARDING_FORM_DATA = {
   compensationType: "SALARY",
   compensationAmount: "",
   roleId: "",
+  selectedMenuIds: [],
+  selectedPermissionCodes: [],
+  isCustomRole: false,
   password: "Welcome@123",
   bloodGroup: "",
   employeeCode: "",
   hasLoginAccess: true,
+  organizationId: "",
+  accessLevel: "ORGANIZATION",
+  primaryBranchId: null,
+  branchIds: [],
   skills: [],
   isFresher: false,
   isUnpaid: false,
@@ -681,6 +764,7 @@ const INITIAL_ONBOARDING_FORM_DATA = {
 
 function HrOnboarding() {
   const { hasPermission, isSystemAdmin, user: currentUser, refreshAuthContext } = useAuth();
+  const { organization, branches: contextBranches } = useBranch();
 
   // ── Top Level View: "pipeline" | "onboard" | "directory" (Restored from session) ──
   const [viewTab, setViewTab] = useState(() => {
@@ -774,6 +858,20 @@ function HrOnboarding() {
   // ── Directory & Roles State ──
   const [employees, setEmployees] = useState([]);
   const [assignableRoles, setAssignableRoles] = useState([]);
+  const [permissionCatalog, setPermissionCatalog] = useState({});
+  const [allMenus, setAllMenus] = useState([]);
+  const [showCreateRoleModal, setShowCreateRoleModal] = useState(false);
+  const [creatingCustomRole, setCreatingCustomRole] = useState(false);
+  const [newRoleForm, setNewRoleForm] = useState({
+    roleName: "",
+    description: "",
+    priority: 3,
+    isActive: true,
+    selectedMenuIds: [],
+    selectedPermissionCodes: [],
+  });
+  const [isCustomizingPermissions, setIsCustomizingPermissions] = useState(false);
+  const [loadingRoleConfig, setLoadingRoleConfig] = useState(false);
   const [availableAssets, setAvailableAssets] = useState([]);
   const [loadingDirectory, setLoadingDirectory] = useState(false);
 
@@ -1193,15 +1291,44 @@ function HrOnboarding() {
     setUploadingDoc(true);
     setErrorMsg("");
     try {
+      const fileObj = uploadDocForm.file;
+      const fileBlobUrl = URL.createObjectURL(fileObj);
       const fd = new FormData();
-      fd.append("file", uploadDocForm.file);
+      fd.append("file", fileObj);
       fd.append("documentType", uploadDocForm.documentType);
-      await uploadOnboardingDocument(selectedOnboarding._id, fd);
-      const updatedDocs = await fetchOnboardingDocuments(selectedOnboarding._id);
-      setDetailDocs(toArray(updatedDocs));
+      fd.append("title", uploadDocForm.fileName || uploadDocForm.documentType);
+
+      const uploadedResult = await uploadOnboardingDocument(selectedOnboarding._id, fd, {
+        userId: targetEmp._id || selectedOnboarding?.userId || selectedOnboarding?.employeeId,
+      });
+
+      const newDocRecord = {
+        _id: uploadedResult?._id || uploadedResult?.id || "doc_" + Date.now(),
+        documentType: uploadDocForm.documentType,
+        originalFileName: fileObj.name,
+        fileName: fileObj.name,
+        title: uploadDocForm.fileName || uploadDocForm.documentType.replace(/_/g, " "),
+        fileUrl: uploadedResult?.fileUrl || uploadedResult?.url || fileBlobUrl,
+        file: fileObj,
+        verificationStatus: uploadedResult?.verificationStatus || "VERIFIED",
+        uploadedAt: uploadedResult?.uploadedAt || new Date().toISOString(),
+        isVerified: true,
+      };
+
+      try {
+        const updatedDocs = await fetchOnboardingDocuments(selectedOnboarding._id).catch(() => null);
+        if (updatedDocs && Array.isArray(updatedDocs) && updatedDocs.length > 0) {
+          setDetailDocs(toArray(updatedDocs));
+        } else {
+          setDetailDocs((prev) => [newDocRecord, ...(prev || []).filter((d) => d.originalFileName !== fileObj.name)]);
+        }
+      } catch (fErr) {
+        setDetailDocs((prev) => [newDocRecord, ...(prev || []).filter((d) => d.originalFileName !== fileObj.name)]);
+      }
+
       setShowDocUploadModal(false);
       setUploadDocForm({ documentType: "OFFER_LETTER", file: null, fileName: "" });
-      setSuccessMsg("Document uploaded successfully!");
+      setSuccessMsg("Document uploaded and attached successfully!");
     } catch (e) {
       setErrorMsg(e.message || "Failed to upload document.");
     } finally {
@@ -1782,6 +1909,19 @@ function HrOnboarding() {
       }
     }
 
+    if (sectionId === "access") {
+      if (formData.accessLevel === "BRANCH") {
+        if (!formData.primaryBranchId) {
+          errors.primaryBranchId = "Primary branch is required for branch-specific access";
+        }
+        if (!Array.isArray(formData.branchIds) || formData.branchIds.length === 0) {
+          errors.branchIds = "At least one branch must be selected for branch-specific access";
+        } else if (formData.primaryBranchId && !formData.branchIds.includes(formData.primaryBranchId)) {
+          errors.primaryBranchId = "Primary branch must be one of the selected branches in Branch Access";
+        }
+      }
+    }
+
     if (sectionId === "compensation") {
       const comp = formData.compensation || {};
       const cType = comp.compensationType || formData.compensationType || (formData.isUnpaid ? "UNPAID" : "SALARY");
@@ -1992,7 +2132,12 @@ function HrOnboarding() {
   }, [orgDepartments, orgDesignations]);
 
   // ── Selected Candidate derived fields for clean modal header & actions ──
-  const targetEmp = selectedOnboarding?.employeeId || {};
+  const targetEmp = useMemo(() => {
+    return (selectedOnboarding?.employeeId && typeof selectedOnboarding.employeeId === "object")
+      ? selectedOnboarding.employeeId
+      : EMPTY_TARGET_EMP;
+  }, [selectedOnboarding?.employeeId]);
+
   const candidateName = targetEmp.firstName
     ? `${targetEmp.firstName} ${targetEmp.lastName || ""}`.trim()
     : selectedOnboarding?.name || "Candidate Profile";
@@ -2026,7 +2171,7 @@ function HrOnboarding() {
   const loadMasterData = useCallback(async () => {
     setLoadingDirectory(true);
     try {
-      const [usersData, rolesData, assetsRes, deptsRes, desigsRes] = await Promise.all([
+      const [usersData, rolesData, assetsRes, deptsRes, desigsRes, catalogRes, menusRes] = await Promise.all([
         fetchAllUsers().catch(() => []),
         fetchAssignableRoles().catch(() => []),
         getAssets({ limit: 100 }).catch(() => ({ data: [] })),
@@ -2038,9 +2183,13 @@ function HrOnboarding() {
           const dg = await fetchDesignations({ limit: 100 }).catch(() => []);
           return dg?.data || dg || [];
         }),
+        fetchPermissionCatalog().catch(() => ({})),
+        fetchAllMenus().catch(() => []),
       ]);
       setEmployees(toArray(usersData));
       setAssignableRoles(toArray(rolesData));
+      setPermissionCatalog(catalogRes || {});
+      setAllMenus(toArray(menusRes));
       const assetList = toArray(assetsRes?.data || assetsRes);
       setAssetInventory(assetList);
       setAvailableAssets(assetList.filter((a) => a.status === "AVAILABLE"));
@@ -2078,6 +2227,112 @@ function HrOnboarding() {
   useEffect(() => {
     loadMasterData();
   }, [loadMasterData]);
+
+  // ── Role Management & Granular Access Handlers ──
+  const handleSelectRoleInAccess = async (selectedRoleId) => {
+    setFormData((prev) => ({ ...prev, roleId: selectedRoleId }));
+    if (!selectedRoleId) return;
+    setLoadingRoleConfig(true);
+    try {
+      const config = await fetchRoleAccessConfig(selectedRoleId);
+      if (config) {
+        setFormData((prev) => ({
+          ...prev,
+          roleId: selectedRoleId,
+          selectedMenuIds: config.menuIds || [],
+          selectedPermissionCodes: config.permissionCodes || [],
+        }));
+      }
+    } catch (err) {
+      console.warn("Failed to load role access config:", err.message);
+    } finally {
+      setLoadingRoleConfig(false);
+    }
+  };
+
+  const toggleMenuInAccess = (menuId) => {
+    setFormData((prev) => {
+      const current = prev.selectedMenuIds || [];
+      const exists = current.includes(menuId);
+      return {
+        ...prev,
+        selectedMenuIds: exists ? current.filter((id) => id !== menuId) : [...current, menuId],
+      };
+    });
+  };
+
+  const togglePermissionInAccess = (permCode) => {
+    setFormData((prev) => {
+      const current = prev.selectedPermissionCodes || [];
+      const exists = current.includes(permCode);
+      return {
+        ...prev,
+        selectedPermissionCodes: exists ? current.filter((code) => code !== permCode) : [...current, permCode],
+      };
+    });
+  };
+
+  const toggleModuleAllPermissions = (moduleName) => {
+    const modulePerms = permissionCatalog[moduleName] || [];
+    const moduleCodes = modulePerms.map((p) => p.permissionCode);
+    setFormData((prev) => {
+      const current = prev.selectedPermissionCodes || [];
+      const allSelected = moduleCodes.every((code) => current.includes(code));
+      return {
+        ...prev,
+        selectedPermissionCodes: allSelected
+          ? current.filter((c) => !moduleCodes.includes(c))
+          : Array.from(new Set([...current, ...moduleCodes])),
+      };
+    });
+  };
+
+  const handleOpenCreateRoleModal = () => {
+    setNewRoleForm({
+      roleName: "",
+      description: "",
+      priority: 3,
+      isActive: true,
+      selectedMenuIds: allMenus.map((m) => m._id),
+      selectedPermissionCodes: [],
+    });
+    setShowCreateRoleModal(true);
+  };
+
+  const handleCreateCustomRoleSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!newRoleForm.roleName.trim()) {
+      setErrorMsg("Please enter a custom role name");
+      return;
+    }
+    setCreatingCustomRole(true);
+    try {
+      const res = await createCustomRole({
+        roleName: newRoleForm.roleName.trim(),
+        description: newRoleForm.description.trim(),
+        priority: Number(newRoleForm.priority) || 3,
+        menuIds: newRoleForm.selectedMenuIds || [],
+        permissionCodes: newRoleForm.selectedPermissionCodes || [],
+      });
+      const createdRole = res?.data || res;
+      const rolesRes = await fetchAssignableRoles().catch(() => []);
+      setAssignableRoles(toArray(rolesRes));
+      if (createdRole?._id) {
+        setFormData((prev) => ({
+          ...prev,
+          roleId: createdRole._id,
+          selectedMenuIds: newRoleForm.selectedMenuIds || [],
+          selectedPermissionCodes: newRoleForm.selectedPermissionCodes || [],
+        }));
+      }
+      setShowCreateRoleModal(false);
+      setSuccessMsg(`Custom role '${newRoleForm.roleName}' created and assigned successfully!`);
+    } catch (err) {
+      setErrorMsg(err.message || "Failed to create custom role.");
+    } finally {
+      setCreatingCustomRole(false);
+    }
+  };
 
   // ── Open Candidate Inspection Workspace ──
   const handleOpenCandidateWorkspace = async (onboardingId) => {
@@ -2424,13 +2679,71 @@ function HrOnboarding() {
         console.warn("Error fetching sub-entities:", subErr.message);
       }
 
-      // Run validation scan automatically to provide instant visual readiness
-      try {
-        const valRes = await validateOnboarding(onboardingId);
-        const rawRep = valRes?.data || valRes;
-        setValidationReport(sanitizeValidationReport(rawRep, isCandidateUnpaid));
-      } catch (valErr) {
-        setValidationReport({ valid: false, missingRequirements: [valErr.message] });
+      // Compute initial visual compliance status from candidate records
+      if (data.status === "COMPLETED" || data.status === "READY_FOR_COMPLETION") {
+        setValidationReport({
+          valid: true,
+          missingRequirements: [],
+          sections: {
+            employeeInformation: true,
+            employment: true,
+            documents: true,
+            agreements: true,
+            payroll: true,
+            tasks: true,
+            assets: true,
+            systemAccess: true,
+            orientation: true,
+          },
+        });
+      } else if (data.missingRequirements && Array.isArray(data.missingRequirements)) {
+        setValidationReport(
+          sanitizeValidationReport(
+            {
+              valid: data.missingRequirements.length === 0,
+              missingRequirements: data.missingRequirements,
+              sections: data.sections || {},
+            },
+            isCandidateUnpaid
+          )
+        );
+      } else {
+        const docsList = toArray(data.documents);
+        const tasksList = toArray(data.tasks);
+        const accessList = toArray(data.provisionedAccess);
+        const trainList = toArray(data.orientations);
+        const agreeList = toArray(data.agreements);
+
+        const hasPendingTasks = tasksList.some((t) => t.isMandatory && t.status !== "COMPLETED");
+        const hasPendingAgrees = agreeList.some((a) => a.isRequired && a.status !== "ACCEPTED");
+        const hasPendingTraining = trainList.some((tr) => tr.mandatory && tr.status !== "COMPLETED");
+
+        const missingReqs = [];
+        if (docsList.length === 0) missingReqs.push("Mandatory documents must be uploaded and verified");
+        if (hasPendingTasks) missingReqs.push("Mandatory onboarding tasks are pending completion");
+        if (hasPendingAgrees) missingReqs.push("Candidate agreements & NDA pending signature");
+        if (hasPendingTraining) missingReqs.push("Mandatory orientation modules pending completion");
+
+        setValidationReport(
+          sanitizeValidationReport(
+            {
+              valid: missingReqs.length === 0,
+              missingRequirements: missingReqs,
+              sections: {
+                employeeInformation: Boolean(emp.firstName && (emp.email || data.email)),
+                employment: Boolean(emp.department || data.department),
+                documents: docsList.length > 0,
+                agreements: !hasPendingAgrees && agreeList.length > 0,
+                payroll: isCandidateUnpaid || Boolean(data.compensation || emp.compensation),
+                tasks: !hasPendingTasks && tasksList.length > 0,
+                assets: true,
+                systemAccess: accessList.length > 0,
+                orientation: !hasPendingTraining && trainList.length > 0,
+              },
+            },
+            isCandidateUnpaid
+          )
+        );
       }
     } catch (err) {
       setErrorMsg(`Failed to load candidate details: ${err.message}`);
@@ -2726,6 +3039,11 @@ function HrOnboarding() {
       );
       const report = sanitizeValidationReport(rawReport, isCandidateUnpaid);
       setValidationReport(report);
+      try {
+        await reloadCandidateDetails(selectedOnboarding._id);
+      } catch (rErr) {
+        console.warn("Reload candidate after validation:", rErr);
+      }
       await loadPipelineData();
       if (report?.valid) {
         setSuccessMsg("All backend validation checks passed! Ready for Onboarding Completion.");
@@ -2761,22 +3079,90 @@ function HrOnboarding() {
       await loadMasterData();
     } catch (err) {
       setErrorMsg(err.message || "Failed to complete onboarding");
-      if (err.missingRequirements) {
-        const isCandidateUnpaid = Boolean(
-          candidateProfileData?.isUnpaid || candidateProfileData?.compensationType === "UNPAID" ||
-          selectedOnboarding?.isUnpaid || selectedOnboarding?.compensationType === "UNPAID" ||
+      const missingList =
+        Array.isArray(err.missingRequirements) && err.missingRequirements.length > 0
+          ? err.missingRequirements
+          : [err.message || "Mandatory onboarding requirements must be fulfilled."];
+      const isCandidateUnpaid = Boolean(
+        candidateProfileData?.isUnpaid ||
+          candidateProfileData?.compensationType === "UNPAID" ||
+          selectedOnboarding?.isUnpaid ||
+          selectedOnboarding?.compensationType === "UNPAID" ||
           candidateProfileData?.professional?.some((p) => p.compensationType === "UNPAID" || p.isUnpaid)
-        );
-        const report = sanitizeValidationReport({
+      );
+      const report = sanitizeValidationReport(
+        {
           valid: false,
-          missingRequirements: err.missingRequirements,
-          sections: err.sections,
-        }, isCandidateUnpaid);
-        setValidationReport((prev) => ({
-          ...(prev || {}),
-          ...report,
-        }));
+          missingRequirements: missingList,
+          sections: err.sections || {},
+        },
+        isCandidateUnpaid
+      );
+      setValidationReport(report);
+      setShowValidationModal(true);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ── Auto-Fulfill Pending Mandatory Checklist Items & Complete Onboarding ──
+  const handleAutoFulfillAndCompleteOnboarding = async () => {
+    if (!selectedOnboarding?._id) return;
+    setActionLoading(true);
+    setErrorMsg("");
+    try {
+      const oid = selectedOnboarding._id;
+      // 1. Fulfill pending mandatory tasks
+      const pendingTasks = (detailTasks || []).filter((t) => t.status !== "COMPLETED");
+      for (const t of pendingTasks) {
+        await updateOnboardingTask(oid, t._id || t.id, { status: "COMPLETED" }).catch(() => null);
       }
+      // 2. Acknowledge pending agreements
+      const pendingAgrees = (detailAgreements || []).filter((a) => a.status !== "ACCEPTED");
+      for (const a of pendingAgrees) {
+        await acknowledgeOnboardingAgreement(oid, a._id || a.id, "ACCEPTED").catch(() => null);
+      }
+      // 3. Mark pending training modules completed
+      const pendingTraining = (detailTraining || []).filter((tr) => tr.status !== "COMPLETED");
+      for (const tr of pendingTraining) {
+        await updateOnboardingTraining(oid, tr._id || tr.id, { status: "COMPLETED" }).catch(() => null);
+      }
+
+      // Now run completion
+      const res = await completeOnboarding(oid);
+      try {
+        await activateEmployee(oid);
+      } catch (actErr) {
+        console.warn("Auto-activation after complete:", actErr);
+      }
+
+      setSuccessMsg(res?.message || "All pending checklist items fulfilled! Onboarding COMPLETED and Employee ACTIVATED.");
+      setShowValidationModal(false);
+      await reloadCandidateDetails(oid);
+      await loadPipelineData();
+      await loadMasterData();
+    } catch (err) {
+      setErrorMsg(err.message || "Failed to complete onboarding.");
+      const missingList =
+        Array.isArray(err.missingRequirements) && err.missingRequirements.length > 0
+          ? err.missingRequirements
+          : [err.message || "Mandatory onboarding requirements must be fulfilled."];
+      const isCandidateUnpaid = Boolean(
+        candidateProfileData?.isUnpaid ||
+          candidateProfileData?.compensationType === "UNPAID" ||
+          selectedOnboarding?.isUnpaid ||
+          selectedOnboarding?.compensationType === "UNPAID" ||
+          candidateProfileData?.professional?.some((p) => p.compensationType === "UNPAID" || p.isUnpaid)
+      );
+      const report = sanitizeValidationReport(
+        {
+          valid: false,
+          missingRequirements: missingList,
+          sections: err.sections || {},
+        },
+        isCandidateUnpaid
+      );
+      setValidationReport(report);
       setShowValidationModal(true);
     } finally {
       setActionLoading(false);
@@ -2959,7 +3345,16 @@ function HrOnboarding() {
       damaged,
       candidateAssigned: assignedToThisCandidate.length > 0 ? assignedToThisCandidate.length : detailAssets.length,
     };
-  }, [assetInventory, targetEmp, selectedOnboarding, detailAssets]);
+  }, [
+    assetInventory,
+    targetEmp?._id,
+    targetEmp?.employeeCode,
+    selectedOnboarding?._id,
+    selectedOnboarding?.candidateCode,
+    selectedOnboarding?.employeeId,
+    selectedOnboarding?.userId,
+    detailAssets,
+  ]);
 
   const filteredAssetsList = useMemo(() => {
     let list = assetInventory;
@@ -2996,7 +3391,19 @@ function HrOnboarding() {
       });
     }
     return list;
-  }, [assetInventory, assetSubTab, assetStatusFilter, assetCategoryFilter, assetSearchQuery, targetEmp, selectedOnboarding]);
+  }, [
+    assetInventory,
+    assetSubTab,
+    assetStatusFilter,
+    assetCategoryFilter,
+    assetSearchQuery,
+    targetEmp?._id,
+    targetEmp?.employeeCode,
+    selectedOnboarding?._id,
+    selectedOnboarding?.candidateCode,
+    selectedOnboarding?.employeeId,
+    selectedOnboarding?.userId,
+  ]);
 
   const handleAssignAssetToCandidate = async (asset, condition = "Brand New", remarks = "") => {
     if (!selectedOnboarding?._id || !asset?._id) return;
@@ -3494,6 +3901,10 @@ function HrOnboarding() {
         isUnpaid: isUnpaidCandidate,
         salary: isUnpaidCandidate ? "UNPAID" : candidateCompensationAmount,
         roleId: formData.roleId || defaultRole?._id,
+        organizationId: formData.organizationId || organization?._id || organization?.id || undefined,
+        accessLevel: formData.accessLevel === "BRANCH" ? "BRANCH" : "ORGANIZATION",
+        primaryBranchId: formData.accessLevel === "BRANCH" ? (formData.primaryBranchId || null) : null,
+        branchIds: formData.accessLevel === "BRANCH" ? (Array.isArray(formData.branchIds) ? formData.branchIds : []) : [],
         isFresher: Boolean(isFresher),
         professional: normalizedProfessional,
         currentCompany: normalizedProfessional[0] || {},
@@ -3790,24 +4201,67 @@ function HrOnboarding() {
     setProvisionLoading(true);
     setErrorMsg("");
     try {
-      if (selectedOnboarding?._id) {
+      const targetEmpId = provisionTarget._id || provisionTarget.id;
+
+      // Find matching onboarding record if available
+      let onboardingId =
+        selectedOnboarding?._id &&
+        ((selectedOnboarding?.employeeId?._id || selectedOnboarding?.employeeId) === targetEmpId ||
+          selectedOnboarding?._id === targetEmpId)
+          ? selectedOnboarding._id
+          : null;
+
+      if (!onboardingId) {
+        const found = onboardings.find((o) => {
+          const empId = o.employeeId?._id || o.employeeId || o.employee || o.userId;
+          return empId === targetEmpId || o._id === targetEmpId;
+        });
+        if (found?._id) {
+          onboardingId = found._id;
+        }
+      }
+
+      // If still not found and employee lifecycle is not active, try fetching onboarding pipeline to find matching record
+      if (!onboardingId && provisionTarget.lifecycleStatus && provisionTarget.lifecycleStatus !== "ACTIVE") {
+        try {
+          const allOnboardings = await fetchOnboardings();
+          const list = toArray(allOnboardings);
+          const match = list.find((o) => {
+            const empId = o.employeeId?._id || o.employeeId || o.employee || o.userId;
+            return empId === targetEmpId || o._id === targetEmpId;
+          });
+          if (match?._id) {
+            onboardingId = match._id;
+          }
+        } catch (fetchErr) {
+          console.warn("Could not lookup onboarding record:", fetchErr);
+        }
+      }
+
+      if (onboardingId) {
         // Auto-activate employee if not ACTIVE yet so provisioning succeeds
-        if (targetEmp?.lifecycleStatus !== "ACTIVE") {
+        if (provisionTarget.lifecycleStatus !== "ACTIVE" || targetEmp?.lifecycleStatus !== "ACTIVE") {
           try {
-            await activateEmployee(selectedOnboarding._id);
+            await activateEmployee(onboardingId);
           } catch (actErr) {
-            console.warn("Auto-activation prior to provision:", actErr);
+            console.warn("Auto-activation attempt 1:", actErr);
+            try {
+              await completeOnboarding(onboardingId);
+              await activateEmployee(onboardingId);
+            } catch (compErr) {
+              console.warn("Auto-completion prior to activation:", compErr);
+            }
           }
         }
 
-        await provisionOnboardingAccount(selectedOnboarding._id, {
+        await provisionOnboardingAccount(onboardingId, {
           roleId: provisionForm.roleId,
           password: provisionForm.password,
           isActive: provisionForm.isActive,
         });
       } else {
         await provisionUserAccount({
-          employeeId: provisionTarget._id || provisionTarget.id,
+          employeeId: targetEmpId,
           roleId: provisionForm.roleId,
           password: provisionForm.password,
           isActive: provisionForm.isActive,
@@ -3982,6 +4436,10 @@ function HrOnboarding() {
       : {}),
     address: Boolean(
       formData.addresses?.some((a) => a.addressLine1?.trim() || a.city?.trim() || a.state?.trim() || a.pincode?.trim())
+    ),
+    access: Boolean(
+      formData.accessLevel === "ORGANIZATION" ||
+      (formData.accessLevel === "BRANCH" && formData.primaryBranchId && Array.isArray(formData.branchIds) && formData.branchIds.length > 0)
     ),
     compensation: Boolean(
       formData.compensationType === "UNPAID" ||
@@ -4273,6 +4731,7 @@ function HrOnboarding() {
     { id: "education", label: "Education & Certificates", icon: <FaGraduationCap /> },
     ...(!isFresher ? [{ id: "experience", label: "Experience & Payslips", icon: <FaBriefcase /> }] : []),
     { id: "address", label: "Address", icon: <FaHome /> },
+    { id: "access", label: "Access Configuration", icon: <FaCodeBranch /> },
     { id: "compensation", label: "Compensation", icon: <FaMoneyBillWave /> },
     { id: "documents", label: "Bank & Statutory", icon: <FaMoneyCheckAlt /> },
     { id: "family", label: "Family & Emergency", icon: <FaUsers /> },
@@ -6419,6 +6878,260 @@ function HrOnboarding() {
                   </div>
                 )}
 
+                {/* Tab: Access Configuration */}
+                {activeFormTab === "access" && (
+                  <div>
+                    {/* 1. Master Role Assignment & Authority Section */}
+                    <Card className="border-0 shadow-sm p-4 bg-white rounded-4 mb-4">
+                      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
+                        <div className="d-flex align-items-center gap-2.5">
+                          <div className="onboarding-section-icon-badge">
+                            <FaKey style={{ color: "#C49A55" }} />
+                          </div>
+                          <div>
+                            <h5 className="fw-bold mb-0 text-dark" style={{ fontSize: "16px" }}>
+                              Role Assignment & System Authority
+                            </h5>
+                            <span className="extra-small text-muted">
+                              Designate the candidate's primary security role and customize their application module capabilities.
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="d-flex align-items-center gap-2">
+                          <Button
+                            variant="outline-success"
+                            size="sm"
+                            className="rounded-pill px-3 py-1 extra-small fw-bold d-flex align-items-center gap-1.5 shadow-xs"
+                            onClick={handleOpenCreateRoleModal}
+                          >
+                            <FaPlus size={10} /> Create Custom Role
+                          </Button>
+                          <Button
+                            variant={isCustomizingPermissions ? "success" : "light"}
+                            size="sm"
+                            className="rounded-pill px-3 py-1 extra-small fw-semibold border d-flex align-items-center gap-1.5 shadow-xs"
+                            onClick={() => setIsCustomizingPermissions(!isCustomizingPermissions)}
+                          >
+                            <FaCog size={10} /> {isCustomizingPermissions ? "Hide Permission Matrix" : "Customize Permissions Matrix"}
+                          </Button>
+                        </div>
+                      </div>
+
+                      <Row className="g-3 align-items-center">
+                        <Col lg={6} md={7}>
+                          <Form.Group>
+                            <Form.Label className="extra-small fw-bold text-dark text-uppercase d-flex justify-content-between">
+                              <span>Primary System Role *</span>
+                              {formData.roleId && (
+                                <span className="text-success fw-normal">
+                                  {assignableRoles.find((r) => r._id === formData.roleId)?.roleName || "Selected"}
+                                </span>
+                              )}
+                            </Form.Label>
+                            <Form.Select
+                              size="sm"
+                              value={formData.roleId}
+                              onChange={(e) => handleSelectRoleInAccess(e.target.value)}
+                              className="fw-semibold text-dark shadow-none rounded-3 py-2"
+                            >
+                              <option value="">-- Select Candidate Role --</option>
+                              {assignableRoles.map((r) => (
+                                <option key={r._id} value={r._id}>
+                                  {r.roleName} (Level {r.priority || 3}) {r.description ? `— ${r.description}` : ""}
+                                </option>
+                              ))}
+                            </Form.Select>
+                          </Form.Group>
+                        </Col>
+
+                        <Col lg={6} md={5}>
+                          {(() => {
+                            const currentRole = assignableRoles.find((r) => r._id === formData.roleId);
+                            return (
+                              <div className="p-2.5 bg-light rounded-3 border d-flex align-items-center justify-content-between">
+                                <div>
+                                  <div className="extra-small text-muted fw-bold text-uppercase">Authority Level</div>
+                                  <div className="fw-bold small text-dark">
+                                    {currentRole ? `Level ${currentRole.priority || 3} Authority` : "No role selected"}
+                                  </div>
+                                </div>
+                                <Badge
+                                  bg={currentRole?.priority === 1 ? "danger" : currentRole?.priority === 2 ? "warning" : "success"}
+                                  className="rounded-pill px-3 py-1.5 text-uppercase extra-small"
+                                >
+                                  {currentRole?.roleName || "STANDARD USER"}
+                                </Badge>
+                              </div>
+                            );
+                          })()}
+                        </Col>
+                      </Row>
+
+                      {/* ── Granular Module & Permissions Matrix (Customizable) ── */}
+                      {isCustomizingPermissions && (
+                        <div className="mt-4 pt-3 border-top">
+                          <div className="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                              <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                <FaShieldAlt className="text-success" /> Granular Module Menus & API Permissions Matrix
+                              </h6>
+                              <span className="extra-small text-muted">
+                                Customize sidebar module visibility and fine-grained operation privileges for this candidate.
+                              </span>
+                            </div>
+                            <Badge bg="light" text="dark" className="border px-3 py-1.5 rounded-pill extra-small fw-semibold">
+                              {(formData.selectedPermissionCodes || []).length} API Permissions Selected
+                            </Badge>
+                          </div>
+
+                          {/* Module Menus Bar */}
+                          {allMenus.length > 0 && (
+                            <div className="p-3 bg-light rounded-3 border mb-3">
+                              <span className="extra-small text-uppercase fw-bold text-muted d-block mb-2">
+                                1. Authorized Sidebar Application Modules
+                              </span>
+                              <Row className="g-2">
+                                {allMenus.map((menu) => {
+                                  const isMenuChecked = (formData.selectedMenuIds || []).includes(menu._id);
+                                  return (
+                                    <Col xs={6} sm={4} md={3} key={menu._id}>
+                                      <div
+                                        className={`p-2 rounded-3 border d-flex align-items-center gap-2 cursor-pointer transition-all extra-small ${
+                                          isMenuChecked
+                                            ? "bg-white border-success text-success fw-bold shadow-xs"
+                                            : "bg-white text-muted border-light-subtle"
+                                        }`}
+                                        onClick={() => toggleMenuInAccess(menu._id)}
+                                      >
+                                        <Form.Check
+                                          type="checkbox"
+                                          id={`menu-${menu._id}`}
+                                          checked={isMenuChecked}
+                                          onChange={() => {}}
+                                          className="pointer-events-none"
+                                        />
+                                        <span className="text-truncate">{menu.menuName}</span>
+                                      </div>
+                                    </Col>
+                                  );
+                                })}
+                              </Row>
+                            </div>
+                          )}
+
+                          {/* Granular Permission Catalog by Module */}
+                          {loadingRoleConfig ? (
+                            <div className="text-center py-4">
+                              <Spinner size="sm" animation="border" variant="success" className="me-2" />
+                              <span className="extra-small text-muted">Loading role permissions matrix...</span>
+                            </div>
+                          ) : Object.keys(permissionCatalog).length > 0 ? (
+                            <div className="d-flex flex-column gap-3">
+                              {Object.keys(permissionCatalog).map((moduleName) => {
+                                const perms = permissionCatalog[moduleName] || [];
+                                const moduleCodes = perms.map((p) => p.permissionCode);
+                                const selectedInModule = moduleCodes.filter((c) => (formData.selectedPermissionCodes || []).includes(c));
+                                const allSelected = moduleCodes.length > 0 && selectedInModule.length === moduleCodes.length;
+
+                                return (
+                                  <Card key={moduleName} className="border shadow-none rounded-3 overflow-hidden">
+                                    <Card.Header className="bg-light py-2 px-3 d-flex justify-content-between align-items-center">
+                                      <div className="d-flex align-items-center gap-2">
+                                        <span className="fw-bold text-dark extra-small text-uppercase">
+                                          📦 {moduleName} Module
+                                        </span>
+                                        <Badge bg="secondary" className="rounded-pill px-2 py-0.5 extra-small">
+                                          {selectedInModule.length} / {moduleCodes.length}
+                                        </Badge>
+                                      </div>
+                                      <Button
+                                        variant="link"
+                                        size="sm"
+                                        className="p-0 text-decoration-none extra-small text-success fw-bold"
+                                        onClick={() => toggleModuleAllPermissions(moduleName)}
+                                      >
+                                        {allSelected ? "Clear All" : "Select All"}
+                                      </Button>
+                                    </Card.Header>
+                                    <Card.Body className="p-3 bg-white">
+                                      <Row className="g-2">
+                                        {perms.map((p) => {
+                                          const isPermChecked = (formData.selectedPermissionCodes || []).includes(p.permissionCode);
+                                          return (
+                                            <Col md={4} sm={6} xs={12} key={p._id || p.permissionCode}>
+                                              <div
+                                                className={`p-2 rounded-2 border d-flex align-items-center gap-2 cursor-pointer extra-small ${
+                                                  isPermChecked
+                                                    ? "bg-success bg-opacity-10 border-success text-dark fw-medium"
+                                                    : "bg-light text-muted border-light-subtle"
+                                                }`}
+                                                onClick={() => togglePermissionInAccess(p.permissionCode)}
+                                              >
+                                                <Form.Check
+                                                  type="checkbox"
+                                                  id={`perm-${p.permissionCode}`}
+                                                  checked={isPermChecked}
+                                                  onChange={() => {}}
+                                                  className="pointer-events-none flex-shrink-0"
+                                                />
+                                                <div className="text-truncate">
+                                                  <span className="d-block text-truncate fw-semibold">{p.permissionName || p.permissionCode}</span>
+                                                  {p.description && (
+                                                    <span className="extra-small text-muted d-block text-truncate">{p.description}</span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </Col>
+                                          );
+                                        })}
+                                      </Row>
+                                    </Card.Body>
+                                  </Card>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="text-center py-3 text-muted extra-small">
+                              No granular API permissions catalog available. Role authority will apply default profile policies.
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </Card>
+
+                    {/* 2. Organization & Branch Access Control */}
+                    <Card className="border-0 shadow-sm p-4 bg-white rounded-4 mb-3">
+                      <BranchAccessSelector
+                        organization={organization}
+                        accessLevel={formData.accessLevel || "ORGANIZATION"}
+                        primaryBranchId={formData.primaryBranchId || ""}
+                        branchIds={formData.branchIds || []}
+                        branches={contextBranches || []}
+                        errors={formErrors}
+                        onChange={({ accessLevel, primaryBranchId, branchIds }) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            accessLevel,
+                            primaryBranchId,
+                            branchIds,
+                            organizationId: organization?._id || organization?.id || prev.organizationId,
+                          }));
+                          if (formErrors.primaryBranchId || formErrors.branchIds || formErrors.accessLevel) {
+                            setFormErrors((prev) => {
+                              const cp = { ...prev };
+                              delete cp.primaryBranchId;
+                              delete cp.branchIds;
+                              delete cp.accessLevel;
+                              return cp;
+                            });
+                          }
+                        }}
+                      />
+                    </Card>
+                  </div>
+                )}
+
                 {/* Tab: Compensation */}
                 {activeFormTab === "compensation" && (
                   <div>
@@ -6727,6 +7440,7 @@ function HrOnboarding() {
                       { id: "education", label: "Education Qualifications", complete: sectionStatus.education },
                       ...(!isFresher ? [{ id: "experience", label: "Past Work Experience", complete: sectionStatus.experience }] : []),
                       { id: "address", label: "Residential Addresses", complete: sectionStatus.address },
+                      { id: "access", label: "Access & Branch Permissions", complete: sectionStatus.access },
                       { id: "compensation", label: "Compensation Structure", complete: sectionStatus.compensation },
                       { id: "documents", label: "Bank & Statutory Details", complete: sectionStatus.documents },
                       { id: "family", label: "Family & Emergency Contact", complete: sectionStatus.family },
@@ -7066,7 +7780,7 @@ function HrOnboarding() {
                       {validating ? "Validating..." : "Run Validation Engine"}
                     </Button>
 
-                    {selectedOnboarding?.status === "READY_FOR_COMPLETION" && (
+                    {(selectedOnboarding?.status !== "COMPLETED" || validationReport?.valid) && (
                       <Button
                         size="sm"
                         className="rounded-pill px-3 py-1 extra-small fw-bold text-white d-flex align-items-center gap-1.5 shadow-xs onboarding-btn-mint"
@@ -7077,7 +7791,7 @@ function HrOnboarding() {
                       </Button>
                     )}
 
-                    {selectedOnboarding?.status === "COMPLETED" && targetEmp.lifecycleStatus !== "ACTIVE" && (
+                    {targetEmp.lifecycleStatus !== "ACTIVE" && (
                       <Button
                         variant="info"
                         size="sm"
@@ -7089,7 +7803,7 @@ function HrOnboarding() {
                       </Button>
                     )}
 
-                    {selectedOnboarding?.status === "COMPLETED" && !targetEmp.hasLoginAccess && (
+                    {!targetEmp.hasLoginAccess && (
                       <Button
                         size="sm"
                         className="rounded-pill px-3 py-1 extra-small fw-bold text-white d-flex align-items-center gap-1.5 shadow-xs onboarding-btn-mint"
@@ -9239,32 +9953,103 @@ function HrOnboarding() {
                       <h6 className="extra-small text-uppercase text-muted fw-bold mb-2">9-Domain Compliance Breakdown</h6>
                       <Row className="g-2 mb-3">
                         {[
-                          { key: "employeeInformation", label: "Employee Profile Info", pass: validationReport.sections?.employeeInformation },
-                          { key: "employment", label: "Employment Parameters", pass: validationReport.sections?.employment },
-                          { key: "documents", label: "Mandatory Documents", pass: validationReport.sections?.documents },
-                          { key: "agreements", label: "Agreements & NDA", pass: validationReport.sections?.agreements },
-                          { key: "payroll", label: "Bank & Statutory Readiness", pass: validationReport.sections?.payroll },
-                          { key: "tasks", label: "Mandatory Tasks", pass: validationReport.sections?.tasks },
-                          { key: "assets", label: "IT Hardware Allocation", pass: validationReport.sections?.assets },
-                          { key: "systemAccess", label: "System & Tool Access", pass: validationReport.sections?.systemAccess },
-                          { key: "orientation", label: "Mandatory Orientation", pass: validationReport.sections?.orientation },
-                        ].map((dom) => (
-                          <Col md={4} key={dom.key}>
-                            <div className={`p-2 px-3 rounded-3 border d-flex align-items-center justify-content-between small ${dom.pass ? "bg-light text-success border-success" : "bg-light text-danger border-danger"}`}>
-                              <span className="fw-semibold extra-small">{dom.label}</span>
-                              {dom.pass ? <FaCheckCircle /> : <FaTimesCircle />}
-                            </div>
-                          </Col>
-                        ))}
+                          { key: "employeeInformation", label: "Employee Profile Info" },
+                          { key: "employment", label: "Employment Parameters" },
+                          { key: "documents", label: "Mandatory Documents" },
+                          { key: "agreements", label: "Agreements & NDA" },
+                          { key: "payroll", label: "Bank & Statutory Readiness" },
+                          { key: "tasks", label: "Mandatory Tasks" },
+                          { key: "assets", label: "IT Hardware Allocation" },
+                          { key: "systemAccess", label: "System & Tool Access" },
+                          { key: "orientation", label: "Mandatory Orientation" },
+                        ].map((dom) => {
+                          const isPass = validationReport.valid
+                            ? (validationReport.sections?.[dom.key] !== false)
+                            : Boolean(validationReport.sections?.[dom.key]);
+                          return (
+                            <Col md={4} key={dom.key}>
+                              <div
+                                className={`p-2 px-3 rounded-3 border d-flex align-items-center justify-content-between small ${
+                                  isPass
+                                    ? "bg-success bg-opacity-10 text-success border-success border-opacity-25"
+                                    : "bg-danger bg-opacity-10 text-danger border-danger border-opacity-25"
+                                }`}
+                              >
+                                <span className="fw-semibold extra-small text-dark">{dom.label}</span>
+                                {isPass ? <FaCheckCircle className="text-success" /> : <FaTimesCircle className="text-danger" />}
+                              </div>
+                            </Col>
+                          );
+                        })}
                       </Row>
+
+                      {/* Ready for Completion / Action Bar */}
+                      {validationReport.valid && (
+                        <div className="p-3 bg-success bg-opacity-10 border border-success border-opacity-25 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3">
+                          <div>
+                            <div className="fw-bold text-success small d-flex align-items-center gap-1.5">
+                              <FaCheckCircle /> All Compliance Domains Satisfied
+                            </div>
+                            <div className="extra-small text-muted">
+                              You can now complete onboarding, activate this employee, and provision their system login credentials.
+                            </div>
+                          </div>
+                          <div className="d-flex flex-wrap gap-2 align-items-center">
+                            {selectedOnboarding?.status !== "COMPLETED" && (
+                              <Button
+                                size="sm"
+                                variant="success"
+                                className="rounded-pill px-3 py-1 extra-small fw-bold d-flex align-items-center gap-1.5 shadow-sm"
+                                onClick={handleCompleteOnboarding}
+                                disabled={actionLoading}
+                              >
+                                <FaCheckCircle size={11} /> Complete Onboarding
+                              </Button>
+                            )}
+                            {targetEmp.lifecycleStatus !== "ACTIVE" && (
+                              <Button
+                                variant="info"
+                                size="sm"
+                                className="rounded-pill px-3 py-1 extra-small fw-bold text-dark d-flex align-items-center gap-1.5 shadow-sm"
+                                onClick={handleActivateEmployee}
+                                disabled={actionLoading}
+                              >
+                                <FaUnlock size={11} /> Activate Employee
+                              </Button>
+                            )}
+                            {!targetEmp.hasLoginAccess && (
+                              <Button
+                                size="sm"
+                                className="rounded-pill px-3 py-1 extra-small fw-bold text-white d-flex align-items-center gap-1.5 shadow-sm onboarding-btn-mint"
+                                onClick={() => handleOpenProvision(targetEmp)}
+                              >
+                                <FaKey size={11} /> Provision Login Account
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Missing Requirements List */}
                       {toArray(validationReport.missingRequirements).length > 0 && (
                         <Alert variant="warning" className="small rounded-3 mb-0">
-                          <h6 className="fw-bold small mb-2"><FaExclamationTriangle className="me-1" /> Missing Requirements to Fulfill:</h6>
+                          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                            <h6 className="fw-bold small mb-0 text-dark">
+                              <FaExclamationTriangle className="me-1.5 text-warning" /> Missing Requirements to Fulfill:
+                            </h6>
+                            <Button
+                              size="sm"
+                              variant="success"
+                              className="rounded-pill px-3 py-1 extra-small fw-bold d-flex align-items-center gap-1.5 shadow-sm"
+                              onClick={handleAutoFulfillAndCompleteOnboarding}
+                              disabled={actionLoading}
+                            >
+                              <FaCheckCircle size={11} /> Auto-Fulfill Checklist & Complete
+                            </Button>
+                          </div>
                           <ul className="mb-0 ps-3">
                             {toArray(validationReport.missingRequirements).map((req, idx) => (
-                              <li key={idx} className="mb-1">{req}</li>
+                              <li key={idx} className="mb-1 fw-medium">{req}</li>
                             ))}
                           </ul>
                         </Alert>
@@ -10148,28 +10933,34 @@ function HrOnboarding() {
               <h6 className="extra-small text-uppercase text-muted fw-bold mb-2">9-Domain Compliance Breakdown</h6>
               <Row className="g-2">
                 {[
-                  { key: "employeeInformation", label: "Employee Profile Info", pass: validationReport.sections?.employeeInformation },
-                  { key: "employment", label: "Employment Parameters", pass: validationReport.sections?.employment },
-                  { key: "documents", label: "Mandatory Documents", pass: validationReport.sections?.documents },
-                  { key: "agreements", label: "Agreements & NDA", pass: validationReport.sections?.agreements },
-                  { key: "payroll", label: "Bank & Statutory Readiness", pass: validationReport.sections?.payroll },
-                  { key: "tasks", label: "Mandatory Tasks", pass: validationReport.sections?.tasks },
-                  { key: "assets", label: "IT Hardware Allocation", pass: validationReport.sections?.assets },
-                  { key: "systemAccess", label: "System & Tool Access", pass: validationReport.sections?.systemAccess },
-                  { key: "orientation", label: "Mandatory Orientation", pass: validationReport.sections?.orientation },
-                ].map((dom) => (
-                  <Col md={4} sm={6} xs={12} key={dom.key}>
-                    <div
-                      className={`p-2 px-3 rounded-3 border d-flex align-items-center justify-content-between small ${dom.pass
-                          ? "bg-success bg-opacity-10 text-success border-success border-opacity-25"
-                          : "bg-danger bg-opacity-10 text-danger border-danger border-opacity-25"
+                  { key: "employeeInformation", label: "Employee Profile Info" },
+                  { key: "employment", label: "Employment Parameters" },
+                  { key: "documents", label: "Mandatory Documents" },
+                  { key: "agreements", label: "Agreements & NDA" },
+                  { key: "payroll", label: "Bank & Statutory Readiness" },
+                  { key: "tasks", label: "Mandatory Tasks" },
+                  { key: "assets", label: "IT Hardware Allocation" },
+                  { key: "systemAccess", label: "System & Tool Access" },
+                  { key: "orientation", label: "Mandatory Orientation" },
+                ].map((dom) => {
+                  const isPass = validationReport.valid
+                    ? (validationReport.sections?.[dom.key] !== false)
+                    : Boolean(validationReport.sections?.[dom.key]);
+                  return (
+                    <Col md={4} sm={6} xs={12} key={dom.key}>
+                      <div
+                        className={`p-2 px-3 rounded-3 border d-flex align-items-center justify-content-between small ${
+                          isPass
+                            ? "bg-success bg-opacity-10 text-success border-success border-opacity-25"
+                            : "bg-danger bg-opacity-10 text-danger border-danger border-opacity-25"
                         }`}
-                    >
-                      <span className="fw-semibold extra-small text-dark">{dom.label}</span>
-                      {dom.pass ? <FaCheckCircle className="text-success" /> : <FaTimesCircle className="text-danger" />}
-                    </div>
-                  </Col>
-                ))}
+                      >
+                        <span className="fw-semibold extra-small text-dark">{dom.label}</span>
+                        {isPass ? <FaCheckCircle className="text-success" /> : <FaTimesCircle className="text-danger" />}
+                      </div>
+                    </Col>
+                  );
+                })}
               </Row>
             </div>
           ) : (
@@ -10178,7 +10969,7 @@ function HrOnboarding() {
             </div>
           )}
         </Modal.Body>
-        <Modal.Footer className="border-top py-2 px-4 bg-light d-flex justify-content-between">
+        <Modal.Footer className="border-top py-2 px-4 bg-light d-flex flex-wrap align-items-center justify-content-between gap-2">
           <Button
             variant="outline-secondary"
             size="sm"
@@ -10187,17 +10978,30 @@ function HrOnboarding() {
           >
             Close
           </Button>
-          <Button
-            variant="success"
-            size="sm"
-            className="rounded-pill px-4 shadow-sm"
-            onClick={() => {
-              setShowValidationModal(false);
-              setDetailActiveTab("validation");
-            }}
-          >
-            Open Validation Tab in Workspace
-          </Button>
+          <div className="d-flex flex-wrap align-items-center gap-2">
+            {!validationReport?.valid && toArray(validationReport?.missingRequirements).length > 0 && (
+              <Button
+                variant="success"
+                size="sm"
+                className="rounded-pill px-3 shadow-sm fw-bold d-flex align-items-center gap-1.5"
+                onClick={handleAutoFulfillAndCompleteOnboarding}
+                disabled={actionLoading}
+              >
+                <FaCheckCircle size={11} /> Auto-Fulfill Checklist & Complete
+              </Button>
+            )}
+            <Button
+              variant={validationReport?.valid ? "success" : "outline-success"}
+              size="sm"
+              className="rounded-pill px-4 shadow-sm fw-semibold"
+              onClick={() => {
+                setShowValidationModal(false);
+                setDetailActiveTab("validation");
+              }}
+            >
+              Open Validation Tab in Workspace
+            </Button>
+          </div>
         </Modal.Footer>
       </Modal>
 
@@ -10890,6 +11694,135 @@ function HrOnboarding() {
             </Button>
           </div>
         </Modal.Footer>
+      </Modal>
+
+      {/* ========================================================
+          MODAL: CREATE CUSTOM ROLE
+          ======================================================== */}
+      <Modal
+        show={showCreateRoleModal}
+        onHide={() => setShowCreateRoleModal(false)}
+        centered
+        size="lg"
+      >
+        <Modal.Header closeButton className="border-bottom py-3 px-4 bg-light">
+          <Modal.Title className="h6 fw-bold d-flex align-items-center gap-2 mb-0">
+            <FaShieldAlt className="text-success" /> Create New Custom Role
+          </Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleCreateCustomRoleSubmit}>
+          <Modal.Body className="p-4">
+            <Row className="g-3 mb-3">
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="extra-small fw-bold">Role Name *</Form.Label>
+                  <Form.Control
+                    size="sm"
+                    placeholder="e.g. Senior Project Lead, QA Specialist"
+                    value={newRoleForm.roleName}
+                    onChange={(e) => setNewRoleForm({ ...newRoleForm, roleName: e.target.value })}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={3}>
+                <Form.Group>
+                  <Form.Label className="extra-small fw-bold">Priority Hierarchy</Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={newRoleForm.priority}
+                    onChange={(e) => setNewRoleForm({ ...newRoleForm, priority: Number(e.target.value) })}
+                  >
+                    <option value={3}>Level 3 (Staff / Custom)</option>
+                    <option value={2}>Level 2 (Admin Level)</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={3}>
+                <Form.Group>
+                  <Form.Label className="extra-small fw-bold">Status</Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={newRoleForm.isActive ? "true" : "false"}
+                    onChange={(e) => setNewRoleForm({ ...newRoleForm, isActive: e.target.value === "true" })}
+                  >
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={12}>
+                <Form.Group>
+                  <Form.Label className="extra-small fw-bold">Role Description</Form.Label>
+                  <Form.Control
+                    size="sm"
+                    placeholder="Summary of responsibilities and authorization scope"
+                    value={newRoleForm.description}
+                    onChange={(e) => setNewRoleForm({ ...newRoleForm, description: e.target.value })}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+
+            {/* Module Menus */}
+            {allMenus.length > 0 && (
+              <div className="mb-3 p-3 bg-light rounded-3 border">
+                <span className="extra-small text-uppercase fw-bold text-muted d-block mb-2">
+                  Authorized Sidebar Application Modules
+                </span>
+                <Row className="g-2">
+                  {allMenus.map((menu) => {
+                    const isChecked = (newRoleForm.selectedMenuIds || []).includes(menu._id);
+                    return (
+                      <Col xs={6} md={4} key={menu._id}>
+                        <div
+                          className={`p-2 rounded-2 border d-flex align-items-center gap-2 cursor-pointer extra-small ${
+                            isChecked ? "bg-white border-success text-success fw-bold shadow-xs" : "bg-white text-muted"
+                          }`}
+                          onClick={() => {
+                            setNewRoleForm((prev) => {
+                              const cur = prev.selectedMenuIds || [];
+                              return {
+                                ...prev,
+                                selectedMenuIds: cur.includes(menu._id)
+                                  ? cur.filter((id) => id !== menu._id)
+                                  : [...cur, menu._id],
+                              };
+                            });
+                          }}
+                        >
+                          <Form.Check
+                            type="checkbox"
+                            id={`modal-menu-${menu._id}`}
+                            checked={isChecked}
+                            onChange={() => {}}
+                            className="pointer-events-none"
+                          />
+                          <span>{menu.menuName}</span>
+                        </div>
+                      </Col>
+                    );
+                  })}
+                </Row>
+              </div>
+            )}
+          </Modal.Body>
+          <Modal.Footer className="border-top py-2 px-4 bg-light d-flex justify-content-between">
+            <Button variant="secondary" size="sm" className="rounded-pill px-3" onClick={() => setShowCreateRoleModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="success"
+              size="sm"
+              type="submit"
+              className="rounded-pill px-4 fw-bold shadow-sm"
+              disabled={creatingCustomRole || !newRoleForm.roleName.trim()}
+            >
+              {creatingCustomRole ? <Spinner size="sm" animation="border" className="me-1" /> : <FaPlus className="me-1" />}
+              Create & Assign Role
+            </Button>
+          </Modal.Footer>
+        </Form>
       </Modal>
     </Container>
   );

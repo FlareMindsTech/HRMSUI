@@ -1,14 +1,24 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../Components/Sidebar/Sidebar";
 import Footer from "../Components/Footer/Footer";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useBranch } from "../context/BranchContext";
+import { useAuth } from "../context/AuthContext";
+import OrgSetupWizard from "../Components/Organisation/OrgSetupWizard";
 import "./Layout.css";
 
 function Layout() {
+  const { user, isSystemAdmin } = useAuth();
+  const { organization, loading: branchLoading, refreshOrganization, refreshBranches } = useBranch();
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const storedOrgId = localStorage.getItem("organizationId") || localStorage.getItem("tenantId");
+  const isOwner = user?.roleCode === "OWNER" || isSystemAdmin || user?.priority === 1;
+  const hasNoOrg = isOwner && !organization && !user?.organizationId && !storedOrgId;
 
   useEffect(() => {
     const checkMobile = () => {
@@ -25,6 +35,23 @@ function Layout() {
   }, [location.pathname, isMobile]);
 
   const toggleSidebar = () => setSidebarOpen((p) => !p);
+
+  const handleOrgCreated = async () => {
+    if (refreshOrganization) await refreshOrganization();
+    if (refreshBranches) await refreshBranches();
+    navigate("/dashboard");
+  };
+
+  // ── FULL SCREEN ONBOARDING WHEN OWNER LOGS IN & NO ORG EXISTS ──
+  // Do NOT flash the dashboard on refresh: if user is owner and no organization is present,
+  // stay immediately on the setup wizard without rendering the underlying dashboard first.
+  if (hasNoOrg || (isOwner && !storedOrgId && !organization && !user?.organizationId)) {
+    return (
+      <div className="app-layout-fullscreen-onboarding">
+        <OrgSetupWizard onOrgCreated={handleOrgCreated} />
+      </div>
+    );
+  }
 
   return (
     <div className="app-layout">

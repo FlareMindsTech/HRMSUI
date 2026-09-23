@@ -20,14 +20,166 @@ const buildQuery = (params = {}) => {
 
 // ─── 1. ORGANIZATION OVERVIEW & PROFILE ───────────────────────────
 
-export const fetchMyOrganization = async () => {
-  const res = await apiFetch("/organization/me", { method: "GET" });
-  if (!res.ok) {
-    // If not found or error, return null so UI can detect no data
-    if (res.status === 404) return null;
-    throw new Error(res.data?.message || "Failed to fetch organization details");
+/**
+ * Normalizes any organization response object from the backend into a standardized schema
+ */
+export const normalizeOrganization = (raw) => {
+  if (!raw || typeof raw !== "object") return null;
+
+  // Unnest if wrapped in { organization: ... } or { org: ... }
+  let org = raw;
+  if (org.organization && typeof org.organization === "object" && !org.organizationName && !org.name) {
+    org = { ...org.organization, stats: org.stats || org.organization.stats || {} };
+  } else if (org.org && typeof org.org === "object" && !org.organizationName && !org.name) {
+    org = { ...org.org, stats: org.stats || org.org.stats || {} };
   }
-  return res.data?.data || res.data;
+
+  const addr = org.address;
+  const addrObj = typeof addr === "object" && addr !== null ? addr : {};
+  const street = typeof addr === "string" ? addr : (addrObj.street || addrObj.addressLine1 || addrObj.line1 || org.street || org.addressLine1 || "");
+  const city = org.city || addrObj.city || "";
+  const state = org.state || addrObj.state || "";
+  const country = org.country || addrObj.country || "India";
+  const pincode = org.pincode || org.pinCode || org.zip || org.postalCode || addrObj.pincode || addrObj.pinCode || addrObj.zip || addrObj.postalCode || "";
+
+  const orgName = org.organizationName || org.name || org.orgName || org.companyName || org.displayName || org.legalName || org.title || "";
+  const orgCode = org.organizationCode || org.code || org.orgCode || org.companyCode || org.tenantCode || org.shortCode || "";
+  const legalName = org.legalName || org.registeredName || org.legalRegisteredName || org.companyName || orgName;
+  const displayName = org.displayName || org.brandName || org.tradeName || org.shortName || orgName;
+
+  let incDate = org.incorporationDate || org.dateOfIncorporation || org.foundedDate || org.establishmentDate || org.establishedDate || org.createdDate || org.createdAt || "";
+  if (incDate) {
+    try {
+      const d = new Date(incDate);
+      if (!isNaN(d.getTime())) {
+        incDate = d.toISOString().split("T")[0];
+      }
+    } catch (e) {}
+  }
+
+  let fyStart = org.financialYearStart || org.financialYearPeriod || org.fyStart || org.financialYear || "04-01";
+  if (typeof fyStart === "object" && fyStart !== null) {
+    if (fyStart.month !== undefined && fyStart.day !== undefined) {
+      fyStart = `${String(fyStart.month).padStart(2, "0")}-${String(fyStart.day).padStart(2, "0")}`;
+    }
+  }
+
+  return {
+    ...org,
+    _id: org._id || org.id,
+    id: org.id || org._id,
+    organizationName: orgName,
+    organizationCode: orgCode,
+    legalName: legalName,
+    displayName: displayName,
+    organizationType: org.organizationType || org.orgType || org.entityType || org.companyType || org.type || "COMPANY",
+    industry: org.industry || org.industryType || org.domain || org.sector || org.businessType || "",
+    status: org.status || org.orgStatus || org.state || (org.isActive === false ? "INACTIVE" : "ACTIVE"),
+    registrationNumber: org.registrationNumber || org.registrationNo || org.cin || org.cinNo || org.regNo || org.companyRegistrationNumber || org.regNumber || "",
+    pan: org.pan || org.panNumber || org.panNo || org.taxId || org.pan_no || "",
+    tan: org.tan || org.tanNumber || org.tanNo || org.tan_no || "",
+    gstin: org.gstin || org.gstNo || org.gstNumber || org.gst || org.vatNo || org.taxNumber || org.gst_no || "",
+    incorporationDate: incDate,
+    financialYearStart: fyStart,
+    currency: org.currency || org.defaultCurrency || org.currencyCode || org.baseCurrency || "INR",
+    timeZone: org.timeZone || org.timezone || org.timeZoneId || org.time_zone || "Asia/Kolkata",
+    email: org.email || org.officialEmail || org.corporateEmail || org.contactEmail || org.companyEmail || org.emailId || "",
+    phone: org.phone || org.phoneNumber || org.contactPhone || org.telephone || org.mobile || org.contactNumber || org.phoneNo || "",
+    website: org.website || org.websiteUrl || org.url || org.companyWebsite || org.domainUrl || "",
+    address: street,
+    city: city,
+    state: state,
+    country: country,
+    pincode: pincode,
+    logo: typeof org.logo === "object" && org.logo !== null ? org.logo.url || org.logo.path || "" : (org.logo || org.logoUrl || ""),
+    stats: org.stats || {},
+  };
+};
+
+// In-memory cache for ultra-fast instantaneous responses
+let cachedOrganization = null;
+
+export const fetchMyOrganization = async (forceRefresh = false) => {
+  // Return in-memory cache instantly if available and not forced
+  if (!forceRefresh && cachedOrganization) {
+    return cachedOrganization;
+  }
+
+  // Check localStorage cache for instant zero-latency loading
+  if (!forceRefresh) {
+    try {
+      const saved = localStorage.getItem("cached_org_profile");
+      if (saved) {
+        cachedOrganization = JSON.parse(saved);
+        return cachedOrganization;
+      }
+    } catch (e) {}
+  }
+
+  const storedOrgId = localStorage.getItem("organizationId") || localStorage.getItem("tenantId");
+
+  const fastEndpoints = [
+    "/organization/structure",
+    "/organization/me",
+    "/organization",
+    "/organizations",
+  ];
+
+  if (storedOrgId) {
+    fastEndpoints.push(`/organization/${storedOrgId}`);
+  }
+
+  let foundOrg = null;
+
+  try {
+    // Run all candidate endpoints in parallel
+    const results = await Promise.allSettled(
+      fastEndpoints.map((ep) => apiFetch(ep, { method: "GET" }))
+    );
+
+    for (const resObj of results) {
+      if (resObj.status === "fulfilled" && resObj.value?.ok && resObj.value?.data) {
+        const rawData = resObj.value.data.data !== undefined ? resObj.value.data.data : resObj.value.data;
+        let org = rawData?.organization || rawData?.org || rawData?.organizations?.[0] || rawData?.orgs?.[0] || rawData?.result || rawData?.results?.[0] || rawData;
+        if (Array.isArray(org)) org = org[0];
+        if (org && (org.organizationName || org.name || org.orgName || org.companyName || org.legalName || org.displayName || org._id || org.id)) {
+          foundOrg = normalizeOrganization(org);
+          break;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Fast parallel org fetch failed:", e);
+  }
+
+  // Fallback to user object if still not found
+  if (!foundOrg) {
+    try {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        if (parsed.organization && typeof parsed.organization === "object") {
+          foundOrg = normalizeOrganization(parsed.organization);
+        } else if (parsed.tenant && typeof parsed.tenant === "object") {
+          foundOrg = normalizeOrganization(parsed.tenant);
+        }
+      }
+    } catch (e) {}
+  }
+
+  if (foundOrg) {
+    cachedOrganization = foundOrg;
+    try {
+      localStorage.setItem("cached_org_profile", JSON.stringify(foundOrg));
+    } catch (e) {}
+    const orgId = foundOrg._id || foundOrg.id;
+    if (orgId) {
+      localStorage.setItem("organizationId", orgId);
+      localStorage.setItem("tenantId", orgId);
+    }
+  }
+
+  return foundOrg || cachedOrganization || null;
 };
 
 export const createOrganization = async (payload) => {
@@ -36,28 +188,100 @@ export const createOrganization = async (payload) => {
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    res = await apiFetch("/organization/create", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    if (res.status === 404) {
+      res = await apiFetch("/organization/create", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    }
+    if (!res.ok) {
+      throw new Error(res.data?.message || "Failed to create organization");
+    }
   }
-  if (!res.ok) {
-    res = await apiFetch("/organization/me", {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    });
+  const resultData = res.data?.data || res.data;
+  let org = resultData?.organization || resultData?.org || resultData;
+  if (Array.isArray(org)) org = org[0];
+  if (org?.organization) org = org.organization;
+
+  const normalized = normalizeOrganization(org || resultData);
+
+  const orgId = normalized?._id || normalized?.id;
+  if (orgId) {
+    localStorage.setItem("organizationId", orgId);
+    localStorage.setItem("tenantId", orgId);
+    try {
+      const uStr = localStorage.getItem("user");
+      if (uStr) {
+        const u = JSON.parse(uStr);
+        u.organizationId = orgId;
+        u.tenantId = orgId;
+        localStorage.setItem("user", JSON.stringify(u));
+      }
+    } catch (e) {}
   }
-  if (!res.ok) throw new Error(res.data?.message || "Failed to create organization");
-  return res.data;
+  return normalized || resultData;
 };
 
-export const updateMyOrganization = async (payload) => {
-  const res = await apiFetch("/organization/me", {
-    method: "PUT",
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to update organization profile");
-  return res.data;
+export const updateMyOrganization = async (payload, orgIdOverride = null) => {
+  const storedOrgId =
+    orgIdOverride ||
+    localStorage.getItem("organizationId") ||
+    localStorage.getItem("tenantId") ||
+    cachedOrganization?._id ||
+    cachedOrganization?.id;
+
+  const candidateEndpoints = [
+    { path: "/organization/structure", method: "PUT" },
+    { path: "/organization/me", method: "PUT" },
+    { path: "/organization", method: "PUT" },
+    { path: "/organization/update", method: "PUT" },
+    { path: "/organization/update", method: "POST" },
+  ];
+
+  if (storedOrgId) {
+    candidateEndpoints.splice(2, 0, { path: `/organization/${storedOrgId}`, method: "PUT" });
+  }
+
+  let res = null;
+  let lastErrorMsg = "";
+
+  for (const ep of candidateEndpoints) {
+    try {
+      res = await apiFetch(ep.path, {
+        method: ep.method,
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) break;
+      if (res.data?.message) {
+        lastErrorMsg = res.data.message;
+      }
+    } catch (e) {
+      lastErrorMsg = e.message || lastErrorMsg;
+    }
+  }
+
+  if (!res || !res.ok) {
+    throw new Error(lastErrorMsg || res?.data?.message || "Failed to update organization profile");
+  }
+
+  const rawData = res.data?.data !== undefined ? res.data?.data : res.data;
+  let org = rawData?.organization || rawData?.org || rawData;
+  if (Array.isArray(org)) org = org[0];
+  if (org?.organization) org = org.organization;
+
+  const normalized = normalizeOrganization(org || rawData || payload);
+  if (normalized) {
+    cachedOrganization = normalized;
+    try {
+      localStorage.setItem("cached_org_profile", JSON.stringify(normalized));
+    } catch (e) {}
+    const newId = normalized._id || normalized.id;
+    if (newId) {
+      localStorage.setItem("organizationId", newId);
+      localStorage.setItem("tenantId", newId);
+    }
+  }
+  return normalized || org || rawData;
 };
 
 export const fetchOrganizationStructure = async () => {
@@ -167,7 +391,13 @@ export const fetchDesignations = async (params = {}) => {
   if (!res.ok) throw new Error(res.data?.message || "Failed to fetch designations");
   return res.data;
 };
-
+export const fetchMyOrganizationsList = async () => {
+  const res = await apiFetch("/organization/list", { method: "GET" });
+  if (!res.ok) {
+    throw new Error(res.data?.message || "Failed to fetch organizations list");
+  }
+  return res.data?.data || [];
+};
 export const fetchDesignationsDropdown = async (params = {}) => {
   const res = await apiFetch(`/designations/dropdown${buildQuery(params)}`, { method: "GET" });
   if (!res.ok) throw new Error(res.data?.message || "Failed to fetch designation dropdown");
@@ -643,10 +873,157 @@ export const updateOrganizationSettings = async (payload) => {
   return res.data;
 };
 
-// ─── 15. USERS DROPDOWN (FOR ASSIGNMENTS) ──────────────────────────
+// ─── 15. USERS & ONBOARDING MEMBER ASSIGNMENTS ─────────────────────
 
 export const fetchEmployeesDropdown = async (params = {}) => {
   const res = await apiFetch(`/user/get${buildQuery({ limit: 100, isActive: true, ...params })}`, { method: "GET" });
   if (!res.ok) throw new Error(res.data?.message || "Failed to fetch employee roster");
   return res.data?.data || [];
 };
+
+/**
+ * Fetches all onboarded and active employees within the organization for branch assignment
+ */
+export const fetchOnboardedEmployees = async (params = {}) => {
+  let list = [];
+  try {
+    const res = await apiFetch(`/user/get${buildQuery({ limit: 200, ...params })}`, { method: "GET" });
+    if (res.ok && Array.isArray(res.data?.data)) {
+      list = res.data.data;
+    } else if (res.ok && Array.isArray(res.data)) {
+      list = res.data;
+    }
+  } catch (e) {
+    console.warn("fetchOnboardedEmployees error:", e);
+  }
+
+  if (!list || list.length === 0) {
+    try {
+      const res = await apiFetch(`/users${buildQuery({ limit: 200, ...params })}`, { method: "GET" });
+      if (res.ok && Array.isArray(res.data?.data)) {
+        list = res.data.data;
+      }
+    } catch (e) {}
+  }
+
+  // Normalize employee list
+  return list.map((u) => {
+    const primaryB = u.primaryBranchId?._id || u.primaryBranchId || u.branchId?._id || u.branchId || null;
+    const bIds = Array.isArray(u.branchIds)
+      ? u.branchIds.map((b) => (typeof b === "object" && b !== null ? b._id || b.id : b)).filter(Boolean)
+      : (primaryB ? [primaryB] : []);
+
+    const name = u.fullName || u.name || [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || "Employee";
+    const status = (u.onboardingStatus || (u.isActive ? "COMPLETED" : "PENDING")).toUpperCase();
+
+    return {
+      _id: u._id || u.id,
+      id: u._id || u.id,
+      firstName: u.firstName || name.split(" ")[0] || "",
+      lastName: u.lastName || name.split(" ").slice(1).join(" ") || "",
+      fullName: name,
+      email: u.email || "",
+      phone: u.phone || u.phoneNumber || "",
+      employeeId: u.employeeId || u.empId || u.code || "",
+      designation: typeof u.designation === "object" && u.designation !== null ? u.designation.name || u.designation.title : (u.designation || u.jobTitle || "Staff"),
+      department: typeof u.department === "object" && u.department !== null ? u.department.name || u.department.departmentName : (u.department || "General"),
+      primaryBranchId: primaryB,
+      branchIds: bIds,
+      onboardingStatus: status,
+      isOnboarded: status === "COMPLETED" || status === "APPROVED" || status === "ACTIVE" || u.isOnboarded === true || u.hasCompletedOnboarding === true,
+      isActive: u.isActive !== false && u.status !== "INACTIVE" && u.status !== "BLOCKED",
+      roleCode: u.roleCode || u.role?.roleCode || u.role || "EMPLOYEE",
+      avatar: u.profileImage || u.avatar || "",
+    };
+  });
+};
+
+/**
+ * Assigns a batch of onboarded employees to a branch
+ */
+export const assignEmployeesToBranch = async (branchId, userIds = [], makePrimary = true) => {
+  if (!branchId) throw new Error("Branch ID is required for assignment");
+  if (!Array.isArray(userIds) || userIds.length === 0) return { success: true, count: 0 };
+
+  const orgId = localStorage.getItem("organizationId") || localStorage.getItem("tenantId");
+
+  const results = await Promise.allSettled(
+    userIds.map(async (uid) => {
+      // 1. Try dedicated access update endpoint
+      const payload = {
+        organizationId: orgId || undefined,
+        accessLevel: "BRANCH",
+        primaryBranchId: makePrimary ? branchId : undefined,
+        branchIds: [branchId],
+      };
+
+      let res = await apiFetch(`/users/${uid}/access`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        res = await apiFetch(`/user/${uid}/access`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+      }
+
+      if (!res.ok) {
+        res = await apiFetch(`/user/${uid}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            primaryBranchId: branchId,
+            branchId: branchId,
+          }),
+        });
+      }
+
+      return res.ok;
+    })
+  );
+
+  const successful = results.filter((r) => r.status === "fulfilled" && r.value).length;
+  return {
+    success: successful > 0,
+    total: userIds.length,
+    assignedCount: successful,
+  };
+};
+
+/**
+ * Removes an employee from a branch
+ */
+export const removeEmployeeFromBranch = async (branchId, userId) => {
+  if (!branchId || !userId) throw new Error("Branch ID and User ID are required");
+
+  const orgId = localStorage.getItem("organizationId") || localStorage.getItem("tenantId");
+  const payload = {
+    organizationId: orgId || undefined,
+    accessLevel: "ORGANIZATION",
+    primaryBranchId: null,
+    branchIds: [],
+  };
+
+  let res = await apiFetch(`/users/${userId}/access`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    res = await apiFetch(`/user/${userId}/access`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  if (!res.ok) {
+    res = await apiFetch(`/user/${userId}`, {
+      method: "PUT",
+      body: JSON.stringify({ primaryBranchId: null }),
+    });
+  }
+
+  return res.ok;
+};
+

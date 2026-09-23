@@ -169,3 +169,16 @@
     height: 30px;
   }
 }
+
+/* ── Fullscreen Enterprise Onboarding (When Organization Not Yet Created) ── */
+.app-layout-fullscreen-onboarding {
+  min-height: 100vh;
+  width: 100vw;
+  background: linear-gradient(135deg, #F7F5F0 0%, #FDFBF7 50%, #F5EFE3 100%);
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}

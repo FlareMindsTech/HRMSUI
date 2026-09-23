@@ -24,7 +24,8 @@ import {
   FaPlus,
 } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
-import { fetchMyOrganization } from "../../services/organizationService";
+import { useBranch } from "../../context/BranchContext";
+import { fetchMyOrganization, normalizeOrganization } from "../../services/organizationService";
 import OrgOverview from "../../Components/Organisation/OrgOverview";
 import BranchesSection from "../../Components/Organisation/BranchesSection";
 import DepartmentsSection from "../../Components/Organisation/DepartmentsSection";
@@ -39,6 +40,8 @@ import ShiftsSection from "../../Components/Organisation/ShiftsSection";
 import FinancialYearsSection from "../../Components/Organisation/FinancialYearsSection";
 import HolidayCalendarsSection from "../../Components/Organisation/HolidayCalendarsSection";
 import OrganizationSettingsSection from "../../Components/Organisation/OrganizationSettingsSection";
+import OrgSetupWizard from "../../Components/Organisation/OrgSetupWizard";
+import EditOrgProfilePage from "../../Components/Organisation/EditOrgProfilePage";
 import "./Organisation.css";
 
 const ORG_TABS = [
@@ -60,13 +63,19 @@ const ORG_TABS = [
 
 const getStr = (val, fallback = "") => {
   if (val === null || val === undefined) return fallback;
-  if (typeof val === "string") return val.trim();
+  if (typeof val === "string") return val.trim() !== "" ? val.trim() : fallback;
   if (typeof val === "number" || typeof val === "boolean") return String(val);
   if (typeof val === "object") {
     if (val.month !== undefined && val.day !== undefined) {
       const mm = String(val.month).padStart(2, "0");
       const dd = String(val.day).padStart(2, "0");
       return `${mm}-${dd}`;
+    }
+    if (val.street || val.addressLine1 || val.line1) {
+      const addr = [val.street || val.addressLine1 || val.line1, val.city, val.state, val.country, val.pincode || val.zip]
+        .filter(Boolean)
+        .join(", ");
+      return addr || fallback;
     }
     if (val.city || val.country) {
       return [val.city, val.country].filter(Boolean).join(", ");
@@ -84,8 +93,10 @@ function Organisation() {
   const navigate = useNavigate();
   const location = useLocation();
   const { hasPermission, isSystemAdmin, user } = useAuth();
+  const { organization, refreshOrganization, refreshBranches } = useBranch();
 
-  const [orgData, setOrgData] = useState(null);
+  const [orgData, setOrgData] = useState(organization || null);
+  const [loadingOrg, setLoadingOrg] = useState(!organization);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [copiedField, setCopiedField] = useState("");
   const [triggerEditModal, setTriggerEditModal] = useState(false);
@@ -103,21 +114,40 @@ function Organisation() {
   // Fetch organization profile for the header hero banner
   const loadOrg = useCallback(async () => {
     try {
+      if (!organization && !orgData) setLoadingOrg(true);
       const data = await fetchMyOrganization();
-      if (data && (data.organizationName || data.organizationCode || data._id)) {
-        setOrgData(data);
+      if (data) {
+        setOrgData(normalizeOrganization(data) || data);
+      } else if (organization) {
+        setOrgData(normalizeOrganization(organization) || organization);
+      } else {
+        setOrgData(null);
       }
     } catch (err) {
       console.warn("Could not load organization in parent header:", err);
+      if (organization) {
+        setOrgData(normalizeOrganization(organization) || organization);
+      } else {
+        setOrgData(null);
+      }
+    } finally {
+      setLoadingOrg(false);
     }
-  }, []);
+  }, [organization]);
+
+  useEffect(() => {
+    if (organization && !orgData) {
+      setOrgData(normalizeOrganization(organization) || organization);
+      setLoadingOrg(false);
+    }
+  }, [organization, orgData]);
 
   useEffect(() => {
     loadOrg();
   }, [loadOrg]);
 
   useEffect(() => {
-    if (section && ORG_TABS.some((t) => t.key === section)) {
+    if (section && (ORG_TABS.some((t) => t.key === section) || section === "edit-profile")) {
       setActiveTab(section);
     } else if (location.pathname === "/organisation" || location.pathname === "/organisation/") {
       setActiveTab("overview");
@@ -131,6 +161,15 @@ function Organisation() {
     } else {
       navigate(`/organisation/${tabKey}`);
     }
+  };
+
+  const handleOrgCreated = async (newOrg) => {
+    setOrgData(newOrg);
+    if (refreshOrganization) await refreshOrganization();
+    if (refreshBranches) await refreshBranches();
+    setActiveTab("overview");
+    navigate("/organisation");
+    loadOrg();
   };
 
   const copyToClipboard = (text, fieldName) => {
@@ -168,8 +207,13 @@ function Organisation() {
     ? `${user.firstName} ${user.lastName || ""}`.trim()
     : user?.roleName || "System Owner";
 
+  const currentOrg = orgData || organization;
+  const storedOrgId = localStorage.getItem("organizationId") || localStorage.getItem("tenantId");
+  const isOwner = user?.roleCode === "OWNER" || isSystemAdmin || user?.priority === 1;
+  const hasNoOrg = isOwner && !currentOrg && !user?.organizationId && !storedOrgId;
+
   const orgInitials = useMemo(() => {
-    const name = getStr(orgData?.displayName || orgData?.organizationName || "HR");
+    const name = getStr(currentOrg?.displayName || currentOrg?.organizationName || "HR");
     return name
       .split(" ")
       .map((n) => n[0])
@@ -177,7 +221,7 @@ function Organisation() {
       .slice(0, 2)
       .join("")
       .toUpperCase();
-  }, [orgData]);
+  }, [currentOrg]);
 
   const canEdit = isSystemAdmin || hasPermission("organization.update");
 
@@ -192,17 +236,60 @@ function Organisation() {
   });
 
   const handleEditDetailsClick = () => {
-    if (activeTab !== "overview") {
-      handleTabSelect("overview");
-    }
-    setTriggerEditModal(true);
+    handleTabSelect("edit-profile");
   };
+
+  if (loadingOrg && !currentOrg && !storedOrgId) {
+    return (
+      <div className="org-dashboard-container">
+        <div className="org-loader-container-full">
+          <div className="spinner-border" style={{ color: "#C49A55", width: "3rem", height: "3rem" }} role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <div className="mt-3 fw-bold" style={{ color: "#77736B", fontSize: "0.95rem" }}>
+            Loading Enterprise Organization Hub...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── FIRST-TIME SETUP: ONLY IF OWNER AND NO ORGANIZATION PROFILE EXISTS AT ALL ──
+  if (hasNoOrg) {
+    return (
+      <div className="org-dashboard-container">
+        <OrgSetupWizard onOrgCreated={handleOrgCreated} />
+      </div>
+    );
+  }
+
+  // ── DEDICATED EDIT ORGANIZATION PROFILE FULL PAGE ──
+  if (activeTab === "edit-profile") {
+    return (
+      <div className="org-dashboard-container">
+        <EditOrgProfilePage
+          orgData={currentOrg}
+          onBack={() => handleTabSelect("overview")}
+          onOrgUpdated={loadOrg}
+        />
+      </div>
+    );
+  }
 
   const renderActiveSection = () => {
     switch (activeTab) {
+      case "edit-profile":
+        return (
+          <EditOrgProfilePage
+            orgData={currentOrg}
+            onBack={() => handleTabSelect("overview")}
+            onOrgUpdated={loadOrg}
+          />
+        );
       case "overview":
         return (
           <OrgOverview
+            orgData={currentOrg}
             onNavigateTab={handleTabSelect}
             triggerEditModal={triggerEditModal}
             onEditModalHandled={() => setTriggerEditModal(false)}
@@ -299,9 +386,10 @@ function Organisation() {
         </div>
       </div>
 
-      {/* ── 2. HERO BANNER CARD (MATCHED TO SCREENSHOT) ── */}
+      {/* ── 2. EXECUTIVE HERO BANNER CARD ── */}
       {orgData && (
         <div className="org-hero-card-exact">
+          <div className="org-hero-bg-glow" />
           <svg
             className="org-hero-bg-waves"
             viewBox="0 0 1000 200"
@@ -309,13 +397,13 @@ function Organisation() {
           >
             <path
               d="M 400 0 C 650 180, 750 20, 1000 80 L 1000 0 Z"
-              fill="#f0fdf4"
-              opacity="0.85"
+              fill="#C49A55"
+              opacity="0.04"
             />
             <path
               d="M 500 0 C 700 140, 800 60, 1000 120 L 1000 0 Z"
-              fill="#ecfdf5"
-              opacity="0.55"
+              fill="#C49A55"
+              opacity="0.02"
             />
           </svg>
 
@@ -332,19 +420,14 @@ function Organisation() {
                 ) : (
                   <div className="org-hero-logo-monogram">{orgInitials}</div>
                 )}
-                <span
-                  className={`org-hero-status-indicator ${
-                    getStr(orgData.status, "ACTIVE").toLowerCase()
-                  }`}
-                />
               </div>
 
               <div className="org-hero-details">
                 <div className="org-hero-name-row">
                   <h1 className="org-hero-org-name">
-                    {getStr(orgData.displayName || orgData.organizationName, "FLAREMINDS TECH").toUpperCase()}
+                    {getStr(orgData.displayName || orgData.organizationName, "FlareMinds Technology and Services")}
                   </h1>
-                  <FaCheckCircle className="org-hero-check-badge" title="Verified Enterprise" />
+                  <FaCheckCircle className="org-hero-check-badge" title="Verified Enterprise Organization" />
 
                   {getStr(orgData.status) && (
                     <span className="org-hero-pill-status">
@@ -354,13 +437,17 @@ function Organisation() {
 
                   {getStr(orgData.organizationType) && (
                     <span className="org-hero-pill-entity">
-                      {getStr(orgData.organizationType)}
+                      <FaBuilding className="me-1 text-muted" style={{ fontSize: "0.65rem" }} />
+                      {getStr(orgData.organizationType).replace("_", " ")}
                     </span>
                   )}
                 </div>
 
                 <div className="org-hero-legal-line">
-                  Legal Entity: <strong>{getStr(orgData.legalName || orgData.organizationName, "FLMT Corp")}</strong>
+                  <span className="org-hero-legal-label">Legal Registered Entity:</span>
+                  <span className="org-hero-legal-val">
+                    {getStr(orgData.legalName || orgData.organizationName, "FlareMinds Technology and Services Pvt Ltd")}
+                  </span>
                 </div>
 
                 <div className="org-hero-chips-bar">
@@ -369,28 +456,40 @@ function Organisation() {
                       className="org-hero-chip code"
                       onClick={() => copyToClipboard(getStr(orgData.organizationCode), "code")}
                       role="button"
-                      title="Click to copy Org Code"
+                      title="Click to copy Organization Tenant Code"
                     >
-                      <FaBuilding className="text-primary me-1" />
+                      <span className="org-chip-icon-wrap"><FaBuilding /></span>
                       <span className="font-monospace fw-bold">{getStr(orgData.organizationCode)}</span>
-                      {copiedField === "code" && <span className="org-chip-copied-text">Copied!</span>}
+                      {copiedField === "code" ? (
+                        <span className="org-chip-copied-text">Copied!</span>
+                      ) : (
+                        <span className="org-chip-copy-hint">Copy</span>
+                      )}
                     </div>
                   )}
 
                   {getStr(orgData.industry) && (
                     <div className="org-hero-chip industry">
-                      <FaBriefcase className="text-secondary me-1" />
+                      <span className="org-chip-icon-wrap"><FaBriefcase /></span>
                       <span>{getStr(orgData.industry)}</span>
                     </div>
                   )}
 
-                  {[getStr(orgData.city || orgData.address?.city), getStr(orgData.country || orgData.address?.country)]
+                  {[
+                    getStr(orgData.city || orgData.address?.city),
+                    getStr(orgData.state || orgData.address?.state),
+                    getStr(orgData.country || orgData.address?.country),
+                  ]
                     .filter(Boolean)
                     .join(", ") && (
                     <div className="org-hero-chip location">
-                      <FaMapMarkerAlt className="text-danger me-1" />
+                      <span className="org-chip-icon-wrap text-danger"><FaMapMarkerAlt /></span>
                       <span>
-                        {[getStr(orgData.city || orgData.address?.city), getStr(orgData.country || orgData.address?.country)]
+                        {[
+                          getStr(orgData.city || orgData.address?.city),
+                          getStr(orgData.state || orgData.address?.state),
+                          getStr(orgData.country || orgData.address?.country),
+                        ]
                           .filter(Boolean)
                           .join(", ")}
                       </span>
@@ -402,8 +501,12 @@ function Organisation() {
 
             {/* Right: Quote & Action Buttons */}
             <div className="org-hero-right-section">
-              <div className="org-hero-quote-text">
-                “Great people build great companies.”
+              <div className="org-hero-quote-box">
+                <span className="org-hero-quote-icon">“</span>
+                <span className="org-hero-quote-text">
+                  Great people build great companies.
+                </span>
+                <span className="org-hero-quote-icon">”</span>
               </div>
 
               <div className="org-hero-buttons-row">
@@ -412,7 +515,7 @@ function Organisation() {
                     className="org-hero-btn-edit"
                     onClick={handleEditDetailsClick}
                   >
-                    <FaEdit className="me-2" /> Edit Details
+                    <FaEdit className="me-1" /> Edit Profile
                   </Button>
                 )}
                 <Button
@@ -420,7 +523,7 @@ function Organisation() {
                   className="org-hero-btn-hierarchy"
                   onClick={() => handleTabSelect("reporting-hierarchy")}
                 >
-                  <FaSitemap className="me-2" /> View Hierarchy
+                  <FaSitemap className="me-1" /> View Hierarchy
                 </Button>
               </div>
             </div>

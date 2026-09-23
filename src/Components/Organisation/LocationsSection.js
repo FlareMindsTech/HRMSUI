@@ -535,7 +535,7 @@ function LocationsSection() {
                         type="number"
                         step="any"
                         required
-                        placeholder="12.9716"
+                        placeholder="e.g. 12.9716"
                         value={formData.latitude}
                         onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
                       />
@@ -546,7 +546,7 @@ function LocationsSection() {
                         type="number"
                         step="any"
                         required
-                        placeholder="77.5946"
+                        placeholder="e.g. 77.5946"
                         value={formData.longitude}
                         onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
                       />
@@ -556,7 +556,7 @@ function LocationsSection() {
                       <Form.Control
                         type="number"
                         min="10"
-                        placeholder="200"
+                        placeholder="e.g. 200"
                         value={formData.radiusMeters}
                         onChange={(e) => setFormData({ ...formData, radiusMeters: e.target.value })}
                       />
@@ -571,6 +571,7 @@ function LocationsSection() {
                   <Form.Control
                     as="textarea"
                     rows={2}
+                    placeholder="e.g. Campus 2A, Sarjapur-Marathahalli Ring Road"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   />
@@ -581,6 +582,7 @@ function LocationsSection() {
                 <Form.Group>
                   <Form.Label>City</Form.Label>
                   <Form.Control
+                    placeholder="e.g. Bengaluru"
                     value={formData.city}
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                   />
@@ -590,6 +592,7 @@ function LocationsSection() {
                 <Form.Group>
                   <Form.Label>State</Form.Label>
                   <Form.Control
+                    placeholder="e.g. Karnataka"
                     value={formData.state}
                     onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                   />
@@ -599,6 +602,7 @@ function LocationsSection() {
                 <Form.Group>
                   <Form.Label>Pincode</Form.Label>
                   <Form.Control
+                    placeholder="e.g. 560103"
                     value={formData.pincode}
                     onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
                   />

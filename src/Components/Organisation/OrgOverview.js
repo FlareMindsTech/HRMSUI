@@ -41,8 +41,10 @@ import {
   updateMyOrganization,
   fetchOrganizationStructure,
   fetchReportingTree,
+  normalizeOrganization,
 } from "../../services/organizationService";
 import { useAuth } from "../../context/AuthContext";
+import { useBranch } from "../../context/BranchContext";
 
 const ORG_TYPES = ["COMPANY", "LLP", "PARTNERSHIP", "PROPRIETORSHIP", "OTHER"];
 const ORG_STATUSES = ["ACTIVE", "SUSPENDED", "INACTIVE"];
@@ -77,7 +79,7 @@ const INITIAL_FORM_STATE = {
 // Safe helper to extract and format any data type into a displayable string
 const getStr = (val, fallback = "") => {
   if (val === null || val === undefined) return fallback;
-  if (typeof val === "string") return val.trim();
+  if (typeof val === "string") return val.trim() !== "" ? val.trim() : fallback;
   if (typeof val === "number" || typeof val === "boolean") return String(val);
   if (typeof val === "object") {
     // Handle { month, day } e.g. financialYearStart
@@ -88,9 +90,10 @@ const getStr = (val, fallback = "") => {
     }
     // Handle street/address objects
     if (val.street || val.addressLine1 || val.line1) {
-      return [val.street || val.addressLine1 || val.line1, val.city, val.state, val.country, val.pincode || val.zip]
+      const addr = [val.street || val.addressLine1 || val.line1, val.city, val.state, val.country, val.pincode || val.zip]
         .filter(Boolean)
         .join(", ");
+      return addr || fallback;
     }
     if (val.name) return String(val.name);
     if (val.code) return String(val.code);
@@ -103,12 +106,13 @@ const getStr = (val, fallback = "") => {
   return fallback;
 };
 
-function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOrgUpdated }) {
+function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal, onEditModalHandled, onOrgUpdated }) {
   const { isSystemAdmin, user, hasPermission } = useAuth();
-  const [orgData, setOrgData] = useState(null);
+  const { organization, refreshOrganization, refreshBranches } = useBranch();
+  const [orgData, setOrgData] = useState(initialOrgData || organization || null);
   const [structureData, setStructureData] = useState(null);
   const [, setReportingTree] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialOrgData && !organization);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -124,10 +128,21 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
   const canEdit = isSystemAdmin || hasPermission("organization.update");
   const canCreate = isSystemAdmin || hasPermission("organization.create") || user?.roleCode === "OWNER";
 
+  const activeOrg = useMemo(() => {
+    const raw = orgData || organization;
+    return raw ? normalizeOrganization(raw) || raw : {};
+  }, [orgData, organization]);
+
+  const storedOrgId = localStorage.getItem("organizationId") || localStorage.getItem("tenantId");
+
   // Check if organization data actually exists
   const hasOrgData = useMemo(() => {
-    return Boolean(orgData && (orgData.organizationName || orgData.organizationCode || orgData._id));
-  }, [orgData]);
+    return Boolean(
+      (activeOrg && (activeOrg.organizationName || activeOrg.name || activeOrg.organizationCode || activeOrg.code || activeOrg._id || activeOrg.id)) ||
+      user?.organizationId ||
+      storedOrgId
+    );
+  }, [activeOrg, user, storedOrgId]);
 
   const [copiedField, setCopiedField] = useState("");
 
@@ -145,41 +160,42 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
       setFormData(INITIAL_FORM_STATE);
       return;
     }
-    const addrObj = typeof org.address === "object" && org.address !== null ? org.address : {};
-    let incDate = "";
-    if (org.incorporationDate) {
+    const norm = normalizeOrganization(org) || org;
+    const addrObj = typeof norm.address === "object" && norm.address !== null ? norm.address : {};
+    let incDate = norm.incorporationDate || "";
+    if (incDate && incDate.includes("T")) {
       try {
-        incDate = new Date(org.incorporationDate).toISOString().split("T")[0];
+        incDate = new Date(incDate).toISOString().split("T")[0];
       } catch (e) {
-        incDate = getStr(org.incorporationDate);
+        incDate = getStr(norm.incorporationDate);
       }
     }
 
     setFormData({
-      organizationName: getStr(org.organizationName || org.displayName || org.legalName),
-      organizationCode: getStr(org.organizationCode),
-      legalName: getStr(org.legalName),
-      displayName: getStr(org.displayName),
-      organizationType: getStr(org.organizationType),
-      registrationNumber: getStr(org.registrationNumber),
-      pan: getStr(org.pan),
-      tan: getStr(org.tan),
-      gstin: getStr(org.gstin),
+      organizationName: getStr(norm.organizationName || norm.name || norm.displayName || norm.legalName),
+      organizationCode: getStr(norm.organizationCode || norm.code),
+      legalName: getStr(norm.legalName || norm.name),
+      displayName: getStr(norm.displayName || norm.name),
+      organizationType: getStr(norm.organizationType || "COMPANY"),
+      registrationNumber: getStr(norm.registrationNumber),
+      pan: getStr(norm.pan),
+      tan: getStr(norm.tan),
+      gstin: getStr(norm.gstin),
       incorporationDate: incDate,
-      industry: getStr(org.industry),
-      website: getStr(org.website),
-      email: getStr(org.email),
-      phone: getStr(org.phone),
-      logo: getStr(typeof org.logo === "object" && org.logo !== null ? org.logo.url || org.logo.path : org.logo),
-      address: getStr(typeof org.address === "string" ? org.address : addrObj.street || addrObj.addressLine1 || ""),
-      country: getStr(typeof org.country === "string" ? org.country : addrObj.country || ""),
-      state: getStr(org.state || addrObj.state || ""),
-      city: getStr(org.city || addrObj.city || ""),
-      pincode: getStr(org.pincode || addrObj.pincode || ""),
-      currency: getStr(org.currency),
-      timeZone: getStr(org.timeZone),
-      financialYearStart: getStr(org.financialYearStart),
-      status: getStr(org.status),
+      industry: getStr(norm.industry),
+      website: getStr(norm.website),
+      email: getStr(norm.email),
+      phone: getStr(norm.phone),
+      logo: getStr(typeof norm.logo === "object" && norm.logo !== null ? norm.logo.url || norm.logo.path : norm.logo),
+      address: getStr(typeof norm.address === "string" ? norm.address : addrObj.street || addrObj.addressLine1 || ""),
+      country: getStr(typeof norm.country === "string" ? norm.country : addrObj.country || "India"),
+      state: getStr(norm.state || addrObj.state || ""),
+      city: getStr(norm.city || addrObj.city || ""),
+      pincode: getStr(norm.pincode || addrObj.pincode || ""),
+      currency: getStr(norm.currency || "INR"),
+      timeZone: getStr(norm.timeZone || "Asia/Kolkata"),
+      financialYearStart: getStr(norm.financialYearStart || "04-01"),
+      status: getStr(norm.status || "ACTIVE"),
     });
   }, []);
 
@@ -188,7 +204,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
     if (triggerEditModal) {
       if (hasOrgData) {
         setModalMode("edit");
-        populateFormWithOrg(orgData);
+        populateFormWithOrg(activeOrg);
       } else {
         setModalMode("create");
         setFormData(INITIAL_FORM_STATE);
@@ -198,12 +214,12 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
       setShowModal(true);
       if (onEditModalHandled) onEditModalHandled();
     }
-  }, [triggerEditModal, hasOrgData, orgData, onEditModalHandled, populateFormWithOrg]);
+  }, [triggerEditModal, hasOrgData, activeOrg, onEditModalHandled, populateFormWithOrg]);
 
 
   const loadData = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!organization && !initialOrgData) setLoading(true);
       setError("");
       const [org, structure, tree] = await Promise.all([
         fetchMyOrganization().catch((err) => {
@@ -220,9 +236,18 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
         }),
       ]);
 
-      if (org && (org.organizationName || org.organizationCode || org._id)) {
-        setOrgData(org);
-        populateFormWithOrg(org);
+      const rawFinal =
+        (org && (org.organizationName || org.name || org.organizationCode || org._id || org.id) ? org : null) ||
+        (structure?.organization && (structure.organization.organizationName || structure.organization.name || structure.organization.organizationCode || structure.organization._id || structure.organization.id) ? structure.organization : null) ||
+        (structure?.org && (structure.org.organizationName || structure.org.name || structure.org._id) ? structure.org : null) ||
+        (organization && (organization.organizationName || organization.name || organization.organizationCode || organization._id || organization.id) ? organization : null) ||
+        (initialOrgData ? initialOrgData : null);
+
+      const finalOrg = rawFinal ? normalizeOrganization(rawFinal) || rawFinal : null;
+
+      if (finalOrg) {
+        setOrgData(finalOrg);
+        populateFormWithOrg(finalOrg);
       } else {
         setOrgData(null);
         setFormData(INITIAL_FORM_STATE);
@@ -239,13 +264,31 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
     } finally {
       setLoading(false);
     }
-  }, [populateFormWithOrg]);
+  }, [organization, initialOrgData, populateFormWithOrg]);
+
+  useEffect(() => {
+    if (initialOrgData) {
+      const norm = normalizeOrganization(initialOrgData) || initialOrgData;
+      setOrgData(norm);
+      populateFormWithOrg(norm);
+      setLoading(false);
+    } else if (organization && !orgData) {
+      const norm = normalizeOrganization(organization) || organization;
+      setOrgData(norm);
+      populateFormWithOrg(norm);
+      setLoading(false);
+    }
+  }, [initialOrgData, organization, orgData, populateFormWithOrg]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   const handleOpenCreateModal = () => {
+    if (onNavigateTab) {
+      onNavigateTab("edit-profile");
+      return;
+    }
     setModalMode("create");
     setFormData(INITIAL_FORM_STATE);
     setModalActiveTab("basic");
@@ -254,6 +297,10 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
   };
 
   const handleOpenEditModal = () => {
+    if (onNavigateTab) {
+      onNavigateTab("edit-profile");
+      return;
+    }
     setModalMode("edit");
     populateFormWithOrg(orgData);
     setModalActiveTab("basic");
@@ -328,6 +375,8 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
 
       setShowModal(false);
       await loadData();
+      refreshOrganization();
+      refreshBranches();
       if (onOrgUpdated) onOrgUpdated();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
@@ -343,8 +392,8 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
       title: "Branches",
       desc: "Manage offices and campuses",
       icon: FaBuilding,
-      color: "#10b981",
-      bgColor: "#ecfdf5",
+      color: "#C49A55",
+      bgColor: "#F5EFE3",
       key: "branches",
     },
     {
@@ -383,8 +432,8 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
       title: "Reporting Hierarchy",
       desc: "Define reporting lines",
       icon: FaSitemap,
-      color: "#10b981",
-      bgColor: "#ecfdf5",
+      color: "#C49A55",
+      bgColor: "#F5EFE3",
       key: "reporting-hierarchy",
     },
     {
@@ -423,14 +472,14 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
 
   const stats = useMemo(() => {
     return {
-      branches: orgData?.stats?.branchCount ?? structureData?.branches?.length ?? (hasOrgData ? 1 : 0),
-      departments: orgData?.stats?.departmentCount ?? structureData?.departments?.length ?? (hasOrgData ? 1 : 0),
-      employees: orgData?.stats?.employeeCount ?? (hasOrgData ? 1 : 0),
-      teams: orgData?.stats?.teamCount ?? structureData?.teams?.length ?? (hasOrgData ? 1 : 0),
-      locations: orgData?.stats?.locationCount ?? structureData?.locations?.length ?? (hasOrgData ? 1 : 0),
-      shifts: orgData?.stats?.shiftCount ?? (hasOrgData ? 1 : 0),
+      branches: activeOrg?.stats?.branchCount ?? structureData?.branches?.length ?? (hasOrgData ? 1 : 0),
+      departments: activeOrg?.stats?.departmentCount ?? structureData?.departments?.length ?? (hasOrgData ? 1 : 0),
+      employees: activeOrg?.stats?.employeeCount ?? (hasOrgData ? 1 : 0),
+      teams: activeOrg?.stats?.teamCount ?? structureData?.teams?.length ?? (hasOrgData ? 1 : 0),
+      locations: activeOrg?.stats?.locationCount ?? structureData?.locations?.length ?? (hasOrgData ? 1 : 0),
+      shifts: activeOrg?.stats?.shiftCount ?? (hasOrgData ? 1 : 0),
     };
-  }, [orgData, structureData, hasOrgData]);
+  }, [activeOrg, structureData, hasOrgData]);
 
   if (loading) {
     return (
@@ -504,22 +553,22 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
             {/* Branches */}
             <div className="org-kpi-card" onClick={() => onNavigateTab("branches")} role="button">
               <div className="org-kpi-top">
-                <div className="org-kpi-icon-wrap" style={{ background: "#ecfdf5", color: "#10b981" }}>
+                <div className="org-kpi-icon-wrap" style={{ background: "#F5EFE3", color: "#C49A55" }}>
                   <FaRegBuilding />
                 </div>
                 <div className="org-kpi-info">
                   <div className="org-kpi-label">Branches</div>
                   <div className="org-kpi-val">{stats.branches}</div>
-                  <div className="org-kpi-badge text-success">Active Offices</div>
+                  <div className="org-kpi-badge" style={{ color: "#C49A55" }}>Active Offices</div>
                 </div>
               </div>
               <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
-                <path d="M0,22 Q25,8 50,18 T100,6" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" />
-                <path d="M0,22 Q25,8 50,18 T100,6 L100,28 L0,28 Z" fill="url(#sparkGreen)" opacity="0.18" />
+                <path d="M0,22 Q25,8 50,18 T100,6" fill="none" stroke="#C49A55" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M0,22 Q25,8 50,18 T100,6 L100,28 L0,28 Z" fill="url(#sparkGold)" opacity="0.18" />
                 <defs>
-                  <linearGradient id="sparkGreen" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                  <linearGradient id="sparkGold" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#C49A55" />
+                    <stop offset="100%" stopColor="#C49A55" stopOpacity="0" />
                   </linearGradient>
                 </defs>
               </svg>
@@ -671,33 +720,33 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                 <div className="org-bento-list">
                   <div className="org-bento-row">
                     <span className="org-bento-label">Organization Name</span>
-                    <span className="org-bento-val fw-bold">{getStr(orgData.organizationName, "—")}</span>
+                    <span className="org-bento-val fw-bold">{getStr(activeOrg.organizationName || activeOrg.name || activeOrg.displayName || activeOrg.legalName, "—")}</span>
                   </div>
                   <div className="org-bento-row">
                     <span className="org-bento-label">Organization Code</span>
-                    <span className="org-code-pill font-monospace">{getStr(orgData.organizationCode, "—")}</span>
+                    <span className="org-code-pill font-monospace">{getStr(activeOrg.organizationCode || activeOrg.code || activeOrg.orgCode, "—")}</span>
                   </div>
                   <div className="org-bento-row">
                     <span className="org-bento-label">Legal Registered Name</span>
-                    <span className="org-bento-val">{getStr(orgData.legalName, "—")}</span>
+                    <span className="org-bento-val">{getStr(activeOrg.legalName || activeOrg.registeredName || activeOrg.organizationName, "—")}</span>
                   </div>
                   <div className="org-bento-row">
                     <span className="org-bento-label">Display / Brand Name</span>
-                    <span className="org-bento-val">{getStr(orgData.displayName, "—")}</span>
+                    <span className="org-bento-val">{getStr(activeOrg.displayName || activeOrg.brandName || activeOrg.organizationName, "—")}</span>
                   </div>
                   <div className="org-bento-row">
                     <span className="org-bento-label">Entity Type</span>
-                    <span className="org-badge-entity">{getStr(orgData.organizationType, "—")}</span>
+                    <span className="org-badge-entity">{getStr(activeOrg.organizationType || activeOrg.entityType || activeOrg.type, "—")}</span>
                   </div>
                   <div className="org-bento-row">
                     <span className="org-bento-label">Industry Domain</span>
-                    <span className="org-bento-val">{getStr(orgData.industry, "—")}</span>
+                    <span className="org-bento-val">{getStr(activeOrg.industry || activeOrg.industryType || activeOrg.domain, "—")}</span>
                   </div>
                   <div className="org-bento-row">
                     <span className="org-bento-label">Operating Status</span>
-                    {getStr(orgData.status) ? (
+                    {getStr(activeOrg.status) ? (
                       <span className="org-hero-pill-status">
-                        <span className="org-hero-green-circle" /> {getStr(orgData.status)}
+                        <span className="org-hero-green-circle" /> {getStr(activeOrg.status)}
                       </span>
                     ) : (
                       "—"
@@ -730,17 +779,17 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                 <div className="org-bento-list">
                   <div className="org-bento-row">
                     <span className="org-bento-label">Registration / CIN No</span>
-                    <span className="org-bento-val font-monospace">{getStr(orgData.registrationNumber, "—")}</span>
+                    <span className="org-bento-val font-monospace">{getStr(activeOrg.registrationNumber || activeOrg.registrationNo || activeOrg.cin || activeOrg.regNo, "—")}</span>
                   </div>
                   <div className="org-bento-row">
                     <span className="org-bento-label">PAN (Income Tax)</span>
                     <div className="d-flex align-items-center gap-1">
-                      <span className="org-tax-pill">{getStr(orgData.pan, "—")}</span>
-                      {getStr(orgData.pan) && (
+                      <span className="org-tax-pill">{getStr(activeOrg.pan || activeOrg.panNumber || activeOrg.panNo, "—")}</span>
+                      {getStr(activeOrg.pan || activeOrg.panNumber || activeOrg.panNo) && (
                         <button
                           type="button"
                           className="org-copy-icon-btn"
-                          onClick={() => copyToClipboard(getStr(orgData.pan), "pan")}
+                          onClick={() => copyToClipboard(getStr(activeOrg.pan || activeOrg.panNumber || activeOrg.panNo), "pan")}
                           title="Copy PAN"
                         >
                           <FaCopy size={11} />
@@ -752,12 +801,12 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                   <div className="org-bento-row">
                     <span className="org-bento-label">TAN (Tax Deduction)</span>
                     <div className="d-flex align-items-center gap-1">
-                      <span className="org-tax-pill">{getStr(orgData.tan, "—")}</span>
-                      {getStr(orgData.tan) && (
+                      <span className="org-tax-pill">{getStr(activeOrg.tan || activeOrg.tanNumber || activeOrg.tanNo, "—")}</span>
+                      {getStr(activeOrg.tan || activeOrg.tanNumber || activeOrg.tanNo) && (
                         <button
                           type="button"
                           className="org-copy-icon-btn"
-                          onClick={() => copyToClipboard(getStr(orgData.tan), "tan")}
+                          onClick={() => copyToClipboard(getStr(activeOrg.tan || activeOrg.tanNumber || activeOrg.tanNo), "tan")}
                           title="Copy TAN"
                         >
                           <FaCopy size={11} />
@@ -769,12 +818,12 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                   <div className="org-bento-row">
                     <span className="org-bento-label">GSTIN / Tax ID</span>
                     <div className="d-flex align-items-center gap-1">
-                      <span className="org-tax-pill font-monospace">{getStr(orgData.gstin, "—")}</span>
-                      {getStr(orgData.gstin) && (
+                      <span className="org-tax-pill font-monospace">{getStr(activeOrg.gstin || activeOrg.gstNo || activeOrg.gstNumber || activeOrg.gst, "—")}</span>
+                      {getStr(activeOrg.gstin || activeOrg.gstNo || activeOrg.gstNumber || activeOrg.gst) && (
                         <button
                           type="button"
                           className="org-copy-icon-btn"
-                          onClick={() => copyToClipboard(getStr(orgData.gstin), "gstin")}
+                          onClick={() => copyToClipboard(getStr(activeOrg.gstin || activeOrg.gstNo || activeOrg.gstNumber || activeOrg.gst), "gstin")}
                           title="Copy GSTIN"
                         >
                           <FaCopy size={11} />
@@ -786,25 +835,34 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                   <div className="org-bento-row">
                     <span className="org-bento-label">Date of Incorporation</span>
                     <span className="org-bento-val">
-                      {orgData.incorporationDate
-                        ? new Date(orgData.incorporationDate).toLocaleDateString("en-IN", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })
+                      {activeOrg.incorporationDate
+                        ? (() => {
+                            try {
+                              const d = new Date(activeOrg.incorporationDate);
+                              return !isNaN(d.getTime())
+                                ? d.toLocaleDateString("en-IN", {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  })
+                                : String(activeOrg.incorporationDate);
+                            } catch (e) {
+                              return String(activeOrg.incorporationDate);
+                            }
+                          })()
                         : "—"}
                     </span>
                   </div>
                   <div className="org-bento-row">
                     <span className="org-bento-label">Financial Year Period</span>
                     <span className="org-bento-val fw-semibold">
-                      {getStr(orgData.financialYearStart, "04-01")} (Starts {getStr(orgData.financialYearStart) === "01-01" ? "Jan 1" : "Apr 1"})
+                      {getStr(activeOrg.financialYearStart, "04-01")} (Starts {getStr(activeOrg.financialYearStart) === "01-01" ? "Jan 1" : "Apr 1"})
                     </span>
                   </div>
                   <div className="org-bento-row">
                     <span className="org-bento-label">Currency & Timezone</span>
                     <span className="org-bento-val">
-                      {[getStr(orgData.currency), getStr(orgData.timeZone)].filter(Boolean).join(" • ") || "—"}
+                      {[getStr(activeOrg.currency, "INR"), getStr(activeOrg.timeZone, "Asia/Kolkata")].filter(Boolean).join(" • ") || "—"}
                     </span>
                   </div>
                 </div>
@@ -834,9 +892,9 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                       <FaEnvelope className="text-muted" size={12} /> Official Email
                     </span>
                     <span className="org-bento-val text-truncate" style={{ maxWidth: "240px" }}>
-                      {getStr(orgData.email) ? (
-                        <a href={`mailto:${getStr(orgData.email)}`} className="text-primary text-decoration-none">
-                          {getStr(orgData.email)}
+                      {getStr(activeOrg.email || activeOrg.officialEmail || activeOrg.contactEmail) ? (
+                        <a href={`mailto:${getStr(activeOrg.email || activeOrg.officialEmail || activeOrg.contactEmail)}`} className="text-primary text-decoration-none">
+                          {getStr(activeOrg.email || activeOrg.officialEmail || activeOrg.contactEmail)}
                         </a>
                       ) : (
                         "—"
@@ -847,21 +905,21 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                     <span className="org-bento-label d-flex align-items-center gap-1">
                       <FaPhone className="text-muted" size={12} /> Contact Phone
                     </span>
-                    <span className="org-bento-val">{getStr(orgData.phone, "—")}</span>
+                    <span className="org-bento-val">{getStr(activeOrg.phone || activeOrg.phoneNumber || activeOrg.contactPhone, "—")}</span>
                   </div>
                   <div className="org-bento-row">
                     <span className="org-bento-label d-flex align-items-center gap-1">
                       <FaGlobe className="text-muted" size={12} /> Official Website
                     </span>
                     <span className="org-bento-val text-truncate" style={{ maxWidth: "240px" }}>
-                      {getStr(orgData.website) ? (
+                      {getStr(activeOrg.website || activeOrg.websiteUrl || activeOrg.url) ? (
                         <a
-                          href={getStr(orgData.website).startsWith("http") ? getStr(orgData.website) : `https://${getStr(orgData.website)}`}
+                          href={getStr(activeOrg.website || activeOrg.websiteUrl || activeOrg.url).startsWith("http") ? getStr(activeOrg.website || activeOrg.websiteUrl || activeOrg.url) : `https://${getStr(activeOrg.website || activeOrg.websiteUrl || activeOrg.url)}`}
                           target="_blank"
                           rel="noreferrer"
                           className="text-primary text-decoration-none d-inline-flex align-items-center gap-1"
                         >
-                          {getStr(orgData.website)}
+                          {getStr(activeOrg.website || activeOrg.websiteUrl || activeOrg.url)}
                           <FaExternalLinkAlt size={10} />
                         </a>
                       ) : (
@@ -871,18 +929,18 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                   </div>
                   <div className="org-bento-row">
                     <span className="org-bento-label">Street Address</span>
-                    <span className="org-bento-val">{getStr(typeof orgData.address === "string" ? orgData.address : orgData.address?.street || orgData.address?.addressLine1, "—")}</span>
+                    <span className="org-bento-val">{getStr(activeOrg.address, "—")}</span>
                   </div>
                   <div className="org-bento-row">
                     <span className="org-bento-label">City / State</span>
                     <span className="org-bento-val">
-                      {[getStr(orgData.city || orgData.address?.city), getStr(orgData.state || orgData.address?.state)].filter(Boolean).join(", ") || "—"}
+                      {[getStr(activeOrg.city), getStr(activeOrg.state)].filter(Boolean).join(", ") || "—"}
                     </span>
                   </div>
                   <div className="org-bento-row">
                     <span className="org-bento-label">Country & PIN</span>
                     <span className="org-bento-val">
-                      {[getStr(orgData.country || orgData.address?.country), getStr(orgData.pincode || orgData.address?.pincode)].filter(Boolean).join(" - ") || "—"}
+                      {[getStr(activeOrg.country || "India"), getStr(activeOrg.pincode)].filter(Boolean).join(" - ") || "—"}
                     </span>
                   </div>
                 </div>
@@ -1084,7 +1142,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                         <Form.Control
                           required
                           maxLength={100}
-                          placeholder="Enter organization name"
+                          placeholder="e.g. FlareMinds Technology And Services"
                           value={formData.organizationName}
                           onChange={(e) =>
                             setFormData({ ...formData, organizationName: e.target.value })
@@ -1101,7 +1159,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                         <Form.Control
                           required
                           maxLength={30}
-                          placeholder="e.g. FLMT_CORP"
+                          placeholder="e.g. FLMT"
                           value={formData.organizationCode}
                           onChange={(e) =>
                             setFormData({
@@ -1119,7 +1177,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                         <Form.Label className="fw-semibold">Legal / Registered Entity Name</Form.Label>
                         <Form.Control
                           maxLength={150}
-                          placeholder="Registered legal entity name"
+                          placeholder="e.g. FlareMinds Technology and Services Pvt Ltd"
                           value={formData.legalName}
                           onChange={(e) =>
                             setFormData({ ...formData, legalName: e.target.value })
@@ -1133,7 +1191,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                         <Form.Label className="fw-semibold">Display / Trade Name</Form.Label>
                         <Form.Control
                           maxLength={100}
-                          placeholder="Brand / Display name"
+                          placeholder="e.g. FlareMinds Tech"
                           value={formData.displayName}
                           onChange={(e) =>
                             setFormData({ ...formData, displayName: e.target.value })
@@ -1165,7 +1223,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                       <Form.Group>
                         <Form.Label className="fw-semibold">Industry Sector</Form.Label>
                         <Form.Control
-                          placeholder="e.g. Information Technology"
+                          placeholder="e.g. Information Technology & Software"
                           value={formData.industry}
                           onChange={(e) =>
                             setFormData({ ...formData, industry: e.target.value })
@@ -1198,7 +1256,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                         <Form.Label className="fw-semibold">Organization Logo (URL or Upload Image)</Form.Label>
                         <div className="d-flex align-items-center gap-3">
                           <Form.Control
-                            placeholder="https://example.com/logo.png"
+                            placeholder="e.g. https://flareminds.com/assets/logo.png"
                             value={formData.logo}
                             onChange={(e) =>
                               setFormData({ ...formData, logo: e.target.value })
@@ -1234,7 +1292,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                       <Form.Group>
                         <Form.Label className="fw-semibold">Registration / CIN Number</Form.Label>
                         <Form.Control
-                          placeholder="Enter Registration / CIN number"
+                          placeholder="e.g. U72200MH2020PTC123456"
                           value={formData.registrationNumber}
                           onChange={(e) =>
                             setFormData({ ...formData, registrationNumber: e.target.value })
@@ -1260,7 +1318,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                       <Form.Group>
                         <Form.Label className="fw-semibold">PAN (Permanent Account Number)</Form.Label>
                         <Form.Control
-                          placeholder="Enter PAN"
+                          placeholder="e.g. AAACF1234K"
                           value={formData.pan}
                           onChange={(e) =>
                             setFormData({ ...formData, pan: e.target.value.toUpperCase() })
@@ -1273,7 +1331,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                       <Form.Group>
                         <Form.Label className="fw-semibold">TAN (Tax Deduction Account No)</Form.Label>
                         <Form.Control
-                          placeholder="Enter TAN"
+                          placeholder="e.g. BLRM12345D"
                           value={formData.tan}
                           onChange={(e) =>
                             setFormData({ ...formData, tan: e.target.value.toUpperCase() })
@@ -1286,7 +1344,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                       <Form.Group>
                         <Form.Label className="fw-semibold">GSTIN</Form.Label>
                         <Form.Control
-                          placeholder="Enter GSTIN"
+                          placeholder="e.g. 29AAACF1234K1ZV"
                           value={formData.gstin}
                           onChange={(e) =>
                             setFormData({ ...formData, gstin: e.target.value.toUpperCase() })
@@ -1306,7 +1364,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                         <Form.Label className="fw-semibold">Official Email Address</Form.Label>
                         <Form.Control
                           type="email"
-                          placeholder="contact@company.com"
+                          placeholder="e.g. contact@flareminds.com"
                           value={formData.email}
                           onChange={(e) =>
                             setFormData({ ...formData, email: e.target.value.toLowerCase() })
@@ -1319,7 +1377,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                       <Form.Group>
                         <Form.Label className="fw-semibold">Official Contact Phone</Form.Label>
                         <Form.Control
-                          placeholder="Enter contact phone"
+                          placeholder="e.g. +91 98765 43210"
                           value={formData.phone}
                           onChange={(e) =>
                             setFormData({ ...formData, phone: e.target.value })
@@ -1332,7 +1390,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                       <Form.Group>
                         <Form.Label className="fw-semibold">Corporate Website</Form.Label>
                         <Form.Control
-                          placeholder="https://company.com"
+                          placeholder="e.g. https://www.flareminds.com"
                           value={formData.website}
                           onChange={(e) =>
                             setFormData({ ...formData, website: e.target.value })
@@ -1351,7 +1409,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                       <Form.Group>
                         <Form.Label className="fw-semibold">Street Address</Form.Label>
                         <Form.Control
-                          placeholder="Enter street address"
+                          placeholder="e.g. Tech Park, 4th Floor, Sector 5, Outer Ring Road"
                           value={formData.address}
                           onChange={(e) =>
                             setFormData({ ...formData, address: e.target.value })
@@ -1364,7 +1422,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                       <Form.Group>
                         <Form.Label className="fw-semibold">City</Form.Label>
                         <Form.Control
-                          placeholder="Enter city"
+                          placeholder="e.g. Bengaluru"
                           value={formData.city}
                           onChange={(e) =>
                             setFormData({ ...formData, city: e.target.value })
@@ -1377,7 +1435,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                       <Form.Group>
                         <Form.Label className="fw-semibold">State / Province</Form.Label>
                         <Form.Control
-                          placeholder="Enter state"
+                          placeholder="e.g. Karnataka"
                           value={formData.state}
                           onChange={(e) =>
                             setFormData({ ...formData, state: e.target.value })
@@ -1390,7 +1448,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                       <Form.Group>
                         <Form.Label className="fw-semibold">Country</Form.Label>
                         <Form.Control
-                          placeholder="Enter country"
+                          placeholder="e.g. India"
                           value={formData.country}
                           onChange={(e) =>
                             setFormData({ ...formData, country: e.target.value })
@@ -1403,7 +1461,7 @@ function OrgOverview({ onNavigateTab, triggerEditModal, onEditModalHandled, onOr
                       <Form.Group>
                         <Form.Label className="fw-semibold">PIN / Postal Code</Form.Label>
                         <Form.Control
-                          placeholder="Enter PIN code"
+                          placeholder="e.g. 560103"
                           value={formData.pincode}
                           onChange={(e) =>
                             setFormData({ ...formData, pincode: e.target.value })

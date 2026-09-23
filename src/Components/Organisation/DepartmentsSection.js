@@ -64,7 +64,7 @@ function DeptTreeNode({ node, level = 0, onEdit, onDelete, canUpdate, canDelete 
               <span className="org-tree-leaf-dot" />
             )}
 
-            <div className="org-tree-avatar" style={{ background: hasChildren ? "linear-gradient(135deg, #059669, #10b981)" : "#f1f5f9", color: hasChildren ? "#fff" : "#475569" }}>
+            <div className="org-tree-avatar" style={{ background: hasChildren ? "linear-gradient(135deg, #C79D58, #C49A55)" : "#F5EFE3", color: hasChildren ? "#fff" : "#77736B" }}>
               {expanded && hasChildren ? <FaFolderOpen size={14} /> : <FaFolder size={14} />}
             </div>
 

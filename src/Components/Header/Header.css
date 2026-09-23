@@ -222,6 +222,210 @@
   transform: rotate(180deg);
 }
 
+/* ── Organization Indicator Chip ── */
+.header-org-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #FFFFFF;
+  border: 1px solid #E8E2D5;
+  border-radius: 999px;
+  padding: 4px 12px 4px 5px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.header-org-chip:hover {
+  background: #FAF7F0;
+  border-color: #C49A55;
+}
+
+.header-org-icon-wrap {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: rgba(196, 154, 85, 0.15);
+  color: #C49A55;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.header-org-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.header-org-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1C1D1D;
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-org-code {
+  font-size: 9.5px;
+  color: #77736B;
+  font-family: monospace;
+}
+
+/* ── Dynamic Branch Switcher Chip ── */
+.header-branch-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #FFFFFF;
+  border: 1px solid #E8E2D5;
+  border-radius: 999px;
+  padding: 4px 12px 4px 6px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.header-branch-chip:hover {
+  background: #FAF7F0;
+  border-color: #10B981;
+}
+
+.header-branch-chip--active {
+  background: #F0FDF4;
+  border-color: #10B981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.18);
+}
+
+.header-branch-icon-wrap {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #10B981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.header-branch-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.header-branch-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #10B981;
+  letter-spacing: 0.04em;
+}
+
+.header-branch-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1C1D1D;
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-branch-chevron {
+  font-size: 15px;
+  color: #77736B;
+  transform: rotate(0deg);
+  transition: transform 0.2s ease;
+}
+
+.header-branch-chevron--open {
+  transform: rotate(180deg);
+}
+
+/* Single branch static pill */
+.header-single-branch-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #FFFFFF;
+  border: 1px solid #E8E2D5;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1C1D1D;
+  user-select: none;
+}
+
+/* ── Branch Dropdown Panel ── */
+.header-dropdown-panel--branch {
+  width: 290px;
+  right: 0;
+}
+
+.header-branch-list {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.header-branch-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.header-branch-list::-webkit-scrollbar-thumb {
+  background: #E8E2D5;
+  border-radius: 4px;
+}
+
+.header-branch-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.header-branch-item:hover {
+  background: #F7F5F0;
+}
+
+.header-branch-item--active {
+  background: #F0FDF4;
+}
+
+.header-branch-item-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: #F1E8D6;
+  color: #77736B;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.header-branch-item-icon.icon-active {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10B981;
+}
+
+.header-branch-item-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1C1D1D;
+}
+
+.header-branch-item-sub {
+  font-size: 10px;
+  color: #77736B;
+}
+
 /* ── Dropdowns ── */
 .header-dropdown-panel {
   position: absolute;

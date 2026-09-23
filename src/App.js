@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { BranchProvider } from './context/BranchContext';
 import Layout from './Layout/Layout';
 import Dashboard from './Pages/Dashboard/Dashboard';
 import Organisation from './Pages/Dashboard/Organisation';
@@ -27,39 +28,41 @@ function App() {
 
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public Route */}
-          <Route
-            path="/login"
-            element={
-              isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login onLogin={() => handleLogin(true)} />
-            }
-          />
+      <BranchProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Public Route */}
+            <Route
+              path="/login"
+              element={
+                isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login onLogin={() => handleLogin(true)} />
+              }
+            />
 
-          {/* Protected Routes */}
-          {isAuthenticated ? (
-            <Route path="/" element={<Layout />}>
-              <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/organisation" element={<Organisation />} />
-              <Route path="/organisation/:section" element={<Organisation />} />
-              <Route path="/onboarding" element={<HrOnboarding />} />
-              <Route path="/leave" element={<LeaveRequest />} />
-              <Route path="/mis" element={<Mis />} />
-              <Route path="/payslip" element={<Payslip />} />
-              <Route path="/users" element={<UserManagement />} />
-              <Route path="/roles" element={<UserManagement />} />
-              <Route path="/assets" element={<AssetManagement />} />
-              <Route path="/attendance" element={<Attendance />} />
-              <Route path="/projects" element={<ProjectManagement />} />
-              <Route path="/epfo" element={<Epfo />} />
-            </Route>
-          ) : (
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          )}
-        </Routes>
-      </BrowserRouter>
+            {/* Protected Routes */}
+            {isAuthenticated ? (
+              <Route path="/" element={<Layout />}>
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/organisation" element={<Organisation />} />
+                <Route path="/organisation/:section" element={<Organisation />} />
+                <Route path="/onboarding" element={<HrOnboarding />} />
+                <Route path="/leave" element={<LeaveRequest />} />
+                <Route path="/mis" element={<Mis />} />
+                <Route path="/payslip" element={<Payslip />} />
+                <Route path="/users" element={<UserManagement />} />
+                <Route path="/roles" element={<UserManagement />} />
+                <Route path="/assets" element={<AssetManagement />} />
+                <Route path="/attendance" element={<Attendance />} />
+                <Route path="/projects" element={<ProjectManagement />} />
+                <Route path="/epfo" element={<Epfo />} />
+              </Route>
+            ) : (
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            )}
+          </Routes>
+        </BrowserRouter>
+      </BranchProvider>
     </AuthProvider>
   );
 }
