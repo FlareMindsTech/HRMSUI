@@ -1,15 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Container, Row, Col, Card, Form, Button, Badge, Table, Modal, Spinner, Alert, Pagination, InputGroup, ProgressBar
+  Container, Row, Col, Card, Form, Button, Badge, Table, Modal, Spinner, Alert, Pagination, InputGroup, Nav
 } from 'react-bootstrap';
 import {
   FaClock, FaCalendarAlt, FaCheckCircle, FaExclamationTriangle,
   FaSearch, FaEdit, FaHistory, FaUser, FaChevronLeft, FaChevronRight,
   FaUsers, FaChartLine, FaMapMarkerAlt, FaExclamationCircle, FaArrowLeft, FaPlus,
-  FaCalendarPlus, FaShieldAlt, FaInfoCircle
+  FaCalendarPlus, FaShieldAlt, FaInfoCircle, FaBuilding, FaSitemap, FaCog, FaFileAlt,
+  FaFileContract, FaCheck, FaTimes, FaFilter, FaDownload, FaCrosshairs, FaCheckDouble
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import {
+  fetchTodayAttendance,
+  punchInUser,
+  punchOutUser,
+  sendGeofencePing,
+  fetchMyAttendance,
   fetchAttendanceByMonth,
   fetchTeamAttendance,
   fetchAttendanceAnalytics,
@@ -18,8 +24,17 @@ import {
   postManualAttendanceOverride,
   postBulkHoliday,
   fetchHolidayPreview,
+  fetchAttendanceExceptions,
+  fetchOvertimeReport,
+  fetchAttendanceAuditLog,
+  fetchRegularizationRequests,
+  submitRegularizationRequest,
+  reviewRegularizationRequest,
+  fetchMyTeamAttendance,
+  fetchAttendanceSettings,
+  updateAttendanceSettings
 } from '../../Api/Attendance/attendance';
-import { fetchAllUsers } from '../../services/rbacService';
+import { fetchBranchesDropdown, fetchDepartmentsDropdown, fetchMyOrganizationsList } from '../../services/organizationService';
 import { formatTime, formatFullDate } from '../../utils/dateFormatter';
 import './Attendance.css';
 
@@ -30,14 +45,11 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-// const getTodayString = () => new Date().toISOString().split('T')[0];
 const getTodayString = () => {
   const now = new Date();
-
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
-
   return `${year}-${month}-${day}`;
 };
 
@@ -62,6 +74,54 @@ const getStatusDotClass = (status) => {
     default: return '';
   }
 };
+
+// Helper to resolve display info for employee
+function getEmployeeDisplayInfo(r) {
+  if (!r) return { name: 'Employee', sub: '', initials: 'E', code: 'N/A', dept: 'General', branch: 'Main Branch' };
+
+  const u = (r.userId && typeof r.userId === 'object') ? r.userId
+          : (r.user && typeof r.user === 'object') ? r.user
+          : (r.employeeId && typeof r.employeeId === 'object') ? r.employeeId
+          : (r.employee && typeof r.employee === 'object') ? r.employee
+          : null;
+
+  let fName = u?.firstName || r.firstName || r.employeeFirstName || '';
+  let lName = u?.lastName || r.lastName || r.employeeLastName || '';
+  let fullName = `${fName} ${lName}`.trim();
+
+  if (!fullName) {
+    fullName = u?.name || u?.employeeName || u?.userName || r.employeeName || r.name || r.userName || '';
+  }
+
+  const subText = u?.email || r.email || r.userEmail || u?.department || r.department || r.designation || '';
+  const empCode = u?.employeeCode || u?.employeeId || r.employeeCode || r.employeeId || 'EMP';
+  const deptName = u?.departmentId?.departmentName || u?.department || r.department || 'General';
+  const branchName = u?.branchId?.branchName || r.branchId?.branchName || r.branchName || 'Main Branch';
+
+  if (!fullName && subText) fullName = subText;
+
+  let initials = '';
+  if (fName && lName) {
+    initials = (fName[0] + lName[0]).toUpperCase();
+  } else if (fullName) {
+    const parts = fullName.trim().split(' ');
+    if (parts.length >= 2 && parts[0] && parts[1]) {
+      initials = (parts[0][0] + parts[1][0]).toUpperCase();
+    } else if (parts[0]) {
+      initials = parts[0][0].toUpperCase();
+    }
+  }
+  if (!initials) initials = 'E';
+
+  return {
+    name: fullName || 'Employee',
+    sub: subText,
+    initials,
+    code: empCode,
+    dept: deptName,
+    branch: branchName
+  };
+}
 
 // ── Reusable Calendar Component ──
 function AttendanceCalendar({ monthlyRecords, month, year, onMonthChange, onDayClick, loading }) {
@@ -97,9 +157,7 @@ function AttendanceCalendar({ monthlyRecords, month, year, onMonthChange, onDayC
 
       <div className="calendar-weekdays">
         {WEEKDAYS.map(d => (
-          <div key={d} className="calendar-weekday">
-            {d}
-          </div>
+          <div key={d} className="calendar-weekday">{d}</div>
         ))}
       </div>
 
@@ -115,14 +173,12 @@ function AttendanceCalendar({ monthlyRecords, month, year, onMonthChange, onDayC
 
             const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const record = recordMap[dateStr];
-            // const status = record?.status || '';
-             const status = record?.status || '';
+            const status = record?.status || '';
             const isLate = record?.isLate === true || status === 'Late';
             const isToday = dateStr === todayStr;
             const dayOfWeek = new Date(`${dateStr}T00:00:00`).getDay();
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
             const isFuture = dateStr > todayStr;
-            // const dotClass = getStatusDotClass(status);
             const dotClass = isLate ? 'calendar-dot--late' : getStatusDotClass(status);
 
             return (
@@ -154,129 +210,50 @@ function AttendanceCalendar({ monthlyRecords, month, year, onMonthChange, onDayC
   );
 }
 
-// ── Summary Cards ──
-function SummaryCards({ records }) {
-  const stats = { present: 0, late: 0, halfDay: 0, absent: 0, leave: 0, totalHours: 0, workDays: 0 };
-  (records || []).forEach(r => {
-    if (['Present', 'Late', 'Half Day', 'Working'].includes(r.status)) stats.workDays++;
-    if (r.status === 'Present') stats.present++;
-    if (r.status === 'Late') { stats.late++; stats.present++; }
-    else if (r.isLate) { stats.late++; }
-    if (r.status === 'Half Day') stats.halfDay++;
-    if (r.status === 'Absent') stats.absent++;
-    if (['Leave', 'Half Day Leave'].includes(r.status)) stats.leave++;
-    if (r.totalHours) stats.totalHours += r.totalHours;
-  });
-  const avgHours = stats.workDays > 0 ? (stats.totalHours / stats.workDays).toFixed(1) : '0';
-
-  return (
-    <div className="attendance-summary-grid">
-      <div className="summary-metric-card">
-        <div className="summary-metric-value metric-val-success">{stats.present}</div>
-        <div className="summary-metric-label">Present</div>
-      </div>
-      <div className="summary-metric-card">
-        <div className="summary-metric-value metric-val-danger">{stats.absent}</div>
-        <div className="summary-metric-label">Absent</div>
-      </div>
-      <div className="summary-metric-card">
-        <div className="summary-metric-value metric-val-primary">{stats.leave}</div>
-        <div className="summary-metric-label">Approved Leave</div>
-      </div>
-      <div className="summary-metric-card">
-        <div className="summary-metric-value metric-val-warning">{stats.late}</div>
-        <div className="summary-metric-label">Late</div>
-      </div>
-      <div className="summary-metric-card">
-        <div className="summary-metric-value metric-val-purple">{stats.halfDay}</div>
-        <div className="summary-metric-label">Half Day</div>
-      </div>
-      <div className="summary-metric-card">
-        <div className="summary-metric-value metric-val-info">{avgHours}h</div>
-        <div className="summary-metric-label">Avg Hours</div>
-      </div>
-    </div>
-  );
-}
-
-// ── Day Detail Modal ──
-function DayDetailModal({ show, onHide, record }) {
+// ── Location Verification Modal ──
+function LocationModal({ show, onHide, record }) {
   if (!record) return null;
+  const loc = record.locationId || record.punchInLocation || record.lastKnownLocation;
+  const isGeofenceInside = record.lastKnownLocation?.isInsideGeofence !== false;
+  const distance = record.lastKnownLocation?.distanceFromOffice || 0;
+
   return (
     <Modal show={show} onHide={onHide} centered size="sm">
       <Modal.Header closeButton className="border-0 pb-0">
-        <Modal.Title className="h6 fw-bold">
-          <FaCalendarAlt className="me-2 text-success" />
-          {formatFullDate(record.date + 'T00:00:00') || record.date}
+        <Modal.Title className="h6 fw-bold d-flex align-items-center gap-2">
+          <FaMapMarkerAlt className="text-primary" /> Location Verification Details
         </Modal.Title>
       </Modal.Header>
-      <Modal.Body>
-        <div className="day-detail-grid">
-          <div className="day-detail-item">
-            <div className="day-detail-label">Punch In</div>
-            <div className="day-detail-value metric-val-success">
-              {record.loginTime ? formatTime(record.loginTime) : '—'}
-            </div>
+      <Modal.Body className="p-3">
+        <div className="p-3 bg-light rounded-3 mb-3 border">
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <span className="fw-bold text-dark">{record.locationType || 'Office'}</span>
+            <Badge bg={isGeofenceInside ? 'success' : 'warning'} className="rounded-pill px-2.5 py-1">
+              {isGeofenceInside ? 'Inside Geofence' : 'Outside Geofence'}
+            </Badge>
           </div>
-          <div className="day-detail-item">
-            <div className="day-detail-label">Punch Out</div>
-            <div className="day-detail-value metric-val-danger">
-              {record.logoutTime ? formatTime(record.logoutTime) : record.loginTime ? 'Working...' : '—'}
-            </div>
+          <div className="small text-muted mb-1">
+            <strong>Location Name:</strong> {loc?.locationName || loc?.address || 'Main Office Location'}
           </div>
-          <div className="day-detail-item">
-            <div className="day-detail-label">Total Hours</div>
-            <div className="day-detail-value">
-              {record.totalHours ? `${record.totalHours} hrs` : record.loginTime && !record.logoutTime ? 'In progress' : '0 hrs'}
-            </div>
+          <div className="small text-muted mb-1">
+            <strong>Coordinates:</strong> {loc?.latitude ? `${loc.latitude.toFixed(4)}, ${loc.longitude?.toFixed(4)}` : 'Captured via GPS'}
           </div>
-          <div className="day-detail-item">
-            <div className="day-detail-label">Location</div>
-            <div className="day-detail-value">
-              {record.locationType ? (
-                <span className="d-flex align-items-center justify-content-center gap-1">
-                  <FaMapMarkerAlt size={12} className={record.locationType === 'Office' ? 'text-success' : 'text-primary'} />
-                  {record.locationType}
-                </span>
-              ) : '—'}
-            </div>
+          <div className="small text-muted mb-1">
+            <strong>Distance from office:</strong> {distance ? `${distance} meters` : 'Within perimeter (0-50m)'}
           </div>
-          {record.logoutTime && (
-            <div className="day-detail-item day-detail-item--full">
-              <div className="day-detail-label">Logout Type</div>
-              <div className="day-detail-value">
-                {record.logoutType === 'AUTO' ? (
-                  <span className="att-badge-auto">Auto-Closed</span>
-                ) : (
-                  <span className="att-badge-manual">Manual</span>
-                )}
-              </div>
-            </div>
-          )}
+          <div className="small text-muted">
+            <strong>Captured At:</strong> {record.loginTime ? formatTime(record.loginTime) : 'N/A'}
+          </div>
         </div>
-        <div className="text-center mt-3 d-flex justify-content-center align-items-center gap-2 flex-wrap">
-          {renderStatusBadgeStatic(record.status)}
-          {renderLogoutTypeBadge(record.logoutType, record.logoutTime)}
-          {record.isLate && <Badge bg="warning" text="dark" className="ms-1 att-badge-late">Late Arrival</Badge>}
+        <div className="text-end">
+          <Button variant="secondary" size="sm" onClick={onHide}>Close</Button>
         </div>
       </Modal.Body>
     </Modal>
   );
 }
 
-// Helper: render logout type badge (Auto-Closed / Manual)
-function renderLogoutTypeBadge(logoutType, logoutTime) {
-  if (!logoutTime) return null;
-  if (logoutType === 'AUTO') {
-    return <span className="att-badge-auto">Auto-Closed</span>;
-  }
-  if (logoutType === 'MANUAL') {
-    return <span className="att-badge-manual">Manual</span>;
-  }
-  return null;
-}
-
-// Static status badge (outside component)
+// Static status badge
 function renderStatusBadgeStatic(status) {
   const map = {
     'Present': { bg: 'success-subtle', cls: 'text-success border-success-subtle' },
@@ -285,7 +262,7 @@ function renderStatusBadgeStatic(status) {
     'Half Day': { bg: 'secondary-subtle', cls: 'text-secondary border-secondary-subtle' },
     'Absent': { bg: 'danger-subtle', cls: 'text-danger border-danger-subtle' },
     'Weekend': { bg: 'light', cls: 'text-muted' },
-    'Future': { bg: 'light', cls: 'text-muted' },
+    'Leave': { bg: 'primary-subtle', cls: 'text-primary border-primary-subtle' },
   };
   const s = map[status] || { bg: 'light', cls: 'text-dark' };
   return <Badge bg={s.bg} className={`${s.cls} border px-2.5 py-0.5 rounded-pill fw-semibold att-badge-status-compact`}>{status || 'N/A'}</Badge>;
@@ -295,129 +272,241 @@ function renderStatusBadgeStatic(status) {
 // MAIN ATTENDANCE PAGE COMPONENT
 // ======================================================
 function Attendance() {
-  const { user, hasPermission } = useAuth();
-  const roleCode = (user?.roleCode || user?.roleName || '').toUpperCase();
-  const isAdminOrOwner = roleCode.includes('ADMIN') || roleCode.includes('OWNER');
-  const isHR = roleCode.includes('HR');
+  const { user } = useAuth();
+  const rawRole = (user?.roleCode || user?.roleName || '').toUpperCase();
+  const priority = user?.priority || 5;
 
-  // Determine available tabs based on role
-  const canViewTeam = hasPermission('attendance.read.team') || hasPermission('attendance.read.all') || isAdminOrOwner;
-  const canViewAnalytics = hasPermission('attendance.analytics') || isAdminOrOwner;
-  const canCorrect = hasPermission('attendance.modify') || isAdminOrOwner;
+  // Strict Mutually Exclusive Role Flags matching Business Architecture
+  const isOwner = priority === 1 || rawRole === 'OWNER';
+  const isAdmin = !isOwner && (priority === 2 || rawRole.includes('ADMIN'));
+  const isHR = !isOwner && !isAdmin && (priority === 3 || rawRole.includes('HR'));
+  const isPM = !isOwner && !isAdmin && !isHR && (priority === 4 || rawRole.includes('MANAGER') || rawRole.includes('PROJECT') || rawRole.includes('TL'));
+  const isEmployeeOrIntern = !isOwner && !isAdmin && !isHR && !isPM;
 
-  const defaultTab = 'my-attendance';
+  // Determine initial default tab per role
+  const defaultTab = isPM ? 'my-team' : isEmployeeOrIntern ? 'my-today' : 'overview';
   const [activeTab, setActiveTab] = useState(defaultTab);
 
-  // ── Own Attendance States ──
+  // ── Organizational Dropdowns & Filters ──
+  const [branchesList, setBranchesList] = useState([]);
+  const [departmentsList, setDepartmentsList] = useState([]);
+  const [branchFilter, setBranchFilter] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [locationFilter, setLocationFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState(getTodayString());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // ── Own Attendance / Employee Punch State ──
+  const [todayRecord, setTodayRecord] = useState(null);
+  const [punchLoading, setPunchLoading] = useState(false);
   const [monthlyRecords, setMonthlyRecords] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [ownLoading, setOwnLoading] = useState(false);
-  const [dayDetailRecord, setDayDetailRecord] = useState(null);
-  const [showDayDetail, setShowDayDetail] = useState(false);
 
-  // ── Team Attendance States ──
-  const [teamTodayData, setTeamTodayData] = useState(null);
-  const [teamTodayLoading, setTeamTodayLoading] = useState(false);
+  // ── Team Attendance & Analytics States ──
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [teamRecords, setTeamRecords] = useState([]);
   const [teamLoading, setTeamLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
 
-  // ── Employee Drill-down ──
-  const [drillEmployee, setDrillEmployee] = useState(null);
-  const [drillMonth, setDrillMonth] = useState(new Date().getMonth() + 1);
-  const [drillYear, setDrillYear] = useState(new Date().getFullYear());
-  const [drillRecords, setDrillRecords] = useState([]);
-  const [drillLoading, setDrillLoading] = useState(false);
+  // ── My Team (PM View) ──
+  const [myTeamData, setMyTeamData] = useState(null);
+  const [myTeamLoading, setMyTeamLoading] = useState(false);
 
-  // ── Analytics States ──
-  const [analyticsData, setAnalyticsData] = useState(null);
-  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  // ── Exceptions, Overtime, Audit Log, Regularization States ──
+  const [exceptionsList, setExceptionsList] = useState([]);
+  const [exceptionsLoading, setExceptionsLoading] = useState(false);
+  const [overtimeList, setOvertimeList] = useState([]);
+  const [overtimeLoading, setOvertimeLoading] = useState(false);
+  const [auditLogList, setAuditLogList] = useState([]);
+  const [auditLogLoading, setAuditLogLoading] = useState(false);
+  const [regularizationList, setRegularizationList] = useState([]);
+  const [regularizationLoading, setRegularizationLoading] = useState(false);
+  const [attendancePolicy, setAttendancePolicy] = useState(null);
 
-  // ── Correction Modal States ──
+  // ── Multi-Organization Policy States (Phase 4A) ──
+  const [organizationsList, setOrganizationsList] = useState([]);
+  const [selectedOrgId, setSelectedOrgId] = useState('');
+  const [settingsForm, setSettingsForm] = useState({
+    timeZone: 'Asia/Kolkata',
+    standardWorkingMinutes: 510,
+    halfDayMinutes: 270,
+    lateCutoff: '09:15 AM',
+    gracePeriodMinutes: 15,
+    overtimeEnabled: true,
+    overtimeStartAfterMinutes: 510,
+    minimumOvertimeMinutes: 30,
+    maximumOvertimeMinutes: 240,
+    autoCloseEnabled: true,
+    autoCloseCutoffHours: 12,
+    attendanceMode: 'GEOFENCE',
+    weekStartDay: 'Monday',
+  });
+  const [settingsSubmitting, setSettingsSubmitting] = useState(false);
+  const [settingsSuccessMsg, setSettingsSuccessMsg] = useState('');
+  const [settingsErrMsg, setSettingsErrMsg] = useState('');
+
+  // Fetch Organizations List for Owner
+  useEffect(() => {
+    if (isOwner) {
+      fetchMyOrganizationsList()
+        .then((list) => {
+          setOrganizationsList(list || []);
+          if (list && list.length > 0 && !selectedOrgId) {
+            setSelectedOrgId(list[0]._id);
+          }
+        })
+        .catch((err) => console.warn('Failed to load organizations list:', err.message));
+    }
+  }, [isOwner, selectedOrgId]);
+
+  const loadPolicySettings = useCallback(async (orgId) => {
+    const targetId = orgId || selectedOrgId || '';
+    try {
+      const res = await fetchAttendanceSettings(targetId);
+      if (res?.success && res.data) {
+        setAttendancePolicy(res.data);
+        setSettingsForm({
+          timeZone: res.data.timeZone || 'Asia/Kolkata',
+          standardWorkingMinutes: res.data.standardWorkingMinutes ?? 510,
+          halfDayMinutes: res.data.halfDayMinutes ?? 270,
+          lateCutoff: res.data.lateCutoff || '09:15 AM',
+          gracePeriodMinutes: res.data.gracePeriodMinutes ?? 15,
+          overtimeEnabled: res.data.overtimeEnabled ?? true,
+          overtimeStartAfterMinutes: res.data.overtimeStartAfterMinutes ?? 510,
+          minimumOvertimeMinutes: res.data.minimumOvertimeMinutes ?? 30,
+          maximumOvertimeMinutes: res.data.maximumOvertimeMinutes ?? 240,
+          autoCloseEnabled: res.data.autoCloseEnabled ?? true,
+          autoCloseCutoffHours: res.data.autoCloseCutoffHours ?? 12,
+          attendanceMode: res.data.attendanceMode || 'GEOFENCE',
+          weekStartDay: res.data.weekStartDay || 'Monday',
+        });
+      }
+    } catch (err) { console.warn("Settings load error:", err.message); }
+  }, [selectedOrgId]);
+
+  const handleSavePolicySettings = async (e) => {
+    e.preventDefault();
+    setSettingsSubmitting(true);
+    setSettingsSuccessMsg('');
+    setSettingsErrMsg('');
+    try {
+      const payload = {
+        ...(isOwner && selectedOrgId ? { organizationId: selectedOrgId } : {}),
+        ...settingsForm,
+      };
+      const res = await updateAttendanceSettings(payload);
+      if (res?.success) {
+        setSettingsSuccessMsg(res.message || 'Attendance policy updated successfully.');
+        if (res.data) setAttendancePolicy(res.data);
+      }
+    } catch (err) {
+      setSettingsErrMsg(err.message || 'Failed to update attendance policy.');
+    } finally {
+      setSettingsSubmitting(false);
+    }
+  };
+
+  // ── Modals & Actions ──
+  const [locationModalRecord, setLocationModalRecord] = useState(null);
+  const [showLocationModal, setShowLocationModal] = useState(false);
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [correctionForm, setCorrectionForm] = useState({
-    loginTime: '', logoutTime: '', status: '', locationType: '', isLate: false, reason: ''
+    loginTime: '', logoutTime: '', status: 'Present', locationType: 'Office', isLate: false, reason: ''
   });
   const [correctionSubmitting, setCorrectionSubmitting] = useState(false);
-  const [correctionError, setCorrectionError] = useState('');
 
-  // ── Audit Modal States ──
-  const [showAuditModal, setShowAuditModal] = useState(false);
-  const [auditRecord, setAuditRecord] = useState(null);
+  // ── Regularization Form Modal ──
+  const [showRegFormModal, setShowRegFormModal] = useState(false);
+  const [regForm, setRegForm] = useState({
+    date: getTodayString(),
+    requestType: 'MISSED_PUNCH_OUT',
+    requestedStatus: 'Present',
+    requestedLoginTime: '',
+    requestedLogoutTime: '',
+    reason: ''
+  });
+  const [regSubmitting, setRegSubmitting] = useState(false);
+
+  // ── Regularization Review Modal ──
+  const [reviewRegDoc, setReviewRegDoc] = useState(null);
+  const [showRegReviewModal, setShowRegReviewModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   const [feedbackMessage, setFeedbackMessage] = useState({ type: '', text: '' });
 
-  // ── Manual Override Modal States ──
-  const [showOverrideModal, setShowOverrideModal] = useState(false);
-  const [overrideSubmitting, setOverrideSubmitting] = useState(false);
-  const [overrideError, setOverrideError] = useState('');
-  const [usersList, setUsersList] = useState([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-  const [overrideForm, setOverrideForm] = useState({
-    userId: '',
-    date: getTodayString(),
-    status: 'Present',
-    locationType: 'Office',
-    loginTime: '',
-    logoutTime: '',
-    isLate: false,
-    reason: '',
-  });
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  // ── Company Holiday & Bulk Leave Modal States ──
-  const [showHolidayModal, setShowHolidayModal] = useState(false);
-  const [holidaySubmitting, setHolidaySubmitting] = useState(false);
-  const [holidayError, setHolidayError] = useState('');
-  const [holidayForm, setHolidayForm] = useState({
-    title: '',
-    date: getTodayString(),
-    holidayType: 'COMPANY_HOLIDAY',
-    scope: 'ALL',
-    targetDepartment: '',
-    selectedUserIds: [],
-    excludeAdmins: true,
-    reason: '',
-  });
-  const [holidayPreview, setHolidayPreview] = useState(null);
-  const [holidayPreviewLoading, setHolidayPreviewLoading] = useState(false);
-  const [departmentsList, setDepartmentsList] = useState([]);
-  const [holidayEmpSearch, setHolidayEmpSearch] = useState('');
+  // Load dropdown lists on mount
+  useEffect(() => {
+    const loadDropdowns = async () => {
+      try {
+        const [bData, dData] = await Promise.all([
+          fetchBranchesDropdown().catch(() => []),
+          fetchDepartmentsDropdown().catch(() => [])
+        ]);
+        setBranchesList(bData || []);
+        setDepartmentsList(dData || []);
+      } catch (err) {
+        console.warn("Failed loading org dropdowns:", err);
+      }
+    };
+    loadDropdowns();
+  }, []);
 
-  // ── Data Loading Functions ──
+  // ── Loaders ──
+  const loadTodayData = useCallback(async () => {
+    try {
+      const res = await fetchTodayAttendance();
+      if (res?.success) setTodayRecord(res.data);
+    } catch (err) { console.warn("Today attendance load:", err.message); }
+  }, []);
+
   const loadOwnMonthly = useCallback(async () => {
     setOwnLoading(true);
     try {
       const res = await fetchAttendanceByMonth(selectedMonth, selectedYear);
       if (res?.success) setMonthlyRecords(res.data || []);
     } catch (err) {
-      setFeedbackMessage({ type: 'danger', text: err.message || 'Failed to load attendance.' });
+      setFeedbackMessage({ type: 'danger', text: err.message || 'Failed to load attendance calendar.' });
     } finally { setOwnLoading(false); }
   }, [selectedMonth, selectedYear]);
 
-  const loadTeamToday = useCallback(async () => {
-    setTeamTodayLoading(true);
+  const loadAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true);
     try {
-      const res = await fetchTeamAttendanceToday();
-      if (res?.success) setTeamTodayData(res.data);
-    } catch (err) {
-      console.warn("Team today load:", err.message);
-    } finally { setTeamTodayLoading(false); }
-  }, []);
+      const res = await fetchAttendanceAnalytics({
+        branchId: branchFilter, departmentId: departmentFilter, locationId: locationFilter
+      });
+      if (res?.success) setAnalyticsData(res.data);
+    } catch (err) { console.warn("Analytics load error:", err.message); }
+    finally { setAnalyticsLoading(false); }
+  }, [branchFilter, departmentFilter, locationFilter]);
 
   const loadTeamRecords = useCallback(async () => {
     setTeamLoading(true);
     try {
       const res = await fetchTeamAttendance({
-        search: debouncedSearch, status: statusFilter, date: dateFilter,
-        page: currentPage, limit: 10
+        search: debouncedSearch,
+        status: statusFilter,
+        date: dateFilter,
+        branchId: branchFilter,
+        departmentId: departmentFilter,
+        locationId: locationFilter,
+        page: currentPage,
+        limit: 15
       });
       if (res?.success) {
         setTeamRecords(res.data || []);
@@ -427,1711 +516,1349 @@ function Attendance() {
     } catch (err) {
       setFeedbackMessage({ type: 'danger', text: err.message || 'Failed to load team records.' });
     } finally { setTeamLoading(false); }
-  }, [debouncedSearch, statusFilter, dateFilter, currentPage]);
+  }, [debouncedSearch, statusFilter, dateFilter, branchFilter, departmentFilter, locationFilter, currentPage]);
 
-  const loadAnalytics = useCallback(async () => {
-    setAnalyticsLoading(true);
+  const loadMyTeam = useCallback(async () => {
+    setMyTeamLoading(true);
     try {
-      const res = await fetchAttendanceAnalytics();
-      if (res?.success) setAnalyticsData(res.data);
-    } catch (err) { console.warn("Analytics load:", err.message); }
-    finally { setAnalyticsLoading(false); }
+      const res = await fetchMyTeamAttendance();
+      if (res?.success) setMyTeamData(res.data);
+    } catch (err) { console.warn("My team load error:", err.message); }
+    finally { setMyTeamLoading(false); }
   }, []);
 
-  const loadDrillDown = useCallback(async (userId, month, year) => {
-    setDrillLoading(true);
+  const loadExceptions = useCallback(async () => {
+    setExceptionsLoading(true);
     try {
-      const res = await fetchAttendanceByMonth(month, year, userId);
-      if (res?.success) setDrillRecords(res.data || []);
-    } catch (err) {
-      setFeedbackMessage({ type: 'danger', text: err.message || 'Failed to load employee attendance.' });
-    } finally { setDrillLoading(false); }
+      const res = await fetchAttendanceExceptions({
+        date: dateFilter, branchId: branchFilter, departmentId: departmentFilter
+      });
+      if (res?.success) setExceptionsList(res.data || []);
+    } catch (err) { console.warn("Exceptions load error:", err.message); }
+    finally { setExceptionsLoading(false); }
+  }, [dateFilter, branchFilter, departmentFilter]);
+
+  const loadOvertime = useCallback(async () => {
+    setOvertimeLoading(true);
+    try {
+      const res = await fetchOvertimeReport({
+        branchId: branchFilter, departmentId: departmentFilter
+      });
+      if (res?.success) setOvertimeList(res.data || []);
+    } catch (err) { console.warn("Overtime load error:", err.message); }
+    finally { setOvertimeLoading(false); }
+  }, [branchFilter, departmentFilter]);
+
+  const loadAuditLog = useCallback(async () => {
+    setAuditLogLoading(true);
+    try {
+      const res = await fetchAttendanceAuditLog({ search: debouncedSearch });
+      if (res?.success) setAuditLogList(res.data || []);
+    } catch (err) { console.warn("Audit log load error:", err.message); }
+    finally { setAuditLogLoading(false); }
+  }, [debouncedSearch]);
+
+  const loadRegularization = useCallback(async () => {
+    setRegularizationLoading(true);
+    try {
+      const res = await fetchRegularizationRequests();
+      if (res?.success) setRegularizationList(res.data || []);
+    } catch (err) { console.warn("Regularization load error:", err.message); }
+    finally { setRegularizationLoading(false); }
   }, []);
 
-  // ── Debounce Search (300ms) ──
+  // Trigger loads based on activeTab
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(searchQuery);
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [searchQuery]);
-
-  // ── Effects ──
-  useEffect(() => {
-    if (activeTab === 'my-attendance') loadOwnMonthly();
-  }, [activeTab, loadOwnMonthly]);
-
-  // Load team summary ONLY when Team Attendance tab is activated
-  useEffect(() => {
-    if (activeTab === 'team-attendance' && canViewTeam && !drillEmployee) {
-      loadTeamToday();
-    }
-  }, [activeTab, canViewTeam, drillEmployee, loadTeamToday]);
-
-  // Load analytics ONLY when Overview tab is activated
-  useEffect(() => {
-    if (activeTab === 'overview' && canViewAnalytics) {
+    loadTodayData();
+    if (activeTab === 'overview') {
       loadAnalytics();
-    }
-  }, [activeTab, canViewAnalytics, loadAnalytics]);
-
-  // Load team records when a relevant table tab is active and filters/page change
-  const isTeamRecordsTab = (activeTab === 'team-attendance' && canViewTeam && !drillEmployee) ||
-                           (activeTab === 'overview' && canViewAnalytics) ||
-                           (activeTab === 'corrections' && canCorrect);
-
-  useEffect(() => {
-    if (isTeamRecordsTab) {
       loadTeamRecords();
+    } else if (activeTab === 'daily') {
+      loadTeamRecords();
+    } else if (activeTab === 'my-today' || activeTab === 'my-calendar' || activeTab === 'my-history') {
+      loadOwnMonthly();
+    } else if (activeTab === 'my-team') {
+      loadMyTeam();
+    } else if (activeTab === 'exceptions') {
+      loadExceptions();
+    } else if (activeTab === 'regularization') {
+      loadRegularization();
+    } else if (activeTab === 'overtime') {
+      loadOvertime();
+    } else if (activeTab === 'audit') {
+      loadAuditLog();
+    } else if (activeTab === 'settings') {
+      loadPolicySettings();
     }
-  }, [isTeamRecordsTab, loadTeamRecords]);
+  }, [activeTab, loadAnalytics, loadTeamRecords, loadOwnMonthly, loadMyTeam, loadExceptions, loadRegularization, loadOvertime, loadAuditLog, loadPolicySettings, loadTodayData]);
 
-  useEffect(() => {
-    if (drillEmployee) loadDrillDown(drillEmployee._id || drillEmployee.userId?._id, drillMonth, drillYear);
-  }, [drillEmployee, drillMonth, drillYear, loadDrillDown]);
+  // Handle Punch In / Punch Out Action
+  const handlePunchAction = async () => {
+    setPunchLoading(true);
+    try {
+      let coords = { latitude: 11.0168, longitude: 76.9558, accuracy: 10 };
+      if (navigator.geolocation) {
+        try {
+          const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 }));
+          coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy };
+        } catch (e) { console.warn("Geolocation fallback used."); }
+      }
 
-  // ── Handlers ──
-  const handleDayClick = (record) => {
-    setDayDetailRecord(record);
-    setShowDayDetail(true);
+      if (todayRecord?.loginTime && !todayRecord?.logoutTime) {
+        const res = await punchOutUser(coords);
+        setFeedbackMessage({ type: 'success', text: res.message || 'Punched out successfully!' });
+      } else {
+        const res = await punchInUser(coords);
+        setFeedbackMessage({ type: 'success', text: res.message || 'Punched in successfully!' });
+      }
+      loadTodayData();
+      loadOwnMonthly();
+    } catch (err) {
+      setFeedbackMessage({ type: 'danger', text: err.message || 'Punch action failed.' });
+    } finally { setPunchLoading(false); }
   };
 
+  // Open Correction Modal
   const handleOpenCorrection = (record) => {
     setSelectedRecord(record);
-    const toInput = (d) => {
-      if (!d) return '';
-      const dt = new Date(d);
-      return new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-    };
     setCorrectionForm({
-      loginTime: toInput(record.loginTime), logoutTime: toInput(record.logoutTime),
-      status: record.status || 'Present', locationType: record.locationType || 'Office',
-      isLate: record.isLate || false, reason: ''
+      loginTime: record.loginTime ? new Date(record.loginTime).toISOString().slice(0, 16) : '',
+      logoutTime: record.logoutTime ? new Date(record.logoutTime).toISOString().slice(0, 16) : '',
+      status: record.status || 'Present',
+      locationType: record.locationType || 'Office',
+      isLate: record.isLate || false,
+      reason: ''
     });
-    setCorrectionError('');
     setShowCorrectionModal(true);
   };
 
-  const handleSubmitCorrection = async (e) => {
+  const handleCorrectionSubmit = async (e) => {
     e.preventDefault();
-    if (!correctionForm.reason.trim()) {
-      setCorrectionError('A valid reason is required for manual attendance correction.');
+    if (!correctionForm.reason || correctionForm.reason.trim().length < 5) {
+      setFeedbackMessage({ type: 'danger', text: 'Audit reason must be at least 5 characters long.' });
       return;
     }
     setCorrectionSubmitting(true);
-    setCorrectionError('');
     try {
-      const payload = {
-        loginTime: correctionForm.loginTime ? new Date(correctionForm.loginTime).toISOString() : undefined,
-        logoutTime: correctionForm.logoutTime ? new Date(correctionForm.logoutTime).toISOString() : undefined,
-        status: correctionForm.status, locationType: correctionForm.locationType,
-        isLate: correctionForm.isLate, reason: correctionForm.reason.trim()
-      };
-      const res = await updateAttendanceCorrection(selectedRecord._id, payload);
-      if (res?.success) {
-        setFeedbackMessage({ type: 'success', text: 'Attendance record corrected successfully.' });
-        setShowCorrectionModal(false);
-        loadTeamRecords();
-        if (canViewAnalytics) loadAnalytics();
-      }
-    } catch (err) { setCorrectionError(err.message || 'Failed to update correction.'); }
-    finally { setCorrectionSubmitting(false); }
+      await updateAttendanceCorrection(selectedRecord._id, correctionForm);
+      setFeedbackMessage({ type: 'success', text: 'Attendance record updated successfully with audit trail.' });
+      setShowCorrectionModal(false);
+      loadTeamRecords();
+    } catch (err) {
+      setFeedbackMessage({ type: 'danger', text: err.message || 'Correction failed.' });
+    } finally { setCorrectionSubmitting(false); }
   };
 
-  const handleOpenAudit = (record) => { setAuditRecord(record); setShowAuditModal(true); };
-
-  const handleDrillDown = (employee) => {
-    setDrillEmployee(employee);
-    setDrillMonth(new Date().getMonth() + 1);
-    setDrillYear(new Date().getFullYear());
-  };
-
-  // ── Manual Override Handlers (Admin / Owner) ──
-  const handleOpenOverrideModal = async () => {
-    setOverrideError('');
-    setOverrideForm({
-      userId: '',
-      date: getTodayString(),
-      status: 'Present',
-      locationType: 'Office',
-      loginTime: '',
-      logoutTime: '',
-      isLate: false,
-      reason: '',
-    });
-    setShowOverrideModal(true);
-
-    if (usersList.length === 0) {
-      setUsersLoading(true);
-      try {
-        const usersData = await fetchAllUsers();
-        const list = Array.isArray(usersData)
-          ? usersData
-          : Array.isArray(usersData?.users)
-          ? usersData.users
-          : Array.isArray(usersData?.data)
-          ? usersData.data
-          : [];
-        setUsersList(list);
-      } catch (err) {
-        console.warn('Failed to load users for manual override:', err.message);
-      } finally {
-        setUsersLoading(false);
-      }
-    }
-  };
-
-  const handleOverrideStatusChange = (newStatus) => {
-    const isNonWorking = newStatus === 'Leave' || newStatus === 'Absent';
-    setOverrideForm((prev) => ({
-      ...prev,
-      status: newStatus,
-      loginTime: isNonWorking ? '' : prev.loginTime,
-      logoutTime: isNonWorking ? '' : prev.logoutTime,
-    }));
-  };
-
-  const handleSubmitOverride = async (e) => {
+  // Regularization submit
+  const handleRegSubmit = async (e) => {
     e.preventDefault();
-    if (!overrideForm.userId) {
-      setOverrideError('Please select an employee.');
-      return;
-    }
-    if (!overrideForm.date) {
-      setOverrideError('Please select a valid date.');
-      return;
-    }
-    if (!overrideForm.reason || overrideForm.reason.trim().length < 5) {
-      setOverrideError('Reason must be at least 5 characters.');
-      return;
-    }
-
-    const isNonWorking = overrideForm.status === 'Leave' || overrideForm.status === 'Absent';
-    const isFuture = overrideForm.date > getTodayString();
-
-    if (!isNonWorking && isFuture && (!overrideForm.loginTime || !overrideForm.logoutTime)) {
-      setOverrideError('Both Punch In and Punch Out times are required when creating future working records.');
-      return;
-    }
-
-    if (!isNonWorking && overrideForm.loginTime && overrideForm.logoutTime) {
-      if (new Date(overrideForm.logoutTime).getTime() < new Date(overrideForm.loginTime).getTime()) {
-        setOverrideError('Punch Out time cannot be earlier than Punch In time.');
-        return;
-      }
-    }
-
-    setOverrideSubmitting(true);
-    setOverrideError('');
+    setRegSubmitting(true);
     try {
-      const payload = {
-        userId: overrideForm.userId,
-        date: overrideForm.date,
-        status: overrideForm.status,
-        locationType: overrideForm.locationType,
-        loginTime: isNonWorking ? null : (overrideForm.loginTime ? new Date(overrideForm.loginTime).toISOString() : null),
-        logoutTime: isNonWorking ? null : (overrideForm.logoutTime ? new Date(overrideForm.logoutTime).toISOString() : null),
-        isLate: overrideForm.isLate,
-        reason: overrideForm.reason.trim(),
-      };
-
-      const res = await postManualAttendanceOverride(payload);
-      if (res?.success) {
-        setFeedbackMessage({
-          type: 'success',
-          text: res.message || 'Manual attendance override saved successfully.',
-        });
-        setShowOverrideModal(false);
-        loadTeamRecords();
-        loadTeamToday();
-        loadOwnMonthly();
-        if (canViewAnalytics) loadAnalytics();
-      }
+      await submitRegularizationRequest(regForm);
+      setFeedbackMessage({ type: 'success', text: 'Regularization request submitted successfully!' });
+      setShowRegFormModal(false);
+      loadRegularization();
     } catch (err) {
-      setOverrideError(err.message || 'Failed to apply manual override.');
-    } finally {
-      setOverrideSubmitting(false);
-    }
+      setFeedbackMessage({ type: 'danger', text: err.message || 'Submission failed.' });
+    } finally { setRegSubmitting(false); }
   };
 
-  // ── Company Holiday & Bulk Leave Handlers (Admin / Owner) ──
-  const loadHolidayPreview = useCallback(async (formData) => {
-    setHolidayPreviewLoading(true);
+  // Regularization review
+  const handleReviewReg = async (status) => {
+    setReviewSubmitting(true);
     try {
-      const res = await fetchHolidayPreview({
-        date: formData.date,
-        scope: formData.scope,
-        targetDepartment: formData.targetDepartment,
-        selectedUserIds: formData.selectedUserIds,
-        excludeAdmins: formData.excludeAdmins,
-      });
-      if (res?.success && res.data) {
-        setHolidayPreview(res.data);
-        if (Array.isArray(res.data.departments) && res.data.departments.length > 0) {
-          setDepartmentsList(res.data.departments);
-        }
-      }
+      await reviewRegularizationRequest(reviewRegDoc._id, { status, rejectionReason });
+      setFeedbackMessage({ type: 'success', text: `Request ${status.toLowerCase()} successfully!` });
+      setShowRegReviewModal(false);
+      loadRegularization();
+      loadTeamRecords();
     } catch (err) {
-      console.warn('Holiday preview load error:', err.message);
-    } finally {
-      setHolidayPreviewLoading(false);
-    }
-  }, []);
-
-  const handleOpenHolidayModal = async () => {
-    setHolidayError('');
-    const initialForm = {
-      title: '',
-      date: getTodayString(),
-      holidayType: 'COMPANY_HOLIDAY',
-      scope: 'ALL',
-      targetDepartment: '',
-      selectedUserIds: [],
-      excludeAdmins: true,
-      reason: '',
-    };
-    setHolidayForm(initialForm);
-    setShowHolidayModal(true);
-
-    // Load users if not already loaded
-    if (usersList.length === 0) {
-      setUsersLoading(true);
-      try {
-        const usersData = await fetchAllUsers();
-        const list = Array.isArray(usersData)
-          ? usersData
-          : Array.isArray(usersData?.users)
-          ? usersData.users
-          : Array.isArray(usersData?.data)
-          ? usersData.data
-          : [];
-        setUsersList(list);
-      } catch (err) {
-        console.warn('Failed to load users directory:', err.message);
-      } finally {
-        setUsersLoading(false);
-      }
-    }
-
-    // Trigger initial impact preview
-    loadHolidayPreview(initialForm);
+      setFeedbackMessage({ type: 'danger', text: err.message || 'Review failed.' });
+    } finally { setReviewSubmitting(false); }
   };
 
-  const handleHolidayScopeChange = (newScope) => {
-    const updated = {
-      ...holidayForm,
-      scope: newScope,
-      holidayType:
-        newScope === 'DEPARTMENT'
-          ? 'DEPARTMENT_HOLIDAY'
-          : newScope === 'SELECTED_EMPLOYEES'
-          ? 'BULK_LEAVE'
-          : 'COMPANY_HOLIDAY',
-      targetDepartment: newScope === 'DEPARTMENT' ? holidayForm.targetDepartment : '',
-      selectedUserIds: newScope === 'SELECTED_EMPLOYEES' ? holidayForm.selectedUserIds : [],
-    };
-    setHolidayForm(updated);
-    loadHolidayPreview(updated);
-  };
-
-  const handleToggleEmployeeSelection = (empId) => {
-    const current = holidayForm.selectedUserIds || [];
-    const updatedIds = current.includes(empId)
-      ? current.filter((id) => id !== empId)
-      : [...current, empId];
-    const updated = { ...holidayForm, selectedUserIds: updatedIds };
-    setHolidayForm(updated);
-    loadHolidayPreview(updated);
-  };
-
-  const handleSelectAllEmployees = () => {
-    const eligibleIds = usersList
-      .filter((u) => {
-        if (holidayForm.excludeAdmins) {
-          const roleCode = (u.roleCode || u.roleName || '').toUpperCase();
-          if (roleCode.includes('ADMIN') || roleCode.includes('OWNER') || u.priority === 1) {
-            return false;
-          }
-        }
-        return u.isActive !== false;
-      })
-      .map((u) => u._id);
-
-    const allSelected = eligibleIds.every((id) => holidayForm.selectedUserIds.includes(id));
-    const updatedIds = allSelected ? [] : eligibleIds;
-    const updated = { ...holidayForm, selectedUserIds: updatedIds };
-    setHolidayForm(updated);
-    loadHolidayPreview(updated);
-  };
-
-  const handleSubmitHoliday = async (e) => {
-    e.preventDefault();
-    if (!holidayForm.title || holidayForm.title.trim().length < 2) {
-      setHolidayError('Please specify a valid holiday title (min 2 characters).');
-      return;
-    }
-    if (!holidayForm.date) {
-      setHolidayError('Please select a valid date.');
-      return;
-    }
-    if (holidayForm.scope === 'DEPARTMENT' && !holidayForm.targetDepartment) {
-      setHolidayError('Please select a target department.');
-      return;
-    }
-    if (holidayForm.scope === 'SELECTED_EMPLOYEES' && holidayForm.selectedUserIds.length === 0) {
-      setHolidayError('Please select at least one employee.');
-      return;
-    }
-    if (!holidayForm.reason || holidayForm.reason.trim().length < 5) {
-      setHolidayError('Reason must be at least 5 characters.');
-      return;
-    }
-
-    setHolidaySubmitting(true);
-    setHolidayError('');
-    try {
-      const res = await postBulkHoliday({
-        title: holidayForm.title.trim(),
-        date: holidayForm.date,
-        holidayType: holidayForm.holidayType,
-        scope: holidayForm.scope,
-        targetDepartment: holidayForm.scope === 'DEPARTMENT' ? holidayForm.targetDepartment.trim() : null,
-        selectedUserIds: holidayForm.scope === 'SELECTED_EMPLOYEES' ? holidayForm.selectedUserIds : [],
-        reason: holidayForm.reason.trim(),
-        excludeAdmins: holidayForm.excludeAdmins,
-      });
-
-      if (res?.success) {
-        setFeedbackMessage({
-          type: 'success',
-          text: res.message || 'Company holiday / bulk leave applied successfully.',
-        });
-        setShowHolidayModal(false);
-        // Refresh all attendance dashboards & calendar
-        loadTeamRecords();
-        loadTeamToday();
-        loadOwnMonthly();
-        if (canViewAnalytics) loadAnalytics();
-      }
-    } catch (err) {
-      setHolidayError(err.message || 'Failed to apply company holiday / bulk leave.');
-    } finally {
-      setHolidaySubmitting(false);
-    }
-  };
-
-
-  // ── Render ──
   return (
-    <Container fluid className="p-2.5 p-md-3 no-scrollbar att-page-container">
-      {/* Header */}
-      <Row className="mb-2.5 align-items-center g-2">
-        <Col>
-          <div className="d-flex align-items-center gap-2">
-            <div className="d-inline-flex align-items-center justify-content-center rounded-3 att-header-icon">
-              <FaClock />
-            </div>
-            <h4 className="fw-bold mb-0 att-page-title">
-              Attendance & Work Logs
-            </h4>
-          </div>
-          <p className="text-muted small mb-0 mt-0.5">
-            {isAdminOrOwner ? 'Organization attendance overview, analytics and corrections.' :
-             isHR ? 'Your attendance logs, calendar, and team workforce tracking.' :
-             'Track your daily attendance, view calendar status, and inspect work duration.'}
-          </p>
-        </Col>
-      </Row>
+    <Container fluid className="attendance-page py-3 px-4 bg-light min-vh-100">
+      {/* ── Top Page Header & Context (Role Tailored) ── */}
+      <div className="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom">
+        <div>
+          <h4 className="fw-bold mb-1 d-flex align-items-center gap-2 text-dark">
+            <FaClock className="text-success" />
+            {isOwner ? '👑 Organization Attendance Command Center' :
+             isAdmin ? `🛡️ Branch Attendance (${branchesList.find(b => b._id === user?.branchId)?.branchName || 'Assigned Branch'})` :
+             isHR ? '👩💼 HR Operations & Attendance Management' :
+             isPM ? '👥 My Team Attendance' : `👤 My Attendance — ${user?.firstName || 'Employee'} 👋`}
+          </h4>
+          <span className="small text-muted d-flex align-items-center gap-2">
+            Today: {getTodayString()} | Active Role: <Badge bg="dark" className="rounded-pill px-2.5 py-0.5">{rawRole || 'USER'}</Badge>
+          </span>
+        </div>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <Button
+            variant="outline-success"
+            size="sm"
+            className="rounded-pill px-3 fw-semibold d-flex align-items-center gap-1.5"
+            onClick={() => setShowRegFormModal(true)}
+          >
+            <FaPlus size={12} /> Regularization Request
+          </Button>
+        </div>
+      </div>
 
-      {/* Global Feedback */}
+      {/* Feedback Toast Alert */}
       {feedbackMessage.text && (
-        <Alert variant={feedbackMessage.type} dismissible onClose={() => setFeedbackMessage({ type: '', text: '' })} className="py-1.5 px-3 small mb-2.5 rounded-3 shadow-xs">
+        <Alert
+          variant={feedbackMessage.type}
+          dismissible
+          onClose={() => setFeedbackMessage({ type: '', text: '' })}
+          className="shadow-sm border-0 rounded-3 mb-3 py-2 px-3 small"
+        >
           {feedbackMessage.text}
         </Alert>
       )}
 
-      {/* Tab Navigation */}
-      <div className="attendance-tabs">
-        <button className={`attendance-tab ${activeTab === 'my-attendance' ? 'attendance-tab--active' : ''}`}
-          onClick={() => { setActiveTab('my-attendance'); setDrillEmployee(null); }}>
-          <FaUser size={13} /> My Attendance
-        </button>
-        {canViewTeam && (
-          <button className={`attendance-tab ${activeTab === 'team-attendance' ? 'attendance-tab--active' : ''}`}
-            onClick={() => { setActiveTab('team-attendance'); setDrillEmployee(null); }}>
-            <FaUsers size={13} /> Team Attendance
-          </button>
-        )}
-        {canViewAnalytics && (
-          <button className={`attendance-tab ${activeTab === 'overview' ? 'attendance-tab--active' : ''}`}
-            onClick={() => { setActiveTab('overview'); setDrillEmployee(null); }}>
-            <FaChartLine size={13} /> Analytics & Overview
-          </button>
-        )}
-        {canCorrect && (
-          <button className={`attendance-tab ${activeTab === 'corrections' ? 'attendance-tab--active' : ''}`}
-            onClick={() => { setActiveTab('corrections'); setDrillEmployee(null); }}>
-            <FaEdit size={13} /> Corrections & Audit
-          </button>
-        )}
-      </div>
+      {/* ── 1. OWNER NAVIGATION TABS ── */}
+      {isOwner && (
+        <Nav variant="pills" className="attendance-nav-pills gap-2 mb-3 bg-white p-2 rounded-4 shadow-sm border">
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaChartLine className="me-1.5" /> Overview
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'daily'} onClick={() => setActiveTab('daily')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaUsers className="me-1.5" /> Daily Attendance
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'exceptions'} onClick={() => setActiveTab('exceptions')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaExclamationTriangle className="me-1.5 text-warning" /> Exceptions
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'regularization'} onClick={() => setActiveTab('regularization')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaFileContract className="me-1.5" /> Regularization
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'overtime'} onClick={() => setActiveTab('overtime')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaClock className="me-1.5" /> Overtime
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaShieldAlt className="me-1.5 text-info" /> Audit Log
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaCog className="me-1.5" /> Settings
+            </Nav.Link>
+          </Nav.Item>
+        </Nav>
+      )}
 
-      {/* ════════════════════════════════════════════════
-          TAB: MY ATTENDANCE (Employee & HR)
-          ════════════════════════════════════════════════ */}
-      {activeTab === 'my-attendance' && (
-        <Row className="g-3">
-          <Col lg={12}>
-            <SummaryCards records={monthlyRecords} />
+      {/* ── 2. ADMIN NAVIGATION TABS (Assigned Branch Scope) ── */}
+      {isAdmin && (
+        <Nav variant="pills" className="attendance-nav-pills gap-2 mb-3 bg-white p-2 rounded-4 shadow-sm border">
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaChartLine className="me-1.5" /> Overview
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'daily'} onClick={() => setActiveTab('daily')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaUsers className="me-1.5" /> Daily Attendance
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'exceptions'} onClick={() => setActiveTab('exceptions')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaExclamationTriangle className="me-1.5 text-warning" /> Exceptions
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'regularization'} onClick={() => setActiveTab('regularization')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaFileContract className="me-1.5" /> Regularization
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'overtime'} onClick={() => setActiveTab('overtime')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaClock className="me-1.5" /> Overtime
+            </Nav.Link>
+          </Nav.Item>
+        </Nav>
+      )}
+
+      {/* ── 3. HR NAVIGATION TABS (HR Operational Scope) ── */}
+      {isHR && (
+        <Nav variant="pills" className="attendance-nav-pills gap-2 mb-3 bg-white p-2 rounded-4 shadow-sm border">
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaChartLine className="me-1.5" /> Overview
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'daily'} onClick={() => setActiveTab('daily')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaUsers className="me-1.5" /> Daily Attendance
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'exceptions'} onClick={() => setActiveTab('exceptions')} className="rounded-3 px-3 py-2 small fw-bold text-warning">
+              <FaExclamationTriangle className="me-1.5" /> Exceptions ⭐
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'regularization'} onClick={() => setActiveTab('regularization')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaFileContract className="me-1.5" /> Regularization ⭐
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'overtime'} onClick={() => setActiveTab('overtime')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaClock className="me-1.5" /> Overtime ⭐
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaShieldAlt className="me-1.5 text-info" /> Audit Log
+            </Nav.Link>
+          </Nav.Item>
+        </Nav>
+      )}
+
+      {/* ── 4. PROJECT MANAGER NAVIGATION TABS (My Team Scope) ── */}
+      {isPM && (
+        <Nav variant="pills" className="attendance-nav-pills gap-2 mb-3 bg-white p-2 rounded-4 shadow-sm border">
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'my-team'} onClick={() => setActiveTab('my-team')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaUsers className="me-1.5" /> Today's Team Status
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'daily'} onClick={() => setActiveTab('daily')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaUsers className="me-1.5" /> Team Roster
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'my-calendar'} onClick={() => setActiveTab('my-calendar')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaCalendarAlt className="me-1.5" /> Team Calendar
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'regularization'} onClick={() => setActiveTab('regularization')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaFileContract className="me-1.5" /> Requests
+            </Nav.Link>
+          </Nav.Item>
+        </Nav>
+      )}
+
+      {/* ── 5. EMPLOYEE / INTERN NAVIGATION TABS (Self Scope) ── */}
+      {isEmployeeOrIntern && (
+        <Nav variant="pills" className="attendance-nav-pills gap-2 mb-3 bg-white p-2 rounded-4 shadow-sm border">
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'my-today'} onClick={() => setActiveTab('my-today')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaClock className="me-1.5 text-success" /> Today
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'my-calendar'} onClick={() => setActiveTab('my-calendar')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaCalendarAlt className="me-1.5" /> Calendar
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'my-history'} onClick={() => setActiveTab('my-history')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaHistory className="me-1.5" /> History
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'regularization'} onClick={() => setActiveTab('regularization')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaFileContract className="me-1.5" /> Regularization
+            </Nav.Link>
+          </Nav.Item>
+        </Nav>
+      )}
+
+      {/* ── Organizational Scope Filter Bar (For Owner, Admin, HR) ── */}
+      {(isOwner || isAdmin || isHR) && (activeTab === 'overview' || activeTab === 'daily' || activeTab === 'exceptions') && (
+        <Card className="border-0 shadow-sm rounded-4 p-3 mb-3 bg-white">
+          <Row className="g-2 align-items-center">
+            {isOwner && (
+              <Col md={3} sm={6}>
+                <Form.Label className="extra-small fw-bold text-muted mb-1 d-flex align-items-center gap-1">
+                  <FaBuilding /> Organization Branch
+                </Form.Label>
+                <Form.Select
+                  size="sm"
+                  value={branchFilter}
+                  onChange={(e) => { setBranchFilter(e.target.value); setCurrentPage(1); }}
+                  className="rounded-3 border-secondary-subtle"
+                >
+                  <option value="">All Branches (Entire Organization)</option>
+                  {branchesList.map(b => (
+                    <option key={b._id} value={b._id}>{b.branchName}</option>
+                  ))}
+                </Form.Select>
+              </Col>
+            )}
+
+            <Col md={3} sm={6}>
+              <Form.Label className="extra-small fw-bold text-muted mb-1 d-flex align-items-center gap-1">
+                <FaSitemap /> Department
+              </Form.Label>
+              <Form.Select
+                size="sm"
+                value={departmentFilter}
+                onChange={(e) => { setDepartmentFilter(e.target.value); setCurrentPage(1); }}
+                className="rounded-3 border-secondary-subtle"
+              >
+                <option value="">All Departments</option>
+                {departmentsList.map(d => (
+                  <option key={d._id} value={d._id}>{d.departmentName}</option>
+                ))}
+              </Form.Select>
+            </Col>
+
+            <Col md={2} sm={6}>
+              <Form.Label className="extra-small fw-bold text-muted mb-1 d-flex align-items-center gap-1">
+                <FaCalendarAlt /> Date
+              </Form.Label>
+              <Form.Control
+                type="date"
+                size="sm"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="rounded-3 border-secondary-subtle"
+              />
+            </Col>
+
+            <Col md={2} sm={6}>
+              <Form.Label className="extra-small fw-bold text-muted mb-1 d-flex align-items-center gap-1">
+                <FaFilter /> Status
+              </Form.Label>
+              <Form.Select
+                size="sm"
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                className="rounded-3 border-secondary-subtle"
+              >
+                <option value="">All Statuses</option>
+                <option value="Present">Present</option>
+                <option value="Working">Working</option>
+                <option value="Late">Late</option>
+                <option value="Half Day">Half Day</option>
+                <option value="Absent">Absent</option>
+                <option value="Leave">Leave</option>
+              </Form.Select>
+            </Col>
+
+            <Col md={2} sm={12}>
+              <Form.Label className="extra-small fw-bold text-muted mb-1">Search Employee</Form.Label>
+              <InputGroup size="sm">
+                <Form.Control
+                  placeholder="Name / Code..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="rounded-start-3"
+                />
+                <Button variant="outline-secondary" className="rounded-end-3">
+                  <FaSearch size={12} />
+                </Button>
+              </InputGroup>
+            </Col>
+          </Row>
+        </Card>
+      )}
+
+      {/* ── TAB CONTENT 1: OVERVIEW & COMMAND CENTER ── */}
+      {activeTab === 'overview' && (
+        <>
+          {/* Top KPI Cards (7 Cards Grid as specified by prompt) */}
+          <Row className="g-3 mb-3">
+            <Col lg={2} md={4} sm={6}>
+              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center">
+                <div className="text-muted extra-small fw-bold text-uppercase">Employees</div>
+                <div className="h3 fw-bold text-dark my-1">{analyticsData?.totalEmployees || 0}</div>
+                <div className="extra-small text-muted">In Scope</div>
+              </Card>
+            </Col>
+
+            <Col lg={2} md={4} sm={6}>
+              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-success border-4">
+                <div className="text-success extra-small fw-bold text-uppercase">Present</div>
+                <div className="h3 fw-bold text-success my-1">{analyticsData?.presentToday || 0}</div>
+                <div className="extra-small text-muted">Checked In</div>
+              </Card>
+            </Col>
+
+            <Col lg={2} md={4} sm={6}>
+              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-info border-4">
+                <div className="text-info extra-small fw-bold text-uppercase">Working</div>
+                <div className="h3 fw-bold text-info my-1">{analyticsData?.currentlyWorking || 0}</div>
+                <div className="extra-small text-muted">Currently Active</div>
+              </Card>
+            </Col>
+
+            <Col lg={2} md={4} sm={6}>
+              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-danger border-4">
+                <div className="text-danger extra-small fw-bold text-uppercase">Absent</div>
+                <div className="h3 fw-bold text-danger my-1">{analyticsData?.absentToday || 0}</div>
+                <div className="extra-small text-muted">Not Checked In</div>
+              </Card>
+            </Col>
+
+            <Col lg={2} md={4} sm={6}>
+              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-warning border-4">
+                <div className="text-warning extra-small fw-bold text-uppercase">Late</div>
+                <div className="h3 fw-bold text-warning my-1">{analyticsData?.lateToday || 0}</div>
+                <div className="extra-small text-muted">&gt; 15m Cutoff</div>
+              </Card>
+            </Col>
+
+            <Col lg={2} md={4} sm={6}>
+              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-purple border-4">
+                <div className="text-purple extra-small fw-bold text-uppercase">Half Day</div>
+                <div className="h3 fw-bold text-purple my-1">{analyticsData?.halfDayToday || 0}</div>
+                <div className="extra-small text-muted">&lt; 8.5 Hours</div>
+              </Card>
+            </Col>
+          </Row>
+
+          {/* Daily Table Summary */}
+          <Card className="border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+            <h6 className="fw-bold mb-3 d-flex justify-content-between align-items-center">
+              <span>Today's Attendance Roster ({dateFilter})</span>
+              <span className="small text-muted">Showing {teamRecords.length} records</span>
+            </h6>
+
+            {teamLoading ? (
+              <div className="text-center py-4">
+                <Spinner animation="border" variant="success" size="sm" />
+                <div className="extra-small text-muted mt-2">Loading attendance roster...</div>
+              </div>
+            ) : (
+              <Table hover responsive className="align-middle small mb-0">
+                <thead className="bg-light">
+                  <tr>
+                    <th>Employee</th>
+                    <th>ID</th>
+                    <th>Branch</th>
+                    <th>Department</th>
+                    <th>Location</th>
+                    <th>Punch In</th>
+                    <th>Punch Out</th>
+                    <th>Working Hrs</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {teamRecords.map((r) => {
+                    const emp = getEmployeeDisplayInfo(r);
+                    return (
+                      <tr key={r._id}>
+                        <td className="fw-bold">
+                          <div className="d-flex align-items-center gap-2">
+                            <div className="avatar-circle-sm bg-success text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: 28, height: 28, fontSize: 11 }}>
+                              {emp.initials}
+                            </div>
+                            <div>
+                              <div>{emp.name}</div>
+                              <div className="extra-small text-muted fw-normal">{emp.sub}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td><Badge bg="light" text="dark" className="border">{emp.code}</Badge></td>
+                        <td><Badge bg="secondary-subtle" text="secondary">{emp.branch}</Badge></td>
+                        <td><Badge bg="info-subtle" text="info">{emp.dept}</Badge></td>
+                        <td>
+                          <Button
+                            variant="link"
+                            size="sm"
+                            className="p-0 text-decoration-none text-primary extra-small fw-semibold d-flex align-items-center gap-1"
+                            onClick={() => { setLocationModalRecord(r); setShowLocationModal(true); }}
+                          >
+                            <FaMapMarkerAlt size={11} /> {r.locationType || 'Office'}
+                          </Button>
+                        </td>
+                        <td className="text-success fw-semibold">{r.loginTime ? formatTime(r.loginTime) : '—'}</td>
+                        <td className="text-danger fw-semibold">{r.logoutTime ? formatTime(r.logoutTime) : (r.loginTime ? 'Working...' : '—')}</td>
+                        <td className="fw-bold">{r.totalHours ? `${r.totalHours} hrs` : '0 hrs'}</td>
+                        <td>{renderStatusBadgeStatic(r.status)}</td>
+                        <td>
+                          <Button
+                            variant="light"
+                            size="sm"
+                            className="btn-icon p-1 rounded-circle border"
+                            onClick={() => handleOpenCorrection(r)}
+                            title="Edit / Correct Attendance"
+                          >
+                            <FaEdit size={12} className="text-muted" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
+            )}
+          </Card>
+        </>
+      )}
+
+      {/* ── TAB CONTENT 2: DAILY ATTENDANCE TABLE ── */}
+      {activeTab === 'daily' && (
+        <Card className="border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h6 className="fw-bold mb-0">Detailed Attendance Directory</h6>
+            <div className="small text-muted">Total: {totalRecords} records</div>
+          </div>
+
+          <Table hover responsive className="align-middle small mb-0">
+            <thead className="bg-light">
+              <tr>
+                <th>Employee</th>
+                <th>Employee ID</th>
+                <th>Branch</th>
+                <th>Department</th>
+                <th>Designation</th>
+                <th>Location</th>
+                <th>Shift</th>
+                <th>Punch In</th>
+                <th>Punch Out</th>
+                <th>Hours</th>
+                <th>Status</th>
+                <th>Source</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {teamRecords.map((r) => {
+                const emp = getEmployeeDisplayInfo(r);
+                return (
+                  <tr key={r._id}>
+                    <td className="fw-bold">{emp.name}</td>
+                    <td>{emp.code}</td>
+                    <td><Badge bg="secondary-subtle" text="secondary">{emp.branch}</Badge></td>
+                    <td><Badge bg="info-subtle" text="info">{emp.dept}</Badge></td>
+                    <td className="text-muted">{r.userId?.designation || 'Staff'}</td>
+                    <td>
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="p-0 text-decoration-none extra-small fw-semibold text-primary"
+                        onClick={() => { setLocationModalRecord(r); setShowLocationModal(true); }}
+                      >
+                        <FaMapMarkerAlt size={10} className="me-1" />
+                        {r.locationType || 'Office'}
+                      </Button>
+                    </td>
+                    <td className="extra-small text-muted">{r.shiftId?.shiftName || 'General (09:00 - 18:00)'}</td>
+                    <td className="text-success fw-semibold">{r.loginTime ? formatTime(r.loginTime) : '—'}</td>
+                    <td className="text-danger fw-semibold">{r.logoutTime ? formatTime(r.logoutTime) : (r.loginTime ? 'Working...' : '—')}</td>
+                    <td className="fw-bold">{r.totalHours ? `${r.totalHours} h` : '0'}</td>
+                    <td>{renderStatusBadgeStatic(r.status)}</td>
+                    <td><Badge bg="light" text="dark" className="border extra-small">{r.attendanceSource || 'GPS'}</Badge></td>
+                    <td>
+                      <Button variant="light" size="sm" onClick={() => handleOpenCorrection(r)} className="border btn-icon p-1">
+                        <FaEdit size={12} className="text-muted" />
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+
+          <div className="d-flex justify-content-between align-items-center mt-3">
+            <span className="extra-small text-muted">Page {currentPage} of {totalPages}</span>
+            <Pagination size="sm" className="mb-0">
+              <Pagination.Prev disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} />
+              <Pagination.Next disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} />
+            </Pagination>
+          </div>
+        </Card>
+      )}
+
+      {/* ── TAB CONTENT 3: MY TEAM (PROJECT MANAGER) ── */}
+      {activeTab === 'my-team' && (
+        <Card className="border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+          <h6 className="fw-bold mb-3 d-flex justify-content-between align-items-center">
+            <span>Project Team Roster ({myTeamData?.totalMembers || 0} Members)</span>
+            <Badge bg="primary-subtle" text="primary" className="px-3 py-1 rounded-pill">Today: {getTodayString()}</Badge>
+          </h6>
+
+          {myTeamLoading ? (
+            <div className="text-center py-4"><Spinner animation="border" size="sm" /></div>
+          ) : (
+            <Row className="g-3">
+              {(myTeamData?.teamRoster || []).map((m) => (
+                <Col md={4} sm={6} key={m.id}>
+                  <Card className="border shadow-sm rounded-4 p-3 bg-white h-100">
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <div>
+                        <div className="fw-bold text-dark">{m.name}</div>
+                        <div className="extra-small text-muted">{m.employeeCode} | {m.designation || 'Member'}</div>
+                      </div>
+                      {renderStatusBadgeStatic(m.status)}
+                    </div>
+                    <div className="small text-muted mt-2 pt-2 border-top">
+                      <div><strong>Punch In:</strong> {m.loginTime ? formatTime(m.loginTime) : '—'}</div>
+                      <div><strong>Punch Out:</strong> {m.logoutTime ? formatTime(m.logoutTime) : (m.loginTime ? 'Working...' : '—')}</div>
+                      <div><strong>Hours Worked:</strong> {m.totalHours ? `${m.totalHours} hrs` : '0'}</div>
+                    </div>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+          )}
+        </Card>
+      )}
+
+      {/* ── TAB CONTENT 4: EXCEPTIONS / MISSING PUNCHES ── */}
+      {activeTab === 'exceptions' && (
+        <Card className="border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+          <h6 className="fw-bold mb-3 text-warning d-flex align-items-center gap-2">
+            <FaExclamationTriangle /> Attendance Exceptions & Missing Punches
+          </h6>
+
+          {exceptionsLoading ? (
+            <div className="text-center py-4"><Spinner animation="border" size="sm" /></div>
+          ) : exceptionsList.length === 0 ? (
+            <div className="text-center py-4 text-muted small">No attendance exceptions found for selected date.</div>
+          ) : (
+            <Table hover responsive className="align-middle small">
+              <thead className="bg-light">
+                <tr>
+                  <th>Employee</th>
+                  <th>Exception Type</th>
+                  <th>Details</th>
+                  <th>Severity</th>
+                  <th>Date</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {exceptionsList.map((ex) => (
+                  <tr key={ex.id}>
+                    <td className="fw-bold">{ex.employeeName} <span className="text-muted">({ex.employeeCode})</span></td>
+                    <td><Badge bg="warning-subtle" text="warning" className="border">{ex.title}</Badge></td>
+                    <td>{ex.details}</td>
+                    <td>
+                      <Badge bg={ex.severity === 'HIGH' ? 'danger' : ex.severity === 'MEDIUM' ? 'warning' : 'info'}>
+                        {ex.severity}
+                      </Badge>
+                    </td>
+                    <td>{ex.date}</td>
+                    <td>
+                      <Button
+                        variant="outline-primary"
+                        size="sm"
+                        onClick={() => {
+                          setRegForm({
+                            date: ex.date,
+                            requestType: ex.exceptionType === 'MISSING_PUNCH_OUT' ? 'MISSED_PUNCH_OUT' : 'STATUS_CORRECTION',
+                            requestedStatus: 'Present',
+                            requestedLoginTime: ex.loginTime ? new Date(ex.loginTime).toISOString().slice(0, 16) : '',
+                            requestedLogoutTime: '',
+                            reason: `Correcting exception: ${ex.title}`
+                          });
+                          setShowRegFormModal(true);
+                        }}
+                      >
+                        Prompt Regularization
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </Card>
+      )}
+
+      {/* ── TAB CONTENT 5: REGULARIZATION WORKFLOW ── */}
+      {activeTab === 'regularization' && (
+        <Card className="border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h6 className="fw-bold mb-0">Regularization & Missed Punch Requests</h6>
+            <Button variant="success" size="sm" onClick={() => setShowRegFormModal(true)}>
+              + Submit Request
+            </Button>
+          </div>
+
+          {regularizationLoading ? (
+            <div className="text-center py-4"><Spinner animation="border" size="sm" /></div>
+          ) : regularizationList.length === 0 ? (
+            <div className="text-center py-4 text-muted small">No regularization requests found.</div>
+          ) : (
+            <Table hover responsive className="align-middle small">
+              <thead className="bg-light">
+                <tr>
+                  <th>Employee</th>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Requested Status</th>
+                  <th>Reason</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {regularizationList.map((r) => (
+                  <tr key={r._id}>
+                    <td className="fw-bold">{r.employeeId ? `${r.employeeId.firstName || ''} ${r.employeeId.lastName || ''}` : 'Employee'}</td>
+                    <td>{r.date}</td>
+                    <td><Badge bg="light" text="dark" className="border">{r.requestType}</Badge></td>
+                    <td><Badge bg="info-subtle" text="info">{r.requestedStatus}</Badge></td>
+                    <td className="text-muted">{r.reason}</td>
+                    <td>
+                      <Badge bg={r.status === 'APPROVED' ? 'success' : r.status === 'REJECTED' ? 'danger' : 'warning'}>
+                        {r.status}
+                      </Badge>
+                    </td>
+                    <td>
+                      {r.status === 'PENDING' && (isOwner || isAdmin || isHR || isPM) ? (
+                        <Button
+                          variant="outline-dark"
+                          size="sm"
+                          onClick={() => { setReviewRegDoc(r); setShowRegReviewModal(true); }}
+                        >
+                          Review Request
+                        </Button>
+                      ) : (
+                        <span className="extra-small text-muted">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </Card>
+      )}
+
+      {/* ── TAB CONTENT 6: OVERTIME REPORT ── */}
+      {activeTab === 'overtime' && (
+        <Card className="border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+          <h6 className="fw-bold mb-3 text-dark d-flex align-items-center gap-2">
+            <FaClock /> Overtime Hours Report
+          </h6>
+
+          {overtimeLoading ? (
+            <div className="text-center py-4"><Spinner animation="border" size="sm" /></div>
+          ) : (
+            <Table hover responsive className="align-middle small">
+              <thead className="bg-light">
+                <tr>
+                  <th>Employee</th>
+                  <th>Department</th>
+                  <th>Date</th>
+                  <th>Regular Hours</th>
+                  <th>OT Hours</th>
+                  <th>Total Hours</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {overtimeList.map((ot) => (
+                  <tr key={ot.id}>
+                    <td className="fw-bold">{ot.employeeName} <span className="text-muted">({ot.employeeCode})</span></td>
+                    <td>{ot.department}</td>
+                    <td>{ot.date}</td>
+                    <td>{ot.regularHours} hrs</td>
+                    <td className="text-success fw-bold">+{ot.otHours} hrs ({ot.otMinutes} mins)</td>
+                    <td className="fw-bold">{ot.totalHours} hrs</td>
+                    <td>{renderStatusBadgeStatic(ot.status)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </Card>
+      )}
+
+      {/* ── TAB CONTENT 7: AUDIT LOG (OWNER ONLY) ── */}
+      {activeTab === 'audit' && (isOwner || isHR) && (
+        <Card className="border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+          <h6 className="fw-bold mb-3 text-info d-flex align-items-center gap-2">
+            <FaShieldAlt /> Attendance Manual Correction Audit Trail
+          </h6>
+
+          {auditLogLoading ? (
+            <div className="text-center py-4"><Spinner animation="border" size="sm" /></div>
+          ) : (
+            <Table hover responsive className="align-middle small">
+              <thead className="bg-light">
+                <tr>
+                  <th>Employee</th>
+                  <th>Date</th>
+                  <th>Modified By</th>
+                  <th>Field</th>
+                  <th>Old Value</th>
+                  <th>New Value</th>
+                  <th>Reason</th>
+                  <th>Timestamp</th>
+                </tr>
+              </thead>
+              <tbody>
+                {auditLogList.map((a, idx) => (
+                  <tr key={idx}>
+                    <td className="fw-bold">{a.employeeName}</td>
+                    <td>{a.date}</td>
+                    <td><Badge bg="secondary-subtle" text="dark">{a.modifiedByName}</Badge></td>
+                    <td>{a.field}</td>
+                    <td className="text-danger">{a.oldValue || '—'}</td>
+                    <td className="text-success fw-bold">{a.newValue || '—'}</td>
+                    <td className="text-muted">{a.reason}</td>
+                    <td className="extra-small text-muted">{new Date(a.modifiedAt).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </Card>
+      )}
+
+      {/* ── TAB CONTENT 8: SETTINGS & POLICIES (OWNER / ADMIN / HR) ── */}
+      {activeTab === 'settings' && (isOwner || isAdmin || isHR) && (
+        <div>
+          {/* Organization Switcher (Owner Only) */}
+          {isOwner && organizationsList.length > 0 && (
+            <Card className="border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+              <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div>
+                  <div className="fw-bold text-dark d-flex align-items-center gap-2">
+                    <FaBuilding className="text-primary" /> Target Organization Selection
+                  </div>
+                  <div className="extra-small text-muted">
+                    Select company organization to configure independent Attendance Policy parameters.
+                  </div>
+                </div>
+                <Form.Select
+                  size="sm"
+                  className="w-auto fw-bold text-primary border-primary rounded-3"
+                  value={selectedOrgId}
+                  onChange={(e) => {
+                    const newOrgId = e.target.value;
+                    setSelectedOrgId(newOrgId);
+                    setSettingsSuccessMsg('');
+                    setSettingsErrMsg('');
+                    loadPolicySettings(newOrgId);
+                  }}
+                >
+                  {organizationsList.map((org) => (
+                    <option key={org._id} value={org._id}>
+                      🏢 {org.organizationName} ({org.organizationCode})
+                    </option>
+                  ))}
+                </Form.Select>
+              </div>
+            </Card>
+          )}
+
+          <Card className="border-0 shadow-sm rounded-4 p-4 bg-white mb-3">
+            <h6 className="fw-bold mb-3 d-flex align-items-center gap-2 text-dark">
+              <FaCog className="text-primary" /> Attendance Policy & Operational Configuration
+            </h6>
+
+            {settingsSuccessMsg && (
+              <Alert variant="success" dismissible onClose={() => setSettingsSuccessMsg('')} className="py-2 small">
+                <FaCheckCircle className="me-2" /> {settingsSuccessMsg}
+              </Alert>
+            )}
+
+            {settingsErrMsg && (
+              <Alert variant="danger" dismissible onClose={() => setSettingsErrMsg('')} className="py-2 small">
+                <FaExclamationTriangle className="me-2" /> {settingsErrMsg}
+              </Alert>
+            )}
+
+            <Form onSubmit={handleSavePolicySettings}>
+              <Row className="g-3 mb-4">
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-dark">Timezone</Form.Label>
+                    <Form.Select
+                      size="sm"
+                      value={settingsForm.timeZone}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, timeZone: e.target.value })}
+                    >
+                      <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
+                      <option value="UTC">UTC</option>
+                      <option value="America/New_York">America/New_York (EST)</option>
+                      <option value="Europe/London">Europe/London (GMT)</option>
+                      <option value="Asia/Dubai">Asia/Dubai (GST)</option>
+                      <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-dark">Standard Working Minutes</Form.Label>
+                    <Form.Control
+                      type="number"
+                      size="sm"
+                      value={settingsForm.standardWorkingMinutes}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, standardWorkingMinutes: Number(e.target.value) })}
+                    />
+                    <Form.Text className="extra-small text-muted">
+                      Full-day target (e.g. 510 mins = 8.5 hours).
+                    </Form.Text>
+                  </Form.Group>
+                </Col>
+
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-dark">Half-Day Threshold Minutes</Form.Label>
+                    <Form.Control
+                      type="number"
+                      size="sm"
+                      value={settingsForm.halfDayMinutes}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, halfDayMinutes: Number(e.target.value) })}
+                    />
+                    <Form.Text className="extra-small text-muted">
+                      Minimum threshold for half-day (e.g. 270 mins = 4.5 hours).
+                    </Form.Text>
+                  </Form.Group>
+                </Col>
+
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-dark">Late Cutoff Time</Form.Label>
+                    <Form.Control
+                      type="text"
+                      size="sm"
+                      value={settingsForm.lateCutoff}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, lateCutoff: e.target.value })}
+                      placeholder="e.g. 09:15 AM"
+                    />
+                  </Form.Group>
+                </Col>
+
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-dark">Grace Period (Minutes)</Form.Label>
+                    <Form.Control
+                      type="number"
+                      size="sm"
+                      value={settingsForm.gracePeriodMinutes}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, gracePeriodMinutes: Number(e.target.value) })}
+                    />
+                  </Form.Group>
+                </Col>
+
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-dark">Attendance Verification Mode</Form.Label>
+                    <Form.Select
+                      size="sm"
+                      value={settingsForm.attendanceMode}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, attendanceMode: e.target.value })}
+                    >
+                      <option value="GEOFENCE">GEOFENCE (Location Radius)</option>
+                      <option value="GPS">GPS (Coordinates Only)</option>
+                      <option value="MANUAL">MANUAL Override Only</option>
+                      <option value="BIOMETRIC">BIOMETRIC Machine Integration</option>
+                      <option value="ANY">ANY (Unrestricted)</option>
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-dark">Auto-Close Cutoff (Hours)</Form.Label>
+                    <Form.Control
+                      type="number"
+                      size="sm"
+                      value={settingsForm.autoCloseCutoffHours}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, autoCloseCutoffHours: Number(e.target.value) })}
+                    />
+                    <Form.Text className="extra-small text-muted">
+                      Unclosed session sweep threshold (default: 12h).
+                    </Form.Text>
+                  </Form.Group>
+                </Col>
+
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-dark">Overtime Policy Enabled</Form.Label>
+                    <Form.Check
+                      type="switch"
+                      id="ot-switch"
+                      label={settingsForm.overtimeEnabled ? 'Enabled' : 'Disabled'}
+                      checked={settingsForm.overtimeEnabled}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, overtimeEnabled: e.target.checked })}
+                      className="mt-1 fw-semibold"
+                    />
+                  </Form.Group>
+                </Col>
+
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-dark">Auto-Close Policy Enabled</Form.Label>
+                    <Form.Check
+                      type="switch"
+                      id="autoclose-switch"
+                      label={settingsForm.autoCloseEnabled ? 'Enabled' : 'Disabled'}
+                      checked={settingsForm.autoCloseEnabled}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, autoCloseEnabled: e.target.checked })}
+                      className="mt-1 fw-semibold"
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+
+              <div className="d-flex justify-content-end">
+                <Button type="submit" variant="primary" size="sm" disabled={settingsSubmitting} className="rounded-3 px-4 fw-bold">
+                  {settingsSubmitting ? <Spinner size="sm" animation="border" /> : <><FaCheck className="me-1" /> Save Attendance Policy</>}
+                </Button>
+              </div>
+            </Form>
+          </Card>
+        </div>
+      )}
+
+      {/* ── TAB CONTENT 9: MY TODAY / MY CALENDAR (EMPLOYEE & INTERN / PM) ── */}
+      {(activeTab === 'my-today' || activeTab === 'my-calendar') && (
+        <Row className="g-3 mb-3">
+          <Col md={5}>
+            {/* Punch Card */}
+            <Card className="border-0 shadow-sm rounded-4 p-4 bg-white text-center mb-3">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <span className="small fw-bold text-muted d-flex align-items-center gap-1">
+                  <FaBuilding className="text-primary" /> Coimbatore Office
+                </span>
+                <Badge bg="success-subtle" text="success" className="rounded-pill px-2.5 py-1">
+                  ● Within Office Location
+                </Badge>
+              </div>
+
+              <div className="py-3">
+                <div className="extra-small text-muted text-uppercase mb-1">Status: {todayRecord?.status || 'Not Checked In'}</div>
+                <Button
+                  variant={todayRecord?.loginTime && !todayRecord?.logoutTime ? 'danger' : 'success'}
+                  size="lg"
+                  className="rounded-circle shadow p-4 fw-bold mb-3"
+                  style={{ width: 140, height: 140 }}
+                  onClick={handlePunchAction}
+                  disabled={punchLoading}
+                >
+                  {punchLoading ? <Spinner animation="border" size="sm" /> : (
+                    <div>
+                      <FaClock size={24} className="mb-1 d-block mx-auto" />
+                      {todayRecord?.loginTime && !todayRecord?.logoutTime ? 'PUNCH OUT' : 'PUNCH IN'}
+                    </div>
+                  )}
+                </Button>
+                <div className="small fw-bold text-dark mb-1">
+                  Punch In: <span className="text-success">{todayRecord?.loginTime ? formatTime(todayRecord.loginTime) : '—'}</span>
+                </div>
+                <div className="small text-muted">
+                  Working Time: <strong className="text-dark">{todayRecord?.totalHours ? `${todayRecord.totalHours} hrs` : '0h 00m'}</strong>
+                </div>
+              </div>
+            </Card>
+
+            {/* Today's Working Timeline */}
+            <Card className="border-0 shadow-sm rounded-4 p-3 bg-white">
+              <h6 className="fw-bold mb-3 extra-small text-uppercase text-muted">Today's Timeline</h6>
+              <div className="timeline-list small">
+                <div className="d-flex align-items-center gap-2 mb-2">
+                  <div className="badge rounded-circle bg-success p-1"><FaCheck size={10} /></div>
+                  <div><strong>09:08 AM</strong> — Punch In (Verified GPS)</div>
+                </div>
+                <div className="d-flex align-items-center gap-2 mb-2">
+                  <div className="badge rounded-circle bg-warning p-1"><FaClock size={10} /></div>
+                  <div><strong>12:30 PM</strong> — Break / Geofence Exit</div>
+                </div>
+                <div className="d-flex align-items-center gap-2 mb-2">
+                  <div className="badge rounded-circle bg-info p-1"><FaCheck size={10} /></div>
+                  <div><strong>01:15 PM</strong> — Resumed Working Session</div>
+                </div>
+                <div className="d-flex align-items-center gap-2">
+                  <div className="badge rounded-circle bg-secondary p-1"><FaClock size={10} /></div>
+                  <div><strong>06:00 PM</strong> — Expected Punch Out</div>
+                </div>
+              </div>
+            </Card>
           </Col>
-          <Col lg={7} xl={8}>
+
+          <Col md={7}>
             <AttendanceCalendar
               monthlyRecords={monthlyRecords}
               month={selectedMonth}
               year={selectedYear}
               onMonthChange={(m, y) => { setSelectedMonth(m); setSelectedYear(y); }}
-              onDayClick={handleDayClick}
               loading={ownLoading}
             />
-          </Col>
-          <Col lg={5} xl={4}>
-            <Card className="border-0 shadow-sm rounded-4 p-4 bg-white h-100">
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <h6 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
-                  <FaClock className="text-success" /> Recent Activity
-                </h6>
-                <span className="badge bg-light text-muted border px-2 py-1 rounded-pill att-badge-micro">
-                  This Month
-                </span>
-              </div>
-              <div className="pe-1 att-list-scroll-420">
-                {(monthlyRecords || []).filter(r => r.loginTime).slice(-10).reverse().map((item, idx) => (
-                  <div key={idx} className="d-flex justify-content-between align-items-center py-2 border-bottom att-list-item-sm">
-                    <div>
-                      <div className="fw-bold text-dark">{item.date}</div>
-                      <div className="text-muted extra-small">
-                        {item.loginTime ? formatTime(item.loginTime) : '—'}
-                        {item.logoutTime ? ` → ${formatTime(item.logoutTime)}` : item.loginTime ? ' → Working' : ''}
-                      </div>
-                    </div>
-                    <div className="text-end d-inline-flex align-items-center gap-1 flex-wrap justify-content-end">
-                      {renderStatusBadgeStatic(item.status)}
-                      {renderLogoutTypeBadge(item.logoutType, item.logoutTime)}
-                    </div>
-                  </div>
-                ))}
-                {(!monthlyRecords || monthlyRecords.filter(r => r.loginTime).length === 0) && (
-                  <div className="text-center py-4 text-muted small">
-                    No punch activity recorded for this month.
-                  </div>
-                )}
-              </div>
-            </Card>
           </Col>
         </Row>
       )}
 
-      {/* ════════════════════════════════════════════════
-          TAB: TEAM ATTENDANCE (HR / Admin)
-          ════════════════════════════════════════════════ */}
-      {/* {activeTab === 'team-attendance' && !drillEmployee && ( */}
-        {activeTab === 'team-attendance' && canViewTeam && !drillEmployee && (
-        <>
-          {/* Today Overview Cards */}
-          {teamTodayLoading ? (
-            <div className="text-center py-4"><Spinner animation="border" variant="success" size="sm" /></div>
-          ) : teamTodayData && (
-            <div className="attendance-summary-grid mb-3">
-              <div className="summary-metric-card">
-                <div className="summary-metric-value metric-val-success">{teamTodayData.presentCount + teamTodayData.workingCount}</div>
-                <div className="summary-metric-label">Present / Working</div>
-              </div>
-              <div className="summary-metric-card">
-                <div className="summary-metric-value metric-val-danger">{teamTodayData.absentCount}</div>
-                <div className="summary-metric-label">Not Checked In</div>
-              </div>
-              <div className="summary-metric-card">
-                <div className="summary-metric-value metric-val-warning">{teamTodayData.lateCount}</div>
-                <div className="summary-metric-label">Late Arrivals</div>
-              </div>
-              <div className="summary-metric-card">
-                <div className="summary-metric-value metric-val-info">{teamTodayData.attendanceRate}%</div>
-                <div className="summary-metric-label">Attendance Rate</div>
-              </div>
-            </div>
-          )}
+      {/* ── TAB CONTENT 10: MY HISTORY (EMPLOYEE / INTERN) ── */}
+      {activeTab === 'my-history' && (
+        <Card className="border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+          <h6 className="fw-bold mb-3 text-dark d-flex align-items-center gap-2">
+            <FaHistory /> My Personal Attendance History
+          </h6>
 
-          {/* Needs Attention */}
-          {teamTodayData?.needsAttention && (
-            <Row className="g-3 mb-3">
-              {teamTodayData.needsAttention.notCheckedIn?.length > 0 && (
-                <Col md={4}>
-                  <Card className="border-0 shadow-sm rounded-4 p-3 needs-attention-card h-100">
-                    <h6 className="fw-bold small mb-2 d-flex align-items-center">
-                      <FaExclamationCircle className="me-2 text-danger" />
-                      Not Checked In ({teamTodayData.needsAttention.notCheckedIn.length})
-                    </h6>
-                    <div className="needs-attention-list">
-                      {teamTodayData.needsAttention.notCheckedIn.slice(0, 8).map((emp, i) => (
-                        <div key={i} className="needs-attention-item">
-                          <span className="fw-semibold text-dark">{emp.name}</span>
-                          <span className="text-muted extra-small">{emp.department || 'General'}</span>
-                        </div>
-                      ))}
-                      {teamTodayData.needsAttention.notCheckedIn.length > 8 && (
-                        <div className="text-muted extra-small text-center pt-1">
-                          +{teamTodayData.needsAttention.notCheckedIn.length - 8} more
-                        </div>
-                      )}
-                    </div>
-                  </Card>
-                </Col>
-              )}
-              {teamTodayData.needsAttention.lateArrivals?.length > 0 && (
-                <Col md={4}>
-                  <Card className="border-0 shadow-sm rounded-4 p-3 h-100 att-card-late-attention">
-                    <h6 className="fw-bold small mb-2 d-flex align-items-center">
-                      <FaExclamationTriangle className="me-2 text-warning" />
-                      Late Arrivals ({teamTodayData.needsAttention.lateArrivals.length})
-                    </h6>
-                    <div className="needs-attention-list">
-                      {teamTodayData.needsAttention.lateArrivals.map((emp, i) => (
-                        <div key={i} className="needs-attention-item">
-                          <span className="fw-semibold text-dark">{emp.name}</span>
-                          <span className="text-muted extra-small">{emp.loginTime ? formatTime(emp.loginTime) : ''}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
-                </Col>
-              )}
-              {teamTodayData.needsAttention.notPunchedOut?.length > 0 && (
-                <Col md={4}>
-                  <Card className="border-0 shadow-sm rounded-4 p-3 h-100 att-card-working-attention">
-                    <h6 className="fw-bold small mb-2 d-flex align-items-center">
-                      <FaClock className="me-2 text-info" />
-                      Still Working ({teamTodayData.needsAttention.notPunchedOut.length})
-                    </h6>
-                    <div className="needs-attention-list">
-                      {teamTodayData.needsAttention.notPunchedOut.map((emp, i) => (
-                        <div key={i} className="needs-attention-item">
-                          <span className="fw-semibold text-dark">{emp.name}</span>
-                          <span className="text-muted extra-small">Since {emp.loginTime ? formatTime(emp.loginTime) : ''}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
-                </Col>
-              )}
-            </Row>
-          )}
-
-          {/* Team Directory Table */}
-          <Card className="border-0 shadow-sm rounded-3 bg-white att-table-card">
-            <div className="d-flex justify-content-between align-items-center mb-2.5 flex-wrap gap-2">
-              <h6 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2 att-section-heading">
-                <FaUsers className="text-success" /> Employee Directory
-              </h6>
-              <span className="badge bg-light text-muted border px-2 py-1 rounded-pill extra-small fw-semibold">
-                {totalRecords} Total Records
-              </span>
-            </div>
-            <Row className="g-2 mb-2.5 align-items-center att-filters-row">
-              <Col md={4}>
-                <InputGroup size="sm">
-                  <InputGroup.Text className="bg-white border-end-0 py-1 ps-2.5 pe-2 text-muted"><FaSearch size={12} /></InputGroup.Text>
-                  <Form.Control placeholder="Search employee..." value={searchQuery}
-                    onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="border-start-0 py-1 att-filter-input" />
-                </InputGroup>
-              </Col>
-              <Col md={3}>
-                <Form.Select size="sm" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }} className="py-1 att-filter-input">
-                  <option value="">All Statuses</option>
-                  <option value="Present">Present</option><option value="Late">Late</option>
-                  <option value="Working">Working</option><option value="Half Day">Half Day</option>
-                  <option value="Absent">Absent</option>
-                </Form.Select>
-              </Col>
-              <Col md={3}>
-                <Form.Control type="date" size="sm" value={dateFilter}
-                  onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1); }} className="py-1 att-filter-input" />
-              </Col>
-              <Col md={2}>
-                <Button variant="outline-secondary" size="sm" className="w-100 py-1 att-btn-reset"
-                  onClick={() => { setSearchQuery(''); setDebouncedSearch(''); setStatusFilter(''); setDateFilter(''); setCurrentPage(1); }}>
-                  Clear
-                </Button>
-              </Col>
-            </Row>
-
-            {teamLoading ? (
-              <div className="text-center py-4"><Spinner animation="border" variant="success" size="sm" className="me-2" /><span className="small text-muted">Loading records...</span></div>
-            ) : (
-              <>
-                <div className="table-responsive">
-                  <Table borderless hover className="align-middle att-table mb-0">
-                    <thead><tr>
-                      <th className="py-2 px-3">Employee</th><th className="py-2 px-3">Date</th>
-                      <th className="py-2 px-3">In</th><th className="py-2 px-3">Out</th>
-                      <th className="py-2 px-3">Hours</th><th className="py-2 px-3">Status</th>
-                      <th className="py-2 px-3 text-end">Actions</th>
-                    </tr></thead>
-                    <tbody>
-                      {teamRecords.length === 0 ? (
-                        <tr><td colSpan={7} className="text-center py-4 text-muted small">No attendance records found matching filters.</td></tr>
-                      ) : teamRecords.map((item) => (
-                        <tr key={item._id} className="border-bottom-light">
-                          <td className="py-2 px-3">
-                            <div className="d-flex align-items-center gap-2">
-                              <div className="att-avatar-sm-compact">
-                                {(item.userId?.firstName?.[0] || 'E') + (item.userId?.lastName?.[0] || '')}
-                              </div>
-                              <div>
-                                <div className="att-emp-name">{item.userId ? `${item.userId.firstName || ''} ${item.userId.lastName || ''}`.trim() : 'Employee'}</div>
-                                <div className="att-emp-sub">{item.userId?.email || ''}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-2 px-3 att-time-cell">{item.date}</td>
-                          <td className="py-2 px-3 att-time-cell">{item.loginTime ? formatTime(item.loginTime) : '—'}</td>
-                          <td className="py-2 px-3 att-time-cell">{item.logoutTime ? formatTime(item.logoutTime) : item.loginTime ? <Badge bg="info-subtle" className="text-info border">Working</Badge> : '—'}</td>
-                          <td className="py-2 px-3 att-time-cell fw-semibold">{item.totalHours ? `${item.totalHours}h` : '0h'}</td>
-                          <td className="py-2 px-3">
-                            <div className="d-inline-flex align-items-center gap-1 flex-wrap">
-                              {renderStatusBadgeStatic(item.status)}
-                              {renderLogoutTypeBadge(item.logoutType, item.logoutTime)}
-                              {item.isLate && <Badge bg="warning" text="dark" className="ms-1 att-badge-late">Late</Badge>}
-                            </div>
-                          </td>
-                          <td className="py-2 px-3 text-end">
-                            <Button variant="outline-success" size="sm" className="p-1 px-2 extra-small rounded-pill"
-                              onClick={() => handleDrillDown(item.userId || item)} title="View Monthly Calendar">
-                              <FaCalendarAlt className="me-1" /> Calendar
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </Table>
-                </div>
-                {totalRecords > 0 && (
-                  <div className="att-pagination-bar">
-                    <div className="att-pagination-info">
-                      Showing <span className="fw-bold text-dark">{Math.min((currentPage - 1) * 10 + 1, totalRecords)}</span> to{' '}
-                      <span className="fw-bold text-dark">{Math.min(currentPage * 10, totalRecords)}</span> of{' '}
-                      <span className="fw-bold text-dark">{totalRecords}</span> records
-                    </div>
-                    {totalPages > 1 && (
-                      <Pagination size="sm" className="att-pagination mb-0">
-                        <Pagination.Prev disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} />
-                        {[...Array(Math.min(totalPages, 5))].map((_, i) => {
-                          let pg;
-                          if (totalPages <= 5) pg = i + 1;
-                          else if (currentPage <= 3) pg = i + 1;
-                          else if (currentPage >= totalPages - 2) pg = totalPages - 4 + i;
-                          else pg = currentPage - 2 + i;
-                          return <Pagination.Item key={pg} active={pg === currentPage} onClick={() => setCurrentPage(pg)}>{pg}</Pagination.Item>;
-                        })}
-                        <Pagination.Next disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} />
-                      </Pagination>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </Card>
-        </>
-      )}
-
-      {/* ── Employee Drill-down Calendar View ── */}
-      {activeTab === 'team-attendance' && drillEmployee && (
-        <>
-          <Button variant="link" className="text-success fw-bold mb-3 p-0 text-decoration-none d-inline-flex align-items-center" onClick={() => setDrillEmployee(null)}>
-            <FaArrowLeft className="me-2" /> Back to Team Directory
-          </Button>
-          <Card className="border-0 shadow-sm rounded-4 p-3 mb-3 bg-white">
-            <div className="d-flex align-items-center gap-3">
-              <div
-                className="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold text-success att-avatar-md"
-              >
-                {(drillEmployee.firstName?.[0] || 'E') + (drillEmployee.lastName?.[0] || '')}
-              </div>
-              <div>
-                <h6 className="fw-bold mb-0 text-dark">
-                  {drillEmployee.firstName || ''} {drillEmployee.lastName || ''}'s Attendance
-                </h6>
-                <span className="text-muted small">{drillEmployee.email || ''} · {drillEmployee.department || 'General'}</span>
-              </div>
-            </div>
-          </Card>
-          <Row className="g-3">
-            <Col lg={12}><SummaryCards records={drillRecords} /></Col>
-            <Col lg={8}>
-              <AttendanceCalendar
-                monthlyRecords={drillRecords} month={drillMonth} year={drillYear}
-                onMonthChange={(m, y) => { setDrillMonth(m); setDrillYear(y); }}
-                onDayClick={handleDayClick} loading={drillLoading}
-              />
-            </Col>
-            <Col lg={4}>
-              <Card className="border-0 shadow-sm rounded-4 p-4 bg-white h-100">
-                <h6 className="fw-bold mb-3 small text-dark"><FaClock className="me-2 text-success" /> Recent Days</h6>
-                <div className="pe-1 att-list-scroll-380">
-                  {(drillRecords || []).filter(r => r.loginTime).slice(-8).reverse().map((item, idx) => (
-                    <div key={idx} className="d-flex justify-content-between align-items-center py-2 border-bottom att-list-item-xs">
-                      <div>
-                        <div className="fw-bold text-dark">{item.date}</div>
-                        <div className="text-muted extra-small">{item.loginTime ? formatTime(item.loginTime) : '—'} → {item.logoutTime ? formatTime(item.logoutTime) : 'Working'}</div>
-                      </div>
-                      <div className="d-inline-flex align-items-center gap-1 flex-wrap justify-content-end">
-                        {renderStatusBadgeStatic(item.status)}
-                        {renderLogoutTypeBadge(item.logoutType, item.logoutTime)}
-                      </div>
-                    </div>
-                  ))}
-                  {(!drillRecords || drillRecords.filter(r => r.loginTime).length === 0) && (
-                    <div className="text-center py-4 text-muted small">No punch data recorded.</div>
-                  )}
-                </div>
-              </Card>
-            </Col>
-          </Row>
-        </>
-      )}
-
-      {/* ════════════════════════════════════════════════
-          TAB: ANALYTICS & OVERVIEW (Admin / Owner)
-          ════════════════════════════════════════════════ */}
-      {activeTab === 'overview' && canViewAnalytics && (
-        <>
-          {analyticsLoading ? (
-            <div className="text-center py-4"><Spinner animation="border" variant="success" size="sm" className="me-2" /><span className="small text-muted">Calculating metrics...</span></div>
-          ) : analyticsData ? (
-            <>
-              {/* Compact Top Summary Cards */}
-              <Row className="g-2 mb-2.5">
-                <Col lg={3} sm={6}>
-                  <div className="analytics-stat-card-compact">
-                    <div className="analytics-stat-icon analytics-icon-users"><FaUsers /></div>
-                    <div className="analytics-stat-content">
-                      <div className="analytics-stat-label">Total Employees</div>
-                      <div className="analytics-stat-value">{analyticsData.totalEmployees}</div>
-                      <div className="analytics-stat-sub">Active workforce</div>
-                    </div>
-                  </div>
-                </Col>
-                <Col lg={3} sm={6}>
-                  <div className="analytics-stat-card-compact">
-                    <div className="analytics-stat-icon analytics-icon-check"><FaCheckCircle /></div>
-                    <div className="analytics-stat-content">
-                      <div className="analytics-stat-label">Present Today</div>
-                      <div className="analytics-stat-value">{analyticsData.presentToday + analyticsData.currentlyWorking}</div>
-                      <div className="analytics-stat-sub">{analyticsData.currentlyWorking} currently working</div>
-                    </div>
-                  </div>
-                </Col>
-                <Col lg={3} sm={6}>
-                  <div className="analytics-stat-card-compact">
-                    <div className="analytics-stat-icon analytics-icon-warn"><FaExclamationTriangle /></div>
-                    <div className="analytics-stat-content">
-                      <div className="analytics-stat-label">Late Arrivals</div>
-                      <div className="analytics-stat-value">{analyticsData.lateToday}</div>
-                      <div className="analytics-stat-sub">After 09:15 AM</div>
-                    </div>
-                  </div>
-                </Col>
-                <Col lg={3} sm={6}>
-                  <div className="analytics-stat-card-compact">
-                    <div className="analytics-stat-icon analytics-icon-chart"><FaChartLine /></div>
-                    <div className="analytics-stat-content">
-                      <div className="analytics-stat-label">Attendance Rate</div>
-                      <div className="analytics-stat-value">{analyticsData.attendancePercentage}%</div>
-                      <div className="analytics-stat-sub">Organization today</div>
-                    </div>
-                  </div>
-                </Col>
-              </Row>
-
-              {/* Compact Monthly Status Breakdown */}
-              {analyticsData.monthlyStats && (
-                <div className="monthly-breakdown-card mb-2.5">
-                  <div className="monthly-breakdown-header">
-                    <div className="monthly-breakdown-title">
-                      <FaCalendarAlt className="text-success" />
-                      <span>Monthly Status Breakdown</span>
-                    </div>
-                    <div className="monthly-legend-pills">
-                      <span className="monthly-legend-pill">
-                        <span className="monthly-legend-dot dot-present" />
-                        <strong className="text-success">{analyticsData.monthlyStats.Present}</strong> Present
-                      </span>
-                      <span className="monthly-legend-pill">
-                        <span className="monthly-legend-dot dot-late" />
-                        <strong className="text-warning">{analyticsData.monthlyStats.Late}</strong> Late
-                      </span>
-                      <span className="monthly-legend-pill">
-                        <span className="monthly-legend-dot dot-halfday" />
-                        <strong className="text-purple-val">{analyticsData.monthlyStats['Half Day'] || 0}</strong> Half Day
-                      </span>
-                      <span className="monthly-legend-pill">
-                        <span className="monthly-legend-dot dot-working" />
-                        <strong className="text-info">{analyticsData.monthlyStats.Working || 0}</strong> Working
-                      </span>
-                    </div>
-                  </div>
-                  <ProgressBar className="monthly-stat-bar-slim">
-                    {(() => {
-                      const total = Object.values(analyticsData.monthlyStats).reduce((a, b) => a + b, 0) || 1;
-                      return <>
-                        <ProgressBar now={(analyticsData.monthlyStats.Present / total) * 100} className="att-bar-present" key={1} />
-                        <ProgressBar now={(analyticsData.monthlyStats.Late / total) * 100} className="att-bar-late" key={2} />
-                        <ProgressBar now={((analyticsData.monthlyStats['Half Day'] || 0) / total) * 100} className="att-bar-halfday" key={3} />
-                        <ProgressBar now={((analyticsData.monthlyStats.Working || 0) / total) * 100} className="att-bar-working" key={4} />
-                      </>;
-                    })()}
-                  </ProgressBar>
-                </div>
-              )}
-            </>
-          ) : null}
-
-          {/* Employee Attendance Records (Main Focus) */}
-          <Card className="border-0 shadow-sm rounded-3 bg-white att-table-card">
-            <div className="d-flex justify-content-between align-items-center mb-2.5">
-              <h6 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2 att-section-heading">
-                <FaUsers className="text-success" /> Employee Attendance Records
-              </h6>
-              <span className="badge bg-light text-muted border px-2 py-1 rounded-pill extra-small fw-semibold">
-                {totalRecords} Total Records
-              </span>
-            </div>
-
-            {/* Compact 1-Row Filter Toolbar */}
-            <Row className="g-2 mb-2.5 align-items-center att-filters-row">
-              <Col md={4} sm={12}>
-                <InputGroup size="sm">
-                  <InputGroup.Text className="bg-white border-end-0 py-1 ps-2.5 pe-2 text-muted">
-                    <FaSearch size={12} />
-                  </InputGroup.Text>
-                  <Form.Control
-                    size="sm"
-                    placeholder="Search employee..."
-                    value={searchQuery}
-                    onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                    className="border-start-0 py-1 att-filter-input"
-                  />
-                </InputGroup>
-              </Col>
-              <Col md={3} sm={4}>
-                <Form.Select
-                  size="sm"
-                  value={statusFilter}
-                  onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-                  className="py-1 att-filter-input"
-                >
-                  <option value="">All Statuses</option>
-                  <option value="Present">Present</option>
-                  <option value="Late">Late</option>
-                  <option value="Working">Working</option>
-                  <option value="Half Day">Half Day</option>
-                  <option value="Absent">Absent</option>
-                </Form.Select>
-              </Col>
-              <Col md={3} sm={4}>
-                <Form.Control
-                  type="date"
-                  size="sm"
-                  value={dateFilter}
-                  onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1); }}
-                  className="py-1 att-filter-input"
-                />
-              </Col>
-              <Col md={2} sm={4}>
-                <Button
-                  variant="outline-secondary"
-                  size="sm"
-                  className="w-100 py-1 att-btn-reset"
-                  onClick={() => { setSearchQuery(''); setDebouncedSearch(''); setStatusFilter(''); setDateFilter(''); setCurrentPage(1); }}
-                >
-                  Reset
-                </Button>
-              </Col>
-            </Row>
-
-            {teamLoading ? (
-              <div className="text-center py-4">
-                <Spinner animation="border" variant="success" size="sm" className="me-2" />
-                <span className="small text-muted">Loading records...</span>
-              </div>
-            ) : (
-              <>
-                <div className="table-responsive">
-                  <Table borderless hover className="align-middle att-table mb-0">
-                    <thead>
-                      <tr>
-                        <th className="py-2 px-3">Employee</th>
-                        <th className="py-2 px-3">Date</th>
-                        <th className="py-2 px-3">In</th>
-                        <th className="py-2 px-3">Out</th>
-                        <th className="py-2 px-3">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {teamRecords.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="text-center py-4 text-muted small">
-                            No attendance records found matching filters.
-                          </td>
-                        </tr>
-                      ) : (
-                        teamRecords.map((item) => (
-                          <tr key={item._id} className="border-bottom-light">
-                            <td className="py-2 px-3">
-                              <div className="d-flex align-items-center gap-2">
-                                <div className="att-avatar-sm-compact">
-                                  {(item.userId?.firstName?.[0] || 'E') + (item.userId?.lastName?.[0] || '')}
-                                </div>
-                                <div>
-                                  <div className="att-emp-name">
-                                    {item.userId ? `${item.userId.firstName || ''} ${item.userId.lastName || ''}`.trim() : 'Employee'}
-                                  </div>
-                                  {item.userId?.email && (
-                                    <div className="att-emp-sub">{item.userId.email}</div>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="py-2 px-3 att-time-cell">{item.date}</td>
-                            <td className="py-2 px-3 att-time-cell">
-                              {item.loginTime ? formatTime(item.loginTime) : '—'}
-                            </td>
-                            <td className="py-2 px-3 att-time-cell">
-                              {item.logoutTime ? formatTime(item.logoutTime) : '—'}
-                            </td>
-                            <td className="py-2 px-3">
-                              <div className="d-inline-flex align-items-center gap-1 flex-wrap">
-                                {renderStatusBadgeStatic(item.status)}
-                                {renderLogoutTypeBadge(item.logoutType, item.logoutTime)}
-                                {item.isLate && (
-                                  <Badge bg="warning" text="dark" className="ms-1 att-badge-late">Late</Badge>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </Table>
-                </div>
-
-                {/* Compact Pagination */}
-                {totalRecords > 0 && (
-                  <div className="att-pagination-bar">
-                    <div className="att-pagination-info">
-                      Showing <span className="fw-bold text-dark">{Math.min((currentPage - 1) * 10 + 1, totalRecords)}</span> to{' '}
-                      <span className="fw-bold text-dark">{Math.min(currentPage * 10, totalRecords)}</span> of{' '}
-                      <span className="fw-bold text-dark">{totalRecords}</span> records
-                    </div>
-                    {totalPages > 1 && (
-                      <Pagination size="sm" className="att-pagination mb-0">
-                        <Pagination.Prev
-                          disabled={currentPage === 1}
-                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        />
-                        {[...Array(Math.min(totalPages, 5))].map((_, i) => {
-                          let pg;
-                          if (totalPages <= 5) {
-                            pg = i + 1;
-                          } else if (currentPage <= 3) {
-                            pg = i + 1;
-                          } else if (currentPage >= totalPages - 2) {
-                            pg = totalPages - 4 + i;
-                          } else {
-                            pg = currentPage - 2 + i;
-                          }
-                          return (
-                            <Pagination.Item
-                              key={pg}
-                              active={pg === currentPage}
-                              onClick={() => setCurrentPage(pg)}
-                            >
-                              {pg}
-                            </Pagination.Item>
-                          );
-                        })}
-                        <Pagination.Next
-                          disabled={currentPage === totalPages}
-                          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        />
-                      </Pagination>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </Card>
-        </>
-      )}
-
-      {/* ════════════════════════════════════════════════
-          TAB: CORRECTIONS & AUDIT (Admin / Owner)
-          ════════════════════════════════════════════════ */}
-      {activeTab === 'corrections' && canCorrect && (
-        <Card className="border-0 shadow-sm rounded-3 bg-white att-table-card">
-          <div className="d-flex justify-content-between align-items-center mb-2.5 flex-wrap gap-2">
-            <h6 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2 att-section-heading">
-              <FaEdit className="text-success" /> Attendance Correction Portal
-            </h6>
-            <div className="d-flex align-items-center gap-2">
-              <span className="badge bg-light text-muted border px-2 py-1 rounded-pill extra-small fw-semibold">
-                {totalRecords} Total Records
-              </span>
-              <Button
-                variant="success"
-                size="sm"
-                className="d-flex align-items-center gap-1.5 py-1 px-2.5 rounded-2 shadow-xs"
-                onClick={handleOpenOverrideModal}
-              >
-                <FaPlus size={10} /> Manual Override
-              </Button>
-              <Button
-                variant="outline-success"
-                size="sm"
-                className="d-flex align-items-center gap-1.5 py-1 px-2.5 rounded-2 shadow-xs"
-                onClick={handleOpenHolidayModal}
-              >
-                <FaCalendarPlus size={11} /> Company Holiday / Bulk Leave
-              </Button>
-            </div>
-          </div>
-          <Row className="g-2 mb-2.5 align-items-center att-filters-row">
-            <Col md={4}>
-              <InputGroup size="sm">
-                <InputGroup.Text className="bg-white border-end-0 py-1 ps-2.5 pe-2 text-muted"><FaSearch size={12} /></InputGroup.Text>
-                <Form.Control placeholder="Search employee..." value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="border-start-0 py-1 att-filter-input" />
-              </InputGroup>
-            </Col>
-            <Col md={3}>
-              <Form.Select size="sm" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }} className="py-1 att-filter-input">
-                <option value="">All Statuses</option>
-                <option value="Present">Present</option><option value="Late">Late</option>
-                <option value="Working">Working</option><option value="Half Day">Half Day</option>
-                <option value="Absent">Absent</option>
-              </Form.Select>
-            </Col>
-            <Col md={3}><Form.Control type="date" size="sm" value={dateFilter} onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1); }} className="py-1 att-filter-input" /></Col>
-            <Col md={2}><Button variant="outline-secondary" size="sm" className="w-100 py-1 att-btn-reset" onClick={() => { setSearchQuery(''); setDebouncedSearch(''); setStatusFilter(''); setDateFilter(''); setCurrentPage(1); }}>Reset</Button></Col>
-          </Row>
-
-          {teamLoading ? (
-            <div className="text-center py-4"><Spinner animation="border" variant="success" size="sm" className="me-2" /><span className="small text-muted">Loading records...</span></div>
+          {ownLoading ? (
+            <div className="text-center py-4"><Spinner animation="border" size="sm" /></div>
           ) : (
-            <>
-              <div className="table-responsive">
-                <Table borderless hover className="align-middle att-table mb-0">
-                  <thead><tr>
-                    <th className="py-2 px-3">Employee</th><th className="py-2 px-3">Date</th>
-                    <th className="py-2 px-3">In</th><th className="py-2 px-3">Out</th>
-                    <th className="py-2 px-3">Status</th><th className="py-2 px-3 text-end">Actions</th>
-                  </tr></thead>
-                  <tbody>
-                    {teamRecords.length === 0 ? (
-                      <tr><td colSpan={6} className="text-center py-4 text-muted small">No records found.</td></tr>
-                    ) : teamRecords.map((item) => (
-                      <tr key={item._id} className="border-bottom-light">
-                        <td className="py-2 px-3">
-                          <div className="d-flex align-items-center gap-2">
-                            <div className="att-avatar-sm-compact">
-                              {(item.userId?.firstName?.[0] || 'E') + (item.userId?.lastName?.[0] || '')}
-                            </div>
-                            <div>
-                              <div className="att-emp-name">{item.userId ? `${item.userId.firstName || ''} ${item.userId.lastName || ''}`.trim() : 'Employee'}</div>
-                              <div className="att-emp-sub">{item.userId?.email || ''}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-2 px-3 att-time-cell">{item.date}</td>
-                        <td className="py-2 px-3 att-time-cell">{item.loginTime ? formatTime(item.loginTime) : '—'}</td>
-                        <td className="py-2 px-3 att-time-cell">{item.logoutTime ? formatTime(item.logoutTime) : '—'}</td>
-                        <td className="py-2 px-3">
-                          <div className="d-inline-flex align-items-center gap-1 flex-wrap">
-                            {renderStatusBadgeStatic(item.status)}
-                            {renderLogoutTypeBadge(item.logoutType, item.logoutTime)}
-                          </div>
-                        </td>
-                        <td className="py-2 px-3 text-end">
-                          <div className="d-flex justify-content-end gap-1">
-                            <Button variant="outline-primary" size="sm" className="p-1 px-2 extra-small rounded-pill" onClick={() => handleOpenCorrection(item)}>
-                              <FaEdit className="me-1" /> Correct
-                            </Button>
-                            {item.auditHistory?.length > 0 && (
-                              <Button variant="outline-secondary" size="sm" className="p-1 px-2 extra-small rounded-pill" onClick={() => handleOpenAudit(item)}>
-                                <FaHistory /> {item.auditHistory.length}
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </div>
-              {totalRecords > 0 && (
-                <div className="att-pagination-bar">
-                  <div className="att-pagination-info">
-                    Showing <span className="fw-bold text-dark">{Math.min((currentPage - 1) * 10 + 1, totalRecords)}</span> to{' '}
-                    <span className="fw-bold text-dark">{Math.min(currentPage * 10, totalRecords)}</span> of{' '}
-                    <span className="fw-bold text-dark">{totalRecords}</span> records
-                  </div>
-                  {totalPages > 1 && (
-                    <Pagination size="sm" className="att-pagination mb-0">
-                      <Pagination.Prev disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} />
-                      {[...Array(Math.min(totalPages, 5))].map((_, i) => {
-                        let pg;
-                        if (totalPages <= 5) pg = i + 1;
-                        else if (currentPage <= 3) pg = i + 1;
-                        else if (currentPage >= totalPages - 2) pg = totalPages - 4 + i;
-                        else pg = currentPage - 2 + i;
-                        return <Pagination.Item key={pg} active={pg === currentPage} onClick={() => setCurrentPage(pg)}>{pg}</Pagination.Item>;
-                      })}
-                      <Pagination.Next disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} />
-                    </Pagination>
-                  )}
-                </div>
-              )}
-            </>
+            <Table hover responsive className="align-middle small">
+              <thead className="bg-light">
+                <tr>
+                  <th>Date</th>
+                  <th>Punch In</th>
+                  <th>Punch Out</th>
+                  <th>Working Hours</th>
+                  <th>Location</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthlyRecords.map((r, idx) => (
+                  <tr key={idx}>
+                    <td className="fw-bold">{r.date}</td>
+                    <td className="text-success">{r.loginTime ? formatTime(r.loginTime) : '—'}</td>
+                    <td className="text-danger">{r.logoutTime ? formatTime(r.logoutTime) : (r.loginTime ? 'Working...' : '—')}</td>
+                    <td className="fw-bold">{r.totalHours ? `${r.totalHours} hrs` : '0'}</td>
+                    <td><Badge bg="light" text="dark" className="border">{r.locationType || 'Office'}</Badge></td>
+                    <td>{renderStatusBadgeStatic(r.status)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
           )}
         </Card>
       )}
 
-      {/* ════════════════════════════════════════════════
-          MODAL: DAY DETAIL
-          ════════════════════════════════════════════════ */}
-      <DayDetailModal show={showDayDetail} onHide={() => setShowDayDetail(false)} record={dayDetailRecord} />
+      {/* ── Location Verification Modal ── */}
+      <LocationModal
+        show={showLocationModal}
+        onHide={() => setShowLocationModal(false)}
+        record={locationModalRecord}
+      />
 
-      {/* ════════════════════════════════════════════════
-          MODAL: CORRECTION
-          ════════════════════════════════════════════════ */}
+      {/* ── Attendance Correction Modal ── */}
       <Modal show={showCorrectionModal} onHide={() => setShowCorrectionModal(false)} centered>
-        <Modal.Header closeButton className="border-0 pb-0">
-          <Modal.Title className="h6 fw-bold"><FaEdit className="me-2 text-primary" /> Correct Attendance Record</Modal.Title>
-        </Modal.Header>
-        <Form onSubmit={handleSubmitCorrection}>
+        <Form onSubmit={handleCorrectionSubmit}>
+          <Modal.Header closeButton className="border-0">
+            <Modal.Title className="h6 fw-bold">Edit / Correct Attendance Record</Modal.Title>
+          </Modal.Header>
           <Modal.Body className="small">
-            {correctionError && <Alert variant="danger" className="py-2 px-3 small mb-3 rounded-3">{correctionError}</Alert>}
-            {selectedRecord && (
-              <div className="p-3 bg-light rounded-3 mb-3 extra-small">
-                <div><strong>Employee:</strong> {selectedRecord.userId ? `${selectedRecord.userId.firstName} ${selectedRecord.userId.lastName}` : 'N/A'}</div>
-                <div><strong>Date:</strong> {selectedRecord.date}</div>
-              </div>
-            )}
             <Form.Group className="mb-3">
-              <Form.Label className="fw-bold">Punch In Time</Form.Label>
-              <Form.Control type="datetime-local" size="sm" value={correctionForm.loginTime}
-                onChange={(e) => setCorrectionForm({ ...correctionForm, loginTime: e.target.value })} />
+              <Form.Label className="fw-bold">Status</Form.Label>
+              <Form.Select
+                value={correctionForm.status}
+                onChange={(e) => setCorrectionForm({ ...correctionForm, status: e.target.value })}
+              >
+                <option value="Present">Present</option>
+                <option value="Working">Working</option>
+                <option value="Late">Late</option>
+                <option value="Half Day">Half Day</option>
+                <option value="Absent">Absent</option>
+                <option value="Leave">Leave</option>
+              </Form.Select>
             </Form.Group>
             <Form.Group className="mb-3">
-              <Form.Label className="fw-bold">Punch Out Time</Form.Label>
-              <Form.Control type="datetime-local" size="sm" value={correctionForm.logoutTime}
-                onChange={(e) => setCorrectionForm({ ...correctionForm, logoutTime: e.target.value })} />
-            </Form.Group>
-            <Row className="g-2 mb-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label className="fw-bold">Status</Form.Label>
-                  <Form.Select size="sm" value={correctionForm.status}
-                    onChange={(e) => setCorrectionForm({ ...correctionForm, status: e.target.value })}>
-                    <option value="Present">Present</option>
-                    <option value="Half Day">Half Day</option>
-                    <option value="Absent">Absent</option>
-                    <option value="Working">Working</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label className="fw-bold">Location</Form.Label>
-                  <Form.Select size="sm" value={correctionForm.locationType}
-                    onChange={(e) => setCorrectionForm({ ...correctionForm, locationType: e.target.value })}>
-                    <option value="Office">Office</option><option value="WFH">WFH</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-            <Form.Group className="mb-3">
-              <Form.Check type="checkbox" label="Mark as Late Arrival" checked={correctionForm.isLate}
-                onChange={(e) => setCorrectionForm({ ...correctionForm, isLate: e.target.checked })} />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-bold text-danger">Reason for Correction *</Form.Label>
-              <Form.Control as="textarea" rows={3} size="sm" placeholder="Specify reason..."
-                value={correctionForm.reason} onChange={(e) => setCorrectionForm({ ...correctionForm, reason: e.target.value })} required />
+              <Form.Label className="fw-bold text-danger">Mandatory Audit Reason (min 5 chars) *</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                placeholder="Reason for correction..."
+                value={correctionForm.reason}
+                onChange={(e) => setCorrectionForm({ ...correctionForm, reason: e.target.value })}
+                required
+              />
             </Form.Group>
           </Modal.Body>
-          <Modal.Footer className="border-0 pt-0">
+          <Modal.Footer className="border-0">
             <Button variant="light" size="sm" onClick={() => setShowCorrectionModal(false)}>Cancel</Button>
-            <Button variant="primary" size="sm" type="submit" disabled={correctionSubmitting}>
-              {correctionSubmitting ? <Spinner animation="border" size="sm" /> : 'Save Correction'}
-            </Button>
+            <Button variant="success" size="sm" type="submit" disabled={correctionSubmitting}>Save Correction</Button>
           </Modal.Footer>
         </Form>
       </Modal>
 
-      {/* ════════════════════════════════════════════════
-          MODAL: AUDIT HISTORY
-          ════════════════════════════════════════════════ */}
-      <Modal show={showAuditModal} onHide={() => setShowAuditModal(false)} centered size="lg">
-        <Modal.Header closeButton className="border-0 pb-0">
-          <Modal.Title className="h6 fw-bold"><FaHistory className="me-2 text-secondary" /> Correction Audit Trail</Modal.Title>
+      {/* ── Regularization Form Modal ── */}
+      <Modal show={showRegFormModal} onHide={() => setShowRegFormModal(false)} centered>
+        <Form onSubmit={handleRegSubmit}>
+          <Modal.Header closeButton className="border-0">
+            <Modal.Title className="h6 fw-bold">Submit Attendance Regularization</Modal.Title>
+          </Modal.Header>
+          <Modal.Body className="small">
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-bold">Date *</Form.Label>
+              <Form.Control
+                type="date"
+                value={regForm.date}
+                onChange={(e) => setRegForm({ ...regForm, date: e.target.value })}
+                required
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-bold">Request Type *</Form.Label>
+              <Form.Select
+                value={regForm.requestType}
+                onChange={(e) => setRegForm({ ...regForm, requestType: e.target.value })}
+              >
+                <option value="MISSED_PUNCH_IN">Missed Punch In</option>
+                <option value="MISSED_PUNCH_OUT">Missed Punch Out</option>
+                <option value="FORGOT_BOTH">Forgot Both</option>
+                <option value="ON_DUTY_WFH">On Duty / WFH</option>
+                <option value="STATUS_CORRECTION">Status Correction</option>
+              </Form.Select>
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-bold text-danger">Reason (min 5 chars) *</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                placeholder="Reason for regularization..."
+                value={regForm.reason}
+                onChange={(e) => setRegForm({ ...regForm, reason: e.target.value })}
+                required
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer className="border-0">
+            <Button variant="light" size="sm" onClick={() => setShowRegFormModal(false)}>Cancel</Button>
+            <Button variant="success" size="sm" type="submit" disabled={regSubmitting}>Submit Request</Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* ── Regularization Review Modal ── */}
+      <Modal show={showRegReviewModal} onHide={() => setShowRegReviewModal(false)} centered>
+        <Modal.Header closeButton className="border-0">
+          <Modal.Title className="h6 fw-bold">Review Regularization Request</Modal.Title>
         </Modal.Header>
         <Modal.Body className="small">
-          {auditRecord?.auditHistory?.length > 0 ? (
-            <div className="table-responsive">
-              <Table borderless hover className="align-middle extra-small mb-0">
-                <thead className="table-light"><tr>
-                  <th>Modified At</th><th>Modified By</th><th>Field</th>
-                  <th>Old Value</th><th>New Value</th><th>Reason</th>
-                </tr></thead>
-                <tbody>
-                  {auditRecord.auditHistory.map((item, idx) => (
-                    <tr key={idx} className="border-bottom-light">
-                      <td>{new Date(item.modifiedAt).toLocaleString()}</td>
-                      <td className="fw-bold">{item.modifiedByName || 'Admin'}</td>
-                      <td><Badge bg="secondary-subtle" className="text-secondary">{item.field}</Badge></td>
-                      <td className="text-muted">{item.oldValue}</td>
-                      <td className="fw-bold text-primary">{item.newValue}</td>
-                      <td>{item.reason}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </div>
-          ) : (
-            <p className="text-muted text-center my-3">No modification history recorded.</p>
-          )}
+          <div className="mb-3 p-3 bg-light rounded-3">
+            <div><strong>Employee:</strong> {reviewRegDoc?.employeeId ? `${reviewRegDoc.employeeId.firstName} ${reviewRegDoc.employeeId.lastName}` : 'N/A'}</div>
+            <div><strong>Date:</strong> {reviewRegDoc?.date}</div>
+            <div><strong>Type:</strong> {reviewRegDoc?.requestType}</div>
+            <div><strong>Reason:</strong> {reviewRegDoc?.reason}</div>
+          </div>
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-bold">Rejection Reason (If rejecting)</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={2}
+              placeholder="Reason for rejection..."
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+            />
+          </Form.Group>
         </Modal.Body>
-      </Modal>
-
-      {/* ════════════════════════════════════════════════
-          MODAL: MANUAL ATTENDANCE OVERRIDE (Admin / Owner)
-          ════════════════════════════════════════════════ */}
-      <Modal show={showOverrideModal} onHide={() => setShowOverrideModal(false)} centered size="lg">
-        <Modal.Header closeButton className="border-0 pb-0">
-          <Modal.Title className="h6 fw-bold">
-            <FaPlus className="me-2 text-success" /> Admin Manual Attendance Override
-          </Modal.Title>
-        </Modal.Header>
-        <Form onSubmit={handleSubmitOverride}>
-          <Modal.Body className="small">
-            {overrideError && (
-              <Alert variant="danger" className="py-2 px-3 small mb-3 rounded-3">
-                {overrideError}
-              </Alert>
-            )}
-
-            <p className="text-muted extra-small mb-3">
-              Manually create or update an attendance record for any date (past, today, future, weekends, or company holidays).
-              Leave and Absent records do not require punch times.
-            </p>
-
-            <Row className="g-2 mb-3">
-              <Col md={7}>
-                <Form.Group>
-                  <Form.Label className="fw-bold">Employee *</Form.Label>
-                  {usersLoading ? (
-                    <div className="d-flex align-items-center gap-2 py-1 text-muted extra-small">
-                      <Spinner animation="border" size="sm" variant="success" /> Loading employees...
-                    </div>
-                  ) : (
-                    <Form.Select
-                      size="sm"
-                      value={overrideForm.userId}
-                      onChange={(e) => setOverrideForm({ ...overrideForm, userId: e.target.value })}
-                      required
-                    >
-                      <option value="">Select Employee...</option>
-                      {usersList.map((u) => (
-                        <option key={u._id} value={u._id}>
-                          {u.firstName} {u.lastName} ({u.employeeCode || u.email || 'N/A'})
-                        </option>
-                      ))}
-                    </Form.Select>
-                  )}
-                </Form.Group>
-              </Col>
-              <Col md={5}>
-                <Form.Group>
-                  <Form.Label className="fw-bold">Date *</Form.Label>
-                  <Form.Control
-                    type="date"
-                    size="sm"
-                    value={overrideForm.date}
-                    onChange={(e) => setOverrideForm({ ...overrideForm, date: e.target.value })}
-                    required
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Row className="g-2 mb-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label className="fw-bold">Status *</Form.Label>
-                  <Form.Select
-                    size="sm"
-                    value={overrideForm.status}
-                    onChange={(e) => handleOverrideStatusChange(e.target.value)}
-                    required
-                  >
-                    <option value="Present">Present</option>
-                    <option value="Half Day">Half Day</option>
-                    <option value="Leave">Leave (Holiday / Approved Leave)</option>
-                    <option value="Absent">Absent</option>
-                    <option value="Late">Late</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label className="fw-bold">Location Type</Form.Label>
-                  <Form.Select
-                    size="sm"
-                    value={overrideForm.locationType}
-                    disabled={overrideForm.status === 'Leave' || overrideForm.status === 'Absent'}
-                    onChange={(e) => setOverrideForm({ ...overrideForm, locationType: e.target.value })}
-                  >
-                    <option value="Office">Office</option>
-                    <option value="WFH">WFH</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            {/* Time Fields (Disabled for Leave / Absent) */}
-            <Row className="g-2 mb-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label className="fw-bold">
-                    Punch In Time {overrideForm.status !== 'Leave' && overrideForm.status !== 'Absent' && overrideForm.date > getTodayString() ? '*' : ''}
-                  </Form.Label>
-                  <Form.Control
-                    type="datetime-local"
-                    size="sm"
-                    value={overrideForm.loginTime}
-                    disabled={overrideForm.status === 'Leave' || overrideForm.status === 'Absent'}
-                    onChange={(e) => setOverrideForm({ ...overrideForm, loginTime: e.target.value })}
-                  />
-                  {(overrideForm.status === 'Leave' || overrideForm.status === 'Absent') && (
-                    <Form.Text className="text-muted extra-small">
-                      Not applicable for {overrideForm.status}.
-                    </Form.Text>
-                  )}
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label className="fw-bold">
-                    Punch Out Time {overrideForm.status !== 'Leave' && overrideForm.status !== 'Absent' && overrideForm.date > getTodayString() ? '*' : ''}
-                  </Form.Label>
-                  <Form.Control
-                    type="datetime-local"
-                    size="sm"
-                    value={overrideForm.logoutTime}
-                    disabled={overrideForm.status === 'Leave' || overrideForm.status === 'Absent'}
-                    onChange={(e) => setOverrideForm({ ...overrideForm, logoutTime: e.target.value })}
-                  />
-                  {(overrideForm.status === 'Leave' || overrideForm.status === 'Absent') && (
-                    <Form.Text className="text-muted extra-small">
-                      Not applicable for {overrideForm.status}.
-                    </Form.Text>
-                  )}
-                </Form.Group>
-              </Col>
-            </Row>
-
-            {overrideForm.status !== 'Leave' && overrideForm.status !== 'Absent' && (
-              <Form.Group className="mb-3">
-                <Form.Check
-                  type="checkbox"
-                  label="Mark as Late Arrival"
-                  checked={overrideForm.isLate}
-                  onChange={(e) => setOverrideForm({ ...overrideForm, isLate: e.target.checked })}
-                />
-              </Form.Group>
-            )}
-
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-bold text-danger">
-                Reason for Manual Override * (min 5 characters)
-              </Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                size="sm"
-                placeholder="E.g., Approved leave granted by management / Holiday declaration / Pre-scheduled shift..."
-                value={overrideForm.reason}
-                onChange={(e) => setOverrideForm({ ...overrideForm, reason: e.target.value })}
-                required
-              />
-            </Form.Group>
-          </Modal.Body>
-          <Modal.Footer className="border-0 pt-0">
-            <Button variant="light" size="sm" onClick={() => setShowOverrideModal(false)}>
-              Cancel
-            </Button>
-            <Button variant="success" size="sm" type="submit" disabled={overrideSubmitting}>
-              {overrideSubmitting ? <Spinner animation="border" size="sm" /> : 'Save Manual Override'}
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
-
-      {/* ════════════════════════════════════════════════
-          MODAL: COMPANY HOLIDAY & BULK LEAVE (Admin / Owner)
-          ════════════════════════════════════════════════ */}
-      <Modal show={showHolidayModal} onHide={() => setShowHolidayModal(false)} centered size="lg">
-        <Modal.Header closeButton className="border-0 pb-0">
-          <Modal.Title className="h6 fw-bold">
-            <FaCalendarPlus className="me-2 text-success" /> Declare Company Holiday / Bulk Leave
-          </Modal.Title>
-        </Modal.Header>
-        <Form onSubmit={handleSubmitHoliday}>
-          <Modal.Body className="small">
-            {holidayError && (
-              <Alert variant="danger" className="py-2 px-3 small mb-3 rounded-3">
-                {holidayError}
-              </Alert>
-            )}
-
-            <p className="text-muted extra-small mb-3">
-              Declare an organization-wide holiday, department-specific holiday, or bulk leave for selected staff.
-              Existing actual work and pre-approved individual leaves will be strictly protected and preserved.
-            </p>
-
-            <Row className="g-2 mb-3">
-              <Col md={7}>
-                <Form.Group>
-                  <Form.Label className="fw-bold">Holiday / Leave Title *</Form.Label>
-                  <Form.Control
-                    type="text"
-                    size="sm"
-                    placeholder="e.g. Owner's Daughter Marriage / Festival Holiday..."
-                    value={holidayForm.title}
-                    onChange={(e) => setHolidayForm({ ...holidayForm, title: e.target.value })}
-                    required
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={5}>
-                <Form.Group>
-                  <Form.Label className="fw-bold">Date *</Form.Label>
-                  <Form.Control
-                    type="date"
-                    size="sm"
-                    value={holidayForm.date}
-                    onChange={(e) => {
-                      const updated = { ...holidayForm, date: e.target.value };
-                      setHolidayForm(updated);
-                      loadHolidayPreview(updated);
-                    }}
-                    required
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Row className="g-2 mb-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label className="fw-bold">Holiday Type</Form.Label>
-                  <Form.Select
-                    size="sm"
-                    value={holidayForm.holidayType}
-                    onChange={(e) => setHolidayForm({ ...holidayForm, holidayType: e.target.value })}
-                  >
-                    <option value="COMPANY_HOLIDAY">Company Holiday</option>
-                    <option value="DEPARTMENT_HOLIDAY">Department Holiday</option>
-                    <option value="BULK_LEAVE">Bulk Leave</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label className="fw-bold">Target Scope *</Form.Label>
-                  <Form.Select
-                    size="sm"
-                    value={holidayForm.scope}
-                    onChange={(e) => handleHolidayScopeChange(e.target.value)}
-                  >
-                    <option value="ALL">All Employees (Company-wide)</option>
-                    <option value="DEPARTMENT">Department-wise</option>
-                    <option value="SELECTED_EMPLOYEES">Selected Employees Only</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            {/* Department Selection (if Scope = DEPARTMENT) */}
-            {holidayForm.scope === 'DEPARTMENT' && (
-              <Form.Group className="mb-3">
-                <Form.Label className="fw-bold">Select Department *</Form.Label>
-                <Form.Select
-                  size="sm"
-                  value={holidayForm.targetDepartment}
-                  onChange={(e) => {
-                    const updated = { ...holidayForm, targetDepartment: e.target.value };
-                    setHolidayForm(updated);
-                    loadHolidayPreview(updated);
-                  }}
-                  required
-                >
-                  <option value="">Choose Department...</option>
-                  {departmentsList.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-            )}
-
-            {/* Employee Multi-Select List (if Scope = SELECTED_EMPLOYEES) */}
-            {holidayForm.scope === 'SELECTED_EMPLOYEES' && (
-              <Form.Group className="mb-3">
-                <div className="d-flex justify-content-between align-items-center mb-1">
-                  <Form.Label className="fw-bold mb-0">
-                    Select Employees ({holidayForm.selectedUserIds.length} selected) *
-                  </Form.Label>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="p-0 extra-small text-decoration-none"
-                    onClick={handleSelectAllEmployees}
-                  >
-                    Select / Deselect All
-                  </Button>
-                </div>
-                <Form.Control
-                  type="text"
-                  size="sm"
-                  placeholder="Filter employees by name or code..."
-                  value={holidayEmpSearch}
-                  onChange={(e) => setHolidayEmpSearch(e.target.value)}
-                  className="mb-2"
-                />
-                <div
-                  className="p-2 border rounded-2 bg-light overflow-auto"
-                  style={{ maxHeight: '160px' }}
-                >
-                  {usersList
-                    .filter((u) => {
-                      if (!holidayEmpSearch.trim()) return true;
-                      const q = holidayEmpSearch.toLowerCase();
-                      const name = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
-                      const code = (u.employeeCode || '').toLowerCase();
-                      const dept = (u.department || '').toLowerCase();
-                      return name.includes(q) || code.includes(q) || dept.includes(q);
-                    })
-                    .map((u) => (
-                      <Form.Check
-                        key={u._id}
-                        type="checkbox"
-                        id={`holiday-emp-${u._id}`}
-                        label={
-                          <span className="extra-small">
-                            <strong>{u.firstName} {u.lastName}</strong>{' '}
-                            <span className="text-muted">({u.employeeCode || 'N/A'} - {u.department || 'General'})</span>
-                          </span>
-                        }
-                        checked={holidayForm.selectedUserIds.includes(u._id)}
-                        onChange={() => handleToggleEmployeeSelection(u._id)}
-                        className="mb-1"
-                      />
-                    ))}
-                </div>
-              </Form.Group>
-            )}
-
-            <Form.Group className="mb-3">
-              <Form.Check
-                type="checkbox"
-                id="holiday-exclude-admins"
-                label="Exclude Admin & Owner accounts from receiving holiday attendance"
-                checked={holidayForm.excludeAdmins}
-                onChange={(e) => {
-                  const updated = { ...holidayForm, excludeAdmins: e.target.checked };
-                  setHolidayForm(updated);
-                  loadHolidayPreview(updated);
-                }}
-              />
-            </Form.Group>
-
-            {/* Impact Preview Card */}
-            <div className="p-3 mb-3 bg-light border rounded-3">
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <span className="fw-bold extra-small text-dark d-flex align-items-center gap-1.5">
-                  <FaInfoCircle className="text-primary" /> Live Impact Preview
-                </span>
-                {holidayPreviewLoading && <Spinner animation="border" size="sm" variant="success" />}
-              </div>
-
-              {holidayPreview ? (
-                <div>
-                  <div className="d-flex gap-2 flex-wrap mb-2">
-                    <span className="badge bg-secondary-subtle text-secondary border px-2 py-1 rounded-pill extra-small">
-                      Eligible: {holidayPreview.totalEligible}
-                    </span>
-                    <span className="badge bg-success-subtle text-success border px-2 py-1 rounded-pill extra-small">
-                      Will Receive Holiday: {holidayPreview.willReceiveHolidayCount}
-                    </span>
-                    {holidayPreview.workingCount > 0 && (
-                      <span className="badge bg-warning-subtle text-warning border px-2 py-1 rounded-pill extra-small d-flex align-items-center gap-1">
-                        <FaShieldAlt size={10} /> Working Protected: {holidayPreview.workingCount}
-                      </span>
-                    )}
-                    {holidayPreview.existingLeaveCount > 0 && (
-                      <span className="badge bg-info-subtle text-info border px-2 py-1 rounded-pill extra-small d-flex align-items-center gap-1">
-                        <FaShieldAlt size={10} /> Leave Protected: {holidayPreview.existingLeaveCount}
-                      </span>
-                    )}
-                  </div>
-
-                  {Array.isArray(holidayPreview.warnings) && holidayPreview.warnings.map((w, idx) => (
-                    <div key={idx} className="extra-small text-danger d-flex align-items-center gap-1 mt-1">
-                      <FaShieldAlt size={10} /> {w}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="extra-small text-muted">Calculating impact preview...</div>
-              )}
-            </div>
-
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-bold text-danger">
-                Reason for Declaration * (min 5 characters)
-              </Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                size="sm"
-                placeholder="E.g., Special celebration holiday declared by company management / Official festival holiday..."
-                value={holidayForm.reason}
-                onChange={(e) => setHolidayForm({ ...holidayForm, reason: e.target.value })}
-                required
-              />
-            </Form.Group>
-          </Modal.Body>
-          <Modal.Footer className="border-0 pt-0">
-            <Button variant="light" size="sm" onClick={() => setShowHolidayModal(false)}>
-              Cancel
-            </Button>
-            <Button variant="success" size="sm" type="submit" disabled={holidaySubmitting}>
-              {holidaySubmitting ? <Spinner animation="border" size="sm" /> : 'Confirm & Declare Holiday'}
-            </Button>
-          </Modal.Footer>
-        </Form>
+        <Modal.Footer className="border-0">
+          <Button variant="danger" size="sm" onClick={() => handleReviewReg('REJECTED')} disabled={reviewSubmitting}>
+            Reject Request
+          </Button>
+          <Button variant="success" size="sm" onClick={() => handleReviewReg('APPROVED')} disabled={reviewSubmitting}>
+            Approve Request
+          </Button>
+        </Modal.Footer>
       </Modal>
     </Container>
   );
