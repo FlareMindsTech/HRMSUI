@@ -281,8 +281,9 @@ export const fetchMyTeamAttendance = async () => {
 /**
  * Fetch Attendance Settings / Policy.
  */
-export const fetchAttendanceSettings = async () => {
-  const result = await apiFetch("/attendance/settings", { method: "GET" });
+export const fetchAttendanceSettings = async (organizationId = "") => {
+  const query = organizationId ? `?organizationId=${organizationId}` : "";
+  const result = await apiFetch(`/attendance/settings${query}`, { method: "GET" });
   if (!result.ok) {
     throw new Error(result.data?.message || "Failed to load attendance settings.");
   }
