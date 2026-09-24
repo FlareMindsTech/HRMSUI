@@ -46,35 +46,49 @@ body {
   font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #F7F5F0;
-  color: #1C1D1D;
+  background-color: var(--color-background, #F7F5F0);
+  color: var(--color-text, #1C1D1D);
   font-size: 14px;
   line-height: 1.6;
 }
 
-/* ── Design Tokens: TeamHub Gold + Black + Cream Palette ── */
+/* ── Dynamic Organization Theme Tokens (13 Standard Properties) ── */
 :root {
-  /* Key Brand Combination */
-  --brand-gold: #C79D58;
-  --brand-gold-outer: #C49A55;
-  --brand-cream: #F1E8D6;
-  --brand-cream-light: #F7F5F0;
-  --brand-dark: #1C1D1D;
+  --color-primary: #C79D58;
+  --color-primary-dark: #A98245;
+  --color-primary-light: #F1E8D6;
+  --color-sidebar: #1C1D1D;
+  --color-background: #F7F5F0;
+  --color-surface: #FFFFFF;
+  --color-text: #1C1D1D;
+  --color-secondary-text: #77736B;
+  --color-border: #E5E0D7;
+  --color-success: #2E7D32;
+  --color-warning: #ED9F24;
+  --color-danger: #D64545;
+  --color-info: #3B82F6;
+
+  /* Key Brand Combination (Linked to Dynamic Theme) */
+  --brand-gold: var(--color-primary);
+  --brand-gold-outer: var(--color-primary-dark);
+  --brand-cream: var(--color-primary-light);
+  --brand-cream-light: var(--color-background);
+  --brand-dark: var(--color-text);
   --brand-dark-card: #242525;
-  --brand-text-secondary: #77736B;
-  --brand-card-bg: #FFFFFF;
+  --brand-text-secondary: var(--color-secondary-text);
+  --brand-card-bg: var(--color-surface);
 
   /* Primary Theme Aliases */
-  --primary: #C79D58;
-  --primary-dark: #C49A55;
-  --primary-darker: #a37c38;
-  --primary-light: #dfb97a;
+  --primary: var(--color-primary);
+  --primary-dark: var(--color-primary-dark);
+  --primary-darker: var(--color-primary-dark);
+  --primary-light: var(--color-primary-light);
   --primary-subtle: rgba(199, 157, 88, 0.12);
   --primary-subtle2: rgba(199, 157, 88, 0.06);
-  --primary-gradient: linear-gradient(135deg, #C79D58 0%, #C49A55 100%);
+  --primary-gradient: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
 
-  /* Sidebar (Dark #1C1D1D based) */
-  --sidebar-bg: #1C1D1D;
+  /* Sidebar */
+  --sidebar-bg: var(--color-sidebar);
   --sidebar-border: rgba(255, 255, 255, 0.06);
   --sidebar-active-bg: rgba(196, 154, 85, 0.14);
   --sidebar-active-text: #FFFFFF;
@@ -82,26 +96,26 @@ body {
   --sidebar-hover: rgba(255, 255, 255, 0.06);
 
   /* Surface */
-  --page-bg: #F7F5F0;
-  --card-bg: #FFFFFF;
-  --card-border: #E8E2D5;
-  --header-bg: #F7F5F0;
+  --page-bg: var(--color-background);
+  --card-bg: var(--color-surface);
+  --card-border: var(--color-border);
+  --header-bg: var(--color-background);
 
   /* Text */
-  --text-primary: #1C1D1D;
-  --text-secondary: #77736B;
+  --text-primary: var(--color-text);
+  --text-secondary: var(--color-secondary-text);
   --text-muted: #8E8A82;
 
   /* Chart & Status Palette */
-  --chart-red: #D94A32;
-  --chart-blue: #4F83D9;
-  --chart-green: #72A83B;
-  --chart-yellow: #D9A928;
+  --chart-red: var(--color-danger);
+  --chart-blue: var(--color-info);
+  --chart-green: var(--color-success);
+  --chart-yellow: var(--color-warning);
 
-  --success: #72A83B;
-  --warning: #D9A928;
-  --danger: #D94A32;
-  --info: #4F83D9;
+  --success: var(--color-success);
+  --warning: var(--color-warning);
+  --danger: var(--color-danger);
+  --info: var(--color-info);
 
   /* Layout */
   --sidebar-width: 230px;

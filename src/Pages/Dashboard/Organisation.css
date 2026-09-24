@@ -4,25 +4,25 @@
    ============================================================ */
 
 :root {
-  --org-primary: #C49A55;
-  --org-primary-hover: #B38845;
-  --org-primary-dark: #9B7229;
-  --org-primary-light: #FDFBF7;
-  --org-primary-soft: #F5EFE3;
-  --org-primary-border: #E8E2D5;
-  --org-primary-border-gold: rgba(196, 154, 85, 0.35);
-  --org-gold-gradient: linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%);
-  --org-gold-btn-gradient: linear-gradient(135deg, #C79D58 0%, #C49A55 100%);
-  --org-gold-shadow: 0 4px 14px rgba(196, 154, 85, 0.28);
+  --org-primary: var(--color-primary, #C49A55);
+  --org-primary-hover: var(--color-primary-dark, #B38845);
+  --org-primary-dark: var(--color-primary-dark, #9B7229);
+  --org-primary-light: var(--color-background, #FDFBF7);
+  --org-primary-soft: var(--color-primary-light, #F5EFE3);
+  --org-primary-border: var(--color-border, #E8E2D5);
+  --org-primary-border-gold: var(--color-border, rgba(196, 154, 85, 0.35));
+  --org-gold-gradient: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 55%, var(--color-primary-dark) 100%);
+  --org-gold-btn-gradient: var(--primary-gradient, linear-gradient(135deg, #C79D58 0%, #C49A55 100%));
+  --org-gold-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
   
-  --org-bg-main: #F7F5F0;
-  --org-card-bg: #ffffff;
-  --org-border: #E8E2D5;
-  --org-border-light: #F3EFE8;
+  --org-bg-main: var(--color-background, #F7F5F0);
+  --org-card-bg: var(--color-surface, #ffffff);
+  --org-border: var(--color-border, #E8E2D5);
+  --org-border-light: var(--color-border, #F3EFE8);
   
-  --org-text-main: #1C1D1D;
-  --org-text-muted: #77736B;
-  --org-text-secondary: #45433E;
+  --org-text-main: var(--color-text, #1C1D1D);
+  --org-text-muted: var(--color-secondary-text, #77736B);
+  --org-text-secondary: var(--color-secondary-text, #45433E);
   
   --org-radius-sm: 8px;
   --org-radius-md: 12px;

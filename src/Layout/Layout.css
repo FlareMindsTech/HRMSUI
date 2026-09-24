@@ -10,7 +10,7 @@
   font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
   position: relative;
   overflow: hidden;
-  background: #1C1D1D;
+  background: var(--color-sidebar, #1C1D1D);
 }
 
 /* ── Mobile Hamburger Toggle Button ── */
@@ -19,7 +19,7 @@
   top: 12px;
   left: 12px;
   z-index: 1250;
-  background: linear-gradient(135deg, #C79D58 0%, #C49A55 100%);
+  background: var(--primary-gradient, linear-gradient(135deg, #C79D58 0%, #C49A55 100%));
   color: #ffffff;
   border: none;
   border-radius: 10px;
@@ -44,12 +44,12 @@
   transform: translateY(0);
 }
 
-/* ── Sidebar Container (Mini 70px width on desktop, smoothly expands to 225px on hover) ── */
+/* ── Sidebar Container ── */
 .app-layout-sidebar {
   width: 70px;
   height: 100vh;
   flex-shrink: 0;
-  background: #181919;
+  background: var(--color-sidebar, #1C1D1D);
   border-right: 1px solid rgba(255, 255, 255, 0.07);
   transition: width 0.32s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.32s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -106,15 +106,15 @@
   min-width: 0;
   height: 100vh;
   overflow: hidden;
-  background: #F7F5F0;
+  background: var(--color-background, #F7F5F0);
 }
 
 /* ── Header Wrapper ── */
 .app-layout-header-wrapper {
   height: 64px;
   flex-shrink: 0;
-  background: #F7F5F0;
-  border-bottom: 1px solid rgba(196, 154, 85, 0.12);
+  background: var(--color-background, #F7F5F0);
+  border-bottom: 1px solid var(--color-border, rgba(196, 154, 85, 0.12));
   z-index: 900;
   transition: height 0.2s ease;
 }
@@ -127,7 +127,7 @@
 .app-layout-content {
   flex: 1;
   padding: 20px 24px;
-  background: #F7F5F0;
+  background: var(--color-background, #F7F5F0);
   overflow-y: auto;
   overflow-x: hidden !important;
   max-width: 100%;
@@ -143,8 +143,8 @@
 .app-layout-footer-wrapper {
   height: 38px;
   flex-shrink: 0;
-  background: #F7F5F0;
-  border-top: 1px solid rgba(196, 154, 85, 0.1);
+  background: var(--color-background, #F7F5F0);
+  border-top: 1px solid var(--color-border, rgba(196, 154, 85, 0.1));
   display: flex;
   align-items: center;
   justify-content: center;

@@ -465,7 +465,7 @@
 .metric-val-warning { color: #D9A928; }
 .metric-val-purple { color: #8b5cf6; }
 .metric-val-info { color: #4F83D9; }
-.metric-val-gold { color: #C79D58; }
+.metric-val-gold { color: var(--color-primary); }
 .text-purple-val { color: #8b5cf6; }
 
 /* ── Badges ── */
@@ -889,7 +889,7 @@
 
 .monthly-stat-bar .progress-bar.att-bar-halfday,
 .monthly-stat-bar-slim .progress-bar.att-bar-halfday {
-  background-color: #C79D58;
+  background-color: var(--color-primary);
 }
 
 .monthly-stat-bar .progress-bar.att-bar-working,

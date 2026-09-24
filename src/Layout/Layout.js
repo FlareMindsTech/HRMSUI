@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
 import Sidebar from "../Components/Sidebar/Sidebar";
 import Footer from "../Components/Footer/Footer";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useBranch } from "../context/BranchContext";
 import { useAuth } from "../context/AuthContext";
+import { fetchTheme } from "../redux/slices/themeSlice";
 import OrgSetupWizard from "../Components/Organisation/OrgSetupWizard";
 import "./Layout.css";
 
 function Layout() {
+  const dispatch = useDispatch();
   const { user, isSystemAdmin } = useAuth();
   const { organization, loading: branchLoading, refreshOrganization, refreshBranches } = useBranch();
   const [isMobile, setIsMobile] = useState(false);
@@ -19,6 +22,13 @@ function Layout() {
   const storedOrgId = localStorage.getItem("organizationId") || localStorage.getItem("tenantId");
   const isOwner = user?.roleCode === "OWNER" || isSystemAdmin || user?.priority === 1;
   const hasNoOrg = isOwner && !organization && !user?.organizationId && !storedOrgId;
+
+  // Initialize theme for authenticated tenant context
+  useEffect(() => {
+    if (storedOrgId || user?.organizationId || organization) {
+      dispatch(fetchTheme());
+    }
+  }, [dispatch, storedOrgId, user?.organizationId, organization]);
 
   useEffect(() => {
     const checkMobile = () => {

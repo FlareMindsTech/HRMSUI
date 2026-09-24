@@ -15,6 +15,7 @@ import {
   FaShieldAlt,
   FaBell,
   FaIdCard,
+  FaPalette,
 } from "react-icons/fa";
 import {
   fetchOrganizationSettings,
@@ -24,6 +25,7 @@ import {
   fetchHolidayCalendarsDropdown,
 } from "../../services/organizationService";
 import { useAuth } from "../../context/AuthContext";
+import ThemeCustomizationSection from "./ThemeCustomizationSection";
 
 function OrganizationSettingsSection() {
   const { hasPermission, isSystemAdmin } = useAuth();
@@ -167,7 +169,7 @@ function OrganizationSettingsSection() {
             <FaCog className="text-success me-2" /> Global Organization Settings
           </h3>
           <p className="org-section-sub">
-            Configure enterprise rules, time formats, attendance enforcement, approval workflows, and employee ID patterns.
+            Configure enterprise rules, time formats, appearance theme, attendance enforcement, approval workflows, and employee ID patterns.
           </p>
         </div>
       </div>
@@ -185,6 +187,14 @@ function OrganizationSettingsSection() {
           >
             <FaClock className="me-2 text-primary" />
             <span>General & Localization</span>
+          </button>
+          <button
+            type="button"
+            className={`org-settings-nav-item w-100 border-0 text-start ${activeTab === "appearance" ? "active" : ""}`}
+            onClick={() => setActiveTab("appearance")}
+          >
+            <FaPalette className="me-2 text-warning" />
+            <span>Appearance & Theme</span>
           </button>
           <button
             type="button"
@@ -222,7 +232,10 @@ function OrganizationSettingsSection() {
 
         {/* ── Settings Form Viewport ── */}
         <div className="org-settings-content">
-          <Form onSubmit={handleSubmit}>
+          {activeTab === "appearance" ? (
+            <ThemeCustomizationSection />
+          ) : (
+            <Form onSubmit={handleSubmit}>
             {/* TAB 1: General & Localization */}
             {activeTab === "general" && (
               <div>
@@ -589,6 +602,7 @@ function OrganizationSettingsSection() {
               </div>
             )}
           </Form>
+          )}
         </div>
       </div>
     </div>

@@ -95,13 +95,13 @@
 }
 
 .edit-org-btn-discard:hover {
-  background: #f7f5f0 !important;
-  color: #1c1d1d !important;
-  border-color: #c49a55 !important;
+  background: var(--color-background, #f7f5f0) !important;
+  color: var(--color-text, #1c1d1d) !important;
+  border-color: var(--color-primary, #c49a55) !important;
 }
 
 .edit-org-btn-save {
-  background: linear-gradient(135deg, #c79d58 0%, #c49a55 100%) !important;
+  background: var(--primary-gradient, linear-gradient(135deg, #c79d58 0%, #c49a55 100%)) !important;
   color: #ffffff !important;
   border: none !important;
   font-weight: 700 !important;

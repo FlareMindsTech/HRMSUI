@@ -55,9 +55,9 @@
 
 .header-search-wrap--focused {
   width: 380px;
-  background: #ffffff;
-  border-color: #C79D58;
-  box-shadow: 0 0 0 3px rgba(199, 157, 88, 0.18);
+  background: var(--color-surface, #ffffff);
+  border-color: var(--color-primary, #C79D58);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
 }
 
 .header-search-icon {
@@ -165,21 +165,21 @@
 }
 
 .header-profile-chip:hover {
-  background: #FAF7F0;
-  border-color: #D1C7B7;
+  background: var(--color-background, #FAF7F0);
+  border-color: var(--color-border, #D1C7B7);
 }
 
 .header-profile-chip--active {
-  background: #FAF7F0;
-  border-color: #C79D58;
-  box-shadow: 0 0 0 2px rgba(199, 157, 88, 0.18);
+  background: var(--color-background, #FAF7F0);
+  border-color: var(--color-primary, #C79D58);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 
 .header-avatar {
   width: 28px;
   height: 28px;
   border-radius: 7px;
-  background: #C49A55;
+  background: var(--color-primary, #C49A55);
   display: flex;
   align-items: center;
   justify-content: center;

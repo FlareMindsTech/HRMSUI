@@ -1,24 +1,24 @@
 /* ============================================================
    Dashboard Modernization Styles
-   TeamHub Gold & Black Luxury Design System
+   Dynamic Organization Theme Integration
    Dedicated stylesheet for src/Pages/Dashboard/Dashboard.js
    ============================================================ */
 
 /* ── Hero Welcome Banner Elements ── */
 .dash-role-badge {
-  background: rgba(196, 154, 85, 0.2) !important;
-  color: #C79D58 !important;
-  border: 1px solid rgba(196, 154, 85, 0.35) !important;
+  background: var(--color-primary-light, #F1E8D6) !important;
+  color: var(--color-primary, #C79D58) !important;
+  border: 1px solid var(--color-border, #E5E0D7) !important;
   font-weight: 600;
 }
 
 .dash-date-text {
   font-size: 0.8rem;
-  color: #C7C5C0;
+  color: var(--color-secondary-text, #77736B);
 }
 
 .dash-hero-desc {
-  color: #D4D0C8;
+  color: rgba(255, 255, 255, 0.88);
   max-width: 640px;
 }
 
@@ -27,23 +27,23 @@
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: #F5EFE3;
-  color: #C49A55;
+  background: var(--color-primary-light, #F1E8D6);
+  color: var(--color-primary-dark, #A98245);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-/* ── Console Quick Card Icon Thematic Colors (Warm Gold / Cream palette) ── */
+/* ── Console Quick Card Icon Thematic Colors ── */
 .dash-icon-mint,
 .dash-icon-purple,
 .dash-icon-sky,
 .dash-icon-amber,
 .dash-icon-pink,
 .dash-icon-emerald {
-  background: #F5EFE3 !important;
-  color: #C49A55 !important;
+  background: var(--color-primary-light, #F1E8D6) !important;
+  color: var(--color-primary-dark, #A98245) !important;
 }
 
 /* ── System Environment Information Card ── */
@@ -51,8 +51,8 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: #F5EFE3;
-  color: #C49A55;
+  background: var(--color-primary-light, #F1E8D6);
+  color: var(--color-primary-dark, #A98245);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -62,18 +62,18 @@
 
 /* ── Quick Card Transitions & Hover ── */
 .app-quick-card {
-  background: #FFFFFF !important;
-  border: 1px solid #E8E2D5 !important;
+  background: var(--color-surface, #FFFFFF) !important;
+  border: 1px solid var(--color-border, #E5E0D7) !important;
   border-radius: 14px !important;
-  box-shadow: 0 1px 4px rgba(28, 29, 29, 0.03) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03) !important;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   cursor: pointer;
 }
 
 .app-quick-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(196, 154, 85, 0.15) !important;
-  border-color: #C49A55 !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08) !important;
+  border-color: var(--color-primary, #C79D58) !important;
 }
 
 /* ── Responsive Refinements ── */
