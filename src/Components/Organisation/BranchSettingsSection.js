@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Row, Col, Card, Form, Button, Spinner, Alert, Badge } from "react-bootstrap";
+import { Row, Col, Card, Form, Button, Spinner, Alert } from "react-bootstrap";
 import {
   FaCodeBranch,
-  FaCog,
   FaSave,
   FaCalendarCheck,
   FaClock,
-  FaMapMarkerAlt,
   FaBell,
   FaIdCard,
-  FaCheckCircle,
 } from "react-icons/fa";
 import {
   fetchBranchesDropdown,

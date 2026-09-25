@@ -66,12 +66,6 @@ import { useBranch } from "../../context/BranchContext";
 import BranchAccessSelector from "../../Components/Common/BranchAccessSelector";
 import "./UserManagement.css";
 
-const getInitials = (first, last) => {
-  const f = (first || "").trim().charAt(0).toUpperCase();
-  const l = (last || "").trim().charAt(0).toUpperCase();
-  return `${f}${l}` || "U";
-};
-
 function UserManagement({ initialTab = "users" }) {
   const { isSystemAdmin, hasPermission, user: currentUser, refreshAuthContext } = useAuth();
   const { organization, branches: contextBranches } = useBranch();

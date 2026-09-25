@@ -27,7 +27,6 @@ import {
   FaMoneyBillWave,
   FaBriefcase,
   FaUserTie,
-  FaFileContract,
 } from "react-icons/fa";
 import {
   fetchMyOrganization,
