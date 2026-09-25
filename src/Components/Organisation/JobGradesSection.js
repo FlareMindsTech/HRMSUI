@@ -21,24 +21,28 @@ import {
   FaSearch,
   FaMoneyBillWave,
   FaBriefcase,
+  FaCodeBranch,
 } from "react-icons/fa";
 import {
   fetchJobGrades,
   createJobGrade,
   updateJobGrade,
   deleteJobGrade,
+  fetchBranchesDropdown,
 } from "../../services/organizationService";
 import { useAuth } from "../../context/AuthContext";
 
-function JobGradesSection() {
+function JobGradesSection({ lockedBranchId }) {
   const { hasPermission, isSystemAdmin } = useAuth();
   const [grades, setGrades] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   // Search & Filter
   const [search, setSearch] = useState("");
+  const [filterBranch, setFilterBranch] = useState(lockedBranchId || "");
   const [filterStatus, setFilterStatus] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -58,6 +62,7 @@ function JobGradesSection() {
   const initialForm = {
     gradeName: "",
     gradeCode: "",
+    branchId: lockedBranchId || "",
     level: 1,
     description: "",
     minimumExperience: 0,
@@ -67,6 +72,13 @@ function JobGradesSection() {
     status: "ACTIVE",
   };
   const [formData, setFormData] = useState(initialForm);
+
+  useEffect(() => {
+    if (lockedBranchId) {
+      setFilterBranch(lockedBranchId);
+      setFormData((prev) => ({ ...prev, branchId: lockedBranchId }));
+    }
+  }, [lockedBranchId]);
 
   const canCreate = isSystemAdmin || hasPermission("jobGrade.create");
   const canUpdate = isSystemAdmin || hasPermission("jobGrade.update");
@@ -80,6 +92,7 @@ function JobGradesSection() {
         page,
         limit: 10,
         search,
+        branchId: lockedBranchId || filterBranch,
         status: filterStatus,
       };
       const res = await fetchJobGrades(params);
@@ -95,15 +108,21 @@ function JobGradesSection() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, filterStatus]);
+  }, [page, search, filterBranch, filterStatus, lockedBranchId]);
 
   useEffect(() => {
     loadGrades();
   }, [loadGrades]);
 
+  useEffect(() => {
+    fetchBranchesDropdown()
+      .then((brList) => setBranches(brList))
+      .catch((e) => console.warn("Failed to load branches dropdown:", e));
+  }, []);
+
   const handleOpenCreate = () => {
     setEditingGrade(null);
-    setFormData(initialForm);
+    setFormData({ ...initialForm, branchId: lockedBranchId || "" });
     setModalError("");
     setShowModal(true);
   };
@@ -113,6 +132,7 @@ function JobGradesSection() {
     setFormData({
       gradeName: g.gradeName || "",
       gradeCode: g.gradeCode || "",
+      branchId: g.branchId?._id || g.branchId || lockedBranchId || "",
       level: g.level !== undefined ? g.level : 1,
       description: g.description || "",
       minimumExperience: g.minimumExperience || 0,
@@ -134,6 +154,7 @@ function JobGradesSection() {
       const payload = {
         gradeName: formData.gradeName.trim(),
         gradeCode: formData.gradeCode.trim().toUpperCase(),
+        branchId: formData.branchId || null,
         level: Number(formData.level) || 1,
         description: formData.description,
         minimumExperience: Number(formData.minimumExperience) || 0,
@@ -177,20 +198,21 @@ function JobGradesSection() {
   };
 
   return (
-    <div className="org-section-container">
+    <div className="org-sub-section">
       {/* ── Section Header ── */}
-      <div className="org-section-header">
+      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
-          <h3 className="org-section-title">
-            <FaLayerGroup className="text-success me-2" /> Job Grades & Compensation Bands
-          </h3>
-          <p className="org-section-sub">
-            Establish corporate career levels, experience thresholds, and salary pay-scale brackets.
+          <h4 className="fw-bold mb-1 d-flex align-items-center gap-2">
+            <FaLayerGroup className="text-success" />
+            Job Grades & Level Framework
+          </h4>
+          <p className="text-muted small mb-0">
+            Define organizational seniority ranks, experience bands, and compensation bounds.
           </p>
         </div>
         {canCreate && (
-          <Button variant="success" className="org-action-btn" onClick={handleOpenCreate}>
-            <FaPlus className="me-2" /> Add Job Grade
+          <Button variant="success" size="sm" className="d-flex align-items-center gap-1 shadow-sm" onClick={handleOpenCreate}>
+            <FaPlus size={11} /> Add Job Grade
           </Button>
         )}
       </div>
@@ -199,20 +221,34 @@ function JobGradesSection() {
       {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
 
       {/* ── Filters & Search ── */}
-      <Card className="org-filter-card mb-3">
-        <Card.Body className="py-2">
+      <Card className="border-0 shadow-sm mb-3">
+        <Card.Body className="p-2">
           <Row className="g-2 align-items-center">
-            <Col md={6}>
+            <Col md={lockedBranchId ? 6 : 4}>
               <InputGroup size="sm">
                 <InputGroup.Text><FaSearch className="text-muted" /></InputGroup.Text>
                 <Form.Control
-                  placeholder="Search grade name or code..."
+                  placeholder="Search grade title or code..."
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 />
               </InputGroup>
             </Col>
-            <Col md={3}>
+            {!lockedBranchId && (
+              <Col md={3}>
+                <Form.Select
+                  size="sm"
+                  value={filterBranch}
+                  onChange={(e) => { setFilterBranch(e.target.value); setPage(1); }}
+                >
+                  <option value="">All Branches</option>
+                  {branches.map((b) => (
+                    <option key={b._id} value={b._id}>{b.branchName}</option>
+                  ))}
+                </Form.Select>
+              </Col>
+            )}
+            <Col md={lockedBranchId ? 4 : 3}>
               <Form.Select
                 size="sm"
                 value={filterStatus}
@@ -223,7 +259,7 @@ function JobGradesSection() {
                 <option value="INACTIVE">Inactive</option>
               </Form.Select>
             </Col>
-            <Col md={3} className="text-end text-muted small">
+            <Col md={lockedBranchId ? 2 : 2} className="text-end text-muted small">
               Total: <strong>{totalRecords}</strong>
             </Col>
           </Row>
@@ -235,8 +271,9 @@ function JobGradesSection() {
         <Table responsive hover className="org-table mb-0 align-middle">
           <thead>
             <tr>
-              <th>Grade Code & Name</th>
-              <th>Hierarchy Level</th>
+              <th>Grade Title & Code</th>
+              <th>Branch</th>
+              <th>Rank Level</th>
               <th>Experience Band</th>
               <th>Salary Range</th>
               <th>Description</th>
@@ -247,15 +284,22 @@ function JobGradesSection() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="text-center py-5 text-muted">
+                <td colSpan={8} className="text-center py-5 text-muted">
                   <Spinner animation="border" size="sm" variant="success" className="me-2" />
                   Loading job grades...
                 </td>
               </tr>
             ) : grades.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-5 text-muted">
-                  No job grades found.
+                <td colSpan={8} className="text-center py-5 text-muted">
+                  <div className="p-3">
+                    <p className="mb-2">No job grades found.</p>
+                    {canCreate && (
+                      <Button variant="outline-success" size="sm" onClick={handleOpenCreate}>
+                        <FaPlus className="me-1" /> Add First Job Grade
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -264,6 +308,16 @@ function JobGradesSection() {
                   <td>
                     <div className="fw-semibold text-dark">{g.gradeName}</div>
                     <div className="small font-monospace text-muted">{g.gradeCode}</div>
+                  </td>
+                  <td>
+                    {g.branchId ? (
+                      <div className="small">
+                        <FaCodeBranch className="text-secondary me-1" />
+                        {g.branchId.branchName || "Branch"}
+                      </div>
+                    ) : (
+                      <span className="text-muted small">Global / Org-wide</span>
+                    )}
                   </td>
                   <td>
                     <Badge bg="light" className="text-primary border font-monospace">
@@ -380,7 +434,25 @@ function JobGradesSection() {
                 </Form.Group>
               </Col>
 
-              <Col md={4}>
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label>
+                    Branch {lockedBranchId && <span className="badge bg-secondary ms-1">Locked</span>}
+                  </Form.Label>
+                  <Form.Select
+                    value={formData.branchId}
+                    disabled={Boolean(lockedBranchId)}
+                    onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
+                  >
+                    {!lockedBranchId && <option value="">-- All Branches / Global --</option>}
+                    {branches.map((b) => (
+                      <option key={b._id} value={b._id}>{b.branchName} ({b.branchCode})</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+
+              <Col md={6}>
                 <Form.Group>
                   <Form.Label>Level (Rank Number)</Form.Label>
                   <Form.Control
@@ -391,7 +463,7 @@ function JobGradesSection() {
                   />
                 </Form.Group>
               </Col>
-              <Col md={4}>
+              <Col md={6}>
                 <Form.Group>
                   <Form.Label>Min Experience (Years)</Form.Label>
                   <Form.Control
@@ -402,7 +474,7 @@ function JobGradesSection() {
                   />
                 </Form.Group>
               </Col>
-              <Col md={4}>
+              <Col md={6}>
                 <Form.Group>
                   <Form.Label>Max Experience (Years)</Form.Label>
                   <Form.Control
@@ -414,7 +486,7 @@ function JobGradesSection() {
                 </Form.Group>
               </Col>
 
-              <Col md={4}>
+              <Col md={6}>
                 <Form.Group>
                   <Form.Label>Min Salary Band (Annual)</Form.Label>
                   <Form.Control
@@ -426,7 +498,7 @@ function JobGradesSection() {
                   />
                 </Form.Group>
               </Col>
-              <Col md={4}>
+              <Col md={6}>
                 <Form.Group>
                   <Form.Label>Max Salary Band (Annual)</Form.Label>
                   <Form.Control
@@ -438,7 +510,7 @@ function JobGradesSection() {
                   />
                 </Form.Group>
               </Col>
-              <Col md={4}>
+              <Col md={6}>
                 <Form.Group>
                   <Form.Label>Status</Form.Label>
                   <Form.Select

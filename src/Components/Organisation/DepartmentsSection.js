@@ -154,7 +154,7 @@ function DeptTreeNode({ node, level = 0, onEdit, onDelete, canUpdate, canDelete 
   );
 }
 
-function DepartmentsSection() {
+function DepartmentsSection({ lockedBranchId }) {
   const { hasPermission, isSystemAdmin } = useAuth();
   const [viewMode, setViewMode] = useState("table"); // "table" | "tree"
   const [departments, setDepartments] = useState([]);
@@ -169,7 +169,7 @@ function DepartmentsSection() {
 
   // Search & Filter
   const [search, setSearch] = useState("");
-  const [filterBranch, setFilterBranch] = useState("");
+  const [filterBranch, setFilterBranch] = useState(lockedBranchId || "");
   const [filterStatus, setFilterStatus] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -191,12 +191,19 @@ function DepartmentsSection() {
     departmentCode: "",
     parentDepartmentId: "",
     departmentHeadId: "",
-    branchId: "",
+    branchId: lockedBranchId || "",
     costCenterId: "",
     description: "",
     status: "ACTIVE",
   };
   const [formData, setFormData] = useState(initialForm);
+
+  useEffect(() => {
+    if (lockedBranchId) {
+      setFilterBranch(lockedBranchId);
+      setFormData((prev) => ({ ...prev, branchId: lockedBranchId }));
+    }
+  }, [lockedBranchId]);
 
   const canCreate = isSystemAdmin || hasPermission("department.create");
   const canUpdate = isSystemAdmin || hasPermission("department.update");
@@ -210,7 +217,7 @@ function DepartmentsSection() {
         page,
         limit: 10,
         search,
-        branchId: filterBranch,
+        branchId: lockedBranchId || filterBranch,
         status: filterStatus,
       };
       const res = await fetchDepartments(params);
@@ -226,15 +233,15 @@ function DepartmentsSection() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, filterBranch, filterStatus]);
+  }, [page, search, filterBranch, filterStatus, lockedBranchId]);
 
   const loadAuxiliaryData = async () => {
     try {
       const [deptList, brList, ccList, empList] = await Promise.all([
-        fetchDepartmentsDropdown().catch(() => []),
+        fetchDepartmentsDropdown(lockedBranchId ? { branchId: lockedBranchId } : {}).catch(() => []),
         fetchBranchesDropdown().catch(() => []),
-        fetchCostCentersDropdown().catch(() => []),
-        fetchEmployeesDropdown().catch(() => []),
+        fetchCostCentersDropdown(lockedBranchId ? { branchId: lockedBranchId } : {}).catch(() => []),
+        fetchEmployeesDropdown(lockedBranchId ? { branchId: lockedBranchId } : {}).catch(() => []),
       ]);
       setParentDepts(deptList);
       setBranches(brList);
@@ -251,11 +258,11 @@ function DepartmentsSection() {
 
   useEffect(() => {
     loadAuxiliaryData();
-  }, []);
+  }, [lockedBranchId]);
 
   const handleOpenCreate = () => {
     setEditingDept(null);
-    setFormData(initialForm);
+    setFormData({ ...initialForm, branchId: lockedBranchId || "" });
     setModalError("");
     loadAuxiliaryData();
     setShowModal(true);
@@ -677,12 +684,15 @@ function DepartmentsSection() {
 
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label>Associated Branch</Form.Label>
+                  <Form.Label>
+                    Associated Branch {lockedBranchId && <span className="badge bg-secondary ms-1">Locked to current branch</span>}
+                  </Form.Label>
                   <Form.Select
                     value={formData.branchId}
+                    disabled={Boolean(lockedBranchId)}
                     onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
                   >
-                    <option value="">-- All Branches / Global --</option>
+                    {!lockedBranchId && <option value="">-- All Branches / Global --</option>}
                     {branches.map((b) => (
                       <option key={b._id} value={b._id}>
                         {b.branchName} ({b.branchCode})

@@ -34,7 +34,7 @@ import {
 } from "../../services/organizationService";
 import { useAuth } from "../../context/AuthContext";
 
-function TeamsSection() {
+function TeamsSection({ lockedBranchId }) {
   const { hasPermission, isSystemAdmin } = useAuth();
   const [teams, setTeams] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -48,7 +48,7 @@ function TeamsSection() {
   // Search & Filter
   const [search, setSearch] = useState("");
   const [filterDept, setFilterDept] = useState("");
-  const [filterBranch, setFilterBranch] = useState("");
+  const [filterBranch, setFilterBranch] = useState(lockedBranchId || "");
   const [filterStatus, setFilterStatus] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -69,13 +69,20 @@ function TeamsSection() {
     teamName: "",
     teamCode: "",
     departmentId: "",
-    branchId: "",
+    branchId: lockedBranchId || "",
     teamLeadId: "",
     teamManagerId: "",
     description: "",
     status: "ACTIVE",
   };
   const [formData, setFormData] = useState(initialForm);
+
+  useEffect(() => {
+    if (lockedBranchId) {
+      setFilterBranch(lockedBranchId);
+      setFormData((prev) => ({ ...prev, branchId: lockedBranchId }));
+    }
+  }, [lockedBranchId]);
 
   const canCreate = isSystemAdmin || hasPermission("team.create");
   const canUpdate = isSystemAdmin || hasPermission("team.update");
@@ -90,7 +97,7 @@ function TeamsSection() {
         limit: 10,
         search,
         departmentId: filterDept,
-        branchId: filterBranch,
+        branchId: lockedBranchId || filterBranch,
         status: filterStatus,
       };
       const res = await fetchTeams(params);
@@ -106,14 +113,15 @@ function TeamsSection() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, filterDept, filterBranch, filterStatus]);
+  }, [page, search, filterDept, filterBranch, filterStatus, lockedBranchId]);
 
-  const loadAuxiliaryData = async () => {
+  const loadAuxiliaryData = async (branchForScope) => {
     try {
+      const activeBranch = branchForScope || lockedBranchId || filterBranch;
       const [deptList, brList, empList] = await Promise.all([
-        fetchDepartmentsDropdown().catch(() => []),
+        fetchDepartmentsDropdown(activeBranch ? { branchId: activeBranch } : {}).catch(() => []),
         fetchBranchesDropdown().catch(() => []),
-        fetchEmployeesDropdown().catch(() => []),
+        fetchEmployeesDropdown(activeBranch ? { branchId: activeBranch } : {}).catch(() => []),
       ]);
       setDepartments(deptList);
       setBranches(brList);
@@ -129,30 +137,51 @@ function TeamsSection() {
 
   useEffect(() => {
     loadAuxiliaryData();
-  }, []);
+  }, [lockedBranchId, filterBranch]);
+
+  const handleFormBranchChange = async (selectedBranchId) => {
+    setFormData((prev) => ({
+      ...prev,
+      branchId: selectedBranchId,
+      departmentId: "", // reset selected department when branch changes
+      teamLeadId: "",
+      teamManagerId: "",
+    }));
+    try {
+      const [deptList, empList] = await Promise.all([
+        fetchDepartmentsDropdown(selectedBranchId ? { branchId: selectedBranchId } : {}).catch(() => []),
+        fetchEmployeesDropdown(selectedBranchId ? { branchId: selectedBranchId } : {}).catch(() => []),
+      ]);
+      setDepartments(deptList);
+      setEmployees(empList);
+    } catch (err) {
+      console.warn("Failed to reload branch-scoped data:", err);
+    }
+  };
 
   const handleOpenCreate = () => {
     setEditingTeam(null);
-    setFormData(initialForm);
+    setFormData({ ...initialForm, branchId: lockedBranchId || "" });
     setModalError("");
-    loadAuxiliaryData();
+    loadAuxiliaryData(lockedBranchId || "");
     setShowModal(true);
   };
 
   const handleOpenEdit = (team) => {
     setEditingTeam(team);
+    const bId = team.branchId?._id || team.branchId || lockedBranchId || "";
     setFormData({
       teamName: team.teamName || "",
       teamCode: team.teamCode || "",
       departmentId: team.departmentId?._id || team.departmentId || "",
-      branchId: team.branchId?._id || team.branchId || "",
+      branchId: bId,
       teamLeadId: team.teamLeadId?._id || team.teamLeadId || "",
       teamManagerId: team.teamManagerId?._id || team.teamManagerId || "",
       description: team.description || "",
       status: team.status || "ACTIVE",
     });
     setModalError("");
-    loadAuxiliaryData();
+    loadAuxiliaryData(bId);
     setShowModal(true);
   };
 
@@ -169,7 +198,7 @@ function TeamsSection() {
         branchId: formData.branchId || null,
         teamLeadId: formData.teamLeadId || null,
         teamManagerId: formData.teamManagerId || null,
-        description: formData.description,
+        description: formData.description ? formData.description.trim() : "",
         status: formData.status,
       };
 
@@ -207,93 +236,121 @@ function TeamsSection() {
   };
 
   return (
-    <div className="org-section-container">
+    <div className="org-sub-section">
       {/* ── Section Header ── */}
-      <div className="org-section-header">
+      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
-          <h3 className="org-section-title">
-            <FaUsers className="text-success me-2" /> Teams & Squads
-          </h3>
-          <p className="org-section-sub">
-            Form operational squads, assign team leads and managers, and track cross-functional rosters.
+          <h4 className="fw-bold mb-1 d-flex align-items-center gap-2">
+            <FaUsers className="text-success" />
+            Teams & Working Groups
+          </h4>
+          <p className="text-muted small mb-0">
+            Organize functional units, cross-department squads, and project pods under branches.
           </p>
         </div>
         {canCreate && (
-          <Button variant="success" className="org-action-btn" onClick={handleOpenCreate}>
-            <FaPlus className="me-2" /> Add Team
+          <Button variant="success" size="sm" className="d-flex align-items-center gap-1 shadow-sm" onClick={handleOpenCreate}>
+            <FaPlus size={11} /> Add Team
           </Button>
         )}
       </div>
 
-      {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
-      {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
+      {/* ── Alerts ── */}
+      {error && (
+        <Alert variant="danger" dismissible onClose={() => setError("")}>
+          {error}
+        </Alert>
+      )}
+      {success && (
+        <Alert variant="success" dismissible onClose={() => setSuccess("")}>
+          {success}
+        </Alert>
+      )}
 
-      {/* ── Filters & Search ── */}
-      <Card className="org-filter-card mb-3">
-        <Card.Body className="py-2">
+      {/* ── Filters Toolbar ── */}
+      <Card className="border-0 shadow-sm mb-3">
+        <Card.Body className="p-2">
           <Row className="g-2 align-items-center">
-            <Col md={4}>
+            <Col md={lockedBranchId ? 4 : 3}>
               <InputGroup size="sm">
-                <InputGroup.Text><FaSearch className="text-muted" /></InputGroup.Text>
+                <InputGroup.Text className="bg-light border-end-0">
+                  <FaSearch className="text-muted" />
+                </InputGroup.Text>
                 <Form.Control
                   placeholder="Search team name or code..."
+                  className="border-start-0 bg-light"
                   value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
                 />
               </InputGroup>
             </Col>
-            <Col md={3}>
+            {!lockedBranchId && (
+              <Col md={3}>
+                <Form.Select
+                  size="sm"
+                  value={filterBranch}
+                  onChange={(e) => {
+                    setFilterBranch(e.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="">All Branches</option>
+                  {branches.map((b) => (
+                    <option key={b._id} value={b._id}>
+                      {b.branchName}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Col>
+            )}
+            <Col md={lockedBranchId ? 4 : 3}>
               <Form.Select
                 size="sm"
                 value={filterDept}
-                onChange={(e) => { setFilterDept(e.target.value); setPage(1); }}
+                onChange={(e) => {
+                  setFilterDept(e.target.value);
+                  setPage(1);
+                }}
               >
                 <option value="">All Departments</option>
                 {departments.map((d) => (
-                  <option key={d._id} value={d._id}>{d.departmentName}</option>
+                  <option key={d._id} value={d._id}>
+                    {d.departmentName}
+                  </option>
                 ))}
               </Form.Select>
             </Col>
-            <Col md={2}>
-              <Form.Select
-                size="sm"
-                value={filterBranch}
-                onChange={(e) => { setFilterBranch(e.target.value); setPage(1); }}
-              >
-                <option value="">All Branches</option>
-                {branches.map((b) => (
-                  <option key={b._id} value={b._id}>{b.branchName}</option>
-                ))}
-              </Form.Select>
-            </Col>
-            <Col md={2}>
+            <Col md={lockedBranchId ? 4 : 3}>
               <Form.Select
                 size="sm"
                 value={filterStatus}
-                onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+                onChange={(e) => {
+                  setFilterStatus(e.target.value);
+                  setPage(1);
+                }}
               >
                 <option value="">All Statuses</option>
                 <option value="ACTIVE">Active</option>
                 <option value="INACTIVE">Inactive</option>
               </Form.Select>
             </Col>
-            <Col md={1} className="text-end text-muted small">
-              <strong>{totalRecords}</strong>
-            </Col>
           </Row>
         </Card.Body>
       </Card>
 
-      {/* ── Table ── */}
+      {/* ── Teams Table ── */}
       <Card className="org-table-card">
         <Table responsive hover className="org-table mb-0 align-middle">
           <thead>
             <tr>
               <th>Team Code & Name</th>
-              <th>Department</th>
               <th>Branch</th>
+              <th>Department</th>
               <th>Team Lead</th>
-              <th>Team Manager</th>
+              <th>Manager</th>
               <th>Status</th>
               <th className="text-end">Actions</th>
             </tr>
@@ -309,7 +366,14 @@ function TeamsSection() {
             ) : teams.length === 0 ? (
               <tr>
                 <td colSpan={7} className="text-center py-5 text-muted">
-                  No teams found.
+                  <div className="p-3">
+                    <p className="mb-2">No teams found.</p>
+                    {canCreate && (
+                      <Button variant="outline-success" size="sm" onClick={handleOpenCreate}>
+                        <FaPlus className="me-1" /> Add First Team
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -320,6 +384,16 @@ function TeamsSection() {
                     <div className="small font-monospace text-muted">{t.teamCode}</div>
                   </td>
                   <td>
+                    {t.branchId ? (
+                      <div className="small">
+                        <FaCodeBranch className="text-secondary me-1" />
+                        {t.branchId.branchName || "Branch"}
+                      </div>
+                    ) : (
+                      <span className="text-muted small">Global / Virtual</span>
+                    )}
+                  </td>
+                  <td>
                     {t.departmentId ? (
                       <div className="small">
                         <FaSitemap className="text-success me-1" />
@@ -327,16 +401,6 @@ function TeamsSection() {
                       </div>
                     ) : (
                       <span className="text-muted small">Cross-Department</span>
-                    )}
-                  </td>
-                  <td>
-                    {t.branchId ? (
-                      <div className="small">
-                        <FaCodeBranch className="text-secondary me-1" />
-                        {t.branchId.branchName}
-                      </div>
-                    ) : (
-                      <span className="text-muted small">All Branches</span>
                     )}
                   </td>
                   <td>
@@ -452,7 +516,27 @@ function TeamsSection() {
 
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label>Department</Form.Label>
+                  <Form.Label>
+                    Branch {lockedBranchId && <span className="badge bg-secondary ms-1">Locked</span>}
+                  </Form.Label>
+                  <Form.Select
+                    value={formData.branchId}
+                    disabled={Boolean(lockedBranchId)}
+                    onChange={(e) => handleFormBranchChange(e.target.value)}
+                  >
+                    {!lockedBranchId && <option value="">-- All Branches / Virtual --</option>}
+                    {branches.map((b) => (
+                      <option key={b._id} value={b._id}>
+                        {b.branchName} ({b.branchCode})
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label>Department (Filtered by Branch)</Form.Label>
                   <Form.Select
                     value={formData.departmentId}
                     onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
@@ -466,26 +550,10 @@ function TeamsSection() {
                   </Form.Select>
                 </Form.Group>
               </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Branch</Form.Label>
-                  <Form.Select
-                    value={formData.branchId}
-                    onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
-                  >
-                    <option value="">-- All Branches / Virtual --</option>
-                    {branches.map((b) => (
-                      <option key={b._id} value={b._id}>
-                        {b.branchName} ({b.branchCode})
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
 
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label>Team Lead</Form.Label>
+                  <Form.Label>Team Lead (Filtered by Branch)</Form.Label>
                   <Form.Select
                     value={formData.teamLeadId}
                     onChange={(e) => setFormData({ ...formData, teamLeadId: e.target.value })}
@@ -499,6 +567,7 @@ function TeamsSection() {
                   </Form.Select>
                 </Form.Group>
               </Col>
+
               <Col md={6}>
                 <Form.Group>
                   <Form.Label>Team Manager</Form.Label>
@@ -518,11 +587,11 @@ function TeamsSection() {
 
               <Col md={12}>
                 <Form.Group>
-                  <Form.Label>Description / Focus Area</Form.Label>
+                  <Form.Label>Description</Form.Label>
                   <Form.Control
                     as="textarea"
                     rows={2}
-                    placeholder="Team purpose, deliverables, or operational scope"
+                    placeholder="Team purpose and domain"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   />
@@ -563,6 +632,9 @@ function TeamsSection() {
         </Modal.Header>
         <Modal.Body>
           Are you sure you want to delete team <strong>{deletingName}</strong>?
+          <p className="text-muted small mt-2">
+            Team assignments for members will be cleared.
+          </p>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={modalLoading}>

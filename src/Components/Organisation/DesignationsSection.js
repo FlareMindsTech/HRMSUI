@@ -21,6 +21,7 @@ import {
   FaSearch,
   FaSitemap,
   FaLayerGroup,
+  FaCodeBranch,
 } from "react-icons/fa";
 import {
   fetchDesignations,
@@ -29,14 +30,16 @@ import {
   deleteDesignation,
   fetchDepartmentsDropdown,
   fetchJobGradesDropdown,
+  fetchBranchesDropdown,
 } from "../../services/organizationService";
 import { useAuth } from "../../context/AuthContext";
 
-function DesignationsSection() {
+function DesignationsSection({ lockedBranchId }) {
   const { hasPermission, isSystemAdmin } = useAuth();
   const [designations, setDesignations] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [jobGrades, setJobGrades] = useState([]);
+  const [branches, setBranches] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -44,6 +47,7 @@ function DesignationsSection() {
 
   // Search & Filters
   const [search, setSearch] = useState("");
+  const [filterBranch, setFilterBranch] = useState(lockedBranchId || "");
   const [filterDept, setFilterDept] = useState("");
   const [filterGrade, setFilterGrade] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
@@ -65,6 +69,7 @@ function DesignationsSection() {
   const initialForm = {
     designationName: "",
     designationCode: "",
+    branchId: lockedBranchId || "",
     departmentId: "",
     jobGradeId: "",
     jobLevel: "",
@@ -72,6 +77,13 @@ function DesignationsSection() {
     status: "ACTIVE",
   };
   const [formData, setFormData] = useState(initialForm);
+
+  useEffect(() => {
+    if (lockedBranchId) {
+      setFilterBranch(lockedBranchId);
+      setFormData((prev) => ({ ...prev, branchId: lockedBranchId }));
+    }
+  }, [lockedBranchId]);
 
   const canCreate = isSystemAdmin || hasPermission("designation.create");
   const canUpdate = isSystemAdmin || hasPermission("designation.update");
@@ -85,6 +97,7 @@ function DesignationsSection() {
         page,
         limit: 10,
         search,
+        branchId: lockedBranchId || filterBranch,
         departmentId: filterDept,
         jobGradeId: filterGrade,
         status: filterStatus,
@@ -102,16 +115,19 @@ function DesignationsSection() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, filterDept, filterGrade, filterStatus]);
+  }, [page, search, filterBranch, filterDept, filterGrade, filterStatus, lockedBranchId]);
 
-  const loadAuxiliaryData = async () => {
+  const loadAuxiliaryData = async (branchForScope) => {
     try {
-      const [deptList, gradeList] = await Promise.all([
-        fetchDepartmentsDropdown().catch(() => []),
-        fetchJobGradesDropdown().catch(() => []),
+      const activeBranch = branchForScope || lockedBranchId || filterBranch;
+      const [deptList, gradeList, brList] = await Promise.all([
+        fetchDepartmentsDropdown(activeBranch ? { branchId: activeBranch } : {}).catch(() => []),
+        fetchJobGradesDropdown(activeBranch ? { branchId: activeBranch } : {}).catch(() => []),
+        fetchBranchesDropdown().catch(() => []),
       ]);
       setDepartments(deptList);
       setJobGrades(gradeList);
+      setBranches(brList);
     } catch (err) {
       console.warn("Error loading auxiliary dropdown data:", err);
     }
@@ -123,21 +139,43 @@ function DesignationsSection() {
 
   useEffect(() => {
     loadAuxiliaryData();
-  }, []);
+  }, [lockedBranchId, filterBranch]);
+
+  // When form branch selection changes, reload scoped departments and job grades
+  const handleFormBranchChange = async (selectedBranchId) => {
+    setFormData((prev) => ({
+      ...prev,
+      branchId: selectedBranchId,
+      departmentId: "", // reset selected department to prevent invalid cross-branch selection
+      jobGradeId: "",
+    }));
+    try {
+      const [deptList, gradeList] = await Promise.all([
+        fetchDepartmentsDropdown(selectedBranchId ? { branchId: selectedBranchId } : {}).catch(() => []),
+        fetchJobGradesDropdown(selectedBranchId ? { branchId: selectedBranchId } : {}).catch(() => []),
+      ]);
+      setDepartments(deptList);
+      setJobGrades(gradeList);
+    } catch (err) {
+      console.warn("Failed to reload branch-scoped data:", err);
+    }
+  };
 
   const handleOpenCreate = () => {
     setEditingDesig(null);
-    setFormData(initialForm);
+    setFormData({ ...initialForm, branchId: lockedBranchId || "" });
     setModalError("");
-    loadAuxiliaryData();
+    loadAuxiliaryData(lockedBranchId || "");
     setShowModal(true);
   };
 
   const handleOpenEdit = (desig) => {
     setEditingDesig(desig);
+    const bId = desig.branchId?._id || desig.branchId || lockedBranchId || "";
     setFormData({
       designationName: desig.designationName || "",
       designationCode: desig.designationCode || "",
+      branchId: bId,
       departmentId: desig.departmentId?._id || desig.departmentId || "",
       jobGradeId: desig.jobGradeId?._id || desig.jobGradeId || "",
       jobLevel: desig.jobLevel || "",
@@ -145,7 +183,7 @@ function DesignationsSection() {
       status: desig.status || "ACTIVE",
     });
     setModalError("");
-    loadAuxiliaryData();
+    loadAuxiliaryData(bId);
     setShowModal(true);
   };
 
@@ -158,23 +196,26 @@ function DesignationsSection() {
       const payload = {
         designationName: formData.designationName.trim(),
         designationCode: formData.designationCode.trim().toUpperCase(),
+        branchId: formData.branchId || null,
         departmentId: formData.departmentId || null,
         jobGradeId: formData.jobGradeId || null,
-        jobLevel: formData.jobLevel,
-        description: formData.description,
+        jobLevel: formData.jobLevel ? formData.jobLevel.trim() : null,
+        description: formData.description ? formData.description.trim() : "",
         status: formData.status,
       };
 
+      let res;
       if (editingDesig) {
-        const res = await updateDesignation(editingDesig._id, payload);
-        setSuccess(res.message || "Designation updated successfully");
+        res = await updateDesignation(editingDesig._id, payload);
       } else {
-        const res = await createDesignation(payload);
-        setSuccess(res.message || "Designation created successfully");
+        res = await createDesignation(payload);
       }
-      setShowModal(false);
-      loadDesignations();
-      setTimeout(() => setSuccess(""), 4000);
+
+      if (res.success) {
+        setSuccess(editingDesig ? "Designation updated successfully" : "Designation created successfully");
+        setShowModal(false);
+        loadDesignations();
+      }
     } catch (err) {
       setModalError(err.message || "Failed to save designation");
     } finally {
@@ -186,10 +227,11 @@ function DesignationsSection() {
     try {
       setModalLoading(true);
       const res = await deleteDesignation(deletingId);
-      setSuccess(res.message || "Designation deleted successfully");
-      setShowDeleteModal(false);
-      loadDesignations();
-      setTimeout(() => setSuccess(""), 4000);
+      if (res.success) {
+        setSuccess("Designation deleted successfully");
+        setShowDeleteModal(false);
+        loadDesignations();
+      }
     } catch (err) {
       setError(err.message || "Failed to delete designation");
       setShowDeleteModal(false);
@@ -199,78 +241,123 @@ function DesignationsSection() {
   };
 
   return (
-    <div className="org-section-container">
+    <div className="org-sub-section">
       {/* ── Section Header ── */}
-      <div className="org-section-header">
+      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
-          <h3 className="org-section-title">
-            <FaUserTag className="text-success me-2" /> Designation & Role Titles
-          </h3>
-          <p className="org-section-sub">
-            Configure standardized job titles, departmental affiliations, and job grade levels.
+          <h4 className="fw-bold mb-1 d-flex align-items-center gap-2">
+            <FaUserTag className="text-success" />
+            Designations & Job Titles
+          </h4>
+          <p className="text-muted small mb-0">
+            Define standardized organizational roles, hierarchy levels, and assign to departments.
           </p>
         </div>
         {canCreate && (
-          <Button variant="success" className="org-action-btn" onClick={handleOpenCreate}>
-            <FaPlus className="me-2" /> Add Designation
+          <Button variant="success" size="sm" className="d-flex align-items-center gap-1 shadow-sm" onClick={handleOpenCreate}>
+            <FaPlus size={11} /> Add Designation
           </Button>
         )}
       </div>
 
-      {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
-      {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
+      {/* ── Alerts ── */}
+      {error && (
+        <Alert variant="danger" dismissible onClose={() => setError("")}>
+          {error}
+        </Alert>
+      )}
+      {success && (
+        <Alert variant="success" dismissible onClose={() => setSuccess("")}>
+          {success}
+        </Alert>
+      )}
 
-      {/* ── Filters & Search ── */}
-      <Card className="org-filter-card mb-3">
-        <Card.Body className="py-2">
+      {/* ── Filters Toolbar ── */}
+      <Card className="border-0 shadow-sm mb-3">
+        <Card.Body className="p-2">
           <Row className="g-2 align-items-center">
-            <Col md={4}>
+            <Col md={lockedBranchId ? 4 : 3}>
               <InputGroup size="sm">
-                <InputGroup.Text><FaSearch className="text-muted" /></InputGroup.Text>
+                <InputGroup.Text className="bg-light border-end-0">
+                  <FaSearch className="text-muted" />
+                </InputGroup.Text>
                 <Form.Control
-                  placeholder="Search designation name or code..."
+                  placeholder="Search designation title / code..."
+                  className="border-start-0 bg-light"
                   value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
                 />
               </InputGroup>
             </Col>
-            <Col md={3}>
+            {!lockedBranchId && (
+              <Col md={3}>
+                <Form.Select
+                  size="sm"
+                  value={filterBranch}
+                  onChange={(e) => {
+                    setFilterBranch(e.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="">All Branches</option>
+                  {branches.map((b) => (
+                    <option key={b._id} value={b._id}>
+                      {b.branchName}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Col>
+            )}
+            <Col md={lockedBranchId ? 3 : 2}>
               <Form.Select
                 size="sm"
                 value={filterDept}
-                onChange={(e) => { setFilterDept(e.target.value); setPage(1); }}
+                onChange={(e) => {
+                  setFilterDept(e.target.value);
+                  setPage(1);
+                }}
               >
                 <option value="">All Departments</option>
                 {departments.map((d) => (
-                  <option key={d._id} value={d._id}>{d.departmentName}</option>
+                  <option key={d._id} value={d._id}>
+                    {d.departmentName}
+                  </option>
                 ))}
               </Form.Select>
             </Col>
-            <Col md={2}>
+            <Col md={lockedBranchId ? 3 : 2}>
               <Form.Select
                 size="sm"
                 value={filterGrade}
-                onChange={(e) => { setFilterGrade(e.target.value); setPage(1); }}
+                onChange={(e) => {
+                  setFilterGrade(e.target.value);
+                  setPage(1);
+                }}
               >
                 <option value="">All Job Grades</option>
                 {jobGrades.map((g) => (
-                  <option key={g._id} value={g._id}>{g.gradeName} ({g.gradeCode})</option>
+                  <option key={g._id} value={g._id}>
+                    {g.gradeName} ({g.gradeCode})
+                  </option>
                 ))}
               </Form.Select>
             </Col>
-            <Col md={2}>
+            <Col md={lockedBranchId ? 2 : 2}>
               <Form.Select
                 size="sm"
                 value={filterStatus}
-                onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+                onChange={(e) => {
+                  setFilterStatus(e.target.value);
+                  setPage(1);
+                }}
               >
                 <option value="">All Statuses</option>
                 <option value="ACTIVE">Active</option>
                 <option value="INACTIVE">Inactive</option>
               </Form.Select>
-            </Col>
-            <Col md={1} className="text-end text-muted small">
-              <strong>{totalRecords}</strong>
             </Col>
           </Row>
         </Card.Body>
@@ -282,6 +369,7 @@ function DesignationsSection() {
           <thead>
             <tr>
               <th>Designation Code & Title</th>
+              <th>Branch</th>
               <th>Department</th>
               <th>Job Grade</th>
               <th>Job Level</th>
@@ -293,15 +381,22 @@ function DesignationsSection() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="text-center py-5 text-muted">
+                <td colSpan={8} className="text-center py-5 text-muted">
                   <Spinner animation="border" size="sm" variant="success" className="me-2" />
                   Loading designations...
                 </td>
               </tr>
             ) : designations.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-5 text-muted">
-                  No designations found.
+                <td colSpan={8} className="text-center py-5 text-muted">
+                  <div className="p-3">
+                    <p className="mb-2">No designations found.</p>
+                    {canCreate && (
+                      <Button variant="outline-success" size="sm" onClick={handleOpenCreate}>
+                        <FaPlus className="me-1" /> Add First Designation
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -310,6 +405,16 @@ function DesignationsSection() {
                   <td>
                     <div className="fw-semibold text-dark">{desig.designationName}</div>
                     <div className="small font-monospace text-muted">{desig.designationCode}</div>
+                  </td>
+                  <td>
+                    {desig.branchId ? (
+                      <div className="small">
+                        <FaCodeBranch className="text-secondary me-1" />
+                        {desig.branchId.branchName || "Branch"}
+                      </div>
+                    ) : (
+                      <span className="text-muted small">Global / Org-wide</span>
+                    )}
                   </td>
                   <td>
                     {desig.departmentId ? (
@@ -341,7 +446,7 @@ function DesignationsSection() {
                     )}
                   </td>
                   <td>
-                    <span className="small text-muted text-truncate d-inline-block" style={{ maxWidth: "240px" }}>
+                    <span className="small text-muted text-truncate d-inline-block" style={{ maxWidth: "220px" }}>
                       {desig.description || "N/A"}
                     </span>
                   </td>
@@ -415,7 +520,9 @@ function DesignationsSection() {
             <Row className="g-3">
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label>Designation Title <span className="text-danger">*</span></Form.Label>
+                  <Form.Label>
+                    Designation Title <span className="text-danger">*</span>
+                  </Form.Label>
                   <Form.Control
                     required
                     placeholder="e.g. Senior Software Engineer"
@@ -426,7 +533,9 @@ function DesignationsSection() {
               </Col>
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label>Designation Code <span className="text-danger">*</span></Form.Label>
+                  <Form.Label>
+                    Designation Code <span className="text-danger">*</span>
+                  </Form.Label>
                   <Form.Control
                     required
                     placeholder="e.g. SR-SWE"
@@ -438,7 +547,27 @@ function DesignationsSection() {
 
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label>Department</Form.Label>
+                  <Form.Label>
+                    Branch {lockedBranchId && <span className="badge bg-secondary ms-1">Locked</span>}
+                  </Form.Label>
+                  <Form.Select
+                    value={formData.branchId}
+                    disabled={Boolean(lockedBranchId)}
+                    onChange={(e) => handleFormBranchChange(e.target.value)}
+                  >
+                    {!lockedBranchId && <option value="">-- All Branches / Global --</option>}
+                    {branches.map((b) => (
+                      <option key={b._id} value={b._id}>
+                        {b.branchName} ({b.branchCode})
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label>Department (Filtered by Branch)</Form.Label>
                   <Form.Select
                     value={formData.departmentId}
                     onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
@@ -452,9 +581,10 @@ function DesignationsSection() {
                   </Form.Select>
                 </Form.Group>
               </Col>
+
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label>Job Grade</Form.Label>
+                  <Form.Label>Job Grade (Filtered by Branch)</Form.Label>
                   <Form.Select
                     value={formData.jobGradeId}
                     onChange={(e) => setFormData({ ...formData, jobGradeId: e.target.value })}
@@ -479,6 +609,7 @@ function DesignationsSection() {
                   />
                 </Form.Group>
               </Col>
+
               <Col md={6}>
                 <Form.Group>
                   <Form.Label>Status</Form.Label>

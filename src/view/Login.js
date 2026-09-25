@@ -1,16 +1,39 @@
-import React, { useState } from 'react';
-import { FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { FaUser, FaLock, FaEye, FaEyeSlash, FaRocket, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 import { API_BASE_URL } from '../config/api';
 import { useAuth } from '../context/AuthContext';
+import { fetchSystemSetupStatus } from '../services/organizationService';
 import './Login.css';
 
 const Login = ({ onLogin }) => {
   const { loginUser } = useAuth();
-  const [email, setEmail] = useState('');
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const queryParams = new URLSearchParams(location.search);
+  const registered = queryParams.get('registered') === 'true';
+  const initialEmail = queryParams.get('email') || '';
+
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [setupRequired, setSetupRequired] = useState(false);
+  const [setupDetails, setSetupDetails] = useState(null);
+
+  // Check setup status on load
+  useEffect(() => {
+    fetchSystemSetupStatus()
+      .then((status) => {
+        if (status?.setupRequired && !status?.ownerExists) {
+          setSetupRequired(true);
+          setSetupDetails(status);
+        }
+      })
+      .catch((e) => console.warn('Setup status check notice:', e.message));
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -106,6 +129,45 @@ const Login = ({ onLogin }) => {
             <h3 className="login-form-title">Welcome back 👋</h3>
             <p className="login-form-sub">Sign in to your HRMS account</p>
           </div>
+
+          {/* Success message after registration */}
+          {registered && (
+            <div className="alert alert-success d-flex align-items-center gap-2 mb-3 py-2 px-3 rounded-3" role="alert" style={{ fontSize: '13px' }}>
+              <FaCheckCircle className="text-success flex-shrink-0" />
+              <div>
+                <strong>Setup Complete!</strong> System Owner registered successfully. Please sign in below.
+              </div>
+            </div>
+          )}
+
+          {/* Setup required banner if owner does not exist */}
+          {setupRequired && !registered && (
+            <div
+              className="p-3 mb-3 rounded-3 border d-flex flex-column gap-2"
+              style={{ background: '#FFFBEB', borderColor: '#FDE68A' }}
+            >
+              <div className="d-flex align-items-center gap-2">
+                <FaExclamationCircle className="text-warning flex-shrink-0 fs-5" />
+                <div style={{ fontSize: '12.5px', color: '#92400E' }}>
+                  <strong>Initial Setup Required:</strong> {setupDetails?.organization?.organizationName ? `Organization "${setupDetails.organization.organizationName}" exists` : 'No organization or owner account detected'}.
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-sm text-white fw-bold d-flex align-items-center justify-content-center gap-2 mt-1"
+                style={{
+                  background: 'linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '6px 14px',
+                  fontSize: '12px',
+                }}
+                onClick={() => navigate('/setup')}
+              >
+                <FaRocket /> Complete Organization & Owner Setup →
+              </button>
+            </div>
+          )}
 
           {error && (
             <div className="login-alert-error" role="alert">

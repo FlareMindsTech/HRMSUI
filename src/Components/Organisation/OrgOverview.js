@@ -13,7 +13,7 @@ import {
 import {
   FaBuilding,
   FaEnvelope,
-  FaPhone,
+  FaPhoneAlt,
   FaMapMarkerAlt,
   FaClock,
   FaUsers,
@@ -264,7 +264,10 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
     } finally {
       setLoading(false);
     }
-  }, [organization, initialOrgData, populateFormWithOrg]);
+  }, [populateFormWithOrg]);
+
+  const initialOrgId = initialOrgData?._id || initialOrgData?.id;
+  const branchOrgId = organization?._id || organization?.id;
 
   useEffect(() => {
     if (initialOrgData) {
@@ -272,13 +275,13 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
       setOrgData(norm);
       populateFormWithOrg(norm);
       setLoading(false);
-    } else if (organization && !orgData) {
+    } else if (organization) {
       const norm = normalizeOrganization(organization) || organization;
       setOrgData(norm);
       populateFormWithOrg(norm);
       setLoading(false);
     }
-  }, [initialOrgData, organization, orgData, populateFormWithOrg]);
+  }, [initialOrgId, branchOrgId, populateFormWithOrg]);
 
   useEffect(() => {
     loadData();
@@ -853,6 +856,36 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                         : "—"}
                     </span>
                   </div>
+                  {getStr(activeOrg.pfNumber) && (
+                    <div className="org-bento-row">
+                      <span className="org-bento-label">EPFO / PF Establishment Code</span>
+                      <span className="org-bento-val font-monospace">{getStr(activeOrg.pfNumber)}</span>
+                    </div>
+                  )}
+                  {getStr(activeOrg.esiNumber) && (
+                    <div className="org-bento-row">
+                      <span className="org-bento-label">ESIC Registration Code</span>
+                      <span className="org-bento-val font-monospace">{getStr(activeOrg.esiNumber)}</span>
+                    </div>
+                  )}
+                  {getStr(activeOrg.msmeNumber) && (
+                    <div className="org-bento-row">
+                      <span className="org-bento-label">MSME / Udyam Registration</span>
+                      <span className="org-bento-val font-monospace">{getStr(activeOrg.msmeNumber)}</span>
+                    </div>
+                  )}
+                  {getStr(activeOrg.lin) && (
+                    <div className="org-bento-row">
+                      <span className="org-bento-label">Labour Identification (LIN)</span>
+                      <span className="org-bento-val font-monospace">{getStr(activeOrg.lin)}</span>
+                    </div>
+                  )}
+                  {getStr(activeOrg.professionalTaxNumber) && (
+                    <div className="org-bento-row">
+                      <span className="org-bento-label">Professional Tax (PT) Reg</span>
+                      <span className="org-bento-val font-monospace">{getStr(activeOrg.professionalTaxNumber)}</span>
+                    </div>
+                  )}
                   <div className="org-bento-row">
                     <span className="org-bento-label">Financial Year Period</span>
                     <span className="org-bento-val fw-semibold">
@@ -881,12 +914,23 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                     </div>
                     <div>
                       <h4 className="org-bento-title">Headquarters & Contact</h4>
-                      <div className="org-bento-sub">Official communications & physical address</div>
+                      <div className="org-bento-sub">Official communications, signatory & physical location</div>
                     </div>
                   </div>
                 </div>
 
                 <div className="org-bento-list">
+                  {getStr(activeOrg.contactPersonName) && (
+                    <div className="org-bento-row">
+                      <span className="org-bento-label d-flex align-items-center gap-1">
+                        <FaUserTie className="text-primary" size={12} /> Authorized Signatory
+                      </span>
+                      <span className="org-bento-val fw-semibold">
+                        {getStr(activeOrg.contactPersonName)}
+                        {getStr(activeOrg.contactPersonDesignation) ? ` (${getStr(activeOrg.contactPersonDesignation)})` : ""}
+                      </span>
+                    </div>
+                  )}
                   <div className="org-bento-row">
                     <span className="org-bento-label d-flex align-items-center gap-1">
                       <FaEnvelope className="text-muted" size={12} /> Official Email
@@ -903,9 +947,11 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                   </div>
                   <div className="org-bento-row">
                     <span className="org-bento-label d-flex align-items-center gap-1">
-                      <FaPhone className="text-muted" size={12} /> Contact Phone
+                      <FaPhoneAlt className="text-muted" size={12} /> Contact Phone
                     </span>
-                    <span className="org-bento-val">{getStr(activeOrg.phone || activeOrg.phoneNumber || activeOrg.contactPhone, "—")}</span>
+                    <span className="org-bento-val">
+                      {[getStr(activeOrg.phone || activeOrg.phoneNumber || activeOrg.contactPhone), getStr(activeOrg.altPhone)].filter(Boolean).join(" / ") || "—"}
+                    </span>
                   </div>
                   <div className="org-bento-row">
                     <span className="org-bento-label d-flex align-items-center gap-1">
@@ -929,7 +975,9 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                   </div>
                   <div className="org-bento-row">
                     <span className="org-bento-label">Street Address</span>
-                    <span className="org-bento-val">{getStr(activeOrg.address, "—")}</span>
+                    <span className="org-bento-val">
+                      {[getStr(activeOrg.address), getStr(activeOrg.addressLine2), getStr(activeOrg.landmark)].filter(Boolean).join(", ") || "—"}
+                    </span>
                   </div>
                   <div className="org-bento-row">
                     <span className="org-bento-label">City / State</span>

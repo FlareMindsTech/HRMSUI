@@ -64,6 +64,9 @@ export const normalizeOrganization = (raw) => {
     }
   }
 
+  const addressLine2 = org.addressLine2 || addrObj.addressLine2 || org.street2 || addrObj.street2 || "";
+  const landmark = org.landmark || addrObj.landmark || "";
+
   return {
     ...org,
     _id: org._id || org.id,
@@ -74,23 +77,36 @@ export const normalizeOrganization = (raw) => {
     displayName: displayName,
     organizationType: org.organizationType || org.orgType || org.entityType || org.companyType || org.type || "COMPANY",
     industry: org.industry || org.industryType || org.domain || org.sector || org.businessType || "",
+    description: org.description || org.about || org.bio || "",
     status: org.status || org.orgStatus || org.state || (org.isActive === false ? "INACTIVE" : "ACTIVE"),
     registrationNumber: org.registrationNumber || org.registrationNo || org.cin || org.cinNo || org.regNo || org.companyRegistrationNumber || org.regNumber || "",
     pan: org.pan || org.panNumber || org.panNo || org.taxId || org.pan_no || "",
     tan: org.tan || org.tanNumber || org.tanNo || org.tan_no || "",
     gstin: org.gstin || org.gstNo || org.gstNumber || org.gst || org.vatNo || org.taxNumber || org.gst_no || "",
+    pfNumber: org.pfNumber || org.epfoNumber || org.pfRegistrationNumber || org.pfNo || "",
+    esiNumber: org.esiNumber || org.esicNumber || org.esiRegistrationNumber || org.esiNo || "",
+    msmeNumber: org.msmeNumber || org.udyamNumber || org.msmeRegistrationNumber || org.udyamNo || "",
+    lin: org.lin || org.labourIdentificationNumber || org.linNumber || "",
+    professionalTaxNumber: org.professionalTaxNumber || org.ptNumber || org.ptRegistrationNumber || "",
     incorporationDate: incDate,
     financialYearStart: fyStart,
     currency: org.currency || org.defaultCurrency || org.currencyCode || org.baseCurrency || "INR",
     timeZone: org.timeZone || org.timezone || org.timeZoneId || org.time_zone || "Asia/Kolkata",
     email: org.email || org.officialEmail || org.corporateEmail || org.contactEmail || org.companyEmail || org.emailId || "",
     phone: org.phone || org.phoneNumber || org.contactPhone || org.telephone || org.mobile || org.contactNumber || org.phoneNo || "",
+    altPhone: org.altPhone || org.secondaryPhone || org.alternatePhone || "",
     website: org.website || org.websiteUrl || org.url || org.companyWebsite || org.domainUrl || "",
     address: street,
+    addressLine2: addressLine2,
+    landmark: landmark,
     city: city,
     state: state,
     country: country,
     pincode: pincode,
+    contactPersonName: org.contactPersonName || org.contactPerson?.name || org.primaryContact?.name || "",
+    contactPersonDesignation: org.contactPersonDesignation || org.contactPerson?.designation || org.primaryContact?.designation || "",
+    contactPersonEmail: org.contactPersonEmail || org.contactPerson?.email || org.primaryContact?.email || "",
+    contactPersonPhone: org.contactPersonPhone || org.contactPerson?.phone || org.primaryContact?.phone || "",
     logo: typeof org.logo === "object" && org.logo !== null ? org.logo.url || org.logo.path || "" : (org.logo || org.logoUrl || ""),
     stats: org.stats || {},
   };
@@ -1025,5 +1041,34 @@ export const removeEmployeeFromBranch = async (branchId, userId) => {
   }
 
   return res.ok;
+};
+
+// ─── 16. SYSTEM SETUP & OWNER INITIALIZATION ──────────────────────
+
+/**
+ * Checks system setup status from GET /api/system/setup-status
+ * Returns: { setupRequired: boolean, organizationExists: boolean, ownerExists: boolean, organization, subscription }
+ */
+export const fetchSystemSetupStatus = async () => {
+  const res = await apiFetch("/system/setup-status", { method: "GET" });
+  if (!res.ok) {
+    throw new Error(res.data?.message || "Failed to fetch system setup status");
+  }
+  return res.data;
+};
+
+/**
+ * Registers the initial organization owner via POST /api/auth/register-owner
+ * Payload: { organizationId, firstName, lastName, email, password, mobileNo, ... }
+ */
+export const registerSystemOwner = async (payload) => {
+  const res = await apiFetch("/auth/register-owner", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error(res.data?.message || "Failed to register owner account");
+  }
+  return res.data;
 };
 

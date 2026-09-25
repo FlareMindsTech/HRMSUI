@@ -11,7 +11,7 @@ import "./Layout.css";
 
 function Layout() {
   const dispatch = useDispatch();
-  const { user, isSystemAdmin } = useAuth();
+  const { user, isSystemAdmin, loading: authLoading } = useAuth();
   const { organization, loading: branchLoading, refreshOrganization, refreshBranches } = useBranch();
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -21,7 +21,7 @@ function Layout() {
 
   const storedOrgId = localStorage.getItem("organizationId") || localStorage.getItem("tenantId");
   const isOwner = user?.roleCode === "OWNER" || isSystemAdmin || user?.priority === 1;
-  const hasNoOrg = isOwner && !organization && !user?.organizationId && !storedOrgId;
+  const hasNoOrg = isOwner && !branchLoading && !authLoading && !organization && !user?.organizationId && !storedOrgId;
 
   // Initialize theme for authenticated tenant context
   useEffect(() => {
@@ -52,10 +52,20 @@ function Layout() {
     navigate("/dashboard");
   };
 
+  // ── Show subtle loader while checking initial context ──
+  if ((branchLoading || authLoading) && !organization && !storedOrgId && !user?.organizationId) {
+    return (
+      <div className="d-flex align-items-center justify-content-center vh-100 bg-light">
+        <div className="text-center">
+          <div className="spinner-border text-warning mb-2" role="status" />
+          <div className="small text-muted fw-semibold">Loading TeamHub HRMS...</div>
+        </div>
+      </div>
+    );
+  }
+
   // ── FULL SCREEN ONBOARDING WHEN OWNER LOGS IN & NO ORG EXISTS ──
-  // Do NOT flash the dashboard on refresh: if user is owner and no organization is present,
-  // stay immediately on the setup wizard without rendering the underlying dashboard first.
-  if (hasNoOrg || (isOwner && !storedOrgId && !organization && !user?.organizationId)) {
+  if (hasNoOrg) {
     return (
       <div className="app-layout-fullscreen-onboarding">
         <OrgSetupWizard onOrgCreated={handleOrgCreated} />

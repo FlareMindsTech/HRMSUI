@@ -35,7 +35,7 @@ import {
 } from "../../services/organizationService";
 import { useAuth } from "../../context/AuthContext";
 
-function HolidayCalendarsSection() {
+function HolidayCalendarsSection({ lockedBranchId }) {
   const { hasPermission, isSystemAdmin } = useAuth();
   const [activeSubTab, setActiveSubTab] = useState("holidays"); // "holidays" | "calendars"
 
@@ -61,7 +61,7 @@ function HolidayCalendarsSection() {
     calendarName: "",
     calendarCode: "",
     year: new Date().getFullYear(),
-    branchId: "",
+    branchId: lockedBranchId || "",
     description: "",
     status: "ACTIVE",
   });
@@ -72,12 +72,19 @@ function HolidayCalendarsSection() {
     title: "",
     date: new Date().toISOString().split("T")[0],
     holidayType: "COMPANY_HOLIDAY",
-    scope: "ALL",
-    branchId: "",
+    scope: lockedBranchId ? "BRANCH" : "ALL",
+    branchId: lockedBranchId || "",
     targetDepartment: "",
     reason: "",
     isOptional: false,
   });
+
+  useEffect(() => {
+    if (lockedBranchId) {
+      setCalFormData((prev) => ({ ...prev, branchId: lockedBranchId }));
+      setHolidayFormData((prev) => ({ ...prev, branchId: lockedBranchId, scope: "BRANCH" }));
+    }
+  }, [lockedBranchId]);
 
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState("");
@@ -102,6 +109,7 @@ function HolidayCalendarsSection() {
           limit: 10,
           search,
           year: filterYear,
+          branchId: lockedBranchId || undefined,
         });
         if (res.success) {
           setHolidayCalendars(res.data || []);
@@ -112,6 +120,7 @@ function HolidayCalendarsSection() {
       } else {
         const res = await fetchDeclaredHolidays({
           year: filterYear,
+          branchId: lockedBranchId || undefined,
         });
         if (res.success || Array.isArray(res.data)) {
           const list = res.data || [];
@@ -124,13 +133,13 @@ function HolidayCalendarsSection() {
     } finally {
       setLoading(false);
     }
-  }, [activeSubTab, page, search, filterYear]);
+  }, [activeSubTab, page, search, filterYear, lockedBranchId]);
 
   const loadAuxiliaryData = async () => {
     try {
       const [brList, deptList] = await Promise.all([
         fetchBranchesDropdown().catch(() => []),
-        fetchDepartmentsDropdown().catch(() => []),
+        fetchDepartmentsDropdown(lockedBranchId ? { branchId: lockedBranchId } : {}).catch(() => []),
       ]);
       setBranches(brList);
       setDepartments(deptList);
@@ -145,7 +154,7 @@ function HolidayCalendarsSection() {
 
   useEffect(() => {
     loadAuxiliaryData();
-  }, []);
+  }, [lockedBranchId]);
 
   // Open Calendar Form
   const handleOpenCalendarCreate = () => {
@@ -154,7 +163,7 @@ function HolidayCalendarsSection() {
       calendarName: `Holiday Calendar ${filterYear}`,
       calendarCode: `HOL-CAL-${filterYear}`,
       year: filterYear,
-      branchId: "",
+      branchId: lockedBranchId || "",
       description: "",
       status: "ACTIVE",
     });

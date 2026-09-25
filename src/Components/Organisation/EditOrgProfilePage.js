@@ -12,7 +12,7 @@ import {
   FaBuilding,
   FaShieldAlt,
   FaEnvelope,
-  FaPhone,
+  FaPhoneAlt,
   FaGlobe,
   FaMapMarkerAlt,
   FaCog,
@@ -26,6 +26,8 @@ import {
   FaExternalLinkAlt,
   FaMoneyBillWave,
   FaBriefcase,
+  FaUserTie,
+  FaFileContract,
 } from "react-icons/fa";
 import {
   fetchMyOrganization,
@@ -39,9 +41,14 @@ import "./EditOrgProfilePage.css";
 
 const ORG_TYPES = [
   { value: "COMPANY", label: "Private Limited Company (Pvt Ltd)", icon: FaBuilding },
+  { value: "PUBLIC_LIMITED", label: "Public Limited Company (Ltd)", icon: FaBuilding },
   { value: "LLP", label: "Limited Liability Partnership (LLP)", icon: FaBriefcase },
   { value: "PARTNERSHIP", label: "Partnership Firm", icon: FaBriefcase },
   { value: "PROPRIETORSHIP", label: "Sole Proprietorship", icon: FaBuilding },
+  { value: "TRUST", label: "Trust / Society", icon: FaBuilding },
+  { value: "NGO", label: "Non-Profit / NGO (Section 8)", icon: FaBuilding },
+  { value: "STARTUP", label: "Startup / Incubated Entity", icon: FaBuilding },
+  { value: "GOVERNMENT", label: "Government / PSU", icon: FaBuilding },
   { value: "OTHER", label: "Other Corporate Entity", icon: FaBuilding },
 ];
 
@@ -98,20 +105,33 @@ const INITIAL_FORM = {
   displayName: "",
   organizationType: "COMPANY",
   industry: "Information Technology",
+  description: "",
   website: "",
   email: "",
   phone: "",
+  altPhone: "",
   logo: "",
   registrationNumber: "",
   pan: "",
   tan: "",
   gstin: "",
+  pfNumber: "",
+  esiNumber: "",
+  msmeNumber: "",
+  lin: "",
+  professionalTaxNumber: "",
   incorporationDate: "",
   address: "",
+  addressLine2: "",
+  landmark: "",
   city: "",
   state: "",
   country: "India",
   pincode: "",
+  contactPersonName: "",
+  contactPersonDesignation: "",
+  contactPersonEmail: "",
+  contactPersonPhone: "",
   currency: "INR",
   timeZone: "Asia/Kolkata",
   financialYearStart: "04-01",
@@ -168,20 +188,33 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
       displayName: getStr(norm.displayName || norm.name),
       organizationType: getStr(norm.organizationType || "COMPANY"),
       industry: getStr(norm.industry || "Information Technology"),
+      description: getStr(norm.description || norm.about),
       website: getStr(norm.website),
       email: getStr(norm.email),
       phone: getStr(norm.phone),
+      altPhone: getStr(norm.altPhone),
       logo: getStr(typeof norm.logo === "object" && norm.logo !== null ? norm.logo.url || norm.logo.path : norm.logo),
       registrationNumber: getStr(norm.registrationNumber),
       pan: getStr(norm.pan),
       tan: getStr(norm.tan),
       gstin: getStr(norm.gstin),
+      pfNumber: getStr(norm.pfNumber),
+      esiNumber: getStr(norm.esiNumber),
+      msmeNumber: getStr(norm.msmeNumber),
+      lin: getStr(norm.lin),
+      professionalTaxNumber: getStr(norm.professionalTaxNumber),
       incorporationDate: incDate,
       address: getStr(typeof norm.address === "string" ? norm.address : addrObj.street || addrObj.addressLine1 || ""),
+      addressLine2: getStr(norm.addressLine2 || addrObj.addressLine2),
+      landmark: getStr(norm.landmark || addrObj.landmark),
       city: getStr(norm.city || addrObj.city || ""),
       state: getStr(norm.state || addrObj.state || ""),
       country: getStr(typeof norm.country === "string" ? norm.country : addrObj.country || "India"),
       pincode: getStr(norm.pincode || addrObj.pincode || ""),
+      contactPersonName: getStr(norm.contactPersonName),
+      contactPersonDesignation: getStr(norm.contactPersonDesignation),
+      contactPersonEmail: getStr(norm.contactPersonEmail),
+      contactPersonPhone: getStr(norm.contactPersonPhone),
       currency: getStr(norm.currency || "INR"),
       timeZone: getStr(norm.timeZone || "Asia/Kolkata"),
       financialYearStart: getStr(norm.financialYearStart || "04-01"),
@@ -208,13 +241,14 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
     }
   }, [organization, populateFormData]);
 
+  const initialOrgId = initialOrgData?._id || initialOrgData?.id;
   useEffect(() => {
     if (initialOrgData) {
       populateFormData(initialOrgData);
     } else {
       loadFreshOrg();
     }
-  }, [initialOrgData, loadFreshOrg, populateFormData]);
+  }, [initialOrgId, loadFreshOrg, populateFormData]);
 
   // Handle Logo file selection
   const handleLogoUpload = (e) => {
@@ -267,20 +301,33 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
         displayName: formData.displayName.trim() || formData.organizationName.trim(),
         organizationType: formData.organizationType,
         industry: formData.industry.trim(),
+        description: formData.description.trim(),
         website: formData.website.trim(),
         email: formData.email.trim().toLowerCase(),
         phone: formData.phone.trim(),
+        altPhone: formData.altPhone.trim(),
         logo: formData.logo,
         registrationNumber: formData.registrationNumber.trim().toUpperCase(),
         pan: formData.pan.trim().toUpperCase(),
         tan: formData.tan.trim().toUpperCase(),
         gstin: formData.gstin.trim().toUpperCase(),
+        pfNumber: formData.pfNumber.trim().toUpperCase(),
+        esiNumber: formData.esiNumber.trim().toUpperCase(),
+        msmeNumber: formData.msmeNumber.trim().toUpperCase(),
+        lin: formData.lin.trim().toUpperCase(),
+        professionalTaxNumber: formData.professionalTaxNumber.trim().toUpperCase(),
         incorporationDate: formData.incorporationDate ? new Date(formData.incorporationDate) : null,
         address: formData.address.trim(),
+        addressLine2: formData.addressLine2.trim(),
+        landmark: formData.landmark.trim(),
         city: formData.city.trim(),
         state: formData.state.trim(),
         country: formData.country.trim() || "India",
         pincode: formData.pincode.trim(),
+        contactPersonName: formData.contactPersonName.trim(),
+        contactPersonDesignation: formData.contactPersonDesignation.trim(),
+        contactPersonEmail: formData.contactPersonEmail.trim().toLowerCase(),
+        contactPersonPhone: formData.contactPersonPhone.trim(),
         currency: formData.currency.trim().toUpperCase() || "INR",
         timeZone: formData.timeZone.trim() || "Asia/Kolkata",
         financialYearStart: formData.financialYearStart.trim() || "04-01",
@@ -310,11 +357,11 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
   };
 
   const navTabs = [
-    { key: "entity", label: "1. Entity & Corporate", icon: FaBuilding, badge: "Core", subtitle: "Name, Code, Entity Type & Logo" },
-    { key: "tax", label: "2. Tax & Legal Compliance", icon: FaShieldAlt, badge: "Tax", subtitle: "CIN, PAN, TAN & GSTIN Reg" },
-    { key: "contact", label: "3. Contact & Web", icon: FaGlobe, badge: "Comms", subtitle: "Official Email, Phone & Domain" },
-    { key: "address", label: "4. Headquarters Location", icon: FaMapMarkerAlt, badge: "HQ", subtitle: "Physical Address & Pincode" },
-    { key: "localization", label: "5. Localization & FY", icon: FaCog, badge: "Defaults", subtitle: "Currency, Timezone & FY Start" },
+    { key: "entity", label: "1. Entity & Corporate", icon: FaBuilding, badge: "Core", subtitle: "Name, Code, Type & Logo" },
+    { key: "tax", label: "2. Tax & Statutory", icon: FaShieldAlt, badge: "Tax", subtitle: "CIN, PAN, GSTIN, PF & ESI" },
+    { key: "contact", label: "3. Contact & Signatory", icon: FaGlobe, badge: "Comms", subtitle: "Email, Phone & Contact Person" },
+    { key: "address", label: "4. Headquarters Location", icon: FaMapMarkerAlt, badge: "HQ", subtitle: "Physical Address & Postal Code" },
+    { key: "localization", label: "5. Localization & FY", icon: FaCog, badge: "Defaults", subtitle: "Currency, Timezone & FY Cycle" },
   ];
 
   return (
@@ -597,6 +644,20 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
 
                     <Col md={12}>
                       <Form.Group className="edit-org-form-group">
+                        <Form.Label className="edit-org-label">About / Corporate Description</Form.Label>
+                        <Form.Control
+                          as="textarea"
+                          rows={2}
+                          className="edit-org-input"
+                          placeholder="Brief description of the organization, core business activities, mission..."
+                          value={formData.description}
+                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={12}>
+                      <Form.Group className="edit-org-form-group">
                         <Form.Label className="edit-org-label">
                           Organization Logo (Upload File or Enter URL)
                         </Form.Label>
@@ -666,7 +727,7 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
                       </div>
                       <div>
                         <h3 className="edit-org-section-title">Tax & Statutory Compliance</h3>
-                        <p className="edit-org-section-subtitle">Manage corporate registration numbers, PAN, TAN, GSTIN & date of incorporation</p>
+                        <p className="edit-org-section-subtitle">Manage corporate registration numbers, PAN, TAN, GSTIN, EPFO & ESIC details</p>
                       </div>
                     </div>
                     <Badge bg="light" text="dark" className="border px-3 py-2 fw-semibold">
@@ -730,7 +791,7 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
                           value={formData.tan}
                           onChange={(e) => setFormData({ ...formData, tan: e.target.value.toUpperCase() })}
                         />
-                        <span className="edit-org-helper-text">10-character TAN for TDS returns & employee payroll Form 16</span>
+                        <span className="edit-org-helper-text">10-character TAN for TDS returns & Form 16</span>
                       </Form.Group>
                     </Col>
 
@@ -749,6 +810,69 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
                         <span className="edit-org-helper-text">15-digit Goods & Services Tax Identification Number</span>
                       </Form.Group>
                     </Col>
+
+                    {/* Extended Statutory Fields */}
+                    <Col md={6}>
+                      <Form.Group className="edit-org-form-group">
+                        <Form.Label className="edit-org-label">PF / EPFO Registration Number</Form.Label>
+                        <Form.Control
+                          className="edit-org-input font-monospace text-uppercase"
+                          placeholder="e.g. MH/BAN/0012345/000"
+                          value={formData.pfNumber}
+                          onChange={(e) => setFormData({ ...formData, pfNumber: e.target.value.toUpperCase() })}
+                        />
+                        <span className="edit-org-helper-text">Provident Fund establishment code for ECR filing</span>
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={6}>
+                      <Form.Group className="edit-org-form-group">
+                        <Form.Label className="edit-org-label">ESIC / ESI Registration Code</Form.Label>
+                        <Form.Control
+                          className="edit-org-input font-monospace text-uppercase"
+                          placeholder="e.g. 51000123450001001"
+                          value={formData.esiNumber}
+                          onChange={(e) => setFormData({ ...formData, esiNumber: e.target.value.toUpperCase() })}
+                        />
+                        <span className="edit-org-helper-text">17-digit Employee State Insurance code</span>
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={4}>
+                      <Form.Group className="edit-org-form-group">
+                        <Form.Label className="edit-org-label">MSME / Udyam Reg No</Form.Label>
+                        <Form.Control
+                          className="edit-org-input font-monospace text-uppercase"
+                          placeholder="e.g. UDYAM-KR-03-0012345"
+                          value={formData.msmeNumber}
+                          onChange={(e) => setFormData({ ...formData, msmeNumber: e.target.value.toUpperCase() })}
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={4}>
+                      <Form.Group className="edit-org-form-group">
+                        <Form.Label className="edit-org-label">Labour Identification (LIN)</Form.Label>
+                        <Form.Control
+                          className="edit-org-input font-monospace text-uppercase"
+                          placeholder="e.g. 1234567890"
+                          value={formData.lin}
+                          onChange={(e) => setFormData({ ...formData, lin: e.target.value.toUpperCase() })}
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={4}>
+                      <Form.Group className="edit-org-form-group">
+                        <Form.Label className="edit-org-label">Professional Tax (PT) Reg No</Form.Label>
+                        <Form.Control
+                          className="edit-org-input font-monospace text-uppercase"
+                          placeholder="e.g. PT/KAR/12345"
+                          value={formData.professionalTaxNumber}
+                          onChange={(e) => setFormData({ ...formData, professionalTaxNumber: e.target.value.toUpperCase() })}
+                        />
+                      </Form.Group>
+                    </Col>
                   </Row>
                 </div>
               )}
@@ -764,8 +888,8 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
                         <FaGlobe />
                       </div>
                       <div>
-                        <h3 className="edit-org-section-title">Official Communications & Online Presence</h3>
-                        <p className="edit-org-section-subtitle">Configure central official email, customer contact phone & web domain</p>
+                        <h3 className="edit-org-section-title">Official Communications & Authorized Signatory</h3>
+                        <p className="edit-org-section-subtitle">Configure official corporate email, helpline, website domain & primary contact person</p>
                       </div>
                     </div>
                     <Badge bg="light" text="dark" className="border px-3 py-2 fw-semibold">
@@ -790,10 +914,10 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
                       </Form.Group>
                     </Col>
 
-                    <Col md={6}>
+                    <Col md={3}>
                       <Form.Group className="edit-org-form-group">
                         <Form.Label className="edit-org-label">
-                          <FaPhone className="text-muted me-1" /> Contact Phone / Helpline
+                          <FaPhoneAlt className="text-muted me-1" /> Primary Phone
                         </Form.Label>
                         <Form.Control
                           className="edit-org-input"
@@ -801,7 +925,20 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         />
-                        <span className="edit-org-helper-text">Official telephone or reception mobile contact</span>
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={3}>
+                      <Form.Group className="edit-org-form-group">
+                        <Form.Label className="edit-org-label">
+                          <FaPhoneAlt className="text-muted me-1" /> Alternate / Landline
+                        </Form.Label>
+                        <Form.Control
+                          className="edit-org-input"
+                          placeholder="e.g. 080-23456789"
+                          value={formData.altPhone}
+                          onChange={(e) => setFormData({ ...formData, altPhone: e.target.value })}
+                        />
                       </Form.Group>
                     </Col>
 
@@ -832,6 +969,57 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
                         <span className="edit-org-helper-text">Public corporate portal web address</span>
                       </Form.Group>
                     </Col>
+
+                    <Col md={12}>
+                      <div className="p-3 bg-light rounded border mt-2">
+                        <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                          <FaUserTie className="text-primary" /> Primary Contact Person / Authorized Signatory
+                        </h6>
+                        <Row className="g-3">
+                          <Col md={6}>
+                            <Form.Group>
+                              <Form.Label className="small fw-semibold">Signatory Name</Form.Label>
+                              <Form.Control
+                                placeholder="e.g. Ramesh Sharma"
+                                value={formData.contactPersonName}
+                                onChange={(e) => setFormData({ ...formData, contactPersonName: e.target.value })}
+                              />
+                            </Form.Group>
+                          </Col>
+                          <Col md={6}>
+                            <Form.Group>
+                              <Form.Label className="small fw-semibold">Designation / Role</Form.Label>
+                              <Form.Control
+                                placeholder="e.g. Managing Director / HR Head"
+                                value={formData.contactPersonDesignation}
+                                onChange={(e) => setFormData({ ...formData, contactPersonDesignation: e.target.value })}
+                              />
+                            </Form.Group>
+                          </Col>
+                          <Col md={6}>
+                            <Form.Group>
+                              <Form.Label className="small fw-semibold">Direct Email</Form.Label>
+                              <Form.Control
+                                type="email"
+                                placeholder="e.g. ramesh@flareminds.com"
+                                value={formData.contactPersonEmail}
+                                onChange={(e) => setFormData({ ...formData, contactPersonEmail: e.target.value.toLowerCase() })}
+                              />
+                            </Form.Group>
+                          </Col>
+                          <Col md={6}>
+                            <Form.Group>
+                              <Form.Label className="small fw-semibold">Direct Mobile</Form.Label>
+                              <Form.Control
+                                placeholder="e.g. +91 98765 00000"
+                                value={formData.contactPersonPhone}
+                                onChange={(e) => setFormData({ ...formData, contactPersonPhone: e.target.value })}
+                              />
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                      </div>
+                    </Col>
                   </Row>
                 </div>
               )}
@@ -861,14 +1049,36 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
                       <Form.Group className="edit-org-form-group">
                         <Form.Label className="edit-org-label">Street Address / Building / Floor</Form.Label>
                         <Form.Control
-                          as="textarea"
-                          rows={2}
                           className="edit-org-input"
-                          placeholder="e.g. Tech Park, 4th Floor, Sector 5, Outer Ring Road"
+                          placeholder="e.g. Tech Park, 4th Floor, Sector 5"
                           value={formData.address}
                           onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                         />
-                        <span className="edit-org-helper-text">Full physical street address of headquarters</span>
+                        <span className="edit-org-helper-text">Primary street address line 1</span>
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={6}>
+                      <Form.Group className="edit-org-form-group">
+                        <Form.Label className="edit-org-label">Address Line 2 (Area / Locality)</Form.Label>
+                        <Form.Control
+                          className="edit-org-input"
+                          placeholder="e.g. Outer Ring Road, Marathahalli"
+                          value={formData.addressLine2}
+                          onChange={(e) => setFormData({ ...formData, addressLine2: e.target.value })}
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={6}>
+                      <Form.Group className="edit-org-form-group">
+                        <Form.Label className="edit-org-label">Landmark</Form.Label>
+                        <Form.Control
+                          className="edit-org-input"
+                          placeholder="e.g. Opposite Central Metro Station"
+                          value={formData.landmark}
+                          onChange={(e) => setFormData({ ...formData, landmark: e.target.value })}
+                        />
                       </Form.Group>
                     </Col>
 
@@ -1001,7 +1211,7 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
                             </option>
                           ))}
                         </Form.Select>
-                        <span className="edit-org-helper-text">Accounting period opening date for tax years & leave annual quota resets</span>
+                        <span className="edit-org-helper-text">Accounting period opening date for tax years & annual leave cycles</span>
                       </Form.Group>
                     </Col>
                   </Row>

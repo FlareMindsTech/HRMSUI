@@ -22,11 +22,16 @@ import {
   FaBolt,
   FaRegCalendarAlt,
   FaPlus,
+  FaCrown,
+  FaShieldAlt,
+  FaUserShield,
+  FaSlidersH,
 } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
 import { useBranch } from "../../context/BranchContext";
 import { fetchMyOrganization, normalizeOrganization } from "../../services/organizationService";
 import OrgOverview from "../../Components/Organisation/OrgOverview";
+import OrganizationProfileView from "../../Components/Organisation/OrganizationProfileView";
 import BranchesSection from "../../Components/Organisation/BranchesSection";
 import DepartmentsSection from "../../Components/Organisation/DepartmentsSection";
 import DesignationsSection from "../../Components/Organisation/DesignationsSection";
@@ -40,51 +45,64 @@ import ShiftsSection from "../../Components/Organisation/ShiftsSection";
 import FinancialYearsSection from "../../Components/Organisation/FinancialYearsSection";
 import HolidayCalendarsSection from "../../Components/Organisation/HolidayCalendarsSection";
 import OrganizationSettingsSection from "../../Components/Organisation/OrganizationSettingsSection";
+import BranchSettingsSection from "../../Components/Organisation/BranchSettingsSection";
+import SubscriptionSection from "../../Components/Organisation/SubscriptionSection";
+import OrgAccessManagementSection from "../../Components/Organisation/OrgAccessManagementSection";
 import OrgSetupWizard from "../../Components/Organisation/OrgSetupWizard";
 import EditOrgProfilePage from "../../Components/Organisation/EditOrgProfilePage";
+import UserManagement from "./UserManagement";
 import "./Organisation.css";
 
-const ORG_TABS = [
-  { key: "overview", label: "Overview", icon: FaBuilding, perm: "organization.view" },
-  { key: "branches", label: "Branches", icon: FaCodeBranch, perm: "branch.view" },
-  { key: "departments", label: "Departments", icon: FaSitemap, perm: "department.view" },
-  { key: "designations", label: "Designations", icon: FaUserTag, perm: "designation.view" },
-  { key: "teams", label: "Teams", icon: FaUsers, perm: "team.view" },
-  { key: "locations", label: "Locations", icon: FaMapMarkerAlt, perm: "location.view" },
-  { key: "reporting-hierarchy", label: "Reporting Hierarchy", icon: FaProjectDiagram, perm: "reportingHierarchy.view" },
-  { key: "job-grades", label: "Job Grades", icon: FaLayerGroup, perm: "jobGrade.view" },
-  { key: "cost-centers", label: "Cost Centers", icon: FaMoneyCheckAlt, perm: "costCenter.view" },
-  { key: "work-calendars", label: "Work Calendars", icon: FaCalendarWeek, perm: "workCalendar.view" },
-  { key: "shifts", label: "Shifts", icon: FaClock, perm: "shift.view" },
-  { key: "financial-years", label: "Financial Years", icon: FaCalendarAlt, perm: "financialYear.view" },
-  { key: "holiday-calendars", label: "Holidays", icon: FaUmbrellaBeach, perm: "holidayCalendar.view" },
-  { key: "settings", label: "Settings", icon: FaCog, perm: "orgSettings.view" },
+// ── Categorized Navigation Tabs as per HRMS SaaS Architecture #35 ──
+const ORG_NAV_GROUPS = [
+  {
+    groupTitle: "ORGANIZATION",
+    tabs: [
+      { key: "overview", label: "Overview", icon: FaBuilding, perm: "organization.view" },
+      { key: "profile", label: "Organization Profile", icon: FaBuilding, perm: "organization.view" },
+      { key: "branches", label: "Branches", icon: FaCodeBranch, perm: "branch.view" },
+      { key: "subscription", label: "Subscription / Plan", icon: FaCrown, perm: "organization.view" },
+    ],
+  },
+  {
+    groupTitle: "ORGANIZATION STRUCTURE",
+    tabs: [
+      { key: "departments", label: "Departments", icon: FaSitemap, perm: "department.view" },
+      { key: "designations", label: "Designations", icon: FaUserTag, perm: "designation.view" },
+      { key: "teams", label: "Teams", icon: FaUsers, perm: "team.view" },
+      { key: "locations", label: "Locations", icon: FaMapMarkerAlt, perm: "location.view" },
+      { key: "reporting-hierarchy", label: "Reporting Hierarchy", icon: FaProjectDiagram, perm: "reportingHierarchy.view" },
+      { key: "job-grades", label: "Job Grades", icon: FaLayerGroup, perm: "jobGrade.view" },
+      { key: "cost-centers", label: "Cost Centers", icon: FaMoneyCheckAlt, perm: "costCenter.view" },
+      { key: "work-calendars", label: "Work Calendars", icon: FaCalendarWeek, perm: "workCalendar.view" },
+      { key: "shifts", label: "Shifts", icon: FaClock, perm: "shift.view" },
+      { key: "holiday-calendars", label: "Holiday Calendars", icon: FaUmbrellaBeach, perm: "holidayCalendar.view" },
+      { key: "financial-years", label: "Financial Years", icon: FaCalendarAlt, perm: "financialYear.view" },
+    ],
+  },
+  {
+    groupTitle: "ACCESS & SECURITY",
+    tabs: [
+      { key: "users", label: "Users", icon: FaUsers, perm: "user.view" },
+      { key: "roles", label: "Roles & Permissions", icon: FaUserShield, perm: "role.view" },
+      { key: "organization-access", label: "Organization Access", icon: FaShieldAlt, perm: "organization.view" },
+    ],
+  },
+  {
+    groupTitle: "SETTINGS",
+    tabs: [
+      { key: "settings", label: "Organization Settings", icon: FaCog, perm: "orgSettings.view" },
+      { key: "branch-settings", label: "Branch Settings", icon: FaSlidersH, perm: "branch.view" },
+    ],
+  },
 ];
+
+const ALL_TABS = ORG_NAV_GROUPS.flatMap((g) => g.tabs);
 
 const getStr = (val, fallback = "") => {
   if (val === null || val === undefined) return fallback;
   if (typeof val === "string") return val.trim() !== "" ? val.trim() : fallback;
   if (typeof val === "number" || typeof val === "boolean") return String(val);
-  if (typeof val === "object") {
-    if (val.month !== undefined && val.day !== undefined) {
-      const mm = String(val.month).padStart(2, "0");
-      const dd = String(val.day).padStart(2, "0");
-      return `${mm}-${dd}`;
-    }
-    if (val.street || val.addressLine1 || val.line1) {
-      const addr = [val.street || val.addressLine1 || val.line1, val.city, val.state, val.country, val.pincode || val.zip]
-        .filter(Boolean)
-        .join(", ");
-      return addr || fallback;
-    }
-    if (val.city || val.country) {
-      return [val.city, val.country].filter(Boolean).join(", ");
-    }
-    if (val.name) return String(val.name);
-    if (val.label) return String(val.label);
-    if (val.url) return String(val.url);
-    return fallback;
-  }
   return fallback;
 };
 
@@ -99,10 +117,13 @@ function Organisation() {
   const [loadingOrg, setLoadingOrg] = useState(!organization);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [copiedField, setCopiedField] = useState("");
-  const [triggerEditModal, setTriggerEditModal] = useState(false);
+  const [activeCategory, setActiveCategory] = useState("ORGANIZATION");
+  const [isFullView, setIsFullView] = useState(false);
 
   // Determine active tab from URL parameter or default to "overview"
-  const currentTabKey = section && ORG_TABS.some((t) => t.key === section) ? section : "overview";
+  const currentTabKey = section && (ALL_TABS.some((t) => t.key === section) || section === "edit-profile" || section === "profile")
+    ? section
+    : "overview";
   const [activeTab, setActiveTab] = useState(currentTabKey);
 
   // Time updater
@@ -111,10 +132,9 @@ function Organisation() {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch organization profile for the header hero banner
+  // Fetch organization profile for the header banner
   const loadOrg = useCallback(async () => {
     try {
-      if (!organization && !orgData) setLoadingOrg(true);
       const data = await fetchMyOrganization();
       if (data) {
         setOrgData(normalizeOrganization(data) || data);
@@ -136,26 +156,32 @@ function Organisation() {
   }, [organization]);
 
   useEffect(() => {
-    if (organization && !orgData) {
+    if (organization) {
       setOrgData(normalizeOrganization(organization) || organization);
       setLoadingOrg(false);
     }
-  }, [organization, orgData]);
+  }, [organization]);
 
   useEffect(() => {
     loadOrg();
   }, [loadOrg]);
 
   useEffect(() => {
-    if (section && (ORG_TABS.some((t) => t.key === section) || section === "edit-profile")) {
+    if (section && (ALL_TABS.some((t) => t.key === section) || section === "edit-profile")) {
       setActiveTab(section);
+      const foundGroup = ORG_NAV_GROUPS.find((g) => g.tabs.some((t) => t.key === section));
+      if (foundGroup) setActiveCategory(foundGroup.groupTitle);
     } else if (location.pathname === "/organisation" || location.pathname === "/organisation/") {
       setActiveTab("overview");
+      setActiveCategory("ORGANIZATION");
     }
   }, [section, location.pathname]);
 
   const handleTabSelect = (tabKey) => {
     setActiveTab(tabKey);
+    const foundGroup = ORG_NAV_GROUPS.find((g) => g.tabs.some((t) => t.key === tabKey));
+    if (foundGroup) setActiveCategory(foundGroup.groupTitle);
+
     if (tabKey === "overview") {
       navigate("/organisation");
     } else {
@@ -205,12 +231,21 @@ function Organisation() {
 
   const userDisplayName = user?.firstName
     ? `${user.firstName} ${user.lastName || ""}`.trim()
-    : user?.roleName || "System Owner";
+    : user?.roleName || "Organization Administrator";
 
   const currentOrg = orgData || organization;
-  const storedOrgId = localStorage.getItem("organizationId") || localStorage.getItem("tenantId");
-  const isOwner = user?.roleCode === "OWNER" || isSystemAdmin || user?.priority === 1;
-  const hasNoOrg = isOwner && !currentOrg && !user?.organizationId && !storedOrgId;
+  const isOwner =
+    user?.roleCode === "OWNER" ||
+    isSystemAdmin ||
+    user?.priority === 1 ||
+    user?.roleCode === "ADMIN" ||
+    user?.roleCode === "HR_ADMIN" ||
+    user?.role === "OWNER" ||
+    user?.role === "ADMIN" ||
+    !user?.organizationId;
+
+  const hasNoOrg = !loadingOrg && (!currentOrg || (!currentOrg._id && !currentOrg.organizationName && !currentOrg.id));
+  const canEdit = isSystemAdmin || (hasPermission && hasPermission("organization.update")) || isOwner;
 
   const orgInitials = useMemo(() => {
     const name = getStr(currentOrg?.displayName || currentOrg?.organizationName || "HR");
@@ -223,81 +258,30 @@ function Organisation() {
       .toUpperCase();
   }, [currentOrg]);
 
-  const canEdit = isSystemAdmin || hasPermission("organization.update");
-
-  // Filter visible tabs according to user permissions
-  const visibleTabs = ORG_TABS.filter((tab) => {
-    if (tab.key === "overview") return true;
-    if (isSystemAdmin) return true;
-    if (tab.perm === "orgSettings.view") {
-      return hasPermission("orgSettings.view") || hasPermission("organizationSettings.view");
-    }
-    return hasPermission(tab.perm);
-  });
-
-  const handleEditDetailsClick = () => {
-    handleTabSelect("edit-profile");
-  };
-
-  if (loadingOrg && !currentOrg && !storedOrgId) {
-    return (
-      <div className="org-dashboard-container">
-        <div className="org-loader-container-full">
-          <div className="spinner-border" style={{ color: "#C49A55", width: "3rem", height: "3rem" }} role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-          <div className="mt-3 fw-bold" style={{ color: "#77736B", fontSize: "0.95rem" }}>
-            Loading Enterprise Organization Hub...
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── FIRST-TIME SETUP: ONLY IF OWNER AND NO ORGANIZATION PROFILE EXISTS AT ALL ──
-  if (hasNoOrg) {
-    return (
-      <div className="org-dashboard-container">
-        <OrgSetupWizard onOrgCreated={handleOrgCreated} />
-      </div>
-    );
-  }
-
-  // ── DEDICATED EDIT ORGANIZATION PROFILE FULL PAGE ──
-  if (activeTab === "edit-profile") {
-    return (
-      <div className="org-dashboard-container">
-        <EditOrgProfilePage
-          orgData={currentOrg}
-          onBack={() => handleTabSelect("overview")}
-          onOrgUpdated={loadOrg}
-        />
-      </div>
-    );
-  }
-
   const renderActiveSection = () => {
     switch (activeTab) {
       case "edit-profile":
         return (
           <EditOrgProfilePage
             orgData={currentOrg}
-            onBack={() => handleTabSelect("overview")}
+            onBack={() => handleTabSelect("profile")}
             onOrgUpdated={loadOrg}
           />
         );
+      case "profile":
+        return <OrganizationProfileView onNavigateTab={handleTabSelect} />;
       case "overview":
         return (
           <OrgOverview
             orgData={currentOrg}
             onNavigateTab={handleTabSelect}
-            triggerEditModal={triggerEditModal}
-            onEditModalHandled={() => setTriggerEditModal(false)}
             onOrgUpdated={loadOrg}
           />
         );
       case "branches":
-        return <BranchesSection />;
+        return <BranchesSection onToggleFullView={setIsFullView} />;
+      case "subscription":
+        return <SubscriptionSection />;
       case "departments":
         return <DepartmentsSection />;
       case "designations":
@@ -316,23 +300,89 @@ function Organisation() {
         return <WorkCalendarsSection />;
       case "shifts":
         return <ShiftsSection />;
-      case "financial-years":
-        return <FinancialYearsSection />;
       case "holiday-calendars":
         return <HolidayCalendarsSection />;
+      case "financial-years":
+        return <FinancialYearsSection />;
+      case "users":
+      case "roles":
+        return <UserManagement initialTab={activeTab === "roles" ? "roles" : "users"} />;
+      case "organization-access":
+        return <OrgAccessManagementSection />;
       case "settings":
         return <OrganizationSettingsSection />;
+      case "branch-settings":
+        return <BranchSettingsSection />;
       default:
         return (
           <OrgOverview
+            orgData={currentOrg}
             onNavigateTab={handleTabSelect}
-            triggerEditModal={triggerEditModal}
-            onEditModalHandled={() => setTriggerEditModal(false)}
             onOrgUpdated={loadOrg}
           />
         );
     }
   };
+
+  if (loadingOrg && !currentOrg) {
+    return (
+      <div className="org-dashboard-container">
+        <div className="org-loader-container-full">
+          <div className="spinner-border" style={{ color: "var(--color-primary, #C49A55)", width: "3rem", height: "3rem" }} role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <div className="mt-3 fw-bold" style={{ color: "#77736B", fontSize: "0.95rem" }}>
+            Loading Enterprise Organization Hub...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // First-Time Setup Wizard if no organization exists
+  if (hasNoOrg) {
+    if (isOwner) {
+      return (
+        <div className="org-dashboard-container">
+          <OrgSetupWizard onOrgCreated={handleOrgCreated} />
+        </div>
+      );
+    }
+    return (
+      <div className="org-dashboard-container p-4 text-center">
+        <div className="onboarding-dash-card p-5 bg-white mx-auto shadow-sm" style={{ maxWidth: 640 }}>
+          <FaBuilding className="text-warning fs-1 mb-3" />
+          <h4 className="fw-bold text-dark">No Organization Setup Found</h4>
+          <p className="text-muted">
+            Your organization has not been configured yet. Please contact your organization administrator or owner to complete the initial setup.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Dedicated Edit Profile Full Page
+  if (activeTab === "edit-profile") {
+    return (
+      <div className="org-dashboard-container">
+        <EditOrgProfilePage
+          orgData={currentOrg}
+          onBack={() => handleTabSelect("profile")}
+          onOrgUpdated={loadOrg}
+        />
+      </div>
+    );
+  }
+
+  // Full Page Wizard Mode (takes entire viewport next to the sidebar)
+  if (isFullView) {
+    return (
+      <div className="org-dashboard-container p-3 p-md-4">
+        {renderActiveSection()}
+      </div>
+    );
+  }
+
 
   return (
     <div className="org-dashboard-container">
@@ -343,7 +393,7 @@ function Organisation() {
             {greetingText}, {userDisplayName}! 👋
           </h2>
           <p className="org-greeting-subline">
-            Here's what's happening at {getStr(orgData?.displayName || orgData?.organizationName, "FlareMinds Tech")} today.
+            Organization Hub: {getStr(orgData?.displayName || orgData?.organizationName, "Enterprise Organization")}
           </p>
         </div>
 
@@ -360,9 +410,9 @@ function Organisation() {
 
           <Dropdown className="org-quick-actions-dropdown">
             <Dropdown.Toggle className="org-btn-quick-actions">
-              <FaBolt className="me-1 text-success" /> Quick Actions
+              <FaBolt className="me-1 text-warning" /> Quick Actions
             </Dropdown.Toggle>
-            <Dropdown.Menu align="end" className="org-dropdown-menu">
+            <Dropdown.Menu align="end" className="org-dropdown-menu shadow">
               <Dropdown.Item onClick={() => handleTabSelect("branches")}>
                 <FaPlus className="me-2 text-success" /> Add Branch
               </Dropdown.Item>
@@ -374,8 +424,8 @@ function Organisation() {
               </Dropdown.Item>
               <Dropdown.Divider />
               {canEdit && (
-                <Dropdown.Item onClick={handleEditDetailsClick}>
-                  <FaEdit className="me-2 text-warning" /> Edit Details
+                <Dropdown.Item onClick={() => handleTabSelect("profile")}>
+                  <FaEdit className="me-2 text-warning" /> Organization Profile
                 </Dropdown.Item>
               )}
               <Dropdown.Item onClick={() => handleTabSelect("settings")}>
@@ -388,35 +438,17 @@ function Organisation() {
 
       {/* ── 2. EXECUTIVE HERO BANNER CARD ── */}
       {orgData && (
-        <div className="org-hero-card-exact">
+        <div className="org-hero-card-exact mb-4">
           <div className="org-hero-bg-glow" />
-          <svg
-            className="org-hero-bg-waves"
-            viewBox="0 0 1000 200"
-            preserveAspectRatio="none"
-          >
-            <path
-              d="M 400 0 C 650 180, 750 20, 1000 80 L 1000 0 Z"
-              fill="#C49A55"
-              opacity="0.04"
-            />
-            <path
-              d="M 500 0 C 700 140, 800 60, 1000 120 L 1000 0 Z"
-              fill="#C49A55"
-              opacity="0.02"
-            />
+          <svg className="org-hero-bg-waves" viewBox="0 0 1000 200" preserveAspectRatio="none">
+            <path d="M 400 0 C 650 180, 750 20, 1000 80 L 1000 0 Z" fill="var(--color-primary, #C49A55)" opacity="0.04" />
           </svg>
 
           <div className="org-hero-content-wrapper">
-            {/* Left: Avatar & Organization Name */}
             <div className="org-hero-main-section">
               <div className="org-hero-logo-box">
                 {getStr(orgData.logo) ? (
-                  <img
-                    src={getStr(orgData.logo)}
-                    alt={getStr(orgData.organizationName)}
-                    className="org-hero-logo-image"
-                  />
+                  <img src={getStr(orgData.logo)} alt="Logo" className="org-hero-logo-image" />
                 ) : (
                   <div className="org-hero-logo-monogram">{orgInitials}</div>
                 )}
@@ -425,38 +457,29 @@ function Organisation() {
               <div className="org-hero-details">
                 <div className="org-hero-name-row">
                   <h1 className="org-hero-org-name">
-                    {getStr(orgData.displayName || orgData.organizationName, "FlareMinds Technology and Services")}
+                    {getStr(orgData.displayName || orgData.organizationName, "Organization")}
                   </h1>
-                  <FaCheckCircle className="org-hero-check-badge" title="Verified Enterprise Organization" />
-
+                  <FaCheckCircle className="org-hero-check-badge text-success" title="Verified SaaS Tenant Organization" />
                   {getStr(orgData.status) && (
                     <span className="org-hero-pill-status">
                       <span className="org-hero-green-circle" /> {getStr(orgData.status)}
                     </span>
                   )}
-
                   {getStr(orgData.organizationType) && (
                     <span className="org-hero-pill-entity">
-                      <FaBuilding className="me-1 text-muted" style={{ fontSize: "0.65rem" }} />
+                      <FaBuilding className="me-1 text-muted small" />
                       {getStr(orgData.organizationType).replace("_", " ")}
                     </span>
                   )}
                 </div>
 
-                <div className="org-hero-legal-line">
-                  <span className="org-hero-legal-label">Legal Registered Entity:</span>
-                  <span className="org-hero-legal-val">
-                    {getStr(orgData.legalName || orgData.organizationName, "FlareMinds Technology and Services Pvt Ltd")}
-                  </span>
-                </div>
-
-                <div className="org-hero-chips-bar">
+                <div className="org-hero-chips-bar mt-2">
                   {getStr(orgData.organizationCode) && (
                     <div
                       className="org-hero-chip code"
                       onClick={() => copyToClipboard(getStr(orgData.organizationCode), "code")}
                       role="button"
-                      title="Click to copy Organization Tenant Code"
+                      title="Click to copy Organization Code"
                     >
                       <span className="org-chip-icon-wrap"><FaBuilding /></span>
                       <span className="font-monospace fw-bold">{getStr(orgData.organizationCode)}</span>
@@ -475,55 +498,33 @@ function Organisation() {
                     </div>
                   )}
 
-                  {[
-                    getStr(orgData.city || orgData.address?.city),
-                    getStr(orgData.state || orgData.address?.state),
-                    getStr(orgData.country || orgData.address?.country),
-                  ]
-                    .filter(Boolean)
-                    .join(", ") && (
+                  {[getStr(orgData.city), getStr(orgData.country)].filter(Boolean).join(", ") && (
                     <div className="org-hero-chip location">
                       <span className="org-chip-icon-wrap text-danger"><FaMapMarkerAlt /></span>
-                      <span>
-                        {[
-                          getStr(orgData.city || orgData.address?.city),
-                          getStr(orgData.state || orgData.address?.state),
-                          getStr(orgData.country || orgData.address?.country),
-                        ]
-                          .filter(Boolean)
-                          .join(", ")}
-                      </span>
+                      <span>{[getStr(orgData.city), getStr(orgData.country)].filter(Boolean).join(", ")}</span>
                     </div>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Right: Quote & Action Buttons */}
             <div className="org-hero-right-section">
-              <div className="org-hero-quote-box">
-                <span className="org-hero-quote-icon">“</span>
-                <span className="org-hero-quote-text">
-                  Great people build great companies.
-                </span>
-                <span className="org-hero-quote-icon">”</span>
-              </div>
-
-              <div className="org-hero-buttons-row">
-                {canEdit && (
-                  <Button
-                    className="org-hero-btn-edit"
-                    onClick={handleEditDetailsClick}
-                  >
-                    <FaEdit className="me-1" /> Edit Profile
-                  </Button>
-                )}
+              <div className="d-flex align-items-center gap-2">
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  className="d-flex align-items-center gap-1 fw-semibold bg-white"
+                  onClick={() => handleTabSelect("profile")}
+                >
+                  <FaBuilding className="text-primary" /> Profile
+                </Button>
                 <Button
                   variant="outline-success"
-                  className="org-hero-btn-hierarchy"
-                  onClick={() => handleTabSelect("reporting-hierarchy")}
+                  size="sm"
+                  className="d-flex align-items-center gap-1 fw-semibold bg-white"
+                  onClick={() => handleTabSelect("branches")}
                 >
-                  <FaSitemap className="me-1" /> View Hierarchy
+                  <FaCodeBranch /> Branches
                 </Button>
               </div>
             </div>
@@ -531,10 +532,27 @@ function Organisation() {
         </div>
       )}
 
-      {/* ── 3. SUB-MODULE NAVIGATION TABS (MATCHED TO SCREENSHOT) ── */}
-      <div className="org-tabs-wrapper">
+      {/* ── 3. CATEGORIZED CATEGORY PILL TABS ── */}
+      <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
+        {ORG_NAV_GROUPS.map((group) => (
+          <button
+            key={group.groupTitle}
+            type="button"
+            className={`btn btn-sm px-3 py-1 rounded-pill fw-semibold border ${activeCategory === group.groupTitle ? "btn-dark text-white shadow-sm" : "btn-light text-secondary bg-white"}`}
+            onClick={() => {
+              setActiveCategory(group.groupTitle);
+              handleTabSelect(group.tabs[0].key);
+            }}
+          >
+            {group.groupTitle}
+          </button>
+        ))}
+      </div>
+
+      {/* ── 4. SUB-MODULE TABS OF ACTIVE CATEGORY ── */}
+      <div className="org-tabs-wrapper mb-4">
         <Nav variant="tabs" className="org-nav-tabs" activeKey={activeTab} onSelect={handleTabSelect}>
-          {visibleTabs.map((tab) => {
+          {ORG_NAV_GROUPS.find((g) => g.groupTitle === activeCategory)?.tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <Nav.Item key={tab.key}>
@@ -551,7 +569,7 @@ function Organisation() {
         </Nav>
       </div>
 
-      {/* ── 4. ACTIVE MODULE VIEWPORT ── */}
+      {/* ── 5. ACTIVE MODULE VIEWPORT ── */}
       <div className="org-tab-content-area">
         {renderActiveSection()}
       </div>

@@ -20,6 +20,7 @@ import {
   FaTrash,
   FaSearch,
   FaStar,
+  FaCodeBranch,
 } from "react-icons/fa";
 import {
   fetchFinancialYears,
@@ -27,18 +28,21 @@ import {
   updateFinancialYear,
   deleteFinancialYear,
   setCurrentFinancialYear,
+  fetchBranchesDropdown,
 } from "../../services/organizationService";
 import { useAuth } from "../../context/AuthContext";
 
-function FinancialYearsSection() {
+function FinancialYearsSection({ lockedBranchId }) {
   const { hasPermission, isSystemAdmin } = useAuth();
   const [financialYears, setFinancialYears] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   // Search & Filter
   const [search, setSearch] = useState("");
+  const [filterBranch, setFilterBranch] = useState(lockedBranchId || "");
   const [filterStatus, setFilterStatus] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -59,12 +63,20 @@ function FinancialYearsSection() {
   const initialForm = {
     name: `FY ${currentYear}-${currentYear + 1}`,
     code: `FY${String(currentYear).slice(2)}${String(currentYear + 1).slice(2)}`,
+    branchId: lockedBranchId || "",
     startDate: `${currentYear}-04-01`,
     endDate: `${currentYear + 1}-03-31`,
     isCurrent: false,
     status: "ACTIVE",
   };
   const [formData, setFormData] = useState(initialForm);
+
+  useEffect(() => {
+    if (lockedBranchId) {
+      setFilterBranch(lockedBranchId);
+      setFormData((prev) => ({ ...prev, branchId: lockedBranchId }));
+    }
+  }, [lockedBranchId]);
 
   const canCreate = isSystemAdmin || hasPermission("financialYear.create");
   const canUpdate = isSystemAdmin || hasPermission("financialYear.update");
@@ -78,6 +90,7 @@ function FinancialYearsSection() {
         page,
         limit: 10,
         search,
+        branchId: lockedBranchId || filterBranch,
         status: filterStatus,
       };
       const res = await fetchFinancialYears(params);
@@ -93,15 +106,21 @@ function FinancialYearsSection() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, filterStatus]);
+  }, [page, search, filterBranch, filterStatus, lockedBranchId]);
 
   useEffect(() => {
     loadFinancialYears();
   }, [loadFinancialYears]);
 
+  useEffect(() => {
+    fetchBranchesDropdown()
+      .then((brList) => setBranches(brList))
+      .catch((e) => console.warn("Failed to load branches dropdown:", e));
+  }, []);
+
   const handleOpenCreate = () => {
     setEditingFY(null);
-    setFormData(initialForm);
+    setFormData({ ...initialForm, branchId: lockedBranchId || "" });
     setModalError("");
     setShowModal(true);
   };
@@ -111,6 +130,7 @@ function FinancialYearsSection() {
     setFormData({
       name: fy.name || "",
       code: fy.code || "",
+      branchId: fy.branchId?._id || fy.branchId || lockedBranchId || "",
       startDate: fy.startDate ? new Date(fy.startDate).toISOString().split("T")[0] : "",
       endDate: fy.endDate ? new Date(fy.endDate).toISOString().split("T")[0] : "",
       isCurrent: fy.isCurrent || false,
@@ -142,6 +162,7 @@ function FinancialYearsSection() {
       const payload = {
         name: formData.name.trim(),
         code: formData.code.trim().toUpperCase(),
+        branchId: formData.branchId || null,
         startDate: formData.startDate,
         endDate: formData.endDate,
         isCurrent: formData.isCurrent,
@@ -182,20 +203,21 @@ function FinancialYearsSection() {
   };
 
   return (
-    <div className="org-section-container">
+    <div className="org-sub-section">
       {/* ── Section Header ── */}
-      <div className="org-section-header">
+      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
-          <h3 className="org-section-title">
-            <FaCalendarAlt className="text-success me-2" /> Financial Years & Accounting Periods
-          </h3>
-          <p className="org-section-sub">
-            Establish annual fiscal periods, active accounting years, and tax cycle date boundaries.
+          <h4 className="fw-bold mb-1 d-flex align-items-center gap-2">
+            <FaCalendarAlt className="text-success" />
+            Financial Years (Branch Scoped)
+          </h4>
+          <p className="text-muted small mb-0">
+            Configure fiscal calendar periods, accounting cycles, and branch-specific active financial years.
           </p>
         </div>
         {canCreate && (
-          <Button variant="success" className="org-action-btn" onClick={handleOpenCreate}>
-            <FaPlus className="me-2" /> Add Financial Year
+          <Button variant="success" size="sm" className="d-flex align-items-center gap-1 shadow-sm" onClick={handleOpenCreate}>
+            <FaPlus size={11} /> Add Financial Year
           </Button>
         )}
       </div>
@@ -204,10 +226,10 @@ function FinancialYearsSection() {
       {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
 
       {/* ── Filters & Search ── */}
-      <Card className="org-filter-card mb-3">
-        <Card.Body className="py-2">
+      <Card className="border-0 shadow-sm mb-3">
+        <Card.Body className="p-2">
           <Row className="g-2 align-items-center">
-            <Col md={6}>
+            <Col md={lockedBranchId ? 6 : 4}>
               <InputGroup size="sm">
                 <InputGroup.Text><FaSearch className="text-muted" /></InputGroup.Text>
                 <Form.Control
@@ -217,7 +239,21 @@ function FinancialYearsSection() {
                 />
               </InputGroup>
             </Col>
-            <Col md={3}>
+            {!lockedBranchId && (
+              <Col md={3}>
+                <Form.Select
+                  size="sm"
+                  value={filterBranch}
+                  onChange={(e) => { setFilterBranch(e.target.value); setPage(1); }}
+                >
+                  <option value="">All Branches</option>
+                  {branches.map((b) => (
+                    <option key={b._id} value={b._id}>{b.branchName}</option>
+                  ))}
+                </Form.Select>
+              </Col>
+            )}
+            <Col md={lockedBranchId ? 4 : 3}>
               <Form.Select
                 size="sm"
                 value={filterStatus}
@@ -228,7 +264,7 @@ function FinancialYearsSection() {
                 <option value="INACTIVE">Inactive</option>
               </Form.Select>
             </Col>
-            <Col md={3} className="text-end text-muted small">
+            <Col md={lockedBranchId ? 2 : 2} className="text-end text-muted small">
               Total: <strong>{totalRecords}</strong>
             </Col>
           </Row>
@@ -241,6 +277,7 @@ function FinancialYearsSection() {
           <thead>
             <tr>
               <th>Fiscal Code & Name</th>
+              <th>Branch</th>
               <th>Period Range</th>
               <th>Current Period Status</th>
               <th>Status</th>
@@ -250,15 +287,22 @@ function FinancialYearsSection() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="text-center py-5 text-muted">
+                <td colSpan={6} className="text-center py-5 text-muted">
                   <Spinner animation="border" size="sm" variant="success" className="me-2" />
                   Loading financial years...
                 </td>
               </tr>
             ) : financialYears.length === 0 ? (
               <tr>
-                <td colSpan={5} className="text-center py-5 text-muted">
-                  No financial years found.
+                <td colSpan={6} className="text-center py-5 text-muted">
+                  <div className="p-3">
+                    <p className="mb-2">No financial years found.</p>
+                    {canCreate && (
+                      <Button variant="outline-success" size="sm" onClick={handleOpenCreate}>
+                        <FaPlus className="me-1" /> Add First Financial Year
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -267,6 +311,16 @@ function FinancialYearsSection() {
                   <td>
                     <div className="fw-semibold text-dark">{fy.name}</div>
                     <div className="small font-monospace text-muted">{fy.code}</div>
+                  </td>
+                  <td>
+                    {fy.branchId ? (
+                      <div className="small">
+                        <FaCodeBranch className="text-secondary me-1" />
+                        {fy.branchId.branchName || "Branch"}
+                      </div>
+                    ) : (
+                      <span className="text-muted small">All Branches / Global</span>
+                    )}
                   </td>
                   <td>
                     <div className="font-monospace small">
@@ -385,6 +439,26 @@ function FinancialYearsSection() {
 
               <Col md={6}>
                 <Form.Group>
+                  <Form.Label>
+                    Associated Branch {lockedBranchId && <span className="badge bg-secondary ms-1">Locked</span>}
+                  </Form.Label>
+                  <Form.Select
+                    value={formData.branchId}
+                    disabled={Boolean(lockedBranchId)}
+                    onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
+                  >
+                    {!lockedBranchId && <option value="">-- All Branches / Global --</option>}
+                    {branches.map((b) => (
+                      <option key={b._id} value={b._id}>
+                        {b.branchName} ({b.branchCode})
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+
+              <Col md={3}>
+                <Form.Group>
                   <Form.Label>Start Date <span className="text-danger">*</span></Form.Label>
                   <Form.Control
                     type="date"
@@ -394,7 +468,7 @@ function FinancialYearsSection() {
                   />
                 </Form.Group>
               </Col>
-              <Col md={6}>
+              <Col md={3}>
                 <Form.Group>
                   <Form.Label>End Date <span className="text-danger">*</span></Form.Label>
                   <Form.Control

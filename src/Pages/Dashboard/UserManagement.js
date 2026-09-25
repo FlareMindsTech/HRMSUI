@@ -72,12 +72,18 @@ const getInitials = (first, last) => {
   return `${f}${l}` || "U";
 };
 
-function UserManagement() {
+function UserManagement({ initialTab = "users" }) {
   const { isSystemAdmin, hasPermission, user: currentUser, refreshAuthContext } = useAuth();
   const { organization, branches: contextBranches } = useBranch();
 
   // ── Tab State: Exclusive rendering ("users" or "roles") ──
-  const [activeTab, setActiveTab] = useState("users");
+  const [activeTab, setActiveTab] = useState(initialTab || "users");
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // ── Roles & Catalog State ──
   const [roles, setRoles] = useState([]);

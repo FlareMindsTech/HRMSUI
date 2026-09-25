@@ -32,7 +32,7 @@ import {
 } from "../../services/organizationService";
 import { useAuth } from "../../context/AuthContext";
 
-function ShiftsSection() {
+function ShiftsSection({ lockedBranchId }) {
   const { hasPermission, isSystemAdmin } = useAuth();
   const [shifts, setShifts] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -43,7 +43,7 @@ function ShiftsSection() {
 
   // Search & Filter
   const [search, setSearch] = useState("");
-  const [filterBranch, setFilterBranch] = useState("");
+  const [filterBranch, setFilterBranch] = useState(lockedBranchId || "");
   const [filterStatus, setFilterStatus] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -63,7 +63,7 @@ function ShiftsSection() {
   const initialForm = {
     shiftName: "",
     shiftCode: "",
-    branchId: "",
+    branchId: lockedBranchId || "",
     startTime: "09:00",
     endTime: "18:00",
     breakDurationMinutes: 60,
@@ -77,6 +77,13 @@ function ShiftsSection() {
   };
   const [formData, setFormData] = useState(initialForm);
 
+  useEffect(() => {
+    if (lockedBranchId) {
+      setFilterBranch(lockedBranchId);
+      setFormData((prev) => ({ ...prev, branchId: lockedBranchId }));
+    }
+  }, [lockedBranchId]);
+
   const canCreate = isSystemAdmin || hasPermission("shift.create");
   const canUpdate = isSystemAdmin || hasPermission("shift.update");
   const canDelete = isSystemAdmin || hasPermission("shift.delete");
@@ -89,7 +96,7 @@ function ShiftsSection() {
         page,
         limit: 10,
         search,
-        branchId: filterBranch,
+        branchId: lockedBranchId || filterBranch,
         status: filterStatus,
       };
       const res = await fetchShifts(params);
@@ -105,7 +112,7 @@ function ShiftsSection() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, filterBranch, filterStatus]);
+  }, [page, search, filterBranch, filterStatus, lockedBranchId]);
 
   useEffect(() => {
     loadShifts();
@@ -119,7 +126,7 @@ function ShiftsSection() {
 
   const handleOpenCreate = () => {
     setEditingShift(null);
-    setFormData(initialForm);
+    setFormData({ ...initialForm, branchId: lockedBranchId || "" });
     setModalError("");
     setShowModal(true);
   };
