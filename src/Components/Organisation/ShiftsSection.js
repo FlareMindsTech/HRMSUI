@@ -30,10 +30,11 @@ import {
   deleteShift,
   fetchBranchesDropdown,
 } from "../../services/organizationService";
-import { useAuth } from "../../context/AuthContext";
+import { useSelector } from 'react-redux';
+import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 
 function ShiftsSection() {
-  const { hasPermission, isSystemAdmin } = useAuth();
+  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const [shifts, setShifts] = useState([]);
   const [branches, setBranches] = useState([]);
 

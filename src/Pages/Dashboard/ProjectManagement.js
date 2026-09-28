@@ -38,7 +38,8 @@ import {
   getProjectCompletionStatusApi,
   completeProjectApi,
 } from '../../Api/Project/project';
-import { useAuth } from '../../context/AuthContext';
+import { useSelector } from 'react-redux';
+import { selectAuthUser, selectAuthPermissions, selectHasPermission } from '../../redux/slices/authSlice';
 import './ProjectManagement.css';
 
 // ============================================================
@@ -88,7 +89,9 @@ const TASK_STATUS_OPTIONS = ['To Do', 'In Progress', 'Testing', 'Completed'];
 const TASK_PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
 
 function ProjectManagement() {
-  const { user, permissions, hasPermission } = useAuth();
+  const user = useSelector(selectAuthUser);
+  const permissions = useSelector(selectAuthPermissions);
+  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
 
   // Role & Capability determination
   const userPriority = user?.priority ?? user?.role?.priority;

@@ -32,7 +32,8 @@ import {
   fetchShiftsDropdown,
   fetchBranchesDropdown,
 } from "../../services/organizationService";
-import { useAuth } from "../../context/AuthContext";
+import { useSelector } from 'react-redux';
+import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 
 const ALL_DAYS = [
   "Monday",
@@ -45,7 +46,7 @@ const ALL_DAYS = [
 ];
 
 function WorkCalendarsSection() {
-  const { hasPermission, isSystemAdmin } = useAuth();
+  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const [calendars, setCalendars] = useState([]);
   const [shifts, setShifts] = useState([]);
   const [branches, setBranches] = useState([]);

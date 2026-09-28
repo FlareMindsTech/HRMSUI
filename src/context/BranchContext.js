@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
-import { useAuth } from "./AuthContext";
+import { useSelector } from "react-redux";
+import { selectAuthUser, selectIsSystemAdmin } from "../redux/slices/authSlice";
 import { fetchMyOrganization, fetchBranchesDropdown, fetchBranches } from "../services/organizationService";
 
 const BranchContext = createContext(null);
 
 export const BranchProvider = ({ children }) => {
-  const { user, isSystemAdmin } = useAuth();
+  const user = useSelector(selectAuthUser);
+  const isSystemAdmin = useSelector(selectIsSystemAdmin);
 
   const [organization, setOrganization] = useState(null);
   const [branches, setBranches] = useState([]);

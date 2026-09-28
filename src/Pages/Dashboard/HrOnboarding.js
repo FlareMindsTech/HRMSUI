@@ -173,7 +173,8 @@ import {
   fetchDesignations,
 } from "../../services/organizationService";
 import { getAssets, createAsset, assignAsset, returnAsset } from "../../services/assetService";
-import { useAuth } from "../../context/AuthContext";
+import { useSelector, useDispatch } from 'react-redux';
+import { selectAuthUser, selectHasPermission, selectIsSystemAdmin, fetchAuth } from '../../redux/slices/authSlice';
 import { useBranch } from "../../context/BranchContext";
 import BranchAccessSelector from "../../Components/Common/BranchAccessSelector";
 import "./HrOnboarding.css";
@@ -763,7 +764,11 @@ const INITIAL_ONBOARDING_FORM_DATA = {
 };
 
 function HrOnboarding() {
-  const { hasPermission, isSystemAdmin, user: currentUser, refreshAuthContext } = useAuth();
+  const currentUser = useSelector(selectAuthUser);
+  const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
+  const dispatch = useDispatch();
+  const refreshAuthContext = () => dispatch(fetchAuth());
   const { organization, branches: contextBranches } = useBranch();
 
   // ── Top Level View: "pipeline" | "onboard" | "directory" (Restored from session) ──

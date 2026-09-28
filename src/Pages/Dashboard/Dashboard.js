@@ -15,7 +15,8 @@ import {
   FaCalendarCheck,
 } from 'react-icons/fa';
 import AttendanceCard from '../../Components/Attendance/AttendanceCard';
-import { useAuth } from '../../context/AuthContext';
+import { useSelector } from 'react-redux';
+import { selectAuthUser, selectHasPermission } from '../../redux/slices/authSlice';
 import './Dashboard.css';
 
 /**
@@ -29,7 +30,8 @@ import './Dashboard.css';
  * Strict Rule: No dummy/fake statistics or fake counts. Real router navigation shortcuts only.
  */
 function Dashboard() {
-  const { user, hasPermission } = useAuth();
+  const user = useSelector(selectAuthUser);
+  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
   const navigate = useNavigate();
 
   const employeeName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Team Member';

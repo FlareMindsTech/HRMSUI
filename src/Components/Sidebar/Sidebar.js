@@ -16,7 +16,8 @@ import {
   MdChevronRight,
 } from 'react-icons/md';
 import { logoutUser } from '../../services/attendanceService';
-import { useAuth } from '../../context/AuthContext';
+import { useSelector, useDispatch } from 'react-redux';
+import { selectAuthUser, selectIsSystemAdmin, selectHasMenu, logout } from '../../redux/slices/authSlice';
 import './Sidebar.css';
 
 const menuItems = [
@@ -36,7 +37,10 @@ const menuItems = [
 function Sidebar({ isExpanded = false }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { hasMenu, isSystemAdmin, user, logoutUserLocal } = useAuth();
+  const user = useSelector(selectAuthUser);
+  const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasMenu = useSelector((state) => (menuCode) => selectHasMenu(state, menuCode));
+  const dispatch = useDispatch();
   const [hovered, setHovered] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
@@ -59,7 +63,11 @@ function Sidebar({ isExpanded = false }) {
     } catch (e) {
       console.warn('Logout request notice:', e);
     } finally {
-      logoutUserLocal();
+      await dispatch(logout());
+      localStorage.removeItem('user');
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('tenantId');
+      localStorage.removeItem('organizationId');
       window.location.href = '/login';
     }
   };

@@ -43,7 +43,8 @@ import {
   fetchReportingTree,
   normalizeOrganization,
 } from "../../services/organizationService";
-import { useAuth } from "../../context/AuthContext";
+import { useSelector } from 'react-redux';
+import { selectHasPermission, selectIsSystemAdmin, selectAuthUser } from '../../redux/slices/authSlice';
 import { useBranch } from "../../context/BranchContext";
 
 const ORG_TYPES = ["COMPANY", "LLP", "PARTNERSHIP", "PROPRIETORSHIP", "OTHER"];
@@ -107,7 +108,7 @@ const getStr = (val, fallback = "") => {
 };
 
 function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal, onEditModalHandled, onOrgUpdated }) {
-  const { isSystemAdmin, user, hasPermission } = useAuth();
+  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin); const user = useSelector(selectAuthUser);
   const { organization, refreshOrganization, refreshBranches } = useBranch();
   const [orgData, setOrgData] = useState(initialOrgData || organization || null);
   const [structureData, setStructureData] = useState(null);

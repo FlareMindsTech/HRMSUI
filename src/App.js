@@ -1,7 +1,8 @@
-import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { AuthProvider } from './context/AuthContext';
 import { BranchProvider } from './context/BranchContext';
+import { selectIsAuthenticated } from './redux/slices/authSlice';
 import Layout from './Layout/Layout';
 import Dashboard from './Pages/Dashboard/Dashboard';
 import Organisation from './Pages/Dashboard/Organisation';
@@ -17,13 +18,14 @@ import ProjectManagement from './Pages/Dashboard/ProjectManagement';
 import AssetManagement from './Pages/Dashboard/AssetManagement';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(
-    localStorage.getItem('isAuthenticated') === 'true'
-  );
+  const isAuthenticated = useSelector(selectIsAuthenticated);
 
-  const handleLogin = (status) => {
-    setIsAuthenticated(status);
-    localStorage.setItem('isAuthenticated', status);
+  const handleLogin = () => {
+    try {
+      localStorage.setItem('isAuthenticated', 'true');
+    } catch {
+      // ignore storage errors — route gating comes from Redux selector
+    }
   };
 
   return (

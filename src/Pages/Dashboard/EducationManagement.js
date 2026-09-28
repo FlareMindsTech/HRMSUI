@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Container, Alert, Spinner, Modal, Button } from "react-bootstrap";
 import { FaCheckCircle, FaExclamationTriangle, FaTrash } from "react-icons/fa";
-import { useAuth } from "../../context/AuthContext";
+import { useSelector } from 'react-redux';
+import { selectAuthUser, selectIsSystemAdmin, selectHasMenu } from '../../redux/slices/authSlice';
 import { fetchAllUsers } from "../../services/rbacService";
 import {
   getEducationByUserId,
@@ -83,7 +84,9 @@ const initialEducationState = {
 };
 
 function EducationManagement() {
-  const { user: currentUser, isSystemAdmin, hasMenu } = useAuth();
+  const currentUser = useSelector(selectAuthUser);
+  const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasMenu = useSelector((state) => (menuCode) => selectHasMenu(state, menuCode));
   const isHrOrAdmin = isSystemAdmin || (hasMenu && (hasMenu("USER_MANAGEMENT") || hasMenu("ROLE_MANAGEMENT")));
 
   // ── States ──

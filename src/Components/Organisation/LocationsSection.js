@@ -29,10 +29,11 @@ import {
   deleteLocation,
   fetchBranchesDropdown,
 } from "../../services/organizationService";
-import { useAuth } from "../../context/AuthContext";
+import { useSelector } from 'react-redux';
+import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 
 function LocationsSection() {
-  const { hasPermission, isSystemAdmin } = useAuth();
+  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const [locations, setLocations] = useState([]);
   const [branches, setBranches] = useState([]);
 

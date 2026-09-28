@@ -41,7 +41,8 @@ import {
   assignEmployeesToBranch,
   removeEmployeeFromBranch,
 } from "../../services/organizationService";
-import { useAuth } from "../../context/AuthContext";
+import { useSelector } from 'react-redux';
+import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import { useBranch } from "../../context/BranchContext";
 
 const DAYS_OF_WEEK = [
@@ -55,7 +56,7 @@ const DAYS_OF_WEEK = [
 ];
 
 function BranchesSection() {
-  const { hasPermission, isSystemAdmin } = useAuth();
+  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const { refreshBranches } = useBranch();
   const [branches, setBranches] = useState([]);
   const [employees, setEmployees] = useState([]);

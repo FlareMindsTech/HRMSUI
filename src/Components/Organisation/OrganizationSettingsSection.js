@@ -24,11 +24,12 @@ import {
   fetchShiftsDropdown,
   fetchHolidayCalendarsDropdown,
 } from "../../services/organizationService";
-import { useAuth } from "../../context/AuthContext";
+import { useSelector } from 'react-redux';
+import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import ThemeCustomizationSection from "./ThemeCustomizationSection";
 
 function OrganizationSettingsSection() {
-  const { hasPermission, isSystemAdmin } = useAuth();
+  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const [workCalendars, setWorkCalendars] = useState([]);
   const [shifts, setShifts] = useState([]);
   const [holidayCalendars, setHolidayCalendars] = useState([]);

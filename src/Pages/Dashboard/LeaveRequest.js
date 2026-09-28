@@ -6,7 +6,8 @@ import {
   FaCalendarAlt, FaClock, FaCheckCircle,
   FaTimesCircle, FaPlus, FaBan, FaHistory, FaUserCheck, FaSearch, FaExclamationTriangle, FaUsers, FaUndo
 } from "react-icons/fa";
-import { useAuth } from "../../context/AuthContext";
+import { useSelector } from 'react-redux';
+import { selectAuthUser, selectHasPermission } from '../../redux/slices/authSlice';
 import {
   applyLeaveApi,
   fetchLeaveBalanceApi,
@@ -21,7 +22,8 @@ import {
 import "./LeaveRequest.css";
 
 function LeaveRequest() {
-  const { user, hasPermission } = useAuth();
+  const user = useSelector(selectAuthUser);
+  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
 
   const isOwner = user?.priority === 1 || user?.roleCode === "OWNER";
   const canReadOwn = !isOwner && (hasPermission("leave.read.own") || hasPermission("leave.create.own"));

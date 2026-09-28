@@ -32,7 +32,8 @@ import {
   FaUser,
 } from "react-icons/fa";
 import { MdDevices } from "react-icons/md";
-import { useAuth } from "../../context/AuthContext";
+import { useSelector } from 'react-redux';
+import { selectHasMenu, selectHasPermission, selectAuthStatus } from '../../redux/slices/authSlice';
 import {
   getAssets,
   createAsset,
@@ -105,7 +106,10 @@ const getStatusBadge = (status) => {
 };
 
 function AssetManagement() {
-  const { hasMenu, hasPermission, loading: authLoading } = useAuth();
+  const hasMenu = useSelector((state) => (menuCode) => selectHasMenu(state, menuCode));
+  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
+  const authStatus = useSelector(selectAuthStatus);
+  const authLoading = authStatus === 'loading';
 
   // ── Inventory & Filter State ──
   const [assets, setAssets] = useState([]);

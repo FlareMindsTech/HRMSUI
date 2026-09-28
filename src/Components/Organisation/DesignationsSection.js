@@ -30,10 +30,11 @@ import {
   fetchDepartmentsDropdown,
   fetchJobGradesDropdown,
 } from "../../services/organizationService";
-import { useAuth } from "../../context/AuthContext";
+import { useSelector } from 'react-redux';
+import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 
 function DesignationsSection() {
-  const { hasPermission, isSystemAdmin } = useAuth();
+  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const [designations, setDesignations] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [jobGrades, setJobGrades] = useState([]);

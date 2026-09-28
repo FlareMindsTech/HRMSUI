@@ -11,13 +11,16 @@ import {
   MdCheckCircle,
 } from 'react-icons/md';
 import { FaBuilding, FaCodeBranch, FaCheck } from 'react-icons/fa';
-import { useAuth } from '../../context/AuthContext';
 import { useBranch } from '../../context/BranchContext';
+import { useSelector, useDispatch } from 'react-redux';
+import { selectAuthUser, selectIsSystemAdmin, logout } from '../../redux/slices/authSlice';
 import { logoutUser } from '../../services/attendanceService';
 import './Header.css';
 
 function Header({ isMobile }) {
-  const { user, isSystemAdmin, logoutUserLocal } = useAuth();
+  const user = useSelector(selectAuthUser);
+  const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const dispatch = useDispatch();
   const {
     organization,
     branches,
@@ -75,7 +78,11 @@ function Header({ isMobile }) {
     } catch (e) {
       console.warn('Logout request notice:', e);
     } finally {
-      logoutUserLocal();
+      await dispatch(logout());
+      localStorage.removeItem('user');
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('tenantId');
+      localStorage.removeItem('organizationId');
       window.location.href = '/login';
     }
   };

@@ -33,10 +33,11 @@ import {
   fetchBranchesDropdown,
   fetchDepartmentsDropdown,
 } from "../../services/organizationService";
-import { useAuth } from "../../context/AuthContext";
+import { useSelector } from 'react-redux';
+import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 
 function HolidayCalendarsSection() {
-  const { hasPermission, isSystemAdmin } = useAuth();
+  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const [activeSubTab, setActiveSubTab] = useState("holidays"); // "holidays" | "calendars"
 
   const [holidayCalendars, setHolidayCalendars] = useState([]);

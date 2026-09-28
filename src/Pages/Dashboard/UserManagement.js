@@ -61,7 +61,8 @@ import {
   activateEmployee,
   provisionOnboardingAccount,
 } from "../../Api/Hr/hr";
-import { useAuth } from "../../context/AuthContext";
+import { useSelector, useDispatch } from 'react-redux';
+import { selectAuthUser, selectHasPermission, selectIsSystemAdmin, fetchAuth } from '../../redux/slices/authSlice';
 import { useBranch } from "../../context/BranchContext";
 import BranchAccessSelector from "../../Components/Common/BranchAccessSelector";
 import "./UserManagement.css";
@@ -73,7 +74,11 @@ const getInitials = (first, last) => {
 };
 
 function UserManagement() {
-  const { isSystemAdmin, hasPermission, user: currentUser, refreshAuthContext } = useAuth();
+  const currentUser = useSelector(selectAuthUser);
+  const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
+  const dispatch = useDispatch();
+  const refreshAuthContext = () => dispatch(fetchAuth());
   const { organization, branches: contextBranches } = useBranch();
 
   // ── Tab State: Exclusive rendering ("users" or "roles") ──

@@ -23,7 +23,8 @@ import {
   FaRegCalendarAlt,
   FaPlus,
 } from "react-icons/fa";
-import { useAuth } from "../../context/AuthContext";
+import { useSelector } from 'react-redux';
+import { selectAuthUser, selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import { useBranch } from "../../context/BranchContext";
 import { fetchMyOrganization, normalizeOrganization } from "../../services/organizationService";
 import OrgOverview from "../../Components/Organisation/OrgOverview";
@@ -92,7 +93,9 @@ function Organisation() {
   const { section } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { hasPermission, isSystemAdmin, user } = useAuth();
+  const user = useSelector(selectAuthUser);
+  const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
   const { organization, refreshOrganization, refreshBranches } = useBranch();
 
   const [orgData, setOrgData] = useState(organization || null);

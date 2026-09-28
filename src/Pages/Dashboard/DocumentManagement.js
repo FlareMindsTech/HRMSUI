@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Container, Row, Col, Alert, Spinner, Modal, Button } from "react-bootstrap";
 import { FaExclamationTriangle, FaTrash, FaPlus, FaCheckCircle } from "react-icons/fa";
-import { useAuth } from "../../context/AuthContext";
+import { useSelector } from 'react-redux';
+import { selectAuthUser, selectIsSystemAdmin, selectAuthRole } from '../../redux/slices/authSlice';
 import { fetchAllUsers } from "../../services/rbacService";
 import {
   getDocumentByUserId,
@@ -35,8 +36,10 @@ const EMPTY_DOCUMENT = {
 };
 
 const DocumentManagement = () => {
-  const { user: currentUser, isSystemAdmin, hasRole } = useAuth();
-  const isHrOrAdmin = isSystemAdmin || hasRole("HR") || hasRole("ADMIN") || hasRole("HR_MANAGER");
+  const currentUser = useSelector(selectAuthUser);
+  const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const role = useSelector(selectAuthRole);
+  const isHrOrAdmin = isSystemAdmin || role === "HR" || role === "ADMIN" || role === "HR_MANAGER";
 
   // Employees & Selection
   const [employees, setEmployees] = useState([]);

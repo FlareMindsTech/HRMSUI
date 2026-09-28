@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { fetchAuthContext } from "../services/rbacService";
 import { getAuthToken, setAuthToken, clearAuthToken } from "../config/api";
 import { store } from "../redux/store";
-import { setAuth, clearAuth } from "../redux/slices/authSlice";
+import { authSynced, clearAuth } from "../redux/slices/authSlice";
 
 const AuthContext = createContext(null);
 
@@ -30,6 +30,12 @@ export const AuthProvider = ({ children }) => {
     const token = getAuthToken();
     if (!token) {
       setAuthData({ user: null, menus: [], permissions: [], loading: false });
+      // Redux mirror only — never affects UI rendering path above.
+      try {
+        store.dispatch(clearAuth());
+      } catch {
+        // ignore mirror errors to preserve existing behaviour
+      }
       return;
     }
 
@@ -49,9 +55,10 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem("tenantId", tid);
           }
           store.dispatch(
-            setAuth({
+            authSynced({
               user: data.user,
               role: data.user?.roleCode || data.user?.roleName,
+              menus: data.menus || [],
               permissions: data.permissions || [],
             })
           );

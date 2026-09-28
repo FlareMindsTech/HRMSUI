@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
-import { API_BASE_URL } from '../config/api';
-import { useAuth } from '../context/AuthContext';
+import { useDispatch, useSelector } from 'react-redux';
+import { login, fetchAuth, selectAuthError } from '../redux/slices/authSlice';
 import './Login.css';
 
 const Login = ({ onLogin }) => {
-  const { loginUser } = useAuth();
+  const dispatch = useDispatch();
+  const authError = useSelector(selectAuthError);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -24,36 +25,15 @@ const Login = ({ onLogin }) => {
     setLoading(true);
 
     try {
-      // Call authentication login API
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          identifier: email,
-          email: email,
-          password,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        setError(data.message || 'Login failed. Please check your credentials.');
+      const result = await dispatch(login({ identifier: email, password }));
+      if (login.fulfilled.match(result)) {
+        await dispatch(fetchAuth());
         setLoading(false);
-        return;
+        onLogin && onLogin();
+      } else {
+        setError(result.payload || authError || 'Login failed. Please check your credentials.');
+        setLoading(false);
       }
-
-      // Store tenant context if available
-      const tid = data.tenantId || data.user?.tenantId || data.user?.organizationId || data.user?.tenant?._id;
-      if (tid) {
-        localStorage.setItem("tenantId", tid);
-      }
-
-      // Populate AuthContext synchronously with access context & token
-      await loginUser(data.token, data.user);
-
-      setLoading(false);
-      onLogin();
     } catch (err) {
       setError('Unable to reach the server. Please try again.');
       setLoading(false);

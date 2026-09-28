@@ -9,7 +9,8 @@ import {
   FaCalendarPlus, FaShieldAlt, FaInfoCircle, FaBuilding, FaSitemap, FaCog, FaFileAlt,
   FaFileContract, FaCheck, FaTimes, FaFilter, FaDownload, FaCrosshairs, FaCheckDouble
 } from 'react-icons/fa';
-import { useAuth } from '../../context/AuthContext';
+import { useSelector } from 'react-redux';
+import { selectAuthUser } from '../../redux/slices/authSlice';
 import {
   fetchTodayAttendance,
   punchInUser,
@@ -272,7 +273,7 @@ function renderStatusBadgeStatic(status) {
 // MAIN ATTENDANCE PAGE COMPONENT
 // ======================================================
 function Attendance() {
-  const { user } = useAuth();
+  const user = useSelector(selectAuthUser);
   const rawRole = (user?.roleCode || user?.roleName || '').toUpperCase();
   const priority = user?.priority || 5;
 

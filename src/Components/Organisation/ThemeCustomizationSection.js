@@ -29,7 +29,7 @@ import {
   THEME_PRESETS,
   fetchTheme,
 } from "../../redux/slices/themeSlice";
-import { useAuth } from "../../context/AuthContext";
+import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import "./ThemeCustomizationSection.css";
 
 const COLOR_METADATA = [
@@ -104,7 +104,7 @@ const HEX_REGEX = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
 
 function ThemeCustomizationSection() {
   const dispatch = useDispatch();
-  const { hasPermission, isSystemAdmin } = useAuth();
+  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const { theme, previewTheme, loading, saving, error, successMessage } = useSelector(
     (state) => state.theme
   );

@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import Sidebar from "../Components/Sidebar/Sidebar";
 import Footer from "../Components/Footer/Footer";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useBranch } from "../context/BranchContext";
-import { useAuth } from "../context/AuthContext";
 import { fetchTheme } from "../redux/slices/themeSlice";
+import { selectAuthUser, selectIsSystemAdmin } from "../redux/slices/authSlice";
 import OrgSetupWizard from "../Components/Organisation/OrgSetupWizard";
 import "./Layout.css";
 
 function Layout() {
   const dispatch = useDispatch();
-  const { user, isSystemAdmin } = useAuth();
+  const user = useSelector(selectAuthUser);
+  const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const { organization, loading: branchLoading, refreshOrganization, refreshBranches } = useBranch();
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
