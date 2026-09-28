@@ -35,7 +35,7 @@ import {
 import { useSelector } from 'react-redux';
 import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 
-function CostCentersSection() {
+function CostCentersSection({ lockedBranchId }) {
   const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const [costCenters, setCostCenters] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -49,7 +49,7 @@ function CostCentersSection() {
   // Search & Filter
   const [search, setSearch] = useState("");
   const [filterDept, setFilterDept] = useState("");
-  const [filterBranch, setFilterBranch] = useState("");
+  const [filterBranch, setFilterBranch] = useState(lockedBranchId || "");
   const [filterStatus, setFilterStatus] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -70,12 +70,19 @@ function CostCentersSection() {
     costCenterName: "",
     costCenterCode: "",
     departmentId: "",
-    branchId: "",
+    branchId: lockedBranchId || "",
     managerId: "",
     description: "",
     status: "ACTIVE",
   };
   const [formData, setFormData] = useState(initialForm);
+
+  useEffect(() => {
+    if (lockedBranchId) {
+      setFilterBranch(lockedBranchId);
+      setFormData((prev) => ({ ...prev, branchId: lockedBranchId }));
+    }
+  }, [lockedBranchId]);
 
   const canCreate = isSystemAdmin || hasPermission("costCenter.create");
   const canUpdate = isSystemAdmin || hasPermission("costCenter.update");
@@ -90,7 +97,7 @@ function CostCentersSection() {
         limit: 10,
         search,
         departmentId: filterDept,
-        branchId: filterBranch,
+        branchId: lockedBranchId || filterBranch,
         status: filterStatus,
       };
       const res = await fetchCostCenters(params);
@@ -106,14 +113,15 @@ function CostCentersSection() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, filterDept, filterBranch, filterStatus]);
+  }, [page, search, filterDept, filterBranch, filterStatus, lockedBranchId]);
 
   const loadAuxiliaryData = async () => {
     try {
+      const activeBranch = lockedBranchId || filterBranch;
       const [deptList, brList, empList] = await Promise.all([
-        fetchDepartmentsDropdown().catch(() => []),
+        fetchDepartmentsDropdown(activeBranch ? { branchId: activeBranch } : {}).catch(() => []),
         fetchBranchesDropdown().catch(() => []),
-        fetchEmployeesDropdown().catch(() => []),
+        fetchEmployeesDropdown(activeBranch ? { branchId: activeBranch } : {}).catch(() => []),
       ]);
       setDepartments(deptList);
       setBranches(brList);
@@ -129,11 +137,11 @@ function CostCentersSection() {
 
   useEffect(() => {
     loadAuxiliaryData();
-  }, []);
+  }, [lockedBranchId, filterBranch]);
 
   const handleOpenCreate = () => {
     setEditingCC(null);
-    setFormData(initialForm);
+    setFormData({ ...initialForm, branchId: lockedBranchId || "" });
     setModalError("");
     loadAuxiliaryData();
     setShowModal(true);

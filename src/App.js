@@ -22,6 +22,8 @@ import Epfo from './Pages/Dashboard/Epfo';
 import Login from './view/Login';
 import ProjectManagement from './Pages/Dashboard/ProjectManagement';
 import AssetManagement from './Pages/Dashboard/AssetManagement';
+import InitialSetupPage from './Pages/Dashboard/InitialSetupPage';
+import { fetchSystemSetupStatus } from './services/organizationService';
 
 const isAuthError = (msg) =>
   typeof msg === 'string' &&
@@ -34,6 +36,7 @@ function App() {
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const authStatus = useSelector(selectAuthStatus);
   const [booted, setBooted] = useState(false);
+  const [setupRequired, setSetupRequired] = useState(null);
 
   // Boot: validate any stored token via Redux (replaces AuthContext.loadAuthContext).
   useEffect(() => {
@@ -67,6 +70,19 @@ function App() {
     };
   }, [dispatch]);
 
+  // Check setup requirement on startup (from main).
+  useEffect(() => {
+    fetchSystemSetupStatus()
+      .then((status) => {
+        if (status?.setupRequired && !status?.ownerExists) {
+          setSetupRequired(true);
+        } else {
+          setSetupRequired(false);
+        }
+      })
+      .catch(() => setSetupRequired(false));
+  }, []);
+
   const handleLogin = () => {
     try {
       localStorage.setItem('isAuthenticated', 'true');
@@ -97,11 +113,20 @@ function App() {
     <BranchProvider>
       <BrowserRouter>
         <Routes>
-          {/* Public Route */}
+          {/* Standalone One-Time Setup Route */}
+          <Route path="/setup" element={<InitialSetupPage />} />
+
+          {/* Public Login Route */}
           <Route
             path="/login"
             element={
-              isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login onLogin={() => handleLogin(true)} />
+              isAuthenticated ? (
+                <Navigate to="/dashboard" replace />
+              ) : setupRequired === true ? (
+                <Navigate to="/setup" replace />
+              ) : (
+                <Login onLogin={() => handleLogin(true)} />
+              )
             }
           />
 
@@ -112,8 +137,8 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/organisation" element={<Organisation />} />
               <Route path="/organisation/:section" element={<Organisation />} />
-              <Route path="/leave" element={<LeaveRequest />} />
               <Route path="/onboarding" element={<HrOnboarding />} />
+              <Route path="/leave" element={<LeaveRequest />} />
               <Route path="/mis" element={<Mis />} />
               <Route path="/payslip" element={<Payslip />} />
               <Route path="/users" element={<UserManagement />} />
@@ -124,7 +149,16 @@ function App() {
               <Route path="/epfo" element={<Epfo />} />
             </Route>
           ) : (
-            <Route path="*" element={<Navigate to="/login" replace />} />
+            <Route
+              path="*"
+              element={
+                setupRequired === true ? (
+                  <Navigate to="/setup" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
           )}
         </Routes>
       </BrowserRouter>

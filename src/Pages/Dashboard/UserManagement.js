@@ -67,13 +67,7 @@ import { useBranch } from "../../context/BranchContext";
 import BranchAccessSelector from "../../Components/Common/BranchAccessSelector";
 import "./UserManagement.css";
 
-const getInitials = (first, last) => {
-  const f = (first || "").trim().charAt(0).toUpperCase();
-  const l = (last || "").trim().charAt(0).toUpperCase();
-  return `${f}${l}` || "U";
-};
-
-function UserManagement() {
+function UserManagement({ initialTab = "users" }) {
   const currentUser = useSelector(selectAuthUser);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
@@ -82,7 +76,13 @@ function UserManagement() {
   const { organization, branches: contextBranches } = useBranch();
 
   // ── Tab State: Exclusive rendering ("users" or "roles") ──
-  const [activeTab, setActiveTab] = useState("users");
+  const [activeTab, setActiveTab] = useState(initialTab || "users");
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // ── Roles & Catalog State ──
   const [roles, setRoles] = useState([]);

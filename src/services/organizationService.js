@@ -64,6 +64,9 @@ export const normalizeOrganization = (raw) => {
     }
   }
 
+  const addressLine2 = org.addressLine2 || addrObj.addressLine2 || org.street2 || addrObj.street2 || "";
+  const landmark = org.landmark || addrObj.landmark || "";
+
   return {
     ...org,
     _id: org._id || org.id,
@@ -74,48 +77,52 @@ export const normalizeOrganization = (raw) => {
     displayName: displayName,
     organizationType: org.organizationType || org.orgType || org.entityType || org.companyType || org.type || "COMPANY",
     industry: org.industry || org.industryType || org.domain || org.sector || org.businessType || "",
+    description: org.description || org.about || org.bio || "",
     status: org.status || org.orgStatus || org.state || (org.isActive === false ? "INACTIVE" : "ACTIVE"),
     registrationNumber: org.registrationNumber || org.registrationNo || org.cin || org.cinNo || org.regNo || org.companyRegistrationNumber || org.regNumber || "",
     pan: org.pan || org.panNumber || org.panNo || org.taxId || org.pan_no || "",
     tan: org.tan || org.tanNumber || org.tanNo || org.tan_no || "",
     gstin: org.gstin || org.gstNo || org.gstNumber || org.gst || org.vatNo || org.taxNumber || org.gst_no || "",
+    pfNumber: org.pfNumber || org.epfoNumber || org.pfRegistrationNumber || org.pfNo || "",
+    esiNumber: org.esiNumber || org.esicNumber || org.esiRegistrationNumber || org.esiNo || "",
+    msmeNumber: org.msmeNumber || org.udyamNumber || org.msmeRegistrationNumber || org.udyamNo || "",
+    lin: org.lin || org.labourIdentificationNumber || org.linNumber || "",
+    professionalTaxNumber: org.professionalTaxNumber || org.ptNumber || org.ptRegistrationNumber || "",
     incorporationDate: incDate,
     financialYearStart: fyStart,
     currency: org.currency || org.defaultCurrency || org.currencyCode || org.baseCurrency || "INR",
     timeZone: org.timeZone || org.timezone || org.timeZoneId || org.time_zone || "Asia/Kolkata",
     email: org.email || org.officialEmail || org.corporateEmail || org.contactEmail || org.companyEmail || org.emailId || "",
     phone: org.phone || org.phoneNumber || org.contactPhone || org.telephone || org.mobile || org.contactNumber || org.phoneNo || "",
+    altPhone: org.altPhone || org.secondaryPhone || org.alternatePhone || "",
     website: org.website || org.websiteUrl || org.url || org.companyWebsite || org.domainUrl || "",
     address: street,
+    addressLine2: addressLine2,
+    landmark: landmark,
     city: city,
     state: state,
     country: country,
     pincode: pincode,
+    contactPersonName: org.contactPersonName || org.contactPerson?.name || org.primaryContact?.name || "",
+    contactPersonDesignation: org.contactPersonDesignation || org.contactPerson?.designation || org.primaryContact?.designation || "",
+    contactPersonEmail: org.contactPersonEmail || org.contactPerson?.email || org.primaryContact?.email || "",
+    contactPersonPhone: org.contactPersonPhone || org.contactPerson?.phone || org.primaryContact?.phone || "",
     logo: typeof org.logo === "object" && org.logo !== null ? org.logo.url || org.logo.path || "" : (org.logo || org.logoUrl || ""),
     stats: org.stats || {},
   };
 };
 
-// In-memory cache for ultra-fast instantaneous responses
+// In-memory cache
 let cachedOrganization = null;
 
+export const clearOrganizationCache = () => {
+  cachedOrganization = null;
+  try {
+    localStorage.removeItem("cached_org_profile");
+  } catch (e) {}
+};
+
 export const fetchMyOrganization = async (forceRefresh = false) => {
-  // Return in-memory cache instantly if available and not forced
-  if (!forceRefresh && cachedOrganization) {
-    return cachedOrganization;
-  }
-
-  // Check localStorage cache for instant zero-latency loading
-  if (!forceRefresh) {
-    try {
-      const saved = localStorage.getItem("cached_org_profile");
-      if (saved) {
-        cachedOrganization = JSON.parse(saved);
-        return cachedOrganization;
-      }
-    } catch (e) {}
-  }
-
   const storedOrgId = localStorage.getItem("organizationId") || localStorage.getItem("tenantId");
 
   const fastEndpoints = [
@@ -130,15 +137,17 @@ export const fetchMyOrganization = async (forceRefresh = false) => {
   }
 
   let foundOrg = null;
+  let apiSuccess = false;
 
   try {
-    // Run all candidate endpoints in parallel
+    // Run candidate endpoints against live database backend
     const results = await Promise.allSettled(
       fastEndpoints.map((ep) => apiFetch(ep, { method: "GET" }))
     );
 
     for (const resObj of results) {
       if (resObj.status === "fulfilled" && resObj.value?.ok && resObj.value?.data) {
+        apiSuccess = true;
         const rawData = resObj.value.data.data !== undefined ? resObj.value.data.data : resObj.value.data;
         let org = rawData?.organization || rawData?.org || rawData?.organizations?.[0] || rawData?.orgs?.[0] || rawData?.result || rawData?.results?.[0] || rawData;
         if (Array.isArray(org)) org = org[0];
@@ -152,21 +161,14 @@ export const fetchMyOrganization = async (forceRefresh = false) => {
     console.warn("Fast parallel org fetch failed:", e);
   }
 
-  // Fallback to user object if still not found
-  if (!foundOrg) {
-    try {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        const parsed = JSON.parse(storedUser);
-        if (parsed.organization && typeof parsed.organization === "object") {
-          foundOrg = normalizeOrganization(parsed.organization);
-        } else if (parsed.tenant && typeof parsed.tenant === "object") {
-          foundOrg = normalizeOrganization(parsed.tenant);
-        }
-      }
-    } catch (e) {}
+  // If live server responded successfully but no org was found in database:
+  // Clear any old stale cached profile so dummy/old data is not displayed!
+  if (apiSuccess && !foundOrg) {
+    clearOrganizationCache();
+    return null;
   }
 
+  // If network succeeded and found real organization in database
   if (foundOrg) {
     cachedOrganization = foundOrg;
     try {
@@ -177,9 +179,19 @@ export const fetchMyOrganization = async (forceRefresh = false) => {
       localStorage.setItem("organizationId", orgId);
       localStorage.setItem("tenantId", orgId);
     }
+    return foundOrg;
   }
 
-  return foundOrg || cachedOrganization || null;
+  // Fallback to cache ONLY if offline / network failure occurred
+  try {
+    const saved = localStorage.getItem("cached_org_profile");
+    if (saved) {
+      cachedOrganization = JSON.parse(saved);
+      return cachedOrganization;
+    }
+  } catch (e) {}
+
+  return cachedOrganization || null;
 };
 
 export const createOrganization = async (payload) => {
@@ -1025,5 +1037,34 @@ export const removeEmployeeFromBranch = async (branchId, userId) => {
   }
 
   return res.ok;
+};
+
+// ─── 16. SYSTEM SETUP & OWNER INITIALIZATION ──────────────────────
+
+/**
+ * Checks system setup status from GET /api/system/setup-status
+ * Returns: { setupRequired: boolean, organizationExists: boolean, ownerExists: boolean, organization, subscription }
+ */
+export const fetchSystemSetupStatus = async () => {
+  const res = await apiFetch("/system/setup-status", { method: "GET" });
+  if (!res.ok) {
+    throw new Error(res.data?.message || "Failed to fetch system setup status");
+  }
+  return res.data;
+};
+
+/**
+ * Registers the initial organization owner via POST /api/auth/register-owner
+ * Payload: { organizationId, firstName, lastName, email, password, mobileNo, ... }
+ */
+export const registerSystemOwner = async (payload) => {
+  const res = await apiFetch("/auth/register-owner", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error(res.data?.message || "Failed to register owner account");
+  }
+  return res.data;
 };
 

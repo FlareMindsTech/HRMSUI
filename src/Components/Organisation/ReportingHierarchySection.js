@@ -99,7 +99,7 @@ function TreeNode({ node, level = 0 }) {
   );
 }
 
-function ReportingHierarchySection() {
+function ReportingHierarchySection({ lockedBranchId }) {
   const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const [viewMode, setViewMode] = useState("tree"); // "tree" | "table"
 
@@ -138,16 +138,17 @@ function ReportingHierarchySection() {
     try {
       setLoading(true);
       setError("");
+      const params = lockedBranchId ? { branchId: lockedBranchId } : {};
       const [treeRes, hierRes, empList] = await Promise.all([
-        fetchReportingTree().catch((err) => {
+        fetchReportingTree(params).catch((err) => {
           console.warn("fetchReportingTree failed:", err);
           return null;
         }),
-        fetchReportingHierarchies({ limit: 100 }).catch((err) => {
+        fetchReportingHierarchies({ limit: 100, ...params }).catch((err) => {
           console.warn("fetchReportingHierarchies failed:", err);
           return { data: [] };
         }),
-        fetchEmployeesDropdown().catch(() => []),
+        fetchEmployeesDropdown(params).catch(() => []),
       ]);
 
       if (treeRes) setTreeData(treeRes);
@@ -158,7 +159,7 @@ function ReportingHierarchySection() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [lockedBranchId]);
 
   useEffect(() => {
     loadData();

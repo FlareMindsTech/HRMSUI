@@ -32,7 +32,7 @@ import {
 import { useSelector } from 'react-redux';
 import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 
-function LocationsSection() {
+function LocationsSection({ lockedBranchId }) {
   const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const [locations, setLocations] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -44,7 +44,7 @@ function LocationsSection() {
   // Search & Filter
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("");
-  const [filterBranch, setFilterBranch] = useState("");
+  const [filterBranch, setFilterBranch] = useState(lockedBranchId || "");
   const [filterStatus, setFilterStatus] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -66,7 +66,7 @@ function LocationsSection() {
     locationName: "",
     locationCode: "",
     locationType: "OFFICE",
-    branchId: "",
+    branchId: lockedBranchId || "",
     address: "",
     city: "",
     state: "",
@@ -79,6 +79,13 @@ function LocationsSection() {
     status: "ACTIVE",
   };
   const [formData, setFormData] = useState(initialForm);
+
+  useEffect(() => {
+    if (lockedBranchId) {
+      setFilterBranch(lockedBranchId);
+      setFormData((prev) => ({ ...prev, branchId: lockedBranchId }));
+    }
+  }, [lockedBranchId]);
 
   const canCreate = isSystemAdmin || hasPermission("location.create");
   const canUpdate = isSystemAdmin || hasPermission("location.update");
@@ -93,7 +100,7 @@ function LocationsSection() {
         limit: 10,
         search,
         locationType: filterType,
-        branchId: filterBranch,
+        branchId: lockedBranchId || filterBranch,
         status: filterStatus,
       };
       const res = await fetchLocations(params);
@@ -109,7 +116,7 @@ function LocationsSection() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, filterType, filterBranch, filterStatus]);
+  }, [page, search, filterType, filterBranch, filterStatus, lockedBranchId]);
 
   useEffect(() => {
     loadLocations();
@@ -123,7 +130,7 @@ function LocationsSection() {
 
   const handleOpenCreate = () => {
     setEditingLocation(null);
-    setFormData(initialForm);
+    setFormData({ ...initialForm, branchId: lockedBranchId || "" });
     setModalError("");
     setShowModal(true);
   };

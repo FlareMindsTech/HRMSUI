@@ -45,7 +45,7 @@ const ALL_DAYS = [
   "Sunday",
 ];
 
-function WorkCalendarsSection() {
+function WorkCalendarsSection({ lockedBranchId }) {
   const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const [calendars, setCalendars] = useState([]);
   const [shifts, setShifts] = useState([]);
@@ -57,6 +57,7 @@ function WorkCalendarsSection() {
 
   // Search & Filter
   const [search, setSearch] = useState("");
+  const [filterBranch, setFilterBranch] = useState(lockedBranchId || "");
   const [filterStatus, setFilterStatus] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -80,10 +81,17 @@ function WorkCalendarsSection() {
     workingDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
     weeklyOffDays: ["Saturday", "Sunday"],
     defaultShiftId: "",
-    branchId: "",
+    branchId: lockedBranchId || "",
     status: "ACTIVE",
   };
   const [formData, setFormData] = useState(initialForm);
+
+  useEffect(() => {
+    if (lockedBranchId) {
+      setFilterBranch(lockedBranchId);
+      setFormData((prev) => ({ ...prev, branchId: lockedBranchId }));
+    }
+  }, [lockedBranchId]);
 
   const canCreate = isSystemAdmin || hasPermission("workCalendar.create");
   const canUpdate = isSystemAdmin || hasPermission("workCalendar.update");
@@ -97,6 +105,7 @@ function WorkCalendarsSection() {
         page,
         limit: 10,
         search,
+        branchId: lockedBranchId || filterBranch,
         status: filterStatus,
       };
       const res = await fetchWorkCalendars(params);
@@ -112,12 +121,13 @@ function WorkCalendarsSection() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, filterStatus]);
+  }, [page, search, filterBranch, filterStatus, lockedBranchId]);
 
   const loadAuxiliaryData = async () => {
     try {
+      const activeBranch = lockedBranchId || filterBranch;
       const [shList, brList] = await Promise.all([
-        fetchShiftsDropdown().catch(() => []),
+        fetchShiftsDropdown(activeBranch ? { branchId: activeBranch } : {}).catch(() => []),
         fetchBranchesDropdown().catch(() => []),
       ]);
       setShifts(shList);
@@ -133,11 +143,11 @@ function WorkCalendarsSection() {
 
   useEffect(() => {
     loadAuxiliaryData();
-  }, []);
+  }, [lockedBranchId, filterBranch]);
 
   const handleOpenCreate = () => {
     setEditingCal(null);
-    setFormData(initialForm);
+    setFormData({ ...initialForm, branchId: lockedBranchId || "" });
     setModalError("");
     loadAuxiliaryData();
     setShowModal(true);
