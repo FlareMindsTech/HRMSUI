@@ -94,8 +94,9 @@ const BRANCH_TYPES = [
   { value: "OTHER", label: "Other Campus Facility" },
 ];
 
-export default function BranchesSection({ onSelectBranch = null, onToggleFullView = null }) {
-  const { hasPermission, isSystemAdmin } = useAuth();
+export default function BranchesSection({ onSelectBranch = null, onToggleFullView = null, onBackToOrg = null }) {
+  const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
   const { organization, refreshBranches } = useBranch();
   const [branches, setBranches] = useState([]);
   const [employees, setEmployees] = useState([]);

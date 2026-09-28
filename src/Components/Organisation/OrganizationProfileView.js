@@ -55,7 +55,7 @@ const TIMEZONES = [
   { value: "UTC", label: "UTC (Coordinated Universal Time)" },
 ];
 
-export default function OrganizationProfileView({ onNavigateTab }) {
+export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = null }) {
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
   const user = useSelector(selectAuthUser);
