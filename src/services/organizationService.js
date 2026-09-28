@@ -112,26 +112,17 @@ export const normalizeOrganization = (raw) => {
   };
 };
 
-// In-memory cache for ultra-fast instantaneous responses
+// In-memory cache
 let cachedOrganization = null;
 
+export const clearOrganizationCache = () => {
+  cachedOrganization = null;
+  try {
+    localStorage.removeItem("cached_org_profile");
+  } catch (e) {}
+};
+
 export const fetchMyOrganization = async (forceRefresh = false) => {
-  // Return in-memory cache instantly if available and not forced
-  if (!forceRefresh && cachedOrganization) {
-    return cachedOrganization;
-  }
-
-  // Check localStorage cache for instant zero-latency loading
-  if (!forceRefresh) {
-    try {
-      const saved = localStorage.getItem("cached_org_profile");
-      if (saved) {
-        cachedOrganization = JSON.parse(saved);
-        return cachedOrganization;
-      }
-    } catch (e) {}
-  }
-
   const storedOrgId = localStorage.getItem("organizationId") || localStorage.getItem("tenantId");
 
   const fastEndpoints = [
@@ -146,15 +137,17 @@ export const fetchMyOrganization = async (forceRefresh = false) => {
   }
 
   let foundOrg = null;
+  let apiSuccess = false;
 
   try {
-    // Run all candidate endpoints in parallel
+    // Run candidate endpoints against live database backend
     const results = await Promise.allSettled(
       fastEndpoints.map((ep) => apiFetch(ep, { method: "GET" }))
     );
 
     for (const resObj of results) {
       if (resObj.status === "fulfilled" && resObj.value?.ok && resObj.value?.data) {
+        apiSuccess = true;
         const rawData = resObj.value.data.data !== undefined ? resObj.value.data.data : resObj.value.data;
         let org = rawData?.organization || rawData?.org || rawData?.organizations?.[0] || rawData?.orgs?.[0] || rawData?.result || rawData?.results?.[0] || rawData;
         if (Array.isArray(org)) org = org[0];
@@ -168,21 +161,14 @@ export const fetchMyOrganization = async (forceRefresh = false) => {
     console.warn("Fast parallel org fetch failed:", e);
   }
 
-  // Fallback to user object if still not found
-  if (!foundOrg) {
-    try {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        const parsed = JSON.parse(storedUser);
-        if (parsed.organization && typeof parsed.organization === "object") {
-          foundOrg = normalizeOrganization(parsed.organization);
-        } else if (parsed.tenant && typeof parsed.tenant === "object") {
-          foundOrg = normalizeOrganization(parsed.tenant);
-        }
-      }
-    } catch (e) {}
+  // If live server responded successfully but no org was found in database:
+  // Clear any old stale cached profile so dummy/old data is not displayed!
+  if (apiSuccess && !foundOrg) {
+    clearOrganizationCache();
+    return null;
   }
 
+  // If network succeeded and found real organization in database
   if (foundOrg) {
     cachedOrganization = foundOrg;
     try {
@@ -193,9 +179,19 @@ export const fetchMyOrganization = async (forceRefresh = false) => {
       localStorage.setItem("organizationId", orgId);
       localStorage.setItem("tenantId", orgId);
     }
+    return foundOrg;
   }
 
-  return foundOrg || cachedOrganization || null;
+  // Fallback to cache ONLY if offline / network failure occurred
+  try {
+    const saved = localStorage.getItem("cached_org_profile");
+    if (saved) {
+      cachedOrganization = JSON.parse(saved);
+      return cachedOrganization;
+    }
+  } catch (e) {}
+
+  return cachedOrganization || null;
 };
 
 export const createOrganization = async (payload) => {

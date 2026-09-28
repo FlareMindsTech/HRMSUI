@@ -106,6 +106,11 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("user");
     localStorage.removeItem("tenantId");
     localStorage.removeItem("organizationId");
+    localStorage.removeItem("cached_org_profile");
+    localStorage.removeItem("selectedBranchId");
+    sessionStorage.removeItem("org_setup_form");
+    sessionStorage.removeItem("org_setup_stage");
+    sessionStorage.removeItem("org_setup_step");
     setAuthData({ user: null, menus: [], permissions: [], loading: false });
     store.dispatch(clearAuth());
   }, []);
