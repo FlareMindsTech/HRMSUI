@@ -37,7 +37,10 @@ export default function BranchSettingsSection({ lockedBranchId = null }) {
   const [success, setSuccess] = useState("");
   const [activeTab, setActiveTab] = useState("attendance");
 
-  const canUpdate = isSystemAdmin || hasPermission("branch.update") || hasPermission("organization.update");
+  const canUpdate = Boolean(
+    hasPermission &&
+    (hasPermission("branch.update") || hasPermission("organization.update"))
+  );
 
   const [formData, setFormData] = useState({
     attendanceMode: "GEOFENCE",

@@ -85,6 +85,8 @@ import {
   FaChartPie,
   FaFileInvoice,
   FaMoneyBillWave,
+  FaClipboardCheck,
+  FaRocket,
 } from "react-icons/fa";
 import { MdDevices } from "react-icons/md";
 import { createEducation, getEducationByUserId, updateEducation } from "../../Api/Education/educationApi";
@@ -2753,13 +2755,25 @@ function HrOnboarding() {
     }
   };
 
-  // ── Reload Sub-entities for Workspace ──
+  // ── Reload Sub-entities Silently for Workspace ──
   const reloadCandidateDetails = async (onboardingId) => {
     if (!onboardingId) return;
     try {
-      const currentTab = detailActiveTab;
-      await handleOpenCandidateWorkspace(onboardingId);
-      if (currentTab) setDetailActiveTab(currentTab);
+      const [dataRes, docsRes, tasksRes, accessRes, trainRes, agreeRes] = await Promise.all([
+        fetchOnboardingById(onboardingId).catch(() => null),
+        fetchOnboardingDocuments(onboardingId).catch(() => null),
+        fetchOnboardingTasks(onboardingId).catch(() => null),
+        fetchOnboardingAccess(onboardingId).catch(() => null),
+        fetchOnboardingTraining(onboardingId).catch(() => null),
+        fetchOnboardingAgreements(onboardingId).catch(() => null),
+      ]);
+      const data = dataRes?.data?.data || dataRes?.data || dataRes;
+      if (data && typeof data === "object") setSelectedOnboarding(data);
+      if (docsRes) setDetailDocs(toArray(docsRes));
+      if (tasksRes) setDetailTasks(toArray(tasksRes));
+      if (accessRes) setDetailAccess(toArray(accessRes));
+      if (trainRes) setDetailTraining(toArray(trainRes));
+      if (agreeRes) setDetailAgreements(toArray(agreeRes));
     } catch (err) {
       console.warn("Reload details error:", err.message);
     }
@@ -3028,7 +3042,7 @@ function HrOnboarding() {
   const handleRunValidation = async (showPopup = false) => {
     if (!selectedOnboarding?._id) return;
     setValidating(true);
-    setErrorMsg("");
+    if (showPopup) setErrorMsg("");
     try {
       const res = await validateOnboarding(selectedOnboarding._id);
       const rawReport = res?.data || res;
@@ -3039,21 +3053,16 @@ function HrOnboarding() {
       );
       const report = sanitizeValidationReport(rawReport, isCandidateUnpaid);
       setValidationReport(report);
-      try {
-        await reloadCandidateDetails(selectedOnboarding._id);
-      } catch (rErr) {
-        console.warn("Reload candidate after validation:", rErr);
-      }
-      await loadPipelineData();
-      if (report?.valid) {
+      loadPipelineData().catch(() => null);
+      if (report?.valid && showPopup) {
         setSuccessMsg("All backend validation checks passed! Ready for Onboarding Completion.");
       }
       if (showPopup === true) {
         setShowValidationModal(true);
       }
     } catch (err) {
-      setErrorMsg(err.message || "Validation scan failed");
       if (showPopup === true) {
+        setErrorMsg(err.message || "Validation scan failed");
         setShowValidationModal(true);
       }
     } finally {
@@ -3219,12 +3228,31 @@ function HrOnboarding() {
   const handleToggleTaskStatus = async (taskId, currentStatus) => {
     if (!selectedOnboarding?._id || !taskId) return;
     const nextStatus = currentStatus === "COMPLETED" ? "PENDING" : "COMPLETED";
+
+    // 1. Instant optimistic state update for seamless, zero-lag checkbox interaction
+    setDetailTasks((prev) =>
+      (prev || []).map((t) =>
+        t._id === taskId || t.id === taskId
+          ? { ...t, status: nextStatus, isCompleted: nextStatus === "COMPLETED" }
+          : t
+      )
+    );
+
     try {
       await updateOnboardingTask(selectedOnboarding._id, taskId, { status: nextStatus });
-      const tasksRes = await fetchOnboardingTasks(selectedOnboarding._id);
+      const tasksRes = await fetchOnboardingTasks(selectedOnboarding._id).catch(() => null);
       if (tasksRes) setDetailTasks(toArray(tasksRes));
-      await handleRunValidation();
+      // Re-run validation scan silently in background without modal flash or tab reset
+      await handleRunValidation(false);
     } catch (err) {
+      // Revert optimistic update on failure
+      setDetailTasks((prev) =>
+        (prev || []).map((t) =>
+          t._id === taskId || t.id === taskId
+            ? { ...t, status: currentStatus, isCompleted: currentStatus === "COMPLETED" }
+            : t
+        )
+      );
       setErrorMsg(err.message || "Failed to update task");
     }
   };
@@ -4735,6 +4763,7 @@ function HrOnboarding() {
     { id: "compensation", label: "Compensation", icon: <FaMoneyBillWave /> },
     { id: "documents", label: "Bank & Statutory", icon: <FaMoneyCheckAlt /> },
     { id: "family", label: "Family & Emergency", icon: <FaUsers /> },
+    { id: "review", label: "Review & Initialize", icon: <FaClipboardCheck /> },
   ];
 
   // Pipeline Metric Stats
@@ -7385,6 +7414,780 @@ function HrOnboarding() {
                   </div>
                 )}
 
+                {/* Tab 8: HR Onboarding Details Review & Initialize */}
+                {activeFormTab === "review" && (
+                  <div className="onboarding-review-container">
+                    {/* Top Review Header Banner */}
+                    <div className="onboarding-unified-step-header mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3 p-3.5 rounded-3 bg-light border">
+                      <div className="d-flex align-items-center gap-3">
+                        <div
+                          className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs"
+                          style={{
+                            width: "54px",
+                            height: "54px",
+                            background: "linear-gradient(135deg, #FAF7F0 0%, #F1E9D9 100%)",
+                            border: "2px solid #C49A55",
+                            color: "#C49A55",
+                          }}
+                        >
+                          <FaClipboardCheck size={24} />
+                        </div>
+                        <div>
+                          <div className="d-flex align-items-center gap-2 flex-wrap">
+                            <h5 className="fw-bold mb-0 text-dark">
+                              HR Onboarding Summary & Verification Review
+                            </h5>
+                            <Badge bg="success-subtle" className="text-success border border-success-subtle rounded-pill extra-small px-2.5 py-1">
+                              ● Ready for Initialization
+                            </Badge>
+                          </div>
+                          <span className="extra-small text-muted d-block mt-0.5">
+                            Please verify all candidate profile information, academic records, compensation, statutory IDs, and emergency contacts before initiating candidate onboarding.
+                          </span>
+                        </div>
+                      </div>
+                      <div className="d-flex align-items-center gap-2">
+                        <span className="onboarding-step-badge">
+                          Step {formTabs.length} of {formTabs.length}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Section 1: Candidate Personal Information */}
+                    <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
+                      <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
+                        <div className="d-flex align-items-center gap-2">
+                          <FaUser style={{ color: "#C49A55" }} />
+                          <span className="fw-bold small text-dark">1. Personal & Basic Details</span>
+                        </div>
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          className="py-0.5 px-2 extra-small rounded-pill d-flex align-items-center gap-1"
+                          onClick={() => setActiveFormTab("personal")}
+                        >
+                          <FaEdit size={11} /> Edit Section
+                        </Button>
+                      </Card.Header>
+                      <Card.Body className="p-3">
+                        <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-3 pb-3 border-bottom mb-3">
+                          {formData.profilePicPreview ? (
+                            <Image
+                              src={formData.profilePicPreview}
+                              roundedCircle
+                              width={58}
+                              height={58}
+                              className="object-fit-cover shadow-xs border"
+                              style={{ width: "58px", height: "58px" }}
+                            />
+                          ) : (
+                            <div
+                              className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-xs flex-shrink-0"
+                              style={{
+                                width: "58px",
+                                height: "58px",
+                                background: "linear-gradient(135deg, #E2C278 0%, #C49A55 100%)",
+                                fontSize: "20px",
+                              }}
+                            >
+                              {(formData.firstName?.[0] || "C").toUpperCase()}
+                            </div>
+                          )}
+                          <div className="flex-grow-1">
+                            <h6 className="fw-bold text-dark mb-0.5">
+                              {formData.firstName || "—"} {formData.middleName || ""} {formData.lastName || ""}
+                            </h6>
+                            <div className="d-flex flex-wrap align-items-center gap-2 extra-small text-muted">
+                              <span className="text-dark fw-semibold">{formData.email || "No email provided"}</span>
+                              <span>•</span>
+                              <span>+91 {formData.mobileNo || "—"}</span>
+                              <span>•</span>
+                              <Badge bg="secondary-subtle" className="text-secondary border rounded-pill">
+                                {formData.gender || "Gender: —"}
+                              </Badge>
+                              <Badge bg="secondary-subtle" className="text-secondary border rounded-pill">
+                                {formData.marriageStatus || "Status: —"}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Row className="g-2 extra-small">
+                          <Col sm={6} md={3}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">Date of Birth</span>
+                              <span className="fw-bold text-dark">
+                                {formData.dob ? new Date(formData.dob).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                              </span>
+                            </div>
+                          </Col>
+                          <Col sm={6} md={3}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">Blood Group</span>
+                              <span className="fw-bold text-dark">{formData.bloodGroup || "—"}</span>
+                            </div>
+                          </Col>
+                          <Col sm={6} md={3}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">Assigned Department</span>
+                              <span className="fw-bold text-dark">{formData.department || "—"}</span>
+                            </div>
+                          </Col>
+                          <Col sm={6} md={3}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">Assigned Designation</span>
+                              <span className="fw-bold text-dark">{formData.designation || "—"}</span>
+                            </div>
+                          </Col>
+                        </Row>
+                      </Card.Body>
+                    </Card>
+
+                    {/* Section 2: Professional & Company Details */}
+                    <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
+                      <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
+                        <div className="d-flex align-items-center gap-2">
+                          <FaBuilding style={{ color: "#C49A55" }} />
+                          <span className="fw-bold small text-dark">2. Professional & Organization Details</span>
+                        </div>
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          className="py-0.5 px-2 extra-small rounded-pill d-flex align-items-center gap-1"
+                          onClick={() => setActiveFormTab("professional")}
+                        >
+                          <FaEdit size={11} /> Edit Section
+                        </Button>
+                      </Card.Header>
+                      <Card.Body className="p-3">
+                        <Row className="g-2 extra-small mb-3">
+                          <Col sm={6} md={3}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">Employment Type</span>
+                              <Badge bg="primary-subtle" className="text-primary border rounded-pill">
+                                {formData.employmentType || "FULL_TIME"}
+                              </Badge>
+                            </div>
+                          </Col>
+                          <Col sm={6} md={3}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">Date of Joining</span>
+                              <span className="fw-bold text-dark">
+                                {formData.joiningDate ? new Date(formData.joiningDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                              </span>
+                            </div>
+                          </Col>
+                          <Col sm={6} md={3}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">Candidate Type</span>
+                              <span className={`fw-bold ${isFresher ? "text-info" : "text-primary"}`}>
+                                {isFresher ? "Fresher (No Prior Experience)" : "Experienced Professional"}
+                              </span>
+                            </div>
+                          </Col>
+                          <Col sm={6} md={3}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">Reporting Manager</span>
+                              <span className="fw-bold text-dark">
+                                {(() => {
+                                  const mgrId = formData.professional?.[0]?.reportedTo;
+                                  if (!mgrId) return "Not Assigned";
+                                  const foundMgr = employees.find((e) => (e._id || e.id) === mgrId);
+                                  return foundMgr ? `${foundMgr.firstName} ${foundMgr.lastName || ""} (${foundMgr.designation || "Manager"})` : "Assigned";
+                                })()}
+                              </span>
+                            </div>
+                          </Col>
+                        </Row>
+
+                        {/* Company Records Summary */}
+                        <div className="extra-small">
+                          <span className="fw-bold text-dark d-block mb-1.5">Company & Role Records ({formData.professional?.length || 0}):</span>
+                          {formData.professional?.map((prof, idx) => (
+                            <div key={idx} className="p-2.5 rounded-2 bg-light border mb-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                              <div>
+                                <span className="fw-bold text-dark">{prof.companyName || "Organization"}</span>
+                                <span className="text-muted mx-1.5">•</span>
+                                <span className="text-secondary">{prof.designation || prof.role || formData.designation || "Employee"}</span>
+                                {prof.location && <span className="text-muted ms-1.5">({prof.location})</span>}
+                              </div>
+                              <div className="d-flex align-items-center gap-2">
+                                {prof.docFile || prof.docName ? (
+                                  <Button
+                                    variant="outline-primary"
+                                    size="sm"
+                                    className="py-0 px-2 extra-small rounded-pill"
+                                    onClick={() => handleOpenDocPreview(prof.docFile || prof.docUrl, prof.docName || "Offer Letter")}
+                                  >
+                                    <FaEye size={10} /> View Document
+                                  </Button>
+                                ) : (
+                                  <span className="text-muted extra-small">No document attached</span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </Card.Body>
+                    </Card>
+
+                    {/* Section 3: Educational Qualifications */}
+                    <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
+                      <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
+                        <div className="d-flex align-items-center gap-2">
+                          <FaGraduationCap style={{ color: "#C49A55" }} />
+                          <span className="fw-bold small text-dark">3. Educational Qualifications & Certificates</span>
+                        </div>
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          className="py-0.5 px-2 extra-small rounded-pill d-flex align-items-center gap-1"
+                          onClick={() => setActiveFormTab("education")}
+                        >
+                          <FaEdit size={11} /> Edit Section
+                        </Button>
+                      </Card.Header>
+                      <Card.Body className="p-3">
+                        <div className="table-responsive">
+                          <Table size="sm" bordered hover className="mb-0 extra-small align-middle">
+                            <thead className="table-light">
+                              <tr>
+                                <th>QUALIFICATION</th>
+                                <th>INSTITUTION / SCHOOL</th>
+                                <th>BOARD / STREAM</th>
+                                <th>YEAR</th>
+                                <th>SCORE</th>
+                                <th>CERTIFICATE</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {/* SSLC */}
+                              <tr>
+                                <td className="fw-bold">SSLC / 10th</td>
+                                <td>{formData.sslcSchoolName || "—"}</td>
+                                <td>{formData.sslcBoard || "State / CBSE / ICSE"}</td>
+                                <td>{formData.sslcYearOfPassing || "—"}</td>
+                                <td>{formData.sslcPercentage ? `${formData.sslcPercentage}%` : "—"}</td>
+                                <td>
+                                  {formData.sslcDocumentFile || formData.sslcDocumentUrl ? (
+                                    <Button
+                                      variant="outline-success"
+                                      size="sm"
+                                      className="py-0 px-2 extra-small rounded-pill"
+                                      onClick={() => handleOpenDocPreview(formData.sslcDocumentFile || formData.sslcDocumentUrl, "SSLC Certificate")}
+                                    >
+                                      <FaEye size={10} /> View Cert
+                                    </Button>
+                                  ) : (
+                                    <span className="text-muted">Not Attached</span>
+                                  )}
+                                </td>
+                              </tr>
+
+                              {/* HSC */}
+                              <tr>
+                                <td className="fw-bold">HSC / 12th</td>
+                                <td>{formData.hscSchoolName || "—"}</td>
+                                <td>{formData.hscBoard || "State / CBSE / ISC"}</td>
+                                <td>{formData.hscYearOfPassing || "—"}</td>
+                                <td>{formData.hscPercentage ? `${formData.hscPercentage}%` : "—"}</td>
+                                <td>
+                                  {formData.hscDocumentFile || formData.hscDocumentUrl ? (
+                                    <Button
+                                      variant="outline-success"
+                                      size="sm"
+                                      className="py-0 px-2 extra-small rounded-pill"
+                                      onClick={() => handleOpenDocPreview(formData.hscDocumentFile || formData.hscDocumentUrl, "HSC Certificate")}
+                                    >
+                                      <FaEye size={10} /> View Cert
+                                    </Button>
+                                  ) : (
+                                    <span className="text-muted">Not Attached</span>
+                                  )}
+                                </td>
+                              </tr>
+
+                              {/* ITI (if present) */}
+                              {(formData.itiinstituteName || formData.iticourse) && (
+                                <tr>
+                                  <td className="fw-bold">ITI Certificate</td>
+                                  <td>{formData.itiinstituteName || "—"}</td>
+                                  <td>{formData.iticourse || "Technical"}</td>
+                                  <td>{formData.itiyearOfPassing || "—"}</td>
+                                  <td>{formData.itipercentage ? `${formData.itipercentage}%` : "—"}</td>
+                                  <td>
+                                    {formData.itiDocumentFile || formData.itiDocumentUrl ? (
+                                      <Button
+                                        variant="outline-success"
+                                        size="sm"
+                                        className="py-0 px-2 extra-small rounded-pill"
+                                        onClick={() => handleOpenDocPreview(formData.itiDocumentFile || formData.itiDocumentUrl, "ITI Certificate")}
+                                      >
+                                        <FaEye size={10} /> View Cert
+                                      </Button>
+                                    ) : (
+                                      <span className="text-muted">Not Attached</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              )}
+
+                              {/* Diploma (if present) */}
+                              {(formData.diplomainstitution || formData.diplomacourse) && (
+                                <tr>
+                                  <td className="fw-bold">Diploma</td>
+                                  <td>{formData.diplomainstitution || "—"}</td>
+                                  <td>{formData.diplomacourse || "General"}</td>
+                                  <td>{formData.diplomayearOfPassing || "—"}</td>
+                                  <td>{formData.diplomapercentage ? `${formData.diplomapercentage}%` : "—"}</td>
+                                  <td>
+                                    {formData.diplomaDocumentFile || formData.diplomaDocumentUrl ? (
+                                      <Button
+                                        variant="outline-success"
+                                        size="sm"
+                                        className="py-0 px-2 extra-small rounded-pill"
+                                        onClick={() => handleOpenDocPreview(formData.diplomaDocumentFile || formData.diplomaDocumentUrl, "Diploma Certificate")}
+                                      >
+                                        <FaEye size={10} /> View Cert
+                                      </Button>
+                                    ) : (
+                                      <span className="text-muted">Not Attached</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              )}
+
+                              {/* UG */}
+                              <tr>
+                                <td className="fw-bold">Undergraduate (UG)</td>
+                                <td>{formData.ugInstituteName || formData.ugUniversityName || "—"}</td>
+                                <td>{formData.ugDegree || "Degree"} ({formData.ugDepartmentCourse || "General"})</td>
+                                <td>{formData.ugYearOfPassing || "—"}</td>
+                                <td>{formData.ugCgpa ? `${formData.ugCgpa} CGPA` : formData.ugPercentage ? `${formData.ugPercentage}%` : "—"}</td>
+                                <td>
+                                  {formData.ugDocumentFile || formData.ugDocumentUrl ? (
+                                    <Button
+                                      variant="outline-success"
+                                      size="sm"
+                                      className="py-0 px-2 extra-small rounded-pill"
+                                      onClick={() => handleOpenDocPreview(formData.ugDocumentFile || formData.ugDocumentUrl, "UG Certificate")}
+                                    >
+                                      <FaEye size={10} /> View Cert
+                                    </Button>
+                                  ) : (
+                                    <span className="text-muted">Not Attached</span>
+                                  )}
+                                </td>
+                              </tr>
+
+                              {/* PG (if present) */}
+                              {(formData.pgInstituteName || formData.pgDegree) && (
+                                <tr>
+                                  <td className="fw-bold">Postgraduate (PG)</td>
+                                  <td>{formData.pgInstituteName || formData.pgUniversityName || "—"}</td>
+                                  <td>{formData.pgDegree || "Master's"} ({formData.pgDepartmentCourse || "General"})</td>
+                                  <td>{formData.pgYearOfPassing || "—"}</td>
+                                  <td>{formData.pgCgpa ? `${formData.pgCgpa} CGPA` : "—"}</td>
+                                  <td>
+                                    {formData.pgDocumentFile || formData.pgDocumentUrl ? (
+                                      <Button
+                                        variant="outline-success"
+                                        size="sm"
+                                        className="py-0 px-2 extra-small rounded-pill"
+                                        onClick={() => handleOpenDocPreview(formData.pgDocumentFile || formData.pgDocumentUrl, "PG Certificate")}
+                                      >
+                                        <FaEye size={10} /> View Cert
+                                      </Button>
+                                    ) : (
+                                      <span className="text-muted">Not Attached</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              )}
+
+                              {/* PhD (if present) */}
+                              {(formData.phdInstituteName || formData.phdResearchArea) && (
+                                <tr>
+                                  <td className="fw-bold">Doctorate (PhD)</td>
+                                  <td>{formData.phdInstituteName || formData.phdUniversityName || "—"}</td>
+                                  <td>{formData.phdResearchArea || "Doctoral Research"}</td>
+                                  <td>{formData.phdYearOfPassing || "—"}</td>
+                                  <td>—</td>
+                                  <td>
+                                    {formData.phdDocumentFile || formData.phdDocumentUrl ? (
+                                      <Button
+                                        variant="outline-success"
+                                        size="sm"
+                                        className="py-0 px-2 extra-small rounded-pill"
+                                        onClick={() => handleOpenDocPreview(formData.phdDocumentFile || formData.phdDocumentUrl, "PhD Certificate")}
+                                      >
+                                        <FaEye size={10} /> View Cert
+                                      </Button>
+                                    ) : (
+                                      <span className="text-muted">Not Attached</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </Table>
+                        </div>
+                      </Card.Body>
+                    </Card>
+
+                    {/* Section 4: Past Work Experience (if experienced) */}
+                    {!isFresher && (
+                      <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
+                        <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
+                          <div className="d-flex align-items-center gap-2">
+                            <FaBriefcase style={{ color: "#C49A55" }} />
+                            <span className="fw-bold small text-dark">4. Previous Work Experience & Tenure</span>
+                          </div>
+                          <Button
+                            variant="outline-secondary"
+                            size="sm"
+                            className="py-0.5 px-2 extra-small rounded-pill d-flex align-items-center gap-1"
+                            onClick={() => setActiveFormTab("experience")}
+                          >
+                            <FaEdit size={11} /> Edit Section
+                          </Button>
+                        </Card.Header>
+                        <Card.Body className="p-3">
+                          {formData.experience?.map((exp, idx) => (
+                            <div key={idx} className="p-2.5 rounded bg-light border mb-2 extra-small">
+                              <div className="d-flex justify-content-between align-items-center mb-1">
+                                <span className="fw-bold text-dark">
+                                  {exp.companyName || exp.prevCompany || `Employer #${idx + 1}`} {exp.designation ? `— ${exp.designation}` : ""}
+                                </span>
+                                <Badge bg="secondary-subtle" className="text-secondary border rounded-pill">
+                                  {exp.experienceYears || exp.experience || "Duration: N/A"}
+                                </Badge>
+                              </div>
+                              <div className="text-muted">
+                                {exp.startDate ? `From: ${new Date(exp.startDate).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}` : ""}
+                                {exp.endDate ? ` To: ${new Date(exp.endDate).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}` : exp.isCurrentJob ? " To: Present" : ""}
+                                {exp.salary ? ` • CTC: ₹ ${exp.salary}` : ""}
+                              </div>
+                            </div>
+                          ))}
+                        </Card.Body>
+                      </Card>
+                    )}
+
+                    {/* Section 5: Residential Addresses */}
+                    <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
+                      <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
+                        <div className="d-flex align-items-center gap-2">
+                          <FaHome style={{ color: "#C49A55" }} />
+                          <span className="fw-bold small text-dark">5. Residential Address Details</span>
+                        </div>
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          className="py-0.5 px-2 extra-small rounded-pill d-flex align-items-center gap-1"
+                          onClick={() => setActiveFormTab("address")}
+                        >
+                          <FaEdit size={11} /> Edit Section
+                        </Button>
+                      </Card.Header>
+                      <Card.Body className="p-3">
+                        <Row className="g-2 extra-small">
+                          {formData.addresses?.map((addr, idx) => (
+                            <Col md={6} key={idx}>
+                              <div className="p-2.5 rounded bg-light border h-100">
+                                <div className="d-flex justify-content-between align-items-center mb-1">
+                                  <span className="fw-bold text-dark">{addr.addressType || "Address"}</span>
+                                  <Badge bg="light" className="text-dark border">
+                                    {addr.country || "India"}
+                                  </Badge>
+                                </div>
+                                <div className="text-secondary">
+                                  {addr.addressLine1 || addr.address1 || "—"}
+                                  {addr.addressLine2 ? `, ${addr.addressLine2}` : ""}
+                                </div>
+                                <div className="text-muted mt-1">
+                                  {addr.city ? `${addr.city}, ` : ""}{addr.state ? `${addr.state} ` : ""}
+                                  {addr.pincode ? `PIN: ${addr.pincode}` : ""}
+                                </div>
+                              </div>
+                            </Col>
+                          ))}
+                        </Row>
+                      </Card.Body>
+                    </Card>
+
+                    {/* Section 6: Access & Branch Permissions */}
+                    <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
+                      <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
+                        <div className="d-flex align-items-center gap-2">
+                          <FaCodeBranch style={{ color: "#C49A55" }} />
+                          <span className="fw-bold small text-dark">6. Access & Branch Permissions</span>
+                        </div>
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          className="py-0.5 px-2 extra-small rounded-pill d-flex align-items-center gap-1"
+                          onClick={() => setActiveFormTab("access")}
+                        >
+                          <FaEdit size={11} /> Edit Section
+                        </Button>
+                      </Card.Header>
+                      <Card.Body className="p-3">
+                        <Row className="g-2 extra-small">
+                          <Col sm={6} md={3}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">Access Scope</span>
+                              <Badge bg={formData.accessLevel === "ORGANIZATION" ? "success-subtle" : "warning-subtle"} className={formData.accessLevel === "ORGANIZATION" ? "text-success border rounded-pill" : "text-warning border rounded-pill"}>
+                                {formData.accessLevel === "ORGANIZATION" ? "All Organization Branches" : "Branch-Specific Access"}
+                              </Badge>
+                            </div>
+                          </Col>
+                          <Col sm={6} md={3}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">Assigned Role</span>
+                              <span className="fw-bold text-dark">
+                                {assignableRoles.find((r) => r._id === formData.roleId)?.roleName || "Employee / Standard"}
+                              </span>
+                            </div>
+                          </Col>
+                          <Col sm={6} md={3}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">Primary Branch</span>
+                              <span className="fw-bold text-dark">
+                                {formData.accessLevel === "BRANCH" && formData.primaryBranchId
+                                  ? (contextBranches?.find((b) => (b._id || b.id) === formData.primaryBranchId)?.branchName || "Assigned Branch")
+                                  : "All Branches / HQ"}
+                              </span>
+                            </div>
+                          </Col>
+                          <Col sm={6} md={3}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">Portal Access</span>
+                              <span className="fw-bold text-success">
+                                {formData.hasLoginAccess !== false ? "Enabled" : "Disabled"}
+                              </span>
+                            </div>
+                          </Col>
+                        </Row>
+                      </Card.Body>
+                    </Card>
+
+                    {/* Section 7: Compensation & Remuneration Structure */}
+                    <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
+                      <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
+                        <div className="d-flex align-items-center gap-2">
+                          <FaMoneyBillWave style={{ color: "#C49A55" }} />
+                          <span className="fw-bold small text-dark">7. Compensation & Remuneration Structure</span>
+                        </div>
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          className="py-0.5 px-2 extra-small rounded-pill d-flex align-items-center gap-1"
+                          onClick={() => setActiveFormTab("compensation")}
+                        >
+                          <FaEdit size={11} /> Edit Section
+                        </Button>
+                      </Card.Header>
+                      <Card.Body className="p-3">
+                        {isCandidateUnpaidForm ? (
+                          <div className="p-2.5 rounded bg-light border extra-small text-muted d-flex align-items-center gap-2">
+                            <FaCheckCircle className="text-success" />
+                            <span>This candidate is registered under <strong>Unpaid / Volunteer Engagement</strong>. Payroll and salary deductions are exempted.</span>
+                          </div>
+                        ) : (
+                          <Row className="g-2 extra-small">
+                            <Col sm={6} md={3}>
+                              <div className="p-2.5 rounded bg-light border">
+                                <span className="text-muted d-block mb-0.5">Annual CTC</span>
+                                <span className="fw-bold text-dark fs-6">
+                                  ₹ {Number(formData.compensation?.annualCtc || formData.compensationAmount || 0).toLocaleString("en-IN")}
+                                </span>
+                              </div>
+                            </Col>
+                            <Col sm={6} md={3}>
+                              <div className="p-2.5 rounded bg-light border">
+                                <span className="text-muted d-block mb-0.5">Monthly Gross</span>
+                                <span className="fw-bold text-primary fs-6">
+                                  ₹ {Number(formData.compensation?.monthlyGross || 0).toLocaleString("en-IN")}
+                                </span>
+                              </div>
+                            </Col>
+                            <Col sm={6} md={3}>
+                              <div className="p-2.5 rounded bg-light border">
+                                <span className="text-muted d-block mb-0.5">Basic Salary</span>
+                                <span className="fw-bold text-dark">
+                                  ₹ {Number(formData.compensation?.basicSalary || 0).toLocaleString("en-IN")}
+                                </span>
+                              </div>
+                            </Col>
+                            <Col sm={6} md={3}>
+                              <div className="p-2.5 rounded bg-light border">
+                                <span className="text-muted d-block mb-0.5">Net Take-Home Pay</span>
+                                <span className="fw-bold text-success fs-6">
+                                  ₹ {Number(formData.compensation?.netTakeHome || 0).toLocaleString("en-IN")}
+                                </span>
+                              </div>
+                            </Col>
+                          </Row>
+                        )}
+                      </Card.Body>
+                    </Card>
+
+                    {/* Section 8: Bank & Statutory Details */}
+                    <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
+                      <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
+                        <div className="d-flex align-items-center gap-2">
+                          <FaMoneyCheckAlt style={{ color: "#C49A55" }} />
+                          <span className="fw-bold small text-dark">8. Bank & Statutory Compliance</span>
+                        </div>
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          className="py-0.5 px-2 extra-small rounded-pill d-flex align-items-center gap-1"
+                          onClick={() => setActiveFormTab("documents")}
+                        >
+                          <FaEdit size={11} /> Edit Section
+                        </Button>
+                      </Card.Header>
+                      <Card.Body className="p-3">
+                        <Row className="g-2 extra-small">
+                          <Col sm={6} md={3}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">Bank Name</span>
+                              <span className="fw-bold text-dark">{formData.bankName || "—"}</span>
+                            </div>
+                          </Col>
+                          <Col sm={6} md={3}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">Account Number</span>
+                              <span className="fw-bold text-dark">{formData.accountNo || "—"}</span>
+                            </div>
+                          </Col>
+                          <Col sm={6} md={3}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">IFSC Code</span>
+                              <span className="fw-bold text-dark">{formData.ifsc || "—"}</span>
+                            </div>
+                          </Col>
+                          <Col sm={6} md={3}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">PAN Card</span>
+                              <span className="fw-bold text-dark">{formData.panNo || "—"}</span>
+                            </div>
+                          </Col>
+                          <Col sm={6} md={3}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">Aadhaar Number</span>
+                              <span className="fw-bold text-dark">{formData.aadhaarNo || "—"}</span>
+                            </div>
+                          </Col>
+                          <Col sm={6} md={3}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">UAN / PF Number</span>
+                              <span className="fw-bold text-dark">{formData.uanNo || formData.pfNo || "—"}</span>
+                            </div>
+                          </Col>
+                          <Col sm={6} md={6}>
+                            <div className="p-2 rounded bg-light border d-flex justify-content-between align-items-center">
+                              <div>
+                                <span className="text-muted d-block mb-0.5">Bank Passbook / Cheque</span>
+                                <span className="fw-semibold text-dark">
+                                  {formData.passbookFile?.name || formData.passbookFileName || "Not Attached"}
+                                </span>
+                              </div>
+                              {(formData.passbookFile || formData.passbookUrl) && (
+                                <Button
+                                  variant="outline-primary"
+                                  size="sm"
+                                  className="py-0 px-2 extra-small rounded-pill"
+                                  onClick={() => handleOpenDocPreview(formData.passbookFile || formData.passbookUrl, "Bank Passbook")}
+                                >
+                                  <FaEye size={10} /> View Passbook
+                                </Button>
+                              )}
+                            </div>
+                          </Col>
+                        </Row>
+                      </Card.Body>
+                    </Card>
+
+                    {/* Section 9: Family & Emergency Contacts */}
+                    <Card className="border shadow-xs rounded-3 mb-4 bg-white overflow-hidden">
+                      <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
+                        <div className="d-flex align-items-center gap-2">
+                          <FaUsers style={{ color: "#C49A55" }} />
+                          <span className="fw-bold small text-dark">9. Family Members & Emergency Contacts</span>
+                        </div>
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          className="py-0.5 px-2 extra-small rounded-pill d-flex align-items-center gap-1"
+                          onClick={() => setActiveFormTab("family")}
+                        >
+                          <FaEdit size={11} /> Edit Section
+                        </Button>
+                      </Card.Header>
+                      <Card.Body className="p-3">
+                        <Row className="g-2 extra-small">
+                          {formData.familyContacts?.map((contact, idx) => (
+                            <Col md={6} key={idx}>
+                              <div className="p-2.5 rounded bg-light border h-100">
+                                <div className="d-flex justify-content-between align-items-center mb-1">
+                                  <span className="fw-bold text-dark">{contact.name || `Contact #${idx + 1}`}</span>
+                                  <Badge bg={idx === 0 ? "success-subtle" : "light"} className={idx === 0 ? "text-success border rounded-pill" : "text-secondary border rounded-pill"}>
+                                    {contact.relationship || "Father"} {idx === 0 ? "• Primary" : ""}
+                                  </Badge>
+                                </div>
+                                <div className="text-secondary">Phone: +91 {contact.phone || "—"}</div>
+                                {contact.email && <div className="text-muted">Email: {contact.email}</div>}
+                                {contact.occupation && <div className="text-muted">Occupation: {contact.occupation}</div>}
+                              </div>
+                            </Col>
+                          ))}
+                        </Row>
+                      </Card.Body>
+                    </Card>
+
+                    {/* Final Confirmation Banner */}
+                    <div
+                      className="p-3.5 rounded-3 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 border shadow-xs"
+                      style={{
+                        background: "linear-gradient(135deg, #FAF7F0 0%, #F5EEDD 100%)",
+                        borderColor: "#E2C278",
+                      }}
+                    >
+                      <div className="d-flex align-items-center gap-3">
+                        <div
+                          className="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0"
+                          style={{
+                            width: "44px",
+                            height: "44px",
+                            background: "linear-gradient(135deg, #E2C278 0%, #C49A55 100%)",
+                          }}
+                        >
+                          <FaRocket size={18} />
+                        </div>
+                        <div>
+                          <h6 className="fw-bold text-dark mb-0.5">Ready to Initialize Candidate Onboarding?</h6>
+                          <span className="extra-small text-muted">
+                            Clicking Initialize will create the candidate employee record, provision authentication credentials, and dispatch the onboarding lifecycle workflow.
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="dark"
+                        className="rounded-pill px-4 py-2 extra-small fw-bold text-white d-flex align-items-center gap-2 shadow-sm text-nowrap flex-shrink-0"
+                        style={{ background: "#1C1D1D", border: "none" }}
+                        onClick={handleOnboardSubmit}
+                        disabled={submittingForm}
+                      >
+                        {submittingForm ? <Spinner size="sm" animation="border" /> : <FaUserCheck size={13} />}
+                        Initialize Onboarding
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Navigation Buttons */}
                 <div className="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
                   <button
@@ -7411,7 +8214,7 @@ function HrOnboarding() {
                       onClick={handleOnboardSubmit}
                       disabled={submittingForm}
                     >
-                      {submittingForm ? <Spinner size="sm" animation="border" /> : <FaUserCheck size={13} />} Initiate Candidate Onboarding
+                      {submittingForm ? <Spinner size="sm" animation="border" /> : <FaUserCheck size={13} />} Initialize Candidate Onboarding
                     </button>
                   )}
                 </div>
@@ -7444,6 +8247,7 @@ function HrOnboarding() {
                       { id: "compensation", label: "Compensation Structure", complete: sectionStatus.compensation },
                       { id: "documents", label: "Bank & Statutory Details", complete: sectionStatus.documents },
                       { id: "family", label: "Family & Emergency Contact", complete: sectionStatus.family },
+                      { id: "review", label: "Review & Initialize", complete: Object.values(sectionStatus).every(Boolean) },
                     ].map((sec) => (
                       <div
                         key={sec.id}
@@ -10236,8 +11040,12 @@ function HrOnboarding() {
                           <td className="onboarding-col-w40">
                             <Form.Check
                               type="checkbox"
+                              id={`task-check-${t._id || t.id}`}
                               checked={t.status === "COMPLETED" || t.isCompleted}
-                              onChange={() => handleToggleTaskStatus(t._id, t.status)}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                handleToggleTaskStatus(t._id || t.id, t.status);
+                              }}
                             />
                           </td>
                           <td className="fw-semibold">{t.taskName}</td>

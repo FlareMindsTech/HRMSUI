@@ -60,7 +60,7 @@
 
 .app-layout-sidebar:not(.is-mobile):hover,
 .app-layout-sidebar:not(.is-mobile).is-hovered {
-  width: 225px;
+  width: 235px;
   box-shadow: 8px 0 32px rgba(0, 0, 0, 0.55);
 }
 
@@ -73,7 +73,7 @@
 }
 
 .app-layout-sidebar.is-mobile.sidebar-open {
-  width: 225px;
+  width: 235px;
   box-shadow: 12px 0 45px rgba(0, 0, 0, 0.6);
 }
 

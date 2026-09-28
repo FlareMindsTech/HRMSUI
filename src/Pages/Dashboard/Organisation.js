@@ -60,7 +60,6 @@ const ORG_NAV_GROUPS = [
     tabs: [
       { key: "overview", label: "Overview", icon: FaBuilding, perm: "organization.view" },
       { key: "profile", label: "Organization Profile", icon: FaBuilding, perm: "organization.view" },
-      { key: "branches", label: "Branches", icon: FaCodeBranch, perm: "branch.view" },
       { key: "subscription", label: "Subscription / Plan", icon: FaCrown, perm: "organization.view" },
     ],
   },
@@ -97,12 +96,26 @@ const ORG_NAV_GROUPS = [
   },
 ];
 
+const STANDALONE_SECTIONS = ["branches", "edit-profile", "profile"];
+
+const isKnownSection = (sec) =>
+  Boolean(sec) && (ALL_TABS.some((t) => t.key === sec) || STANDALONE_SECTIONS.includes(sec));
+
 const ALL_TABS = ORG_NAV_GROUPS.flatMap((g) => g.tabs);
 
 const getStr = (val, fallback = "") => {
   if (val === null || val === undefined) return fallback;
   if (typeof val === "string") return val.trim() !== "" ? val.trim() : fallback;
   if (typeof val === "number" || typeof val === "boolean") return String(val);
+  if (typeof val === "object") {
+    if (val.url) return String(val.url);
+    if (val.secure_url) return String(val.secure_url);
+    if (val.path) return String(val.path);
+    if (val.src) return String(val.src);
+    if (val.location) return String(val.location);
+    if (val.name) return String(val.name);
+    if (val.code) return String(val.code);
+  }
   return fallback;
 };
 
@@ -110,7 +123,7 @@ function Organisation() {
   const { section } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { hasPermission, isSystemAdmin, user } = useAuth();
+  const { hasPermission, user } = useAuth();
   const { organization, refreshOrganization, refreshBranches } = useBranch();
 
   const [orgData, setOrgData] = useState(organization || null);
@@ -121,9 +134,7 @@ function Organisation() {
   const [isFullView, setIsFullView] = useState(false);
 
   // Determine active tab from URL parameter or default to "overview"
-  const currentTabKey = section && (ALL_TABS.some((t) => t.key === section) || section === "edit-profile" || section === "profile")
-    ? section
-    : "overview";
+  const currentTabKey = isKnownSection(section) ? section : "overview";
   const [activeTab, setActiveTab] = useState(currentTabKey);
 
   // Time updater
@@ -135,7 +146,7 @@ function Organisation() {
   // Fetch organization profile for the header banner
   const loadOrg = useCallback(async () => {
     try {
-      const data = await fetchMyOrganization();
+      const data = await fetchMyOrganization(true);
       if (data) {
         setOrgData(normalizeOrganization(data) || data);
       } else if (organization) {
@@ -155,6 +166,14 @@ function Organisation() {
     }
   }, [organization]);
 
+  const handleOrgUpdated = useCallback((updated) => {
+    if (updated) {
+      const norm = normalizeOrganization(updated) || updated;
+      setOrgData(norm);
+    }
+    loadOrg();
+  }, [loadOrg]);
+
   useEffect(() => {
     if (organization) {
       setOrgData(normalizeOrganization(organization) || organization);
@@ -167,7 +186,7 @@ function Organisation() {
   }, [loadOrg]);
 
   useEffect(() => {
-    if (section && (ALL_TABS.some((t) => t.key === section) || section === "edit-profile")) {
+    if (isKnownSection(section)) {
       setActiveTab(section);
       const foundGroup = ORG_NAV_GROUPS.find((g) => g.tabs.some((t) => t.key === section));
       if (foundGroup) setActiveCategory(foundGroup.groupTitle);
@@ -236,16 +255,15 @@ function Organisation() {
   const currentOrg = orgData || organization;
   const isOwner =
     user?.roleCode === "OWNER" ||
-    isSystemAdmin ||
     user?.priority === 1 ||
-    user?.roleCode === "ADMIN" ||
-    user?.roleCode === "HR_ADMIN" ||
     user?.role === "OWNER" ||
-    user?.role === "ADMIN" ||
-    !user?.organizationId;
+    user?.permissions?.includes("*");
 
   const hasNoOrg = !loadingOrg && (!currentOrg || (!currentOrg._id && !currentOrg.organizationName && !currentOrg.id));
-  const canEdit = isSystemAdmin || (hasPermission && hasPermission("organization.update")) || isOwner;
+  const canEdit = Boolean(
+    (hasPermission && (hasPermission("organization.update") || hasPermission("organisation.update"))) ||
+    isOwner
+  );
 
   const orgInitials = useMemo(() => {
     const name = getStr(currentOrg?.displayName || currentOrg?.organizationName || "HR");
@@ -265,17 +283,17 @@ function Organisation() {
           <EditOrgProfilePage
             orgData={currentOrg}
             onBack={() => handleTabSelect("profile")}
-            onOrgUpdated={loadOrg}
+            onOrgUpdated={handleOrgUpdated}
           />
         );
       case "profile":
-        return <OrganizationProfileView onNavigateTab={handleTabSelect} />;
+        return <OrganizationProfileView onNavigateTab={handleTabSelect} onOrgUpdated={handleOrgUpdated} />;
       case "overview":
         return (
           <OrgOverview
             orgData={currentOrg}
             onNavigateTab={handleTabSelect}
-            onOrgUpdated={loadOrg}
+            onOrgUpdated={handleOrgUpdated}
           />
         );
       case "branches":
@@ -368,7 +386,20 @@ function Organisation() {
         <EditOrgProfilePage
           orgData={currentOrg}
           onBack={() => handleTabSelect("profile")}
-          onOrgUpdated={loadOrg}
+          onOrgUpdated={handleOrgUpdated}
+        />
+      </div>
+    );
+  }
+
+  // Dedicated Full Page Branches Workspace
+  if (activeTab === "branches") {
+    return (
+      <div className="org-dashboard-container p-0">
+        <BranchesSection
+          onToggleFullView={setIsFullView}
+          isStandaloneView={true}
+          onBackToOrg={() => handleTabSelect("overview")}
         />
       </div>
     );
@@ -386,24 +417,32 @@ function Organisation() {
 
   return (
     <div className="org-dashboard-container">
-      {/* ── 1. TOP GREETING & QUICK ACTIONS BAR ── */}
+      {/* ── 1. TOP EXECUTIVE HEADER BAR ── */}
       <div className="org-greeting-header-bar">
         <div className="org-greeting-left">
+          <div className="org-header-breadcrumb">
+            <span className="org-breadcrumb-root">Enterprise Governance</span>
+            <span className="org-breadcrumb-sep">/</span>
+            <span className="org-breadcrumb-current">Organization Workspace</span>
+          </div>
           <h2 className="org-greeting-headline">
-            {greetingText}, {userDisplayName}! 👋
+            {getStr(orgData?.displayName || orgData?.organizationName, "Enterprise Organization")}
           </h2>
           <p className="org-greeting-subline">
-            Organization Hub: {getStr(orgData?.displayName || orgData?.organizationName, "Enterprise Organization")}
+            SaaS Tenant Governance &middot; {greetingText}, <span className="org-greeting-user">{userDisplayName}</span>
           </p>
         </div>
 
         <div className="org-greeting-right">
           <div className="org-datetime-card">
-            <FaRegCalendarAlt className="org-calendar-icon" />
+            <div className="org-calendar-icon-box">
+              <FaRegCalendarAlt className="org-calendar-icon" />
+            </div>
             <div className="org-datetime-content">
               <div className="org-datetime-date">{dateFormatted}</div>
               <div className="org-datetime-time">
-                {timeFormatted} • {getStr(orgData?.timeZone, "Asia/Kolkata")}
+                <FaClock size={10} className="me-1 text-muted" />
+                {timeFormatted} &middot; <span className="text-secondary fw-semibold">{getStr(orgData?.timeZone, "Asia/Kolkata")}</span>
               </div>
             </div>
           </div>
@@ -413,19 +452,19 @@ function Organisation() {
               <FaBolt className="me-1 text-warning" /> Quick Actions
             </Dropdown.Toggle>
             <Dropdown.Menu align="end" className="org-dropdown-menu shadow">
-              <Dropdown.Item onClick={() => handleTabSelect("branches")}>
-                <FaPlus className="me-2 text-success" /> Add Branch
-              </Dropdown.Item>
               <Dropdown.Item onClick={() => handleTabSelect("departments")}>
                 <FaPlus className="me-2 text-primary" /> Add Department
               </Dropdown.Item>
               <Dropdown.Item onClick={() => handleTabSelect("reporting-hierarchy")}>
                 <FaPlus className="me-2 text-info" /> Add Employee
               </Dropdown.Item>
+              <Dropdown.Item onClick={() => handleTabSelect("locations")}>
+                <FaPlus className="me-2 text-warning" /> Add Location
+              </Dropdown.Item>
               <Dropdown.Divider />
               {canEdit && (
                 <Dropdown.Item onClick={() => handleTabSelect("profile")}>
-                  <FaEdit className="me-2 text-warning" /> Organization Profile
+                  <FaEdit className="me-2 text-warning" /> Edit Organization Profile
                 </Dropdown.Item>
               )}
               <Dropdown.Item onClick={() => handleTabSelect("settings")}>
@@ -448,10 +487,24 @@ function Organisation() {
             <div className="org-hero-main-section">
               <div className="org-hero-logo-box">
                 {getStr(orgData.logo) ? (
-                  <img src={getStr(orgData.logo)} alt="Logo" className="org-hero-logo-image" />
-                ) : (
-                  <div className="org-hero-logo-monogram">{orgInitials}</div>
-                )}
+                  <img
+                    src={getStr(orgData.logo)}
+                    alt="Logo"
+                    className="org-hero-logo-image"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      if (e.currentTarget.nextElementSibling) {
+                        e.currentTarget.nextElementSibling.style.display = "flex";
+                      }
+                    }}
+                  />
+                ) : null}
+                <div
+                  className="org-hero-logo-monogram"
+                  style={{ display: getStr(orgData.logo) ? "none" : "flex" }}
+                >
+                  {orgInitials}
+                </div>
               </div>
 
               <div className="org-hero-details">
@@ -459,7 +512,9 @@ function Organisation() {
                   <h1 className="org-hero-org-name">
                     {getStr(orgData.displayName || orgData.organizationName, "Organization")}
                   </h1>
-                  <FaCheckCircle className="org-hero-check-badge text-success" title="Verified SaaS Tenant Organization" />
+                  <span className="org-verified-badge" title="Verified SaaS Tenant Organization">
+                    <FaCheckCircle className="org-hero-check-badge text-success" /> Verified Tenant
+                  </span>
                   {getStr(orgData.status) && (
                     <span className="org-hero-pill-status">
                       <span className="org-hero-green-circle" /> {getStr(orgData.status)}
@@ -504,49 +559,63 @@ function Organisation() {
                       <span>{[getStr(orgData.city), getStr(orgData.country)].filter(Boolean).join(", ")}</span>
                     </div>
                   )}
+
+                  {getStr(orgData.currency) && (
+                    <div className="org-hero-chip currency">
+                      <span className="org-chip-icon-wrap text-warning"><FaMoneyCheckAlt /></span>
+                      <span>{getStr(orgData.currency)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
             <div className="org-hero-right-section">
-              <div className="d-flex align-items-center gap-2">
-                <Button
-                  variant="outline-secondary"
-                  size="sm"
-                  className="d-flex align-items-center gap-1 fw-semibold bg-white"
-                  onClick={() => handleTabSelect("profile")}
-                >
-                  <FaBuilding className="text-primary" /> Profile
-                </Button>
-                <Button
-                  variant="outline-success"
-                  size="sm"
-                  className="d-flex align-items-center gap-1 fw-semibold bg-white"
-                  onClick={() => handleTabSelect("branches")}
-                >
-                  <FaCodeBranch /> Branches
-                </Button>
+              <div className="org-hero-quick-meta">
+                <div className="org-hero-meta-item">
+                  <span className="org-hero-meta-label">Financial Year</span>
+                  <span className="org-hero-meta-val">{getStr(orgData.financialYearStart, "04-01")}</span>
+                </div>
+                <div className="org-hero-meta-divider" />
+                <div className="org-hero-meta-item">
+                  <span className="org-hero-meta-label">Timezone</span>
+                  <span className="org-hero-meta-val">{getStr(orgData.timeZone, "Asia/Kolkata")}</span>
+                </div>
+              </div>
+              <div className="d-flex align-items-center gap-2 mt-2">
+                {canEdit && (
+                  <Button
+                    className="org-hero-btn-edit"
+                    size="sm"
+                    onClick={() => handleTabSelect("profile")}
+                  >
+                    <FaEdit className="me-1" /> Edit Profile
+                  </Button>
+                )}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── 3. CATEGORIZED CATEGORY PILL TABS ── */}
-      <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
-        {ORG_NAV_GROUPS.map((group) => (
-          <button
-            key={group.groupTitle}
-            type="button"
-            className={`btn btn-sm px-3 py-1 rounded-pill fw-semibold border ${activeCategory === group.groupTitle ? "btn-dark text-white shadow-sm" : "btn-light text-secondary bg-white"}`}
-            onClick={() => {
-              setActiveCategory(group.groupTitle);
-              handleTabSelect(group.tabs[0].key);
-            }}
-          >
-            {group.groupTitle}
-          </button>
-        ))}
+      {/* ── 3. EXECUTIVE CATEGORY SEGMENT TABS ── */}
+      <div className="org-category-segment-wrapper mb-3">
+        <div className="org-category-segment-bar">
+          {ORG_NAV_GROUPS.map((group) => (
+            <button
+              key={group.groupTitle}
+              type="button"
+              className={`org-category-segment-btn ${activeCategory === group.groupTitle ? "active" : ""}`}
+              onClick={() => {
+                setActiveCategory(group.groupTitle);
+                handleTabSelect(group.tabs[0].key);
+              }}
+            >
+              <span className="org-category-btn-text">{group.groupTitle}</span>
+              <span className="org-category-count-pill">{group.tabs.length}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── 4. SUB-MODULE TABS OF ACTIVE CATEGORY ── */}
@@ -560,7 +629,7 @@ function Organisation() {
                   eventKey={tab.key}
                   className={`org-nav-tab-item ${activeTab === tab.key ? "active" : ""}`}
                 >
-                  <Icon />
+                  <Icon className="org-nav-tab-icon" />
                   <span>{tab.label}</span>
                 </Nav.Link>
               </Nav.Item>

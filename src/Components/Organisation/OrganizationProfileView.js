@@ -54,8 +54,8 @@ const TIMEZONES = [
   { value: "UTC", label: "UTC (Coordinated Universal Time)" },
 ];
 
-export default function OrganizationProfileView({ onNavigateTab }) {
-  const { isSystemAdmin, hasPermission, user } = useAuth();
+export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated }) {
+  const { hasPermission, user } = useAuth();
   const { organization, refreshOrganization, refreshBranches } = useBranch();
 
   const [orgData, setOrgData] = useState(null);
@@ -68,7 +68,15 @@ export default function OrganizationProfileView({ onNavigateTab }) {
   const [copiedField, setCopiedField] = useState("");
   const fileInputRef = useRef(null);
 
-  const canEdit = isSystemAdmin || hasPermission("organization.update") || user?.roleCode === "OWNER";
+  const isOwner =
+    user?.roleCode === "OWNER" ||
+    user?.priority === 1 ||
+    user?.role === "OWNER" ||
+    user?.permissions?.includes("*");
+  const canEdit = Boolean(
+    (hasPermission && (hasPermission("organization.update") || hasPermission("organisation.update"))) ||
+    isOwner
+  );
 
   const [formData, setFormData] = useState({
     organizationName: "",
@@ -164,7 +172,7 @@ export default function OrganizationProfileView({ onNavigateTab }) {
       setLoading(true);
       setError("");
       const [org, structure] = await Promise.all([
-        fetchMyOrganization().catch(() => null),
+        fetchMyOrganization(true).catch(() => null),
         fetchOrganizationStructure().catch(() => null),
       ]);
 
@@ -249,8 +257,9 @@ export default function OrganizationProfileView({ onNavigateTab }) {
       setSuccess(res?.message || "Organization profile saved successfully!");
       setIsEditing(false);
       await loadData();
-      if (refreshOrganization) refreshOrganization();
-      if (refreshBranches) refreshBranches();
+      if (refreshOrganization) await refreshOrganization();
+      if (refreshBranches) await refreshBranches();
+      if (onOrgUpdated) onOrgUpdated(res);
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
       setError(err.message || "Failed to save organization profile");
@@ -368,23 +377,38 @@ export default function OrganizationProfileView({ onNavigateTab }) {
             <div className="d-flex align-items-center gap-3">
               <div
                 style={{
-                  width: 76,
-                  height: 76,
-                  borderRadius: 16,
-                  background: "#f8f9fa",
-                  border: "1px solid #dee2e6",
+                  minWidth: 104,
+                  maxWidth: 150,
+                  height: 80,
+                  borderRadius: 14,
+                  background: "#ffffff",
+                  border: "1.5px solid #dee2e6",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   overflow: "hidden",
                   flexShrink: 0,
+                  padding: "6px 12px",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
                 }}
               >
                 {formData.logo ? (
-                  <img src={formData.logo} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-                ) : (
-                  <FaBuilding className="text-secondary fs-2" />
-                )}
+                  <img
+                    src={formData.logo}
+                    alt="Logo"
+                    style={{ maxWidth: "100%", maxHeight: "100%", width: "auto", height: "auto", objectFit: "contain", objectPosition: "center", display: "block" }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      if (e.currentTarget.nextElementSibling) {
+                        e.currentTarget.nextElementSibling.style.display = "block";
+                      }
+                    }}
+                  />
+                ) : null}
+                <FaBuilding
+                  className="text-secondary fs-2"
+                  style={{ display: formData.logo ? "none" : "block" }}
+                />
               </div>
 
               <div>

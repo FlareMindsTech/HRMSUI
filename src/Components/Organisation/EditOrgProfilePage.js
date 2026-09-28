@@ -145,7 +145,7 @@ const getStr = (val, fallback = "") => {
 };
 
 export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, onOrgUpdated }) {
-  const { isSystemAdmin, user, hasPermission } = useAuth();
+  const { user, hasPermission } = useAuth();
   const { organization, refreshOrganization, refreshBranches } = useBranch();
 
   const [activeTab, setActiveTab] = useState("entity");
@@ -157,7 +157,15 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
   const fileInputRef = useRef(null);
   const [logoPreviewError, setLogoPreviewError] = useState(false);
 
-  const canEdit = isSystemAdmin || hasPermission("organization.update") || user?.roleCode === "OWNER";
+  const isOwner =
+    user?.roleCode === "OWNER" ||
+    user?.priority === 1 ||
+    user?.role === "OWNER" ||
+    user?.permissions?.includes("*");
+  const canEdit = Boolean(
+    (hasPermission && (hasPermission("organization.update") || hasPermission("organisation.update"))) ||
+    isOwner
+  );
 
   // Mode detection
   const isCreateMode = useMemo(() => {
@@ -333,17 +341,18 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
         status: formData.status || "ACTIVE",
       };
 
+      let savedOrg = null;
       if (isCreateMode) {
-        await createOrganization(payload);
+        savedOrg = await createOrganization(payload);
         setSuccess("Enterprise Organization profile created successfully!");
       } else {
-        await updateMyOrganization(payload);
+        savedOrg = await updateMyOrganization(payload);
         setSuccess("Organization details saved & synchronized successfully!");
       }
 
-      refreshOrganization();
-      refreshBranches();
-      if (onOrgUpdated) onOrgUpdated();
+      if (refreshOrganization) await refreshOrganization();
+      if (refreshBranches) await refreshBranches();
+      if (onOrgUpdated) onOrgUpdated(savedOrg);
 
       setTimeout(() => {
         if (onBack) onBack();

@@ -30,7 +30,7 @@ export const BranchProvider = ({ children }) => {
   // Load Organization
   const loadOrganization = useCallback(async () => {
     try {
-      const org = await fetchMyOrganization();
+      const org = await fetchMyOrganization(true);
       if (org && (org._id || org.id || org.organizationName || org.name)) {
         setOrganization(org);
         const orgId = org._id || org.id;
