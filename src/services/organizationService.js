@@ -107,7 +107,14 @@ export const normalizeOrganization = (raw) => {
     contactPersonDesignation: org.contactPersonDesignation || org.contactPerson?.designation || org.primaryContact?.designation || "",
     contactPersonEmail: org.contactPersonEmail || org.contactPerson?.email || org.primaryContact?.email || "",
     contactPersonPhone: org.contactPersonPhone || org.contactPerson?.phone || org.primaryContact?.phone || "",
-    logo: typeof org.logo === "object" && org.logo !== null ? org.logo.url || org.logo.path || "" : (org.logo || org.logoUrl || ""),
+    logo: (() => {
+      const rawLogo = org.logo ?? org.logoUrl ?? org.logo_url ?? org.companyLogo ?? org.company_logo ?? org.organizationLogo ?? org.orgLogo ?? org.profilePic ?? org.profilePhoto ?? org.image ?? org.avatar ?? org.picture ?? "";
+      if (typeof rawLogo === "string") return rawLogo.trim();
+      if (typeof rawLogo === "object" && rawLogo !== null) {
+        return rawLogo.url || rawLogo.secure_url || rawLogo.path || rawLogo.src || rawLogo.location || "";
+      }
+      return "";
+    })(),
     stats: org.stats || {},
   };
 };
@@ -126,14 +133,14 @@ export const fetchMyOrganization = async (forceRefresh = false) => {
   const storedOrgId = localStorage.getItem("organizationId") || localStorage.getItem("tenantId");
 
   const fastEndpoints = [
-    "/organization/structure",
     "/organization/me",
     "/organization",
     "/organizations",
+    "/organization/structure",
   ];
 
   if (storedOrgId) {
-    fastEndpoints.push(`/organization/${storedOrgId}`);
+    fastEndpoints.unshift(`/organization/${storedOrgId}`);
   }
 
   let foundOrg = null;
@@ -152,8 +159,10 @@ export const fetchMyOrganization = async (forceRefresh = false) => {
         let org = rawData?.organization || rawData?.org || rawData?.organizations?.[0] || rawData?.orgs?.[0] || rawData?.result || rawData?.results?.[0] || rawData;
         if (Array.isArray(org)) org = org[0];
         if (org && (org.organizationName || org.name || org.orgName || org.companyName || org.legalName || org.displayName || org._id || org.id)) {
-          foundOrg = normalizeOrganization(org);
-          break;
+          const norm = normalizeOrganization(org);
+          if (!foundOrg || (norm.logo && !foundOrg.logo)) {
+            foundOrg = norm;
+          }
         }
       }
     }
@@ -281,7 +290,16 @@ export const updateMyOrganization = async (payload, orgIdOverride = null) => {
   if (Array.isArray(org)) org = org[0];
   if (org?.organization) org = org.organization;
 
-  const normalized = normalizeOrganization(org || rawData || payload);
+  // Merge payload with response so updated logo, names, etc. are never lost even if backend returns partial data
+  const merged = {
+    ...payload,
+    ...(typeof org === "object" && org !== null ? org : {}),
+  };
+  if (!merged.logo && payload.logo) {
+    merged.logo = payload.logo;
+  }
+
+  const normalized = normalizeOrganization(merged);
   if (normalized) {
     cachedOrganization = normalized;
     try {

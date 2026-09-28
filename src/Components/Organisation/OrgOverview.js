@@ -126,8 +126,19 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
   const [modalActiveTab, setModalActiveTab] = useState("basic");
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
 
-  const canEdit = isSystemAdmin || hasPermission("organization.update");
-  const canCreate = isSystemAdmin || hasPermission("organization.create") || user?.roleCode === "OWNER";
+  const isOwner =
+    user?.roleCode === "OWNER" ||
+    user?.priority === 1 ||
+    user?.role === "OWNER" ||
+    user?.permissions?.includes("*");
+  const canEdit = Boolean(
+    (hasPermission && (hasPermission("organization.update") || hasPermission("organisation.update"))) ||
+    isOwner
+  );
+  const canCreate = Boolean(
+    (hasPermission && (hasPermission("organization.create") || hasPermission("organisation.create"))) ||
+    isOwner
+  );
 
   const activeOrg = useMemo(() => {
     const raw = orgData || organization;
@@ -223,7 +234,7 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
       if (!organization && !initialOrgData) setLoading(true);
       setError("");
       const [org, structure, tree] = await Promise.all([
-        fetchMyOrganization().catch((err) => {
+        fetchMyOrganization(true).catch((err) => {
           console.warn("fetchMyOrganization error:", err);
           return null;
         }),
@@ -552,155 +563,119 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
         /* ── CASE 2: ORGANISATION DATA EXISTS (KPI & DETAILED SECTIONS) ── */
         <>
 
-          {/* ── 2. KPI Metric Cards ── */}
-          <div className="org-kpi-row">
+          {/* ── 2. EXECUTIVE KPI METRIC CARDS ── */}
+          <div className="org-kpi-row mb-4">
             {/* Branches */}
-            <div className="org-kpi-card" onClick={() => onNavigateTab("branches")} role="button">
+            <div className="org-kpi-card" onClick={() => onNavigateTab("branches")} role="button" title="View all branches">
               <div className="org-kpi-top">
-                <div className="org-kpi-icon-wrap" style={{ background: "#F5EFE3", color: "#C49A55" }}>
+                <div className="org-kpi-icon-wrap gold">
                   <FaRegBuilding />
                 </div>
-                <div className="org-kpi-info">
-                  <div className="org-kpi-label">Branches</div>
-                  <div className="org-kpi-val">{stats.branches}</div>
-                  <div className="org-kpi-badge" style={{ color: "#C49A55" }}>Active Offices</div>
-                </div>
+                <div className="org-kpi-badge gold">Active Offices</div>
               </div>
-              <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
-                <path d="M0,22 Q25,8 50,18 T100,6" fill="none" stroke="#C49A55" strokeWidth="2.5" strokeLinecap="round" />
-                <path d="M0,22 Q25,8 50,18 T100,6 L100,28 L0,28 Z" fill="url(#sparkGold)" opacity="0.18" />
-                <defs>
-                  <linearGradient id="sparkGold" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#C49A55" />
-                    <stop offset="100%" stopColor="#C49A55" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-              </svg>
+              <div className="org-kpi-info">
+                <div className="org-kpi-val">{stats.branches}</div>
+                <div className="org-kpi-label">Branches & Facilities</div>
+              </div>
+              <div className="org-kpi-footer">
+                <span>Manage Hub</span>
+                <FaChevronRight size={10} />
+              </div>
             </div>
 
             {/* Departments */}
-            <div className="org-kpi-card" onClick={() => onNavigateTab("departments")} role="button">
+            <div className="org-kpi-card" onClick={() => onNavigateTab("departments")} role="button" title="View departments">
               <div className="org-kpi-top">
-                <div className="org-kpi-icon-wrap" style={{ background: "#eff6ff", color: "#3b82f6" }}>
+                <div className="org-kpi-icon-wrap blue">
                   <FaUsers />
                 </div>
-                <div className="org-kpi-info">
-                  <div className="org-kpi-label">Departments</div>
-                  <div className="org-kpi-val">{stats.departments}</div>
-                  <div className="org-kpi-badge text-primary">Configured</div>
-                </div>
+                <div className="org-kpi-badge blue">Functional Units</div>
               </div>
-              <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
-                <path d="M0,24 Q25,10 50,20 T100,8" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" />
-                <path d="M0,24 Q25,10 50,20 T100,8 L100,28 L0,28 Z" fill="url(#sparkBlue)" opacity="0.18" />
-                <defs>
-                  <linearGradient id="sparkBlue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" />
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-              </svg>
+              <div className="org-kpi-info">
+                <div className="org-kpi-val">{stats.departments}</div>
+                <div className="org-kpi-label">Departments</div>
+              </div>
+              <div className="org-kpi-footer">
+                <span>Configure</span>
+                <FaChevronRight size={10} />
+              </div>
             </div>
 
             {/* Employees */}
-            <div className="org-kpi-card" onClick={() => onNavigateTab("reporting-hierarchy")} role="button">
+            <div className="org-kpi-card" onClick={() => onNavigateTab("reporting-hierarchy")} role="button" title="View reporting hierarchy">
               <div className="org-kpi-top">
-                <div className="org-kpi-icon-wrap" style={{ background: "#fdf2f8", color: "#ec4899" }}>
+                <div className="org-kpi-icon-wrap pink">
                   <FaUserFriends />
                 </div>
-                <div className="org-kpi-info">
-                  <div className="org-kpi-label">Employees</div>
-                  <div className="org-kpi-val">{stats.employees}</div>
-                  <div className="org-kpi-badge" style={{ color: "#ec4899" }}>Workforce</div>
-                </div>
+                <div className="org-kpi-badge pink">Workforce</div>
               </div>
-              <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
-                <path d="M0,25 Q30,8 60,22 T100,10" fill="none" stroke="#ec4899" strokeWidth="2.5" strokeLinecap="round" />
-                <path d="M0,25 Q30,8 60,22 T100,10 L100,28 L0,28 Z" fill="url(#sparkPink)" opacity="0.18" />
-                <defs>
-                  <linearGradient id="sparkPink" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#ec4899" />
-                    <stop offset="100%" stopColor="#ec4899" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-              </svg>
+              <div className="org-kpi-info">
+                <div className="org-kpi-val">{stats.employees}</div>
+                <div className="org-kpi-label">Total Employees</div>
+              </div>
+              <div className="org-kpi-footer">
+                <span>Directory</span>
+                <FaChevronRight size={10} />
+              </div>
             </div>
 
             {/* Teams */}
-            <div className="org-kpi-card" onClick={() => onNavigateTab("teams")} role="button">
+            <div className="org-kpi-card" onClick={() => onNavigateTab("teams")} role="button" title="View teams">
               <div className="org-kpi-top">
-                <div className="org-kpi-icon-wrap" style={{ background: "#f5f3ff", color: "#8b5cf6" }}>
+                <div className="org-kpi-icon-wrap purple">
                   <FaUsers />
                 </div>
-                <div className="org-kpi-info">
-                  <div className="org-kpi-label">Teams</div>
-                  <div className="org-kpi-val">{stats.teams}</div>
-                  <div className="org-kpi-badge" style={{ color: "#8b5cf6" }}>Squads</div>
-                </div>
+                <div className="org-kpi-badge purple">Squads</div>
               </div>
-              <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
-                <path d="M0,24 Q30,6 60,18 T100,8" fill="none" stroke="#8b5cf6" strokeWidth="2.5" strokeLinecap="round" />
-                <path d="M0,24 Q30,6 60,18 T100,8 L100,28 L0,28 Z" fill="url(#sparkPurple)" opacity="0.18" />
-                <defs>
-                  <linearGradient id="sparkPurple" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#8b5cf6" />
-                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-              </svg>
+              <div className="org-kpi-info">
+                <div className="org-kpi-val">{stats.teams}</div>
+                <div className="org-kpi-label">Active Teams</div>
+              </div>
+              <div className="org-kpi-footer">
+                <span>View Squads</span>
+                <FaChevronRight size={10} />
+              </div>
             </div>
 
             {/* Locations */}
-            <div className="org-kpi-card" onClick={() => onNavigateTab("locations")} role="button">
+            <div className="org-kpi-card" onClick={() => onNavigateTab("locations")} role="button" title="View locations">
               <div className="org-kpi-top">
-                <div className="org-kpi-icon-wrap" style={{ background: "#fff7ed", color: "#f97316" }}>
+                <div className="org-kpi-icon-wrap orange">
                   <FaMapMarkerAlt />
                 </div>
-                <div className="org-kpi-info">
-                  <div className="org-kpi-label">Locations</div>
-                  <div className="org-kpi-val">{stats.locations}</div>
-                  <div className="org-kpi-badge text-warning">Geofenced</div>
-                </div>
+                <div className="org-kpi-badge orange">Geofenced</div>
               </div>
-              <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
-                <path d="M0,25 Q30,12 60,22 T100,9" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" />
-                <path d="M0,25 Q30,12 60,22 T100,9 L100,28 L0,28 Z" fill="url(#sparkOrange)" opacity="0.18" />
-                <defs>
-                  <linearGradient id="sparkOrange" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f97316" />
-                    <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-              </svg>
+              <div className="org-kpi-info">
+                <div className="org-kpi-val">{stats.locations}</div>
+                <div className="org-kpi-label">Locations</div>
+              </div>
+              <div className="org-kpi-footer">
+                <span>Perimeters</span>
+                <FaChevronRight size={10} />
+              </div>
             </div>
 
             {/* Active Shifts */}
-            <div className="org-kpi-card" onClick={() => onNavigateTab("shifts")} role="button">
+            <div className="org-kpi-card" onClick={() => onNavigateTab("shifts")} role="button" title="View shifts">
               <div className="org-kpi-top">
-                <div className="org-kpi-icon-wrap" style={{ background: "#fefce8", color: "#eab308" }}>
+                <div className="org-kpi-icon-wrap teal">
                   <FaClock />
                 </div>
-                <div className="org-kpi-info">
-                  <div className="org-kpi-label">Active Shifts</div>
-                  <div className="org-kpi-val">{stats.shifts}</div>
-                  <div className="org-kpi-badge text-muted">Rosters</div>
-                </div>
+                <div className="org-kpi-badge teal">Rosters</div>
               </div>
-              <svg viewBox="0 0 100 28" className="org-kpi-sparkline" preserveAspectRatio="none">
-                <path d="M0,20 Q30,20 60,16 T100,12" fill="none" stroke="#eab308" strokeWidth="2.5" strokeLinecap="round" />
-                <path d="M0,20 Q30,20 60,16 T100,12 L100,28 L0,28 Z" fill="url(#sparkYellow)" opacity="0.18" />
-                <defs>
-                  <linearGradient id="sparkYellow" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#eab308" />
-                    <stop offset="100%" stopColor="#eab308" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-              </svg>
+              <div className="org-kpi-info">
+                <div className="org-kpi-val">{stats.shifts}</div>
+                <div className="org-kpi-label">Active Shifts</div>
+              </div>
+              <div className="org-kpi-footer">
+                <span>Schedules</span>
+                <FaChevronRight size={10} />
+              </div>
             </div>
           </div>
 
-          {/* ── 3. Comprehensive Bento Grid: 4 Modern Pillars ── */}
-          <Row className="g-3 mb-3">
+          {/* ── 3. COMPREHENSIVE BENTO GRID: 4 MODERN PILLARS ── */}
+          <Row className="g-4 mb-4">
             {/* Card 1: Corporate & Entity Identification */}
             <Col lg={6}>
               <div className="org-bento-card h-100">
@@ -715,42 +690,61 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                     </div>
                   </div>
                   {canEdit && (
-                    <Button variant="light" size="sm" className="org-bento-edit-btn" onClick={handleOpenEditModal}>
+                    <Button variant="light" size="sm" className="org-bento-edit-btn" onClick={handleOpenEditModal} title="Edit Corporate Details">
                       <FaEdit />
                     </Button>
                   )}
                 </div>
 
-                <div className="org-bento-list">
-                  <div className="org-bento-row">
-                    <span className="org-bento-label">Organization Name</span>
-                    <span className="org-bento-val fw-bold">{getStr(activeOrg.organizationName || activeOrg.name || activeOrg.displayName || activeOrg.legalName, "—")}</span>
+                <div className="org-data-grid">
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">Organization Name</span>
+                    <span className="org-tile-val fw-bold">{getStr(activeOrg.organizationName || activeOrg.name || activeOrg.displayName || activeOrg.legalName, "—")}</span>
                   </div>
-                  <div className="org-bento-row">
-                    <span className="org-bento-label">Organization Code</span>
-                    <span className="org-code-pill font-monospace">{getStr(activeOrg.organizationCode || activeOrg.code || activeOrg.orgCode, "—")}</span>
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">Organization Code</span>
+                    <div className="d-flex align-items-center gap-1">
+                      <span className="org-code-pill font-monospace">{getStr(activeOrg.organizationCode || activeOrg.code || activeOrg.orgCode, "—")}</span>
+                      {getStr(activeOrg.organizationCode || activeOrg.code || activeOrg.orgCode) && (
+                        <button
+                          type="button"
+                          className="org-copy-icon-btn"
+                          onClick={() => copyToClipboard(getStr(activeOrg.organizationCode || activeOrg.code || activeOrg.orgCode), "orgCode")}
+                          title="Copy Code"
+                        >
+                          <FaCopy size={11} />
+                        </button>
+                      )}
+                      {copiedField === "orgCode" && <span className="badge bg-dark ms-1" style={{ fontSize: "0.65rem" }}>Copied!</span>}
+                    </div>
                   </div>
-                  <div className="org-bento-row">
-                    <span className="org-bento-label">Legal Registered Name</span>
-                    <span className="org-bento-val">{getStr(activeOrg.legalName || activeOrg.registeredName || activeOrg.organizationName, "—")}</span>
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">Legal Registered Name</span>
+                    <span className="org-tile-val">{getStr(activeOrg.legalName || activeOrg.registeredName || activeOrg.organizationName, "—")}</span>
                   </div>
-                  <div className="org-bento-row">
-                    <span className="org-bento-label">Display / Brand Name</span>
-                    <span className="org-bento-val">{getStr(activeOrg.displayName || activeOrg.brandName || activeOrg.organizationName, "—")}</span>
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">Display / Brand Name</span>
+                    <span className="org-tile-val">{getStr(activeOrg.displayName || activeOrg.brandName || activeOrg.organizationName, "—")}</span>
                   </div>
-                  <div className="org-bento-row">
-                    <span className="org-bento-label">Entity Type</span>
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">Entity Classification</span>
                     <span className="org-badge-entity">{getStr(activeOrg.organizationType || activeOrg.entityType || activeOrg.type, "—")}</span>
                   </div>
-                  <div className="org-bento-row">
-                    <span className="org-bento-label">Industry Domain</span>
-                    <span className="org-bento-val">{getStr(activeOrg.industry || activeOrg.industryType || activeOrg.domain, "—")}</span>
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">Industry Domain</span>
+                    <span className="org-tile-val">{getStr(activeOrg.industry || activeOrg.industryType || activeOrg.domain, "—")}</span>
                   </div>
-                  <div className="org-bento-row">
-                    <span className="org-bento-label">Operating Status</span>
+
+                  <div className="org-data-tile col-span-2">
+                    <span className="org-tile-label">Tenant Status</span>
                     {getStr(activeOrg.status) ? (
                       <span className="org-hero-pill-status">
-                        <span className="org-hero-green-circle" /> {getStr(activeOrg.status)}
+                        <span className="org-hero-green-circle" /> {getStr(activeOrg.status)} &middot; Verified Tenant
                       </span>
                     ) : (
                       "—"
@@ -774,19 +768,20 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                     </div>
                   </div>
                   {canEdit && (
-                    <Button variant="light" size="sm" className="org-bento-edit-btn" onClick={handleOpenEditModal}>
+                    <Button variant="light" size="sm" className="org-bento-edit-btn" onClick={handleOpenEditModal} title="Edit Compliance Details">
                       <FaEdit />
                     </Button>
                   )}
                 </div>
 
-                <div className="org-bento-list">
-                  <div className="org-bento-row">
-                    <span className="org-bento-label">Registration / CIN No</span>
-                    <span className="org-bento-val font-monospace">{getStr(activeOrg.registrationNumber || activeOrg.registrationNo || activeOrg.cin || activeOrg.regNo, "—")}</span>
+                <div className="org-data-grid">
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">Registration / CIN No</span>
+                    <span className="org-tile-val font-monospace">{getStr(activeOrg.registrationNumber || activeOrg.registrationNo || activeOrg.cin || activeOrg.regNo, "—")}</span>
                   </div>
-                  <div className="org-bento-row">
-                    <span className="org-bento-label">PAN (Income Tax)</span>
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">PAN (Income Tax)</span>
                     <div className="d-flex align-items-center gap-1">
                       <span className="org-tax-pill">{getStr(activeOrg.pan || activeOrg.panNumber || activeOrg.panNo, "—")}</span>
                       {getStr(activeOrg.pan || activeOrg.panNumber || activeOrg.panNo) && (
@@ -802,8 +797,9 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                       {copiedField === "pan" && <span className="badge bg-dark ms-1" style={{ fontSize: "0.65rem" }}>Copied!</span>}
                     </div>
                   </div>
-                  <div className="org-bento-row">
-                    <span className="org-bento-label">TAN (Tax Deduction)</span>
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">TAN (Tax Deduction)</span>
                     <div className="d-flex align-items-center gap-1">
                       <span className="org-tax-pill">{getStr(activeOrg.tan || activeOrg.tanNumber || activeOrg.tanNo, "—")}</span>
                       {getStr(activeOrg.tan || activeOrg.tanNumber || activeOrg.tanNo) && (
@@ -819,8 +815,9 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                       {copiedField === "tan" && <span className="badge bg-dark ms-1" style={{ fontSize: "0.65rem" }}>Copied!</span>}
                     </div>
                   </div>
-                  <div className="org-bento-row">
-                    <span className="org-bento-label">GSTIN / Tax ID</span>
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">GSTIN / Tax Identifier</span>
                     <div className="d-flex align-items-center gap-1">
                       <span className="org-tax-pill font-monospace">{getStr(activeOrg.gstin || activeOrg.gstNo || activeOrg.gstNumber || activeOrg.gst, "—")}</span>
                       {getStr(activeOrg.gstin || activeOrg.gstNo || activeOrg.gstNumber || activeOrg.gst) && (
@@ -836,9 +833,10 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                       {copiedField === "gstin" && <span className="badge bg-dark ms-1" style={{ fontSize: "0.65rem" }}>Copied!</span>}
                     </div>
                   </div>
-                  <div className="org-bento-row">
-                    <span className="org-bento-label">Date of Incorporation</span>
-                    <span className="org-bento-val">
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">Incorporation Date</span>
+                    <span className="org-tile-val">
                       {activeOrg.incorporationDate
                         ? (() => {
                             try {
@@ -857,45 +855,17 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                         : "—"}
                     </span>
                   </div>
-                  {getStr(activeOrg.pfNumber) && (
-                    <div className="org-bento-row">
-                      <span className="org-bento-label">EPFO / PF Establishment Code</span>
-                      <span className="org-bento-val font-monospace">{getStr(activeOrg.pfNumber)}</span>
-                    </div>
-                  )}
-                  {getStr(activeOrg.esiNumber) && (
-                    <div className="org-bento-row">
-                      <span className="org-bento-label">ESIC Registration Code</span>
-                      <span className="org-bento-val font-monospace">{getStr(activeOrg.esiNumber)}</span>
-                    </div>
-                  )}
-                  {getStr(activeOrg.msmeNumber) && (
-                    <div className="org-bento-row">
-                      <span className="org-bento-label">MSME / Udyam Registration</span>
-                      <span className="org-bento-val font-monospace">{getStr(activeOrg.msmeNumber)}</span>
-                    </div>
-                  )}
-                  {getStr(activeOrg.lin) && (
-                    <div className="org-bento-row">
-                      <span className="org-bento-label">Labour Identification (LIN)</span>
-                      <span className="org-bento-val font-monospace">{getStr(activeOrg.lin)}</span>
-                    </div>
-                  )}
-                  {getStr(activeOrg.professionalTaxNumber) && (
-                    <div className="org-bento-row">
-                      <span className="org-bento-label">Professional Tax (PT) Reg</span>
-                      <span className="org-bento-val font-monospace">{getStr(activeOrg.professionalTaxNumber)}</span>
-                    </div>
-                  )}
-                  <div className="org-bento-row">
-                    <span className="org-bento-label">Financial Year Period</span>
-                    <span className="org-bento-val fw-semibold">
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">Financial Year Period</span>
+                    <span className="org-tile-val fw-semibold">
                       {getStr(activeOrg.financialYearStart, "04-01")} (Starts {getStr(activeOrg.financialYearStart) === "01-01" ? "Jan 1" : "Apr 1"})
                     </span>
                   </div>
-                  <div className="org-bento-row">
-                    <span className="org-bento-label">Currency & Timezone</span>
-                    <span className="org-bento-val">
+
+                  <div className="org-data-tile col-span-2">
+                    <span className="org-tile-label">Currency & Timezone</span>
+                    <span className="org-tile-val">
                       {[getStr(activeOrg.currency, "INR"), getStr(activeOrg.timeZone, "Asia/Kolkata")].filter(Boolean).join(" • ") || "—"}
                     </span>
                   </div>
@@ -904,7 +874,7 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
             </Col>
           </Row>
 
-          <Row className="g-3 mb-3">
+          <Row className="g-4 mb-4">
             {/* Card 3: Contact & Headquarters Location */}
             <Col lg={6}>
               <div className="org-bento-card h-100">
@@ -920,23 +890,24 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                   </div>
                 </div>
 
-                <div className="org-bento-list">
+                <div className="org-data-grid">
                   {getStr(activeOrg.contactPersonName) && (
-                    <div className="org-bento-row">
-                      <span className="org-bento-label d-flex align-items-center gap-1">
+                    <div className="org-data-tile col-span-2">
+                      <span className="org-tile-label d-flex align-items-center gap-1">
                         <FaUserTie className="text-primary" size={12} /> Authorized Signatory
                       </span>
-                      <span className="org-bento-val fw-semibold">
+                      <span className="org-tile-val fw-semibold">
                         {getStr(activeOrg.contactPersonName)}
                         {getStr(activeOrg.contactPersonDesignation) ? ` (${getStr(activeOrg.contactPersonDesignation)})` : ""}
                       </span>
                     </div>
                   )}
-                  <div className="org-bento-row">
-                    <span className="org-bento-label d-flex align-items-center gap-1">
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label d-flex align-items-center gap-1">
                       <FaEnvelope className="text-muted" size={12} /> Official Email
                     </span>
-                    <span className="org-bento-val text-truncate" style={{ maxWidth: "240px" }}>
+                    <span className="org-tile-val text-truncate" style={{ maxWidth: "220px" }}>
                       {getStr(activeOrg.email || activeOrg.officialEmail || activeOrg.contactEmail) ? (
                         <a href={`mailto:${getStr(activeOrg.email || activeOrg.officialEmail || activeOrg.contactEmail)}`} className="text-primary text-decoration-none">
                           {getStr(activeOrg.email || activeOrg.officialEmail || activeOrg.contactEmail)}
@@ -946,19 +917,21 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                       )}
                     </span>
                   </div>
-                  <div className="org-bento-row">
-                    <span className="org-bento-label d-flex align-items-center gap-1">
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label d-flex align-items-center gap-1">
                       <FaPhoneAlt className="text-muted" size={12} /> Contact Phone
                     </span>
-                    <span className="org-bento-val">
+                    <span className="org-tile-val">
                       {[getStr(activeOrg.phone || activeOrg.phoneNumber || activeOrg.contactPhone), getStr(activeOrg.altPhone)].filter(Boolean).join(" / ") || "—"}
                     </span>
                   </div>
-                  <div className="org-bento-row">
-                    <span className="org-bento-label d-flex align-items-center gap-1">
+
+                  <div className="org-data-tile col-span-2">
+                    <span className="org-tile-label d-flex align-items-center gap-1">
                       <FaGlobe className="text-muted" size={12} /> Official Website
                     </span>
-                    <span className="org-bento-val text-truncate" style={{ maxWidth: "240px" }}>
+                    <span className="org-tile-val text-truncate">
                       {getStr(activeOrg.website || activeOrg.websiteUrl || activeOrg.url) ? (
                         <a
                           href={getStr(activeOrg.website || activeOrg.websiteUrl || activeOrg.url).startsWith("http") ? getStr(activeOrg.website || activeOrg.websiteUrl || activeOrg.url) : `https://${getStr(activeOrg.website || activeOrg.websiteUrl || activeOrg.url)}`}
@@ -974,21 +947,24 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                       )}
                     </span>
                   </div>
-                  <div className="org-bento-row">
-                    <span className="org-bento-label">Street Address</span>
-                    <span className="org-bento-val">
+
+                  <div className="org-data-tile col-span-2">
+                    <span className="org-tile-label">Street Address</span>
+                    <span className="org-tile-val">
                       {[getStr(activeOrg.address), getStr(activeOrg.addressLine2), getStr(activeOrg.landmark)].filter(Boolean).join(", ") || "—"}
                     </span>
                   </div>
-                  <div className="org-bento-row">
-                    <span className="org-bento-label">City / State</span>
-                    <span className="org-bento-val">
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">City / State</span>
+                    <span className="org-tile-val">
                       {[getStr(activeOrg.city), getStr(activeOrg.state)].filter(Boolean).join(", ") || "—"}
                     </span>
                   </div>
-                  <div className="org-bento-row">
-                    <span className="org-bento-label">Country & PIN</span>
-                    <span className="org-bento-val">
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">Country & PIN</span>
+                    <span className="org-tile-val">
                       {[getStr(activeOrg.country || "India"), getStr(activeOrg.pincode)].filter(Boolean).join(" - ") || "—"}
                     </span>
                   </div>

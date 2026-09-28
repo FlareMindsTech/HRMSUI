@@ -30,6 +30,7 @@ import {
   FaUserPlus,
   FaBuilding,
   FaArrowLeft,
+  FaArrowRight,
   FaCalendarAlt,
   FaSitemap,
   FaCalendarWeek,
@@ -46,6 +47,10 @@ import {
   FaGlobe,
   FaMailBulk,
   FaExclamationTriangle,
+  FaThLarge,
+  FaList,
+  FaSyncAlt,
+  FaShieldAlt,
 } from "react-icons/fa";
 import {
   fetchBranches,
@@ -64,6 +69,7 @@ import { useSelector } from 'react-redux';
 import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import { useBranch } from "../../context/BranchContext";
 import "../../Pages/Dashboard/HrOnboarding.css";
+import "./BranchesSection.css";
 
 // Import child sub-modules for Branch Detail page tabs
 import DepartmentsSection from "./DepartmentsSection";
@@ -89,7 +95,7 @@ const BRANCH_TYPES = [
 ];
 
 export default function BranchesSection({ onSelectBranch = null, onToggleFullView = null }) {
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const { hasPermission, isSystemAdmin } = useAuth();
   const { organization, refreshBranches } = useBranch();
   const [branches, setBranches] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -102,6 +108,7 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'table'
 
   // Search & Filters
   const [search, setSearch] = useState("");
@@ -1312,560 +1319,1052 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
   }
 
   // =========================================================================
-  // VIEW 2: BRANCH DETAIL VIEW (When a user clicks on a branch)
+  // VIEW 2: ENTERPRISE BRANCH DETAIL HUB (Drilldown)
   // =========================================================================
   if (selectedBranchDetail) {
     const b = selectedBranchDetail;
     const lockedBId = b._id || b.id;
     const branchMembers = getBranchMembers(lockedBId);
-    const headObj = employees.find((e) => String(e._id || e.id) === String(b.branchHeadId?._id || b.branchHeadId));
+    const headObj = employees.find(
+      (e) => String(e._id || e.id) === String(b.branchHeadId?._id || b.branchHeadId)
+    );
+    const managerName = headObj ? (headObj.fullName || `${headObj.firstName} ${headObj.lastName || ""}`) : null;
+    const managerInitials = managerName
+      ? managerName.split(" ").map((n) => n[0]).filter(Boolean).slice(0, 2).join("").toUpperCase()
+      : "BM";
+
+    const detailTabsList = [
+      { key: "overview", label: "Overview", icon: FaBuilding },
+      { key: "departments", label: "Departments", icon: FaSitemap },
+      { key: "designations", label: "Designations", icon: FaUserTie },
+      { key: "teams", label: "Teams", icon: FaUsers },
+      { key: "locations", label: "Locations", icon: FaMapMarkerAlt },
+      { key: "reporting", label: "Reporting", icon: FaSitemap },
+      { key: "job-grades", label: "Job Grades", icon: FaShieldAlt },
+      { key: "cost-centers", label: "Cost Centers", icon: FaBuilding },
+      { key: "work-calendars", label: "Work Calendar", icon: FaCalendarWeek },
+      { key: "shifts", label: "Shifts", icon: FaClock },
+      { key: "holidays", label: "Holidays", icon: FaUmbrellaBeach },
+      { key: "financial-years", label: "Financial Year", icon: FaCalendarAlt },
+      { key: "settings", label: "Branch Settings", icon: FaCog },
+    ];
 
     return (
-      <div className="branch-detail-view">
-        {/* ── Top Back Button & Branch Banner ── */}
-        <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-          <Button
-            variant="outline-secondary"
-            size="sm"
-            className="d-flex align-items-center gap-1 fw-semibold"
+      <div className="branch-detail-workspace">
+        {/* ── 1. Top Action Bar & Navigation ── */}
+        <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+          <button
+            type="button"
+            className="branches-btn-secondary"
             onClick={() => setSelectedBranchDetail(null)}
           >
             <FaArrowLeft /> Back to All Branches
-          </Button>
+          </button>
 
-          <div className="d-flex align-items-center gap-2">
+          <div className="d-flex align-items-center gap-2 flex-wrap">
             {canUpdate && (
-              <Button
-                variant="outline-primary"
-                size="sm"
-                className="d-flex align-items-center gap-1 fw-semibold"
-                onClick={() => handleOpenEditBranch(b)}
-              >
-                <FaEdit /> Edit Branch
-              </Button>
-            )}
-            {canUpdate && (
-              <Button
-                variant="outline-success"
-                size="sm"
-                className="d-flex align-items-center gap-1 fw-semibold"
+              <button
+                type="button"
+                className="branches-btn-add"
                 onClick={() => handleOpenAssignModal(b)}
               >
                 <FaUserPlus /> Manage Staff ({branchMembers.length})
-              </Button>
+              </button>
+            )}
+            {canUpdate && (
+              <button
+                type="button"
+                className="branches-btn-secondary"
+                onClick={() => handleOpenEditBranch(b)}
+              >
+                <FaEdit /> Edit Branch
+              </button>
             )}
             {canDelete && (
-              <Button
-                variant="outline-danger"
-                size="sm"
+              <button
+                type="button"
+                className="branches-btn-secondary"
+                style={{ color: "#dc2626", borderColor: "#fecaca" }}
                 onClick={() => {
                   setDeactivatingBranch(b);
                   setShowDeactivateModal(true);
                 }}
               >
-                Deactivate
-              </Button>
+                <FaTrash /> Deactivate
+              </button>
             )}
           </div>
         </div>
 
-        {/* ── Branch Header Card ── */}
-        <Card className="border shadow-sm mb-4 bg-white">
-          <Card.Body className="p-4">
-            <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
-              <div className="d-flex align-items-center gap-3">
-                <div
-                  style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: 14,
-                    background: "var(--primary-gradient)",
-                    color: "#fff",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "1.6rem",
-                    flexShrink: 0,
-                  }}
-                >
-                  <FaCodeBranch />
-                </div>
-                <div>
-                  <div className="d-flex align-items-center gap-2 flex-wrap">
-                    <h4 className="fw-bold text-dark mb-0">{b.branchName}</h4>
-                    <Badge bg={b.status === "ACTIVE" ? "success" : "secondary"}>
-                      {b.status || "ACTIVE"}
-                    </Badge>
-                    <Badge bg="light" text="dark" className="border">
-                      {b.branchType?.replace("_", " ") || "BRANCH"}
-                    </Badge>
-                  </div>
-                  <div className="d-flex align-items-center gap-3 mt-1 text-muted small flex-wrap">
-                    <span className="font-monospace fw-semibold text-secondary">Code: {b.branchCode}</span>
-                    <span>•</span>
-                    <span className="d-flex align-items-center gap-1">
-                      <FaMapMarkerAlt className="text-danger" /> {[b.city, b.state, b.country].filter(Boolean).join(", ")}
-                    </span>
-                    {headObj && (
-                      <>
-                        <span>•</span>
-                        <span className="d-flex align-items-center gap-1">
-                          <FaUserTie className="text-primary" /> Manager: {headObj.fullName || `${headObj.firstName} ${headObj.lastName || ""}`}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
+        {/* ── 2. Executive Hero Banner Card ── */}
+        <div className="branch-detail-hero-card">
+          <div className="branch-detail-hero-glow" />
+          <div className="branch-detail-hero-header">
+            <div className="d-flex align-items-center gap-3">
+              <div className="branch-detail-avatar">
+                <FaBuilding />
               </div>
+              <div>
+                <div className="branch-detail-title-row">
+                  <h3 className="branch-detail-main-name">{b.branchName}</h3>
+                  <span
+                    className={`branch-status-indicator ${
+                      b.status === "ACTIVE" ? "active" : "inactive"
+                    }`}
+                  >
+                    <span
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: "50%",
+                        background: b.status === "ACTIVE" ? "#10b981" : "#94a3b8",
+                        display: "inline-block",
+                        flexShrink: 0,
+                      }}
+                    />
+                    {b.status || "ACTIVE"}
+                  </span>
+                  <span className="branch-type-pill">
+                    {b.branchType?.replace(/_/g, " ") || "BRANCH"}
+                  </span>
+                </div>
 
-              {/* Branch Locked Scope Badge */}
-              <div className="p-2 px-3 bg-light rounded border text-end">
-                <div className="small fw-semibold text-secondary">Scoped Branch ID</div>
-                <div className="font-monospace small text-dark fw-bold">{lockedBId}</div>
+                <div className="branch-detail-meta-row">
+                  <span className="branch-code-badge">CODE: {b.branchCode}</span>
+                  <span>•</span>
+                  <span className="d-flex align-items-center gap-1">
+                    <FaMapMarkerAlt className="text-danger" />
+                    {[b.address, b.city, b.state, b.country].filter(Boolean).join(", ")}
+                  </span>
+                  {managerName && (
+                    <>
+                      <span>•</span>
+                      <span className="d-flex align-items-center gap-1">
+                        <FaUserTie className="text-primary" /> Head: {managerName}
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
-          </Card.Body>
-        </Card>
 
-        {/* ── Compact Top Overview Cards ── */}
-        <Row className="g-3 mb-4">
-          <Col xs={6} md={3}>
-            <Card className="border shadow-sm text-center py-3 bg-white">
-              <div className="small text-muted fw-semibold">Branch Employees</div>
-              <div className="fs-3 fw-bold text-dark mt-1">{branchMembers.length}</div>
-            </Card>
-          </Col>
-          <Col xs={6} md={3}>
-            <Card className="border shadow-sm text-center py-3 bg-white">
-              <div className="small text-muted fw-semibold">Geofence Perimeter</div>
-              <div className="fs-3 fw-bold text-dark mt-1">{b.officeRadiusMeters || 200}m</div>
-            </Card>
-          </Col>
-          <Col xs={6} md={3}>
-            <Card className="border shadow-sm text-center py-3 bg-white">
-              <div className="small text-muted fw-semibold">Time Zone</div>
-              <div className="fs-6 fw-bold text-dark mt-2 text-truncate">{b.timeZone || "Asia/Kolkata"}</div>
-            </Card>
-          </Col>
-          <Col xs={6} md={3}>
-            <Card className="border shadow-sm text-center py-3 bg-white">
-              <div className="small text-muted fw-semibold">Operating Status</div>
-              <div className="fs-6 fw-bold text-success mt-2">{b.status || "ACTIVE"}</div>
-            </Card>
-          </Col>
-        </Row>
+            <div className="branch-scope-badge">
+              <div className="branch-scope-label">Scoped Branch ID</div>
+              <div className="branch-scope-val">{lockedBId}</div>
+            </div>
+          </div>
+        </div>
 
-        {/* ── Child Navigation Tabs (Locked to this exact branch!) ── */}
-        <Tab.Container activeKey={detailActiveTab} onSelect={(k) => setDetailActiveTab(k || "overview")}>
-          <Nav variant="tabs" className="mb-4 bg-white p-2 rounded border shadow-sm flex-nowrap overflow-auto no-scrollbar">
-            <Nav.Item>
-              <Nav.Link eventKey="overview" className="fw-semibold text-nowrap">Overview</Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link eventKey="departments" className="fw-semibold text-nowrap">Departments</Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link eventKey="designations" className="fw-semibold text-nowrap">Designations</Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link eventKey="teams" className="fw-semibold text-nowrap">Teams</Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link eventKey="locations" className="fw-semibold text-nowrap">Locations</Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link eventKey="reporting" className="fw-semibold text-nowrap">Reporting</Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link eventKey="job-grades" className="fw-semibold text-nowrap">Job Grades</Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link eventKey="cost-centers" className="fw-semibold text-nowrap">Cost Centers</Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link eventKey="work-calendars" className="fw-semibold text-nowrap">Work Calendar</Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link eventKey="shifts" className="fw-semibold text-nowrap">Shifts</Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link eventKey="holidays" className="fw-semibold text-nowrap">Holidays</Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link eventKey="financial-years" className="fw-semibold text-nowrap">Financial Year</Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link eventKey="settings" className="fw-semibold text-nowrap">Branch Settings</Nav.Link>
-            </Nav.Item>
-          </Nav>
+        {/* ── 3. KPI Summary Metric Cards ── */}
+        <div className="branches-kpi-grid">
+          <div className="branches-kpi-card">
+            <div className="branches-kpi-icon-box blue">
+              <FaUsers />
+            </div>
+            <div className="branches-kpi-info">
+              <div className="branches-kpi-label">Branch Workforce</div>
+              <div className="branches-kpi-value">{branchMembers.length}</div>
+              <div className="branches-kpi-subtext">Assigned personnel</div>
+            </div>
+          </div>
 
-          <Tab.Content>
-            {/* Tab: Overview */}
-            <Tab.Pane eventKey="overview">
+          <div className="branches-kpi-card">
+            <div className="branches-kpi-icon-box emerald">
+              <FaCrosshairs />
+            </div>
+            <div className="branches-kpi-info">
+              <div className="branches-kpi-label">Geofence Perimeter</div>
+              <div className="branches-kpi-value">{b.officeRadiusMeters || 200}m</div>
+              <div className="branches-kpi-subtext">GPS attendance radius</div>
+            </div>
+          </div>
+
+          <div className="branches-kpi-card">
+            <div className="branches-kpi-icon-box purple">
+              <FaClock />
+            </div>
+            <div className="branches-kpi-info">
+              <div className="branches-kpi-label">Time Zone</div>
+              <div className="branches-kpi-value" style={{ fontSize: 16 }}>{b.timeZone || "Asia/Kolkata"}</div>
+              <div className="branches-kpi-subtext">Operating timezone</div>
+            </div>
+          </div>
+
+          <div className="branches-kpi-card">
+            <div className="branches-kpi-icon-box gold">
+              <FaBuilding />
+            </div>
+            <div className="branches-kpi-info">
+              <div className="branches-kpi-label">Operating Status</div>
+              <div className="branches-kpi-value" style={{ color: b.status === "ACTIVE" ? "#059669" : "#64748b" }}>
+                {b.status || "ACTIVE"}
+              </div>
+              <div className="branches-kpi-subtext">Branch lifecycle</div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── 4. Category Navigation Tabs (Pill Style) ── */}
+        <div className="branch-category-pills-bar">
+          {detailTabsList.map((tab) => {
+            const TabIcon = tab.icon;
+            const isActive = detailActiveTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                className={`branch-pill-tab ${isActive ? "active" : ""}`}
+                onClick={() => setDetailActiveTab(tab.key)}
+              >
+                <TabIcon />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── 5. Tab Content Panes ── */}
+        <div>
+          {detailActiveTab === "overview" && (
+            <div className="d-flex flex-column gap-4">
+              {/* ── ROW 1: Facility Profile & GPS Geofence Radar ── */}
               <Row className="g-4">
-                <Col md={6}>
-                  <Card className="border shadow-sm h-100 bg-white">
-                    <Card.Header className="bg-white border-bottom py-3">
-                      <h6 className="fw-bold mb-0 text-dark">Branch Identification & Address</h6>
-                    </Card.Header>
-                    <Card.Body className="p-3">
-                      <div className="d-flex flex-column gap-2">
-                        <div className="d-flex justify-content-between py-1 border-bottom">
-                          <span className="text-muted small">Branch Name:</span>
-                          <span className="fw-semibold text-dark">{b.branchName}</span>
+                {/* ── Card 1: Facility Profile & Address ── */}
+                <Col lg={6}>
+                  <div className="branch-info-card">
+                    <div className="branch-info-card-header">
+                      <h5 className="branch-info-card-title">
+                        <FaBuilding className="text-warning" /> Facility Identity & Physical Workplace
+                      </h5>
+                      <span className="branch-type-pill">
+                        {b.branchType?.replace(/_/g, " ") || "Branch Office"}
+                      </span>
+                    </div>
+
+                    <div className="branch-info-card-body">
+                      {/* Address Banner */}
+                      <div className="branch-address-banner">
+                        <div className="branch-address-icon-box">
+                          <FaMapMarkerAlt />
                         </div>
-                        <div className="d-flex justify-content-between py-1 border-bottom">
-                          <span className="text-muted small">Branch Code:</span>
-                          <span className="font-monospace fw-bold text-dark">{b.branchCode}</span>
-                        </div>
-                        <div className="d-flex justify-content-between py-1 border-bottom">
-                          <span className="text-muted small">Physical Address:</span>
-                          <span className="text-dark">{b.address || "—"}</span>
-                        </div>
-                        <div className="d-flex justify-content-between py-1 border-bottom">
-                          <span className="text-muted small">City / State:</span>
-                          <span className="text-dark">{[b.city, b.state].filter(Boolean).join(", ") || "—"}</span>
-                        </div>
-                        <div className="d-flex justify-content-between py-1">
-                          <span className="text-muted small">PIN / Postal Code:</span>
-                          <span className="font-monospace text-dark">{b.pincode || "—"}</span>
+                        <div className="branch-address-details">
+                          <div className="branch-address-label">Physical Office Location</div>
+                          <p className="branch-address-text">
+                            {[b.address, b.city, b.state, b.pincode, b.country].filter(Boolean).join(", ") || "Address not provided"}
+                          </p>
                         </div>
                       </div>
-                    </Card.Body>
-                  </Card>
+
+                      {/* Micro-Tiles Grid */}
+                      <div className="branch-tiles-grid">
+                        <div className="branch-field-tile">
+                          <span className="branch-field-tile-label">
+                            <FaBarcode size={10} className="text-muted" /> Branch Code
+                          </span>
+                          <span className="branch-field-tile-val mono">{b.branchCode}</span>
+                        </div>
+
+                        <div className="branch-field-tile">
+                          <span className="branch-field-tile-label">
+                            <FaCity size={10} className="text-muted" /> City / District
+                          </span>
+                          <span className="branch-field-tile-val">{b.city || "—"}</span>
+                        </div>
+
+                        <div className="branch-field-tile">
+                          <span className="branch-field-tile-label">
+                            <FaGlobe size={10} className="text-muted" /> State & Country
+                          </span>
+                          <span className="branch-field-tile-val">{[b.state, b.country || "India"].filter(Boolean).join(", ")}</span>
+                        </div>
+
+                        <div className="branch-field-tile">
+                          <span className="branch-field-tile-label">
+                            <FaMailBulk size={10} className="text-muted" /> Postal PIN
+                          </span>
+                          <span className="branch-field-tile-val mono">{b.pincode || "—"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </Col>
 
-                <Col md={6}>
-                  <Card className="border shadow-sm h-100 bg-white">
-                    <Card.Header className="bg-white border-bottom py-3">
-                      <h6 className="fw-bold mb-0 text-dark">Attendance & Coordinates</h6>
-                    </Card.Header>
-                    <Card.Body className="p-3">
-                      <div className="d-flex flex-column gap-2">
-                        <div className="d-flex justify-content-between py-1 border-bottom">
-                          <span className="text-muted small">GPS Coordinates:</span>
-                          <span className="font-monospace text-dark">
-                            {b.latitude && b.longitude ? `${b.latitude}, ${b.longitude}` : "Not Set"}
+                {/* ── Card 2: GPS Attendance Radar & Mobile Geofence ── */}
+                <Col lg={6}>
+                  <div className="branch-info-card">
+                    <div className="branch-info-card-header">
+                      <h5 className="branch-info-card-title">
+                        <FaCrosshairs className="text-success" /> Attendance & Mobile GPS Geofencing
+                      </h5>
+                      <span className="branch-code-badge font-monospace">
+                        {b.timeZone || "Asia/Kolkata"}
+                      </span>
+                    </div>
+
+                    <div className="branch-info-card-body">
+                      {/* Radar Hero Box */}
+                      <div className="branch-radar-hero-box">
+                        <div className="branch-radar-visual">
+                          <div className="branch-radar-inner-ring">
+                            <FaCrosshairs className="branch-radar-center-beacon" />
+                          </div>
+                        </div>
+                        <div className="branch-radar-info">
+                          <div className="d-flex align-items-center gap-2 mb-1">
+                            <h5 className="branch-radar-title mb-0">GPS Attendance Perimeter</h5>
+                            <span className={`badge ${b.latitude && b.longitude ? "bg-success" : "bg-warning text-dark"}`}>
+                              {b.latitude && b.longitude ? "Active Geofence" : "Pending GPS"}
+                            </span>
+                          </div>
+                          <p className="branch-radar-subtext">
+                            Mobile attendance punches are verified within a <strong>{b.officeRadiusMeters || 200}m</strong> radius around this facility coordinates.
+                          </p>
+                          <div className="branch-coords-pill">
+                            <FaMapMarkerAlt size={11} className="text-danger" />
+                            {b.latitude && b.longitude ? `${b.latitude}, ${b.longitude}` : "Coordinates Unset"}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Micro-Tiles Grid */}
+                      <div className="branch-tiles-grid">
+                        <div className="branch-field-tile">
+                          <span className="branch-field-tile-label">
+                            <FaCrosshairs size={10} className="text-success" /> Radius Perimeter
+                          </span>
+                          <span className="branch-field-tile-val text-success fw-bold">
+                            {b.officeRadiusMeters || 200} Meters
                           </span>
                         </div>
-                        <div className="d-flex justify-content-between py-1 border-bottom">
-                          <span className="text-muted small">Geofence Radius:</span>
-                          <span className="fw-semibold text-dark">{b.officeRadiusMeters || 200} Meters</span>
+
+                        <div className="branch-field-tile">
+                          <span className="branch-field-tile-label">
+                            <FaClock size={10} className="text-muted" /> Time Zone
+                          </span>
+                          <span className="branch-field-tile-val mono">{b.timeZone || "Asia/Kolkata"}</span>
                         </div>
-                        <div className="d-flex justify-content-between py-1 border-bottom">
-                          <span className="text-muted small">Branch Email:</span>
-                          <span className="text-dark">{b.email || "—"}</span>
+
+                        <div className="branch-field-tile">
+                          <span className="branch-field-tile-label">
+                            <FaEnvelope size={10} className="text-muted" /> Branch Email
+                          </span>
+                          <span className="branch-field-tile-val text-truncate">{b.email || "—"}</span>
                         </div>
-                        <div className="d-flex justify-content-between py-1">
-                          <span className="text-muted small">Branch Phone:</span>
-                          <span className="text-dark">{b.phone || "—"}</span>
+
+                        <div className="branch-field-tile">
+                          <span className="branch-field-tile-label">
+                            <FaPhoneAlt size={10} className="text-muted" /> Phone Contact
+                          </span>
+                          <span className="branch-field-tile-val">{b.phone || "—"}</span>
                         </div>
                       </div>
-                    </Card.Body>
-                  </Card>
+                    </div>
+                  </div>
                 </Col>
               </Row>
-            </Tab.Pane>
 
-            {/* Child Tab Panes with lockedBranchId prop! */}
-            <Tab.Pane eventKey="departments">
-              <DepartmentsSection lockedBranchId={lockedBId} />
-            </Tab.Pane>
-            <Tab.Pane eventKey="designations">
-              <DesignationsSection lockedBranchId={lockedBId} />
-            </Tab.Pane>
-            <Tab.Pane eventKey="teams">
-              <TeamsSection lockedBranchId={lockedBId} />
-            </Tab.Pane>
-            <Tab.Pane eventKey="locations">
-              <LocationsSection lockedBranchId={lockedBId} />
-            </Tab.Pane>
-            <Tab.Pane eventKey="reporting">
-              <ReportingHierarchySection lockedBranchId={lockedBId} />
-            </Tab.Pane>
-            <Tab.Pane eventKey="job-grades">
-              <JobGradesSection lockedBranchId={lockedBId} />
-            </Tab.Pane>
-            <Tab.Pane eventKey="cost-centers">
-              <CostCentersSection lockedBranchId={lockedBId} />
-            </Tab.Pane>
-            <Tab.Pane eventKey="work-calendars">
-              <WorkCalendarsSection lockedBranchId={lockedBId} />
-            </Tab.Pane>
-            <Tab.Pane eventKey="shifts">
-              <ShiftsSection lockedBranchId={lockedBId} />
-            </Tab.Pane>
-            <Tab.Pane eventKey="holidays">
-              <HolidayCalendarsSection lockedBranchId={lockedBId} />
-            </Tab.Pane>
-            <Tab.Pane eventKey="financial-years">
-              <FinancialYearsSection lockedBranchId={lockedBId} />
-            </Tab.Pane>
-            <Tab.Pane eventKey="settings">
-              <BranchSettingsSection lockedBranchId={lockedBId} />
-            </Tab.Pane>
-          </Tab.Content>
-        </Tab.Container>
+              {/* ── ROW 2: Leadership Spotlight & Operational Work Schedules ── */}
+              <Row className="g-4">
+                {/* ── Card 3: Branch Leadership & Quick Contacts ── */}
+                <Col lg={6}>
+                  <div className="branch-info-card">
+                    <div className="branch-info-card-header">
+                      <h5 className="branch-info-card-title">
+                        <FaUserTie className="text-primary" /> Branch Leadership & Communication
+                      </h5>
+                    </div>
+
+                    <div className="branch-info-card-body">
+                      <div className="branch-manager-spotlight-box">
+                        <div className="branch-manager-spotlight-left">
+                          <div className="branch-manager-spotlight-avatar">
+                            {managerInitials}
+                          </div>
+                          <div>
+                            <h5 className="branch-manager-spotlight-name">
+                              {managerName || "Designated Branch Head"}
+                            </h5>
+                            <div className="branch-manager-spotlight-role">
+                              {headObj?.designation || "Branch Director / Managing Head"}
+                            </div>
+                          </div>
+                        </div>
+
+                        {!managerName && canUpdate && (
+                          <button
+                            type="button"
+                            className="branches-btn-secondary"
+                            onClick={() => handleOpenEditBranch(b)}
+                          >
+                            <FaEdit /> Assign Head
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="branch-contact-chips-row">
+                        {b.email && (
+                          <a href={`mailto:${b.email}`} className="branch-contact-chip">
+                            <FaEnvelope className="text-primary" /> {b.email}
+                          </a>
+                        )}
+                        {b.phone && (
+                          <a href={`tel:${b.phone}`} className="branch-contact-chip">
+                            <FaPhoneAlt className="text-success" /> {b.phone}
+                          </a>
+                        )}
+                        {headObj?.email && (
+                          <a href={`mailto:${headObj.email}`} className="branch-contact-chip">
+                            <FaUserTie className="text-warning" /> Manager: {headObj.email}
+                          </a>
+                        )}
+                        {!b.email && !b.phone && (
+                          <span className="text-muted small">
+                            No direct phone or email contact lines configured for this facility.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Col>
+
+                {/* ── Card 4: Operational Workplace Policies & Shifts ── */}
+                <Col lg={6}>
+                  <div className="branch-info-card">
+                    <div className="branch-info-card-header">
+                      <h5 className="branch-info-card-title">
+                        <FaCalendarWeek className="text-purple" /> Operational Defaults & Schedule
+                      </h5>
+                      <span className="branch-status-indicator active">
+                        ● Synced
+                      </span>
+                    </div>
+
+                    <div className="branch-info-card-body">
+                      <div className="branch-schedules-grid">
+                        <div className="branch-schedule-card">
+                          <div className="branch-schedule-icon shift">
+                            <FaClock />
+                          </div>
+                          <div>
+                            <div className="branch-schedule-label">Operating Shift</div>
+                            <div className="branch-schedule-value">Standard General</div>
+                          </div>
+                        </div>
+
+                        <div className="branch-schedule-card">
+                          <div className="branch-schedule-icon cal">
+                            <FaCalendarWeek />
+                          </div>
+                          <div>
+                            <div className="branch-schedule-label">Work Calendar</div>
+                            <div className="branch-schedule-value">5-Day Week (Mon-Fri)</div>
+                          </div>
+                        </div>
+
+                        <div className="branch-schedule-card">
+                          <div className="branch-schedule-icon hol">
+                            <FaUmbrellaBeach />
+                          </div>
+                          <div>
+                            <div className="branch-schedule-label">Holiday Schedule</div>
+                            <div className="branch-schedule-value">State Holidays</div>
+                          </div>
+                        </div>
+
+                        <div className="branch-schedule-card">
+                          <div className="branch-schedule-icon fy">
+                            <FaCalendarAlt />
+                          </div>
+                          <div>
+                            <div className="branch-schedule-label">Financial Year</div>
+                            <div className="branch-schedule-value">FY 2026 - 2027</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+            </div>
+          )}
+
+          {/* Child Sub-Modules Scoped to Branch */}
+          {detailActiveTab === "departments" && <DepartmentsSection lockedBranchId={lockedBId} />}
+          {detailActiveTab === "designations" && <DesignationsSection lockedBranchId={lockedBId} />}
+          {detailActiveTab === "teams" && <TeamsSection lockedBranchId={lockedBId} />}
+          {detailActiveTab === "locations" && <LocationsSection lockedBranchId={lockedBId} />}
+          {detailActiveTab === "reporting" && <ReportingHierarchySection lockedBranchId={lockedBId} />}
+          {detailActiveTab === "job-grades" && <JobGradesSection lockedBranchId={lockedBId} />}
+          {detailActiveTab === "cost-centers" && <CostCentersSection lockedBranchId={lockedBId} />}
+          {detailActiveTab === "work-calendars" && <WorkCalendarsSection lockedBranchId={lockedBId} />}
+          {detailActiveTab === "shifts" && <ShiftsSection lockedBranchId={lockedBId} />}
+          {detailActiveTab === "holidays" && <HolidayCalendarsSection lockedBranchId={lockedBId} />}
+          {detailActiveTab === "financial-years" && <FinancialYearsSection lockedBranchId={lockedBId} />}
+          {detailActiveTab === "settings" && <BranchSettingsSection lockedBranchId={lockedBId} />}
+        </div>
       </div>
     );
   }
 
+  // Computed metrics for KPI stats cards
+  const totalBranchesCount = totalRecords || branches.length;
+  const activeBranchesCount = branches.filter((b) => b.status === "ACTIVE").length;
+  const inactiveBranchesCount = branches.filter((b) => b.status === "INACTIVE").length;
+  const totalStaffCount = onboardedStaff.length;
+  const geofencedBranchesCount = branches.filter((b) => b.latitude && b.longitude).length;
+  const citiesCount = cityOptions.length;
+
   // =========================================================================
-  // VIEW 1: BRANCH MANAGEMENT LIST / TABLE
+  // VIEW 1: ENTERPRISE BRANCH MANAGEMENT WORKSPACE
   // =========================================================================
   return (
-    <div className="branches-section">
-      {/* ── Section Header ── */}
-      <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+    <div className="branches-workspace">
+      {/* ── 1. Top Header Bar with Breadcrumb ── */}
+      <div className="branches-header-bar">
         <div>
-          <h3 className="fw-bold mb-1 d-flex align-items-center gap-2 text-dark">
-            <FaCodeBranch className="text-success" /> Branches
-          </h3>
-          <p className="text-muted small mb-0">
-            Manage locations and branch-specific organization structure.
+          <div className="branches-breadcrumbs">
+            {onBackToOrg ? (
+              <span className="branches-breadcrumb-link" onClick={onBackToOrg}>
+                Organization Hub
+              </span>
+            ) : (
+              <span>Organization</span>
+            )}
+            <span>/</span>
+            <span className="branches-breadcrumb-current">Branches Directory</span>
+          </div>
+
+          <div className="branches-header-title-wrap">
+            <h2 className="branches-main-title">Regional Branches</h2>
+            <span className="branches-count-pill">
+              <FaCodeBranch /> {totalBranchesCount} Total ({activeBranchesCount} Active)
+            </span>
+          </div>
+          <p className="branches-header-subtitle">
+            Configure regional office locations, physical workspaces, GPS geofencing perimeters, and branch leadership.
           </p>
         </div>
 
-        {canCreate && (
-          <Button
-            variant="success"
-            className="d-flex align-items-center gap-2 fw-semibold shadow-sm"
-            onClick={handleOpenAddBranch}
+        <div className="branches-header-actions">
+          <button
+            type="button"
+            className="branches-btn-secondary"
+            onClick={() => {
+              loadBranches();
+              loadAuxData();
+            }}
+            title="Refresh Branch Records"
           >
-            <FaPlus /> Add Branch
-          </Button>
-        )}
+            <FaSyncAlt className={loading ? "fa-spin" : ""} /> Refresh
+          </button>
+
+          {canCreate && (
+            <button
+              type="button"
+              className="branches-btn-add"
+              onClick={handleOpenAddBranch}
+            >
+              <FaPlus /> Add New Branch
+            </button>
+          )}
+        </div>
       </div>
 
-      {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
-      {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
-
-      {/* ── Search & Filter Toolbar ── */}
-      <Card className="border shadow-sm mb-4 bg-white">
-        <Card.Body className="p-3">
-          <Row className="g-3">
-            <Col md={4}>
-              <InputGroup>
-                <InputGroup.Text className="bg-white border-end-0">
-                  <FaSearch className="text-muted" />
-                </InputGroup.Text>
-                <Form.Control
-                  className="border-start-0 ps-0"
-                  placeholder="Search branch name, code, or city..."
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPage(1);
-                  }}
-                />
-              </InputGroup>
-            </Col>
-
-            <Col md={3}>
-              <Form.Select
-                value={filterType}
-                onChange={(e) => {
-                  setFilterType(e.target.value);
-                  setPage(1);
-                }}
-              >
-                <option value="">All Branch Types</option>
-                {BRANCH_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </Form.Select>
-            </Col>
-
-            <Col md={3}>
-              <Form.Select
-                value={filterCity}
-                onChange={(e) => {
-                  setFilterCity(e.target.value);
-                  setPage(1);
-                }}
-              >
-                <option value="">All Cities</option>
-                {cityOptions.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </Form.Select>
-            </Col>
-
-            <Col md={2}>
-              <Form.Select
-                value={filterStatus}
-                onChange={(e) => {
-                  setFilterStatus(e.target.value);
-                  setPage(1);
-                }}
-              >
-                <option value="">All Statuses</option>
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
-              </Form.Select>
-            </Col>
-          </Row>
-        </Card.Body>
-      </Card>
-
-      {/* ── Branches Table / Card View ── */}
-      <Card className="border shadow-sm bg-white">
-        <Card.Body className="p-0">
-          {loading ? (
-            <div className="text-center py-5">
-              <Spinner animation="border" variant="success" />
-              <p className="mt-3 text-muted">Loading branch records...</p>
+      {/* ── 2. KPI Summary Metric Cards ── */}
+      <div className="branches-kpi-grid">
+        <div className="branches-kpi-card">
+          <div className="branches-kpi-icon-box gold">
+            <FaBuilding />
+          </div>
+          <div className="branches-kpi-info">
+            <div className="branches-kpi-label">Active Facilities</div>
+            <div className="branches-kpi-value">{activeBranchesCount}</div>
+            <div className="branches-kpi-subtext">
+              {inactiveBranchesCount > 0 ? `${inactiveBranchesCount} Inactive` : "100% Operational"}
             </div>
-          ) : branches.length === 0 ? (
-            <div className="text-center py-5 p-4">
-              <FaBuilding className="text-muted fs-1 mb-3 opacity-50" />
-              <h5 className="fw-bold text-dark">No branches yet</h5>
-              <p className="text-muted small mb-3">
-                Create your first branch to start configuring your organization's HR structure.
-              </p>
-              {canCreate && (
-                <Button variant="success" size="sm" onClick={handleOpenAddBranch}>
-                  <FaPlus className="me-1" /> Add Branch
-                </Button>
-              )}
-            </div>
-          ) : (
-            <Table responsive hover className="align-middle mb-0">
-              <thead className="table-light text-secondary small">
-                <tr>
-                  <th className="ps-4">Branch Name</th>
-                  <th>Code</th>
-                  <th>Type</th>
-                  <th>City / Location</th>
-                  <th>Branch Manager</th>
-                  <th>Employees</th>
-                  <th>Status</th>
-                  <th className="text-end pe-4">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {branches.map((b) => {
-                  const bId = b._id || b.id;
-                  const membersCount = getBranchMembers(bId).length;
-                  const headObj = employees.find((e) => String(e._id || e.id) === String(b.branchHeadId?._id || b.branchHeadId));
+          </div>
+        </div>
 
-                  return (
-                    <tr key={bId}>
-                      <td className="ps-4">
-                        <div
-                          className="fw-bold text-dark d-flex align-items-center gap-2 text-decoration-none"
-                          role="button"
-                          onClick={() => setSelectedBranchDetail(b)}
-                        >
-                          <FaCodeBranch className="text-success" />
-                          <span className="text-primary">{b.branchName}</span>
-                        </div>
-                      </td>
+        <div className="branches-kpi-card">
+          <div className="branches-kpi-icon-box blue">
+            <FaUsers />
+          </div>
+          <div className="branches-kpi-info">
+            <div className="branches-kpi-label">Assigned Workforce</div>
+            <div className="branches-kpi-value">{totalStaffCount}</div>
+            <div className="branches-kpi-subtext">Across all locations</div>
+          </div>
+        </div>
 
-                      <td>
-                        <span className="font-monospace fw-bold text-secondary">{b.branchCode}</span>
-                      </td>
+        <div className="branches-kpi-card">
+          <div className="branches-kpi-icon-box emerald">
+            <FaCrosshairs />
+          </div>
+          <div className="branches-kpi-info">
+            <div className="branches-kpi-label">GPS Geofenced</div>
+            <div className="branches-kpi-value">{geofencedBranchesCount}</div>
+            <div className="branches-kpi-subtext">Mobile clock-in enabled</div>
+          </div>
+        </div>
 
-                      <td>
-                        <Badge bg="light" text="dark" className="border">
-                          {b.branchType?.replace("_", " ") || "BRANCH"}
-                        </Badge>
-                      </td>
+        <div className="branches-kpi-card">
+          <div className="branches-kpi-icon-box purple">
+            <FaCity />
+          </div>
+          <div className="branches-kpi-info">
+            <div className="branches-kpi-label">Cities & Regions</div>
+            <div className="branches-kpi-value">{citiesCount || 1}</div>
+            <div className="branches-kpi-subtext">Geographic coverage</div>
+          </div>
+        </div>
+      </div>
 
-                      <td>
-                        <span className="d-flex align-items-center gap-1 text-dark">
-                          <FaMapMarkerAlt className="text-danger small" />
-                          {[b.city, b.state].filter(Boolean).join(", ") || "—"}
-                        </span>
-                      </td>
+      {/* ── Alerts ── */}
+      {error && (
+        <Alert variant="danger" dismissible onClose={() => setError("")} className="mb-4 shadow-sm">
+          <div className="d-flex align-items-center gap-2">
+            <FaExclamationTriangle className="text-danger flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        </Alert>
+      )}
+      {success && (
+        <Alert variant="success" dismissible onClose={() => setSuccess("")} className="mb-4 shadow-sm">
+          <div className="d-flex align-items-center gap-2">
+            <FaCheckCircle className="text-success flex-shrink-0" />
+            <span>{success}</span>
+          </div>
+        </Alert>
+      )}
 
-                      <td>
-                        {headObj ? (
-                          <span className="d-flex align-items-center gap-1 text-dark">
-                            <FaUserTie className="text-primary small" />
-                            {headObj.fullName || `${headObj.firstName} ${headObj.lastName || ""}`}
-                          </span>
-                        ) : (
-                          <span className="text-muted small">—</span>
-                        )}
-                      </td>
+      {/* ── 3. Search & Filter Toolbar ── */}
+      <div className="branches-toolbar-card">
+        <div className="branches-toolbar-row">
+          <div className="branches-search-wrap">
+            <FaSearch className="branches-search-icon" />
+            <input
+              type="text"
+              className="branches-search-input"
+              placeholder="Search branch name, code, or city..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
 
-                      <td>
-                        <Badge bg="light" text="dark" className="border px-2 py-1">
-                          <FaUsers className="me-1 text-muted" /> {membersCount}
-                        </Badge>
-                      </td>
-
-                      <td>
-                        <Badge bg={b.status === "ACTIVE" ? "success" : "secondary"}>
-                          {b.status || "ACTIVE"}
-                        </Badge>
-                      </td>
-
-                      <td className="text-end pe-4">
-                        <div className="d-flex align-items-center justify-content-end gap-1">
-                          <Button
-                            variant="outline-primary"
-                            size="sm"
-                            className="p-1 px-2 d-flex align-items-center gap-1"
-                            onClick={() => setSelectedBranchDetail(b)}
-                            title="View Branch Overview & Child Structure"
-                          >
-                            <FaEye /> View
-                          </Button>
-
-                          {canUpdate && (
-                            <Button
-                              variant="outline-secondary"
-                              size="sm"
-                              className="p-1 px-2"
-                              onClick={() => handleOpenEditBranch(b)}
-                              title="Edit Branch Information"
-                            >
-                              <FaEdit />
-                            </Button>
-                          )}
-
-                          {canDelete && (
-                            <Button
-                              variant="outline-danger"
-                              size="sm"
-                              className="p-1 px-2"
-                              onClick={() => {
-                                setDeactivatingBranch(b);
-                                setShowDeactivateModal(true);
-                              }}
-                              title="Deactivate Branch"
-                            >
-                              <FaTrash />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </Table>
-          )}
-        </Card.Body>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <Card.Footer className="bg-white border-top py-2 d-flex justify-content-between align-items-center">
-            <span className="small text-muted">Showing page {page} of {totalPages} ({totalRecords} records)</span>
-            <Pagination size="sm" className="mb-0">
-              <Pagination.Prev disabled={page === 1} onClick={() => setPage((p) => p - 1)} />
-              {Array.from({ length: totalPages }).map((_, idx) => (
-                <Pagination.Item key={idx + 1} active={page === idx + 1} onClick={() => setPage(idx + 1)}>
-                  {idx + 1}
-                </Pagination.Item>
+          <div className="branches-filter-group">
+            <select
+              className="branches-filter-select"
+              value={filterType}
+              onChange={(e) => {
+                setFilterType(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All Branch Types</option>
+              {BRANCH_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
               ))}
-              <Pagination.Next disabled={page === totalPages} onClick={() => setPage((p) => p + 1)} />
-            </Pagination>
-          </Card.Footer>
-        )}
-      </Card>
+            </select>
+
+            <select
+              className="branches-filter-select"
+              value={filterCity}
+              onChange={(e) => {
+                setFilterCity(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All Cities ({cityOptions.length})</option>
+              {cityOptions.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+
+            <select
+              className="branches-filter-select"
+              value={filterStatus}
+              onChange={(e) => {
+                setFilterStatus(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All Statuses</option>
+              <option value="ACTIVE">Active Only</option>
+              <option value="INACTIVE">Inactive Only</option>
+            </select>
+
+            <div className="branches-view-toggle">
+              <button
+                type="button"
+                className={`branches-view-btn ${viewMode === "grid" ? "active" : ""}`}
+                onClick={() => setViewMode("grid")}
+                title="Grid Cards View"
+              >
+                <FaThLarge />
+              </button>
+              <button
+                type="button"
+                className={`branches-view-btn ${viewMode === "table" ? "active" : ""}`}
+                onClick={() => setViewMode("table")}
+                title="Table List View"
+              >
+                <FaList />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 4. Main Branches List / Cards ── */}
+      {loading ? (
+        <div className="text-center py-5 bg-white rounded-4 border shadow-sm my-3">
+          <Spinner animation="border" style={{ color: "#C49A55" }} />
+          <p className="mt-3 text-muted fw-semibold">Loading enterprise branch directory...</p>
+        </div>
+      ) : branches.length === 0 ? (
+        <div className="branches-empty-state">
+          <div className="branches-empty-icon">
+            <FaBuilding />
+          </div>
+          <h4 className="branches-empty-title">No Branches Found</h4>
+          <p className="branches-empty-text">
+            {search || filterType || filterCity || filterStatus
+              ? "No branches match your current search and filter criteria. Try resetting your filters."
+              : "Create your first regional branch facility to organize physical locations, geofenced mobile attendance, and departmental staff."}
+          </p>
+          {canCreate && (
+            <button
+              type="button"
+              className="branches-btn-add"
+              onClick={handleOpenAddBranch}
+            >
+              <FaPlus /> Add Your First Branch
+            </button>
+          )}
+        </div>
+      ) : viewMode === "grid" ? (
+        /* ── GRID CARDS VIEW ── */
+        <div className="branches-grid">
+          {branches.map((b) => {
+            const bId = b._id || b.id;
+            const membersCount = getBranchMembers(bId).length;
+            const headObj = employees.find(
+              (e) => String(e._id || e.id) === String(b.branchHeadId?._id || b.branchHeadId)
+            );
+            const managerName = headObj ? (headObj.fullName || `${headObj.firstName} ${headObj.lastName || ""}`) : null;
+            const managerInitials = managerName
+              ? managerName.split(" ").map((n) => n[0]).filter(Boolean).slice(0, 2).join("").toUpperCase()
+              : "BM";
+
+            return (
+              <div key={bId} className="branch-card">
+                {/* Header */}
+                <div className="branch-card-header">
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="branch-card-avatar">
+                      <FaBuilding />
+                    </div>
+                    <div className="branch-card-title-box">
+                      <h4
+                        className="branch-card-name"
+                        onClick={() => setSelectedBranchDetail(b)}
+                        title="Click to open full branch workspace"
+                      >
+                        {b.branchName}
+                      </h4>
+                      <div className="branch-card-meta">
+                        <span className="branch-code-badge">{b.branchCode}</span>
+                        <span className="branch-type-pill">
+                          {b.branchType?.replace(/_/g, " ") || "BRANCH"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`branch-status-indicator ${
+                      b.status === "ACTIVE" ? "active" : "inactive"
+                    }`}
+                  >
+                    <span
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: "50%",
+                        background: b.status === "ACTIVE" ? "#10b981" : "#94a3b8",
+                        display: "inline-block",
+                        flexShrink: 0,
+                      }}
+                    />
+                    {b.status || "ACTIVE"}
+                  </span>
+                </div>
+
+                {/* Body */}
+                <div className="branch-card-body">
+                  {/* Location & Address */}
+                  <div className="branch-info-row">
+                    <FaMapMarkerAlt className="branch-info-icon red" />
+                    <span className="text-truncate">
+                      {[b.address, b.city, b.state].filter(Boolean).join(", ") || "Address not provided"}
+                    </span>
+                  </div>
+
+                  {/* Manager */}
+                  {managerName ? (
+                    <div className="branch-manager-chip">
+                      <div className="branch-manager-avatar">{managerInitials}</div>
+                      <div>
+                        <div className="branch-manager-name">{managerName}</div>
+                        <div className="branch-manager-title">Branch Head / Director</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="branch-info-row text-muted">
+                      <FaUserTie className="branch-info-icon" />
+                      <span className="small">No designated manager assigned</span>
+                    </div>
+                  )}
+
+                  {/* Stats Strip */}
+                  <div className="branch-card-stats-strip">
+                    <div className="branch-stat-mini-item">
+                      <span className="branch-stat-mini-label">Staff Assigned</span>
+                      <span className="branch-stat-mini-value">
+                        <FaUsers className="me-1 text-muted" size={12} /> {membersCount} Team Members
+                      </span>
+                    </div>
+                    <div className="branch-stat-mini-item">
+                      <span className="branch-stat-mini-label">GPS Geofence</span>
+                      <span className="branch-stat-mini-value">
+                        <FaCrosshairs className="me-1 text-warning" size={12} />
+                        {b.latitude && b.longitude ? `${b.officeRadiusMeters || 200}m Radius` : "Unset"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Actions */}
+                <div className="branch-card-footer">
+                  <button
+                    type="button"
+                    className="branch-btn-hub"
+                    onClick={() => setSelectedBranchDetail(b)}
+                  >
+                    Open Branch Hub <FaArrowRight size={11} />
+                  </button>
+
+                  <div className="branch-card-action-group">
+                    {canUpdate && (
+                      <button
+                        type="button"
+                        className="branch-card-action-btn"
+                        onClick={() => handleOpenAssignModal(b)}
+                        title="Manage Staff Assignments"
+                      >
+                        <FaUserPlus />
+                      </button>
+                    )}
+
+                    {canUpdate && (
+                      <button
+                        type="button"
+                        className="branch-card-action-btn"
+                        onClick={() => handleOpenEditBranch(b)}
+                        title="Edit Branch Settings"
+                      >
+                        <FaEdit />
+                      </button>
+                    )}
+
+                    {canDelete && (
+                      <button
+                        type="button"
+                        className="branch-card-action-btn danger"
+                        onClick={() => {
+                          setDeactivatingBranch(b);
+                          setShowDeactivateModal(true);
+                        }}
+                        title="Deactivate Branch"
+                      >
+                        <FaTrash />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* ── TABLE LIST VIEW ── */
+        <div className="branches-table-card mb-4">
+          <Table responsive hover className="branches-table align-middle">
+            <thead>
+              <tr>
+                <th>Branch Facility</th>
+                <th>Branch Code</th>
+                <th>Type</th>
+                <th>Location / City</th>
+                <th>Branch Head</th>
+                <th>Staff</th>
+                <th>Status</th>
+                <th className="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {branches.map((b) => {
+                const bId = b._id || b.id;
+                const membersCount = getBranchMembers(bId).length;
+                const headObj = employees.find(
+                  (e) => String(e._id || e.id) === String(b.branchHeadId?._id || b.branchHeadId)
+                );
+                const managerName = headObj ? (headObj.fullName || `${headObj.firstName} ${headObj.lastName || ""}`) : null;
+
+                return (
+                  <tr key={bId}>
+                    <td>
+                      <div
+                        className="d-flex align-items-center gap-2 text-decoration-none fw-bold"
+                        style={{ cursor: "pointer" }}
+                        onClick={() => setSelectedBranchDetail(b)}
+                      >
+                        <div
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 8,
+                            background: "linear-gradient(135deg, #1C1D1D 0%, #2A2B2C 100%)",
+                            color: "#E2C278",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 14,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <FaBuilding />
+                        </div>
+                        <span className="text-dark hover-gold">{b.branchName}</span>
+                      </div>
+                    </td>
+
+                    <td>
+                      <span className="branch-code-badge">{b.branchCode}</span>
+                    </td>
+
+                    <td>
+                      <span className="branch-type-pill">
+                        {b.branchType?.replace(/_/g, " ") || "BRANCH"}
+                      </span>
+                    </td>
+
+                    <td>
+                      <span className="d-flex align-items-center gap-1">
+                        <FaMapMarkerAlt className="text-danger small" />
+                        {[b.city, b.state].filter(Boolean).join(", ") || "—"}
+                      </span>
+                    </td>
+
+                    <td>
+                      {managerName ? (
+                        <span className="d-flex align-items-center gap-1">
+                          <FaUserTie className="text-primary small" /> {managerName}
+                        </span>
+                      ) : (
+                        <span className="text-muted small">—</span>
+                      )}
+                    </td>
+
+                    <td>
+                      <Badge bg="light" text="dark" className="border px-2 py-1">
+                        <FaUsers className="me-1 text-muted" /> {membersCount}
+                      </Badge>
+                    </td>
+
+                    <td>
+                      <span
+                        className={`branch-status-indicator ${
+                          b.status === "ACTIVE" ? "active" : "inactive"
+                        }`}
+                      >
+                        {b.status || "ACTIVE"}
+                      </span>
+                    </td>
+
+                    <td className="text-end">
+                      <div className="d-flex align-items-center justify-content-end gap-1">
+                        <button
+                          type="button"
+                          className="branch-card-action-btn"
+                          onClick={() => setSelectedBranchDetail(b)}
+                          title="Open Branch Workspace"
+                        >
+                          <FaEye />
+                        </button>
+                        {canUpdate && (
+                          <button
+                            type="button"
+                            className="branch-card-action-btn"
+                            onClick={() => handleOpenAssignModal(b)}
+                            title="Manage Staff"
+                          >
+                            <FaUserPlus />
+                          </button>
+                        )}
+                        {canUpdate && (
+                          <button
+                            type="button"
+                            className="branch-card-action-btn"
+                            onClick={() => handleOpenEditBranch(b)}
+                            title="Edit Branch"
+                          >
+                            <FaEdit />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            type="button"
+                            className="branch-card-action-btn danger"
+                            onClick={() => {
+                              setDeactivatingBranch(b);
+                              setShowDeactivateModal(true);
+                            }}
+                            title="Deactivate Branch"
+                          >
+                            <FaTrash />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="d-flex justify-content-between align-items-center bg-white p-3 rounded-4 border shadow-sm mb-4">
+          <span className="small text-muted fw-semibold">
+            Showing page {page} of {totalPages} ({totalRecords} records)
+          </span>
+          <Pagination size="sm" className="mb-0">
+            <Pagination.Prev disabled={page === 1} onClick={() => setPage((p) => p - 1)} />
+            {Array.from({ length: totalPages }).map((_, idx) => (
+              <Pagination.Item key={idx + 1} active={page === idx + 1} onClick={() => setPage(idx + 1)}>
+                {idx + 1}
+              </Pagination.Item>
+            ))}
+            <Pagination.Next disabled={page === totalPages} onClick={() => setPage((p) => p + 1)} />
+          </Pagination>
+        </div>
+      )}
 
 
 
