@@ -32,6 +32,15 @@ export const fetchAuth = createAsyncThunk('auth/fetchAuth', async (_, { rejectWi
     const token = getAuthToken();
     if (!token) return rejectWithValue('No token');
     const data = await fetchAuthContext();
+    // Persist cache (previously done by AuthContext.loadAuthContext).
+    try {
+      if (data?.user) localStorage.setItem('user', JSON.stringify(data.user));
+      const tid =
+        data?.user?.tenantId || data?.user?.organizationId || data?.tenantId || data?.user?.tenant?._id;
+      if (tid) localStorage.setItem('tenantId', tid);
+    } catch {
+      // ignore storage errors — never block auth load
+    }
     return {
       user: data?.user || null,
       menus: data?.menus || [],
@@ -57,14 +66,13 @@ export const login = createAsyncThunk(
         return rejectWithValue(data.message || 'Login failed. Please check your credentials.');
       }
       if (data.token) setAuthToken(data.token);
-      const tid =
-        data.tenantId || data.user?.tenantId || data.user?.organizationId || data.user?.tenant?._id;
-      if (tid) {
-        try {
-          localStorage.setItem('tenantId', tid);
-        } catch {
-          // ignore storage errors — never block login
-        }
+      try {
+        if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
+        const tid =
+          data.tenantId || data.user?.tenantId || data.user?.organizationId || data.user?.tenant?._id;
+        if (tid) localStorage.setItem('tenantId', tid);
+      } catch {
+        // ignore storage errors — never block login
       }
       return { user: data.user || null, token: data.token || null };
     } catch (err) {
