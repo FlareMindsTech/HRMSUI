@@ -10,10 +10,8 @@ const isLocalhost =
     window.location.hostname === "127.0.0.1" ||
     window.location.hostname.startsWith("192.168.")
     : process.env.NODE_ENV !== "production";
-
-export const API_BASE_URL = isLocalhost
-  ? (process.env.REACT_APP_LOCAL_API_BASE_URL || "http://localhost:7800/api")
-  : (process.env.REACT_APP_API_BASE_URL || "https://3.6.122.34/api");
+export const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL;
 
 // Token is stored under this key in localStorage after a real login.
 const TOKEN_KEY = "token";
