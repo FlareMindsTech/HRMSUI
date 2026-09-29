@@ -1,0 +1,236 @@
+/* ============================================================
+   Attendance Verification Method UI Component Styles
+   Supports: GEOFENCE, STATIC_IP (Wi-Fi/Office Network), BOTH, BIOMETRIC
+   ============================================================ */
+
+.verification-methods-wrapper {
+  margin-bottom: 1.5rem;
+}
+
+.verification-methods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.verification-card {
+  position: relative;
+  background: var(--surface-bg, #ffffff);
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  padding: 1.15rem;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.verification-card:hover:not(.verification-card--disabled) {
+  border-color: #c79d58;
+  box-shadow: 0 4px 12px rgba(199, 157, 88, 0.12);
+  transform: translateY(-2px);
+}
+
+.verification-card--selected {
+  border-color: #c79d58;
+  background: #fbf9f5;
+  box-shadow: 0 0 0 1px #c79d58, 0 4px 14px rgba(199, 157, 88, 0.16);
+}
+
+.verification-card--disabled {
+  opacity: 0.72;
+  cursor: pointer;
+  background: #f8fafc;
+  border-style: dashed;
+}
+
+.verification-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+}
+
+.verification-icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  transition: all 0.2s ease;
+}
+
+.verification-icon--geofence {
+  background: rgba(46, 125, 50, 0.12);
+  color: #2e7d32;
+}
+
+.verification-icon--wifi {
+  background: rgba(30, 64, 175, 0.12);
+  color: #1e40af;
+}
+
+.verification-icon--both {
+  background: rgba(199, 157, 88, 0.15);
+  color: #a98245;
+}
+
+.verification-icon--biometric {
+  background: rgba(100, 116, 139, 0.12);
+  color: #64748b;
+}
+
+.verification-radio-indicator {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.verification-card--selected .verification-radio-indicator {
+  border-color: #c79d58;
+  background: #c79d58;
+}
+
+.verification-radio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.verification-card-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.25rem;
+}
+
+.verification-card-desc {
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.4;
+  margin-bottom: 0;
+}
+
+/* Detail Panels */
+.verification-detail-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+.verification-detail-panel-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.verification-detail-panel-desc {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin-bottom: 1rem;
+}
+
+/* IP Input & Chips */
+.ip-add-container {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.ip-list-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-height: 40px;
+  padding: 0.6rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.ip-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 20px;
+  padding: 0.28rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: all 0.15s ease;
+}
+
+.ip-chip:hover {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}
+
+.ip-remove-btn {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.82rem;
+  transition: transform 0.15s ease;
+}
+
+.ip-remove-btn:hover {
+  transform: scale(1.2);
+}
+
+/* Location Summary Card */
+.location-summary-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.location-summary-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.location-summary-meta {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.location-radius-badge {
+  background: #e0f2fe;
+  color: #0369a1;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+}

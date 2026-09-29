@@ -20,23 +20,32 @@ export const fetchTodayAttendance = async () => {
 
 /**
  * Punch In for today with verified coordinates.
- * @param {{ latitude: number, longitude: number, accuracy?: number }} coords
+ * In STATIC_IP mode, coordinates are optional if unavailable.
+ * @param {{ latitude?: number, longitude?: number, accuracy?: number }} coords
  */
-export const punchInUser = async ({ latitude, longitude, accuracy = 0 }) => {
+export const punchInUser = async (coords = {}) => {
+  const payload = {};
+  if (coords?.latitude !== undefined && coords?.latitude !== null) payload.latitude = coords.latitude;
+  if (coords?.longitude !== undefined && coords?.longitude !== null) payload.longitude = coords.longitude;
+  if (coords?.accuracy !== undefined && coords?.accuracy !== null) payload.accuracy = coords.accuracy;
+
   const result = await apiFetch("/attendance/punch-in", {
     method: "POST",
-    body: JSON.stringify({ latitude, longitude, accuracy }),
+    body: JSON.stringify(payload),
   });
 
   if (!result.ok) {
-    throw new Error(result.data?.message || "Punch In request failed.");
+    const error = new Error(result.data?.message || "Punch In request failed.");
+    error.status = result.status;
+    error.data = result.data;
+    throw error;
   }
   return result.data;
 };
 
 /**
  * Punch Out for today with verified coordinates.
- * @param {{ latitude: number, longitude: number, accuracy?: number }} coords
+ * @param {{ latitude?: number, longitude?: number, accuracy?: number }} coords
  */
 export const punchOutUser = async (coords = {}) => {
   const result = await apiFetch("/attendance/punch-out", {
@@ -45,9 +54,39 @@ export const punchOutUser = async (coords = {}) => {
   });
 
   if (!result.ok) {
-    throw new Error(result.data?.message || "Punch Out request failed.");
+    const error = new Error(result.data?.message || "Punch Out request failed.");
+    error.status = result.status;
+    error.data = result.data;
+    throw error;
   }
   return result.data;
+};
+
+/**
+ * Standardized Attendance Error Formatter
+ * Translates HTTP status codes and backend response messages into user-friendly notifications.
+ */
+export const formatAttendanceError = (error) => {
+  if (!error) return "An unexpected error occurred.";
+  const status = error.status;
+  const msg = error.message || "";
+
+  if (status === 401 || msg.includes("jwt") || msg.includes("unauthorized") || msg.includes("Session expired")) {
+    return "Session expired. Please login again.";
+  }
+  if (status === 403) {
+    if (msg.includes("registered office network") || msg.includes("office network") || msg.includes("STATIC_IP")) {
+      return "Attendance is allowed only from the registered office network.";
+    }
+    return msg || "Access denied.";
+  }
+  if (status === 0 || msg.includes("Failed to fetch") || msg.includes("Network request failed") || !navigator.onLine) {
+    return "Unable to connect to HRMS server. Please check your internet connection.";
+  }
+  if (status >= 500) {
+    return "Attendance service is temporarily unavailable.";
+  }
+  return msg || "Failed to process attendance request.";
 };
 
 /**

@@ -8,10 +8,12 @@ import {
   FaSignOutAlt,
   FaCheckCircle,
   FaMapMarkerAlt,
+  FaWifi,
+  FaShieldAlt,
   FaExclamationTriangle,
   FaArrowRight,
 } from 'react-icons/fa';
-import { fetchTodayAttendance, punchInUser, punchOutUser, sendGeofencePing } from '../../Api/Attendance/attendance';
+import { fetchTodayAttendance, punchInUser, punchOutUser, sendGeofencePing, formatAttendanceError } from '../../Api/Attendance/attendance';
 import { getCurrentCoordinates } from '../../utils/geolocation';
 import { formatTime, formatFullDate } from '../../utils/dateFormatter';
 import { useSelector } from 'react-redux';
@@ -27,6 +29,7 @@ import './AttendanceCard.css';
  * - State 3: Attendance Completed (logoutTime !== null) -> Displays summary of today's attendance
  *
  * The backend API (GET /api/attendance/today) is the single source of truth.
+ * Supports GEOFENCE, STATIC_IP (Office Network), and BOTH modes.
  */
 function AttendanceCard() {
   const navigate = useNavigate();
@@ -38,6 +41,7 @@ function AttendanceCard() {
   const canPunchOut = !isAdminOrOwner && (hasPermission('attendance.punch_out') || roleCode.includes('EMPLOYEE') || roleCode.includes('HR'));
 
   const [attendance, setAttendance] = useState(null);
+  const [attendanceMode, setAttendanceMode] = useState('GEOFENCE');
   const [loading, setLoading] = useState(true);
   const [actionInProgress, setActionInProgress] = useState(false);
   const [actionStageText, setActionStageText] = useState('');
@@ -52,9 +56,12 @@ function AttendanceCard() {
       const response = await fetchTodayAttendance();
       if (response && response.success) {
         setAttendance(response.data);
+        if (response.attendanceMode) {
+          setAttendanceMode(response.attendanceMode);
+        }
       }
     } catch (error) {
-      setErrorMessage(error.message || 'Failed to retrieve today’s attendance status.');
+      setErrorMessage(formatAttendanceError(error));
     } finally {
       setLoading(false);
     }
@@ -68,8 +75,8 @@ function AttendanceCard() {
   const isPingingRef = useRef(false);
 
   useEffect(() => {
-    // Only active if employee has punched in, not punched out, and is not Admin/Owner
-    const hasActiveAttendance = Boolean(attendance?._id && !attendance?.logoutTime && !isAdminOrOwner);
+    // Only active if employee has punched in, not punched out, is not Admin/Owner, and requires Geofence
+    const hasActiveAttendance = Boolean(attendance?._id && !attendance?.logoutTime && !isAdminOrOwner && attendanceMode !== 'STATIC_IP');
     if (!hasActiveAttendance) {
       return;
     }
@@ -122,7 +129,7 @@ function AttendanceCard() {
       isMounted = false;
       clearInterval(intervalId);
     };
-  }, [attendance?._id, attendance?.logoutTime, isAdminOrOwner]);
+  }, [attendance?._id, attendance?.logoutTime, isAdminOrOwner, attendanceMode]);
 
   // ── Handle Punch In Action ──
   const handlePunchIn = async () => {
@@ -131,34 +138,63 @@ function AttendanceCard() {
     setActionInProgress(true);
     setErrorMessage('');
     setSuccessMessage('');
-    setActionStageText('Getting location...');
 
     try {
-      // 1. Request browser geolocation on-demand
-      let coords;
-      try {
-        coords = await getCurrentCoordinates();
-      } catch (geoError) {
-        setErrorMessage(geoError.message);
-        setActionInProgress(false);
-        setActionStageText('');
-        return;
+      let coords = null;
+
+      if (attendanceMode === 'STATIC_IP') {
+        // Mode 1: Static Public IP (Office Network Attendance)
+        setActionStageText('Checking office network...');
+
+        // Attempt to collect optional location without failing on desktop PCs
+        try {
+          coords = await getCurrentCoordinates();
+        } catch (geoErr) {
+          console.info('Geolocation omitted for office network verification:', geoErr.message);
+        }
+
+        await punchInUser(coords || {});
+        setSuccessMessage('Office network verified. Punched in successfully! Have a productive workday.');
+      } else if (attendanceMode === 'BOTH') {
+        // Mode 2: Both (Geofence + Office Network)
+        setActionStageText('Checking location & office network...');
+        try {
+          coords = await getCurrentCoordinates();
+        } catch (geoError) {
+          setErrorMessage(geoError.message || 'Location permission is required for Both mode attendance.');
+          setActionInProgress(false);
+          setActionStageText('');
+          return;
+        }
+
+        await punchInUser(coords);
+        setSuccessMessage('Office network & geofence verified. Punched in successfully!');
+      } else {
+        // Mode 3: Geofence (Existing GPS / Geofence Behavior)
+        setActionStageText('Getting location...');
+        try {
+          coords = await getCurrentCoordinates();
+        } catch (geoError) {
+          setErrorMessage(geoError.message || 'Location permission is required to punch in.');
+          setActionInProgress(false);
+          setActionStageText('');
+          return;
+        }
+
+        setActionStageText('Punching in...');
+        await punchInUser(coords);
+        setSuccessMessage('Punched in successfully! Have a productive workday.');
       }
 
-      // 2. Call backend Punch In API
-      setActionStageText('Punching in...');
-      await punchInUser({
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        accuracy: coords.accuracy || 0,
-      });
-
-      setSuccessMessage('Punched in successfully! Have a productive workday.');
-
-      // 3. Refresh from backend as source of truth to transition to State 2
+      // Refresh from backend as source of truth to transition to State 2
       await loadTodayAttendance();
     } catch (apiError) {
-      setErrorMessage(apiError.message || 'Failed to punch in. Please try again.');
+      const formatted = formatAttendanceError(apiError);
+      if (attendanceMode === 'STATIC_IP' && (apiError.status === 403 || formatted.includes('registered office network'))) {
+        setErrorMessage('Office network not verified. Attendance is allowed only from the registered office network.');
+      } else {
+        setErrorMessage(formatted);
+      }
     } finally {
       setActionInProgress(false);
       setActionStageText('');
@@ -175,31 +211,27 @@ function AttendanceCard() {
     setActionStageText('Getting location...');
 
     try {
-      // 1. Request browser geolocation on-demand
-      let coords;
+      let coords = null;
       try {
         coords = await getCurrentCoordinates();
       } catch (geoError) {
-        setErrorMessage(geoError.message || 'Location permission is required to punch out. Please allow location access in your browser.');
-        setActionInProgress(false);
-        setActionStageText('');
-        return;
+        if (attendanceMode !== 'STATIC_IP') {
+          setErrorMessage(geoError.message || 'Location permission is required to punch out.');
+          setActionInProgress(false);
+          setActionStageText('');
+          return;
+        }
       }
 
-      // 2. Call backend Punch Out API with verified coordinates
       setActionStageText('Punching out...');
-      await punchOutUser({
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        accuracy: coords.accuracy || 0,
-      });
+      await punchOutUser(coords || {});
 
       setSuccessMessage('Punched out successfully! Workday session completed.');
 
-      // 3. Refresh from backend as source of truth to transition to State 3
+      // Refresh from backend as source of truth to transition to State 3
       await loadTodayAttendance();
     } catch (apiError) {
-      setErrorMessage(apiError.message || 'Failed to punch out. Please try again.');
+      setErrorMessage(formatAttendanceError(apiError));
     } finally {
       setActionInProgress(false);
       setActionStageText('');
@@ -321,9 +353,29 @@ function AttendanceCard() {
               <FaClock size={30} />
             </div>
             <h6 className="fw-bold text-dark mb-1">Ready to start your day?</h6>
-            <p className="text-muted small mb-4 mx-auto att-card-state1-desc">
-              You have not punched in for today yet. Record your start time with verified location.
-            </p>
+            {attendanceMode === 'STATIC_IP' ? (
+              <div>
+                <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 rounded-pill mb-2 d-inline-flex align-items-center gap-1 fw-semibold extra-small">
+                  <FaWifi /> Office Network Attendance
+                </span>
+                <p className="text-muted small mb-4 mx-auto att-card-state1-desc">
+                  Your attendance is verified using the organization's registered office network.
+                </p>
+              </div>
+            ) : attendanceMode === 'BOTH' ? (
+              <div>
+                <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-1 rounded-pill mb-2 d-inline-flex align-items-center gap-1 fw-semibold extra-small">
+                  <FaShieldAlt /> Office Network & Geofence
+                </span>
+                <p className="text-muted small mb-4 mx-auto att-card-state1-desc">
+                  Your attendance is verified using both registered office network and location radius.
+                </p>
+              </div>
+            ) : (
+              <p className="text-muted small mb-4 mx-auto att-card-state1-desc">
+                You have not punched in for today yet. Record your start time with verified location.
+              </p>
+            )}
             <div>
               {canPunchIn ? (
                 <Button
