@@ -34,10 +34,10 @@ import {
   fetchDepartmentsDropdown,
 } from "../../services/organizationService";
 import { useSelector } from 'react-redux';
-import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 
 function HolidayCalendarsSection({ lockedBranchId }) {
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const [activeSubTab, setActiveSubTab] = useState("holidays"); // "holidays" | "calendars"
 
   const [holidayCalendars, setHolidayCalendars] = useState([]);

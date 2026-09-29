@@ -29,7 +29,8 @@ import {
   THEME_PRESETS,
   fetchTheme,
 } from "../../redux/slices/themeSlice";
-import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import LoadingSpinner from "../Common/LoadingSpinner";
 import "./ThemeCustomizationSection.css";
 
 const COLOR_METADATA = [
@@ -104,7 +105,7 @@ const HEX_REGEX = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
 
 function ThemeCustomizationSection() {
   const dispatch = useDispatch();
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const { theme, previewTheme, loading, saving, error, successMessage } = useSelector(
     (state) => state.theme
   );
@@ -151,10 +152,7 @@ function ThemeCustomizationSection() {
 
   if (loading) {
     return (
-      <div className="text-center py-5">
-        <Spinner animation="border" variant="warning" />
-        <p className="mt-3 text-muted">Loading organization theme configuration...</p>
-      </div>
+      <LoadingSpinner variant="page" color="warning" message="Loading organization theme configuration..." messageClassName="mt-3 text-muted" />
     );
   }
 

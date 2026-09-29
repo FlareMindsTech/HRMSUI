@@ -1,4 +1,6 @@
 import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
+import { useCallback } from 'react';
+import { useSelector } from 'react-redux';
 import { fetchAuthContext } from '../../services/rbacService';
 import { API_BASE_URL, getAuthToken, setAuthToken, clearAuthToken } from '../../config/api';
 
@@ -9,6 +11,27 @@ const getInitialUser = () => {
     return stored ? JSON.parse(stored) : null;
   } catch {
     return null;
+  }
+};
+
+// Keys that make up the local session. Keep in one place so login, logout,
+// boot-recovery and every logout button clear the same set (previously each
+// call-site removed a different subset, leaving stale tenant/org behind).
+const SESSION_KEYS = [
+  'user',
+  'isAuthenticated',
+  'tenantId',
+  'organizationId',
+  'selectedBranchId',
+  'cached_org_profile',
+];
+
+const clearLocalSession = () => {
+  clearAuthToken();
+  try {
+    SESSION_KEYS.forEach((k) => localStorage.removeItem(k));
+  } catch {
+    // ignore storage errors — Redux state clear below is what matters
   }
 };
 
@@ -74,24 +97,42 @@ export const login = createAsyncThunk(
       } catch {
         // ignore storage errors — never block login
       }
-      return { user: data.user || null, token: data.token || null };
+      // Pass menus/permissions through when the login response already
+      // includes them so callers don't need a second GET /auth/me trip.
+      return {
+        user: data.user || null,
+        token: data.token || null,
+        menus: data.menus || data.user?.menus || [],
+        permissions: data.permissions || data.user?.permissions || [],
+      };
     } catch (err) {
       return rejectWithValue(err.message || 'Unable to reach the server. Please try again.');
     }
   }
 );
 
-// Logout thunk — best-effort server call, always clears local session state.
+// Logout thunk — clears local session SYNCHRONOUSLY first so the UI (route
+// gate, logout.pending reducer) flips to /login instantly, then pings the
+// server fire-and-forget with a short timeout. Previously the thunk awaited
+// the network before clearing, and callers did a full window.location reload,
+// which made logout feel slow and raced the token clear.
 export const logout = createAsyncThunk('auth/logout', async () => {
-  try {
-    await fetch(`${API_BASE_URL}/user/logout`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
-    }).catch(() => null);
-  } catch {
-    // ignore — local clear below is what matters
+  const token = getAuthToken();
+  clearLocalSession();
+  if (token) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 2500);
+      await fetch(`${API_BASE_URL}/user/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        signal: controller.signal,
+      }).catch(() => null);
+      clearTimeout(timer);
+    } catch {
+      // ignore — local session is already cleared, which is what matters
+    }
   }
-  clearAuthToken();
   return true;
 });
 
@@ -121,13 +162,15 @@ export const authSlice = createSlice({
       state.permissions = Array.isArray(action.payload) ? action.payload : [];
     },
     authSynced: (state, action) => {
-      const { user, role, menus, permissions } = action.payload || {};
+      const { user, role, menus, permissions, tokenPresent } = action.payload || {};
       if (user !== undefined) state.user = user || null;
       const resolvedRole = role || state.user?.roleCode || state.user?.roleName || null;
       state.role = resolvedRole;
       if (Array.isArray(menus)) state.menus = menus;
       if (Array.isArray(permissions)) state.permissions = permissions;
-      state.tokenPresent = Boolean(getAuthToken());
+      // Prefer the caller-supplied flag; reading localStorage inside a reducer
+      // is a side effect and costs main-thread I/O on every sync.
+      state.tokenPresent = tokenPresent !== undefined ? Boolean(tokenPresent) : state.tokenPresent;
       state.isAuthenticated = Boolean(state.user);
       state.status = 'succeeded';
       state.error = null;
@@ -149,7 +192,9 @@ export const authSlice = createSlice({
         state.role = action.payload.user?.roleCode || action.payload.user?.roleName || null;
         state.menus = action.payload.menus;
         state.permissions = action.payload.permissions;
-        state.tokenPresent = Boolean(getAuthToken());
+        // The request just succeeded with the stored token, so it is present.
+        // (Avoids a localStorage read inside the reducer.)
+        state.tokenPresent = true;
         state.isAuthenticated = Boolean(action.payload.user);
         state.error = null;
         state.lastFetched = Date.now();
@@ -168,7 +213,12 @@ export const authSlice = createSlice({
           state.user = action.payload.user;
           state.role = action.payload.user?.roleCode || action.payload.user?.roleName || null;
         }
-        state.tokenPresent = Boolean(getAuthToken());
+        // Login responses may already carry access data — apply it so the
+        // sidebar doesn't render empty while a second fetchAuth is in flight.
+        if (Array.isArray(action.payload?.menus)) state.menus = action.payload.menus;
+        if (Array.isArray(action.payload?.permissions)) state.permissions = action.payload.permissions;
+        // Login just stored the token in the thunk — no need to re-read storage.
+        if (action.payload?.token) state.tokenPresent = true;
         state.isAuthenticated = Boolean(state.user);
         state.error = null;
         state.lastFetched = Date.now();
@@ -176,6 +226,20 @@ export const authSlice = createSlice({
       .addCase(login.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload || 'Login failed';
+      })
+      // Clear on pending (not just fulfilled) so the route gate flips to
+      // /login the same tick the user clicks Sign Out — no waiting for the
+      // best-effort server ping.
+      .addCase(logout.pending, (state) => {
+        state.user = null;
+        state.role = null;
+        state.menus = [];
+        state.permissions = [];
+        state.tokenPresent = false;
+        state.isAuthenticated = false;
+        state.status = 'idle';
+        state.error = null;
+        state.lastFetched = null;
       })
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
@@ -230,6 +294,41 @@ export const selectHasMenu = (state, menuCode) => {
   if (s.user.priority === 1 || s.user.roleCode === 'OWNER' || (s.permissions || []).includes('*'))
     return true;
   return (s.menus || []).includes(menuCode);
+};
+
+// ---- Stable permission hooks ----
+// WARNING: do NOT inline these as `useSelector((state) => (code) => ...)`.
+// That returns a new function on every store update and re-renders the
+// component on every dispatch (login alone dispatches 4 actions). These hooks
+// subscribe only to the underlying user/permissions/menus references, so the
+// returned callback identity is stable until access data actually changes.
+export const useHasPermission = () => {
+  const user = useSelector(selectAuthUser);
+  const permissions = useSelector(selectAuthPermissions);
+  return useCallback(
+    (permCode) => {
+      if (!user) return false;
+      if (user.priority === 1 || user.roleCode === 'OWNER' || (permissions || []).includes('*'))
+        return true;
+      return (permissions || []).includes(permCode);
+    },
+    [user, permissions]
+  );
+};
+
+export const useHasMenu = () => {
+  const user = useSelector(selectAuthUser);
+  const permissions = useSelector(selectAuthPermissions);
+  const menus = useSelector(selectAuthMenus);
+  return useCallback(
+    (menuCode) => {
+      if (!user) return false;
+      if (user.priority === 1 || user.roleCode === 'OWNER' || (permissions || []).includes('*'))
+        return true;
+      return (menus || []).includes(menuCode);
+    },
+    [user, permissions, menus]
+  );
 };
 
 export default authSlice.reducer;

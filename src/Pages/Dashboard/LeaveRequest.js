@@ -1,13 +1,18 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Container, Row, Col, Card, Form, Button, Table, Modal, Tab, Alert, Spinner, InputGroup, Pagination
+  Container, Row, Col, Card, Form, Button, Table, Modal, Tab, Alert, Spinner, InputGroup
 } from "react-bootstrap";
 import {
   FaCalendarAlt, FaClock, FaCheckCircle,
   FaTimesCircle, FaPlus, FaBan, FaHistory, FaUserCheck, FaSearch, FaExclamationTriangle, FaUsers, FaUndo
 } from "react-icons/fa";
 import { useSelector } from 'react-redux';
-import { selectAuthUser, selectHasPermission } from '../../redux/slices/authSlice';
+import { selectAuthUser, useHasPermission } from '../../redux/slices/authSlice';
+import LoadingSpinner from '../../Components/Common/LoadingSpinner';
+import EmptyState from '../../Components/Common/EmptyState';
+import DataTable from '../../Components/Common/DataTable';
+import SearchInput from '../../Components/Common/SearchInput';
+import PaginationBar from '../../Components/Common/PaginationBar';
 import {
   applyLeaveApi,
   fetchLeaveBalanceApi,
@@ -23,7 +28,7 @@ import "./LeaveRequest.css";
 
 function LeaveRequest() {
   const user = useSelector(selectAuthUser);
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
+  const hasPermission = useHasPermission();
 
   const isOwner = user?.priority === 1 || user?.roleCode === "OWNER";
   const canReadOwn = !isOwner && (hasPermission("leave.read.own") || hasPermission("leave.create.own"));
@@ -388,48 +393,23 @@ function LeaveRequest() {
     const endIdx = Math.min(currentPage * PAGE_SIZE, totalRecords);
 
     return (
-      <div className="leave-pagination-bar">
-        <div className="leave-pagination-info">
-          Showing <span className="fw-bold text-dark">{startIdx}–{endIdx}</span> of{" "}
-          <span className="fw-bold text-dark">{totalRecords}</span> records
-        </div>
-        {totalPages > 1 && (
-          <Pagination size="sm" className="leave-pagination mb-0">
-            <Pagination.Prev
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            >
-              Previous
-            </Pagination.Prev>
-            {[...Array(totalPages)].map((_, i) => {
-              const pg = i + 1;
-              if (totalPages > 7) {
-                if (pg !== 1 && pg !== totalPages && Math.abs(pg - currentPage) > 2) {
-                  if (pg === 2 || pg === totalPages - 1) {
-                    return <Pagination.Ellipsis key={`ell-${pg}`} disabled />;
-                  }
-                  return null;
-                }
-              }
-              return (
-                <Pagination.Item
-                  key={pg}
-                  active={pg === currentPage}
-                  onClick={() => setCurrentPage(pg)}
-                >
-                  {pg}
-                </Pagination.Item>
-              );
-            })}
-            <Pagination.Next
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            >
-              Next
-            </Pagination.Next>
-          </Pagination>
-        )}
-      </div>
+      <PaginationBar
+        size="sm"
+        page={currentPage}
+        totalPages={totalPages}
+        onPageChange={(pg) => setCurrentPage(pg)}
+        showEllipsis
+        prevLabel="Previous"
+        nextLabel="Next"
+        info={
+          <div className="leave-pagination-info">
+            Showing <span className="fw-bold text-dark">{startIdx}–{endIdx}</span> of{" "}
+            <span className="fw-bold text-dark">{totalRecords}</span> records
+          </div>
+        }
+        wrapperClassName="leave-pagination-bar"
+        paginationClassName="leave-pagination mb-0"
+      />
     );
   };
 
@@ -740,7 +720,7 @@ function LeaveRequest() {
                               disabled={submitting || Boolean(formValidationErr)}
                               className="leave-submit-btn"
                             >
-                              {submitting ? <Spinner size="sm" animation="border" /> : <><FaPlus /> Submit Application</>}
+                              {submitting ? <LoadingSpinner variant="button" size="sm" /> : <><FaPlus /> Submit Application</>}
                             </button>
                           </Form>
                         </div>
@@ -759,73 +739,93 @@ function LeaveRequest() {
                       </div>
 
                       <div className="table-responsive">
-                        <Table hover className="leave-table align-middle mb-0">
-                          <thead>
-                            <tr>
-                              <th className="py-2 px-2">Leave Type</th>
-                              <th className="py-2 px-2">Date & Duration</th>
-                              <th className="py-2 px-2">Reason</th>
-                              <th className="py-2 px-2 text-center">Status</th>
-                              <th className="py-2 px-2 text-end">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {loading ? (
-                              <tr>
-                                <td colSpan={5} className="text-center py-4"><Spinner animation="border" size="sm" variant="success" /></td>
-                              </tr>
-                            ) : paginatedMyLeaves.length === 0 ? (
-                              <tr>
-                                <td colSpan={5} className="text-center py-4 text-muted">No personal leave applications found.</td>
-                              </tr>
-                            ) : (
-                              paginatedMyLeaves.map((item) => (
-                                <tr key={item._id}>
-                                  <td className="py-2 px-2">
-                                    <div className="fw-bold text-dark leave-emp-name">{item.leaveType === "SL" ? "Sick Leave" : item.leaveType === "CL" ? "Casual Leave" : "Unpaid Leave"}</div>
-                                    <small className="text-muted extra-small">{item.title}</small>
-                                  </td>
-                                  <td className="py-2 px-2">
-                                    <div className="fw-semibold text-dark leave-date-text">{new Date(item.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                                    <small className="text-muted extra-small">{item.isHalfDay ? `Half Day (${item.halfDayPeriod})` : "Full Day (1.0 Day)"}</small>
-                                  </td>
-                                  <td className="py-2 px-2 leave-reason-cell">
-                                    <span className="leave-reason-text" title={item.reason}>{item.reason}</span>
-                                  </td>
-                                  <td className="py-2 px-2 text-center">
-                                    {getStatusBadge(item.status)}
-                                  </td>
-                                  <td className="py-2 px-2 text-end">
-                                    <div className="d-flex justify-content-end align-items-center gap-1">
-                                      {canCancelOwn && item.status === "Pending" && (
-                                        <Button
-                                          variant="outline-danger"
-                                          size="sm"
-                                          className="p-1 px-2 extra-small rounded-pill"
-                                          disabled={actionLoading}
-                                          onClick={() => handleCancelRequest(item._id)}
-                                        >
-                                          Cancel
-                                        </Button>
-                                      )}
-                                      {canAudit && (
-                                        <Button
-                                          variant="light"
-                                          size="sm"
-                                          className="leave-audit-btn p-1 text-muted border-0 shadow-none"
-                                          title="View Audit Trail"
-                                          onClick={() => handleViewAudit(item._id)}
-                                        >
-                                          <FaHistory size={13} />
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))
-                            )}
-                          </tbody>
-                        </Table>
+                        <DataTable
+                          hover
+                          className="leave-table align-middle mb-0"
+                          columns={[
+                            {
+                              key: "type",
+                              header: "Leave Type",
+                              headerClassName: "py-2 px-2",
+                              cellClassName: "py-2 px-2",
+                              render: (item) => (
+                                <>
+                                  <div className="fw-bold text-dark leave-emp-name">{item.leaveType === "SL" ? "Sick Leave" : item.leaveType === "CL" ? "Casual Leave" : "Unpaid Leave"}</div>
+                                  <small className="text-muted extra-small">{item.title}</small>
+                                </>
+                              ),
+                            },
+                            {
+                              key: "date",
+                              header: "Date & Duration",
+                              headerClassName: "py-2 px-2",
+                              cellClassName: "py-2 px-2",
+                              render: (item) => (
+                                <>
+                                  <div className="fw-semibold text-dark leave-date-text">{new Date(item.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                                  <small className="text-muted extra-small">{item.isHalfDay ? `Half Day (${item.halfDayPeriod})` : "Full Day (1.0 Day)"}</small>
+                                </>
+                              ),
+                            },
+                            {
+                              key: "reason",
+                              header: "Reason",
+                              headerClassName: "py-2 px-2",
+                              cellClassName: "py-2 px-2 leave-reason-cell",
+                              render: (item) => (
+                                <span className="leave-reason-text" title={item.reason}>{item.reason}</span>
+                              ),
+                            },
+                            {
+                              key: "status",
+                              header: "Status",
+                              headerClassName: "py-2 px-2 text-center",
+                              cellClassName: "py-2 px-2 text-center",
+                              render: (item) => getStatusBadge(item.status),
+                            },
+                            {
+                              key: "action",
+                              header: "Action",
+                              headerClassName: "py-2 px-2 text-end",
+                              cellClassName: "py-2 px-2 text-end",
+                              render: (item) => (
+                                <div className="d-flex justify-content-end align-items-center gap-1">
+                                  {canCancelOwn && item.status === "Pending" && (
+                                    <Button
+                                      variant="outline-danger"
+                                      size="sm"
+                                      className="p-1 px-2 extra-small rounded-pill"
+                                      disabled={actionLoading}
+                                      onClick={() => handleCancelRequest(item._id)}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  )}
+                                  {canAudit && (
+                                    <Button
+                                      variant="light"
+                                      size="sm"
+                                      className="leave-audit-btn p-1 text-muted border-0 shadow-none"
+                                      title="View Audit Trail"
+                                      onClick={() => handleViewAudit(item._id)}
+                                    >
+                                      <FaHistory size={13} />
+                                    </Button>
+                                  )}
+                                </div>
+                              ),
+                            },
+                          ]}
+                          rows={paginatedMyLeaves}
+                          rowKey={(item) => item._id}
+                          loading={loading}
+                          loadingComponent={
+                            <LoadingSpinner variant="table" colSpan={5} color="success" size="sm" />
+                          }
+                          emptyComponent={
+                            <EmptyState variant="table" colSpan={5} className="text-center py-4 text-muted" title="No personal leave applications found." />
+                          }
+                        />
                       </div>
                       {renderPagination(filteredMyLeaves.length)}
                     </Col>
@@ -848,18 +848,17 @@ function LeaveRequest() {
 
                     {pendingApprovalsList.length > 0 && (
                       <div className="d-flex align-items-center gap-2 flex-wrap">
-                        <InputGroup size="sm" className="leave-search-group">
-                          <InputGroup.Text className="bg-white border-end-0 text-muted">
-                            <FaSearch size={12} />
-                          </InputGroup.Text>
-                          <Form.Control
-                            type="text"
-                            placeholder="Search pending..."
-                            value={searchQuery}
-                            onChange={(e) => handleSearchChange(e.target.value)}
-                            className="border-start-0 shadow-none leave-search-input"
-                          />
-                        </InputGroup>
+                        <SearchInput
+                          size="sm"
+                          iconSize={12}
+                          inputGroupClassName="leave-search-group"
+                          inputGroupTextClassName="bg-white border-end-0 text-muted"
+                          inputClassName="border-start-0 shadow-none leave-search-input"
+                          type="text"
+                          placeholder="Search pending..."
+                          value={searchQuery}
+                          onChange={(e) => handleSearchChange(e.target.value)}
+                        />
 
                         <Form.Select
                           size="sm"
@@ -910,11 +909,7 @@ function LeaveRequest() {
                           </thead>
                           <tbody>
                             {paginatedApprovals.length === 0 ? (
-                              <tr>
-                                <td colSpan={6} className="text-center py-4 text-muted">
-                                  No pending leave requests match your search criteria.
-                                </td>
-                              </tr>
+                              <EmptyState variant="table" colSpan={6} className="text-center py-4 text-muted" title="No pending leave requests match your search criteria." />
                             ) : (
                               paginatedApprovals.map((item) => {
                                 const isSelf = item.employeeId?._id === user?.id || item.employeeId === user?.id;
@@ -1079,7 +1074,7 @@ function LeaveRequest() {
                       <tbody>
                         {paginatedTeamLeaves.length === 0 ? (
                           <tr>
-                            <td colSpan={6} className="text-center py-4 text-muted">No team leave records found.</td>
+                            <EmptyState variant="table" colSpan={6} className="text-center py-4 text-muted" title="No team leave records found." />
                           </tr>
                         ) : (
                           paginatedTeamLeaves.map((item) => (
@@ -1214,7 +1209,7 @@ function LeaveRequest() {
                       <tbody>
                         {paginatedAllLeaves.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="text-center py-4 text-muted">No company leave records found matching current filters.</td>
+                            <EmptyState variant="table" colSpan={7} className="text-center py-4 text-muted" title="No company leave records found matching current filters." />
                           </tr>
                         ) : (
                           paginatedAllLeaves.map((item) => (
@@ -1325,7 +1320,7 @@ function LeaveRequest() {
         <Modal.Footer className="border-0 pt-0">
           <Button variant="light" size="sm" onClick={() => setShowRejectModal(false)}>Cancel</Button>
           <Button variant="danger" size="sm" disabled={actionLoading} onClick={handleConfirmReject} className="fw-bold px-3">
-            {actionLoading ? <Spinner size="sm" animation="border" /> : "Confirm Reject"}
+            {actionLoading ? <LoadingSpinner variant="button" size="sm" /> : "Confirm Reject"}
           </Button>
         </Modal.Footer>
       </Modal>

@@ -11,7 +11,6 @@ import {
   Spinner,
   Alert,
   InputGroup,
-  Pagination,
 } from "react-bootstrap";
 import {
   FaMapMarkerAlt,
@@ -30,10 +29,11 @@ import {
   fetchBranchesDropdown,
 } from "../../services/organizationService";
 import { useSelector } from 'react-redux';
-import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import PaginationBar from "../Common/PaginationBar";
 
 function LocationsSection({ lockedBranchId }) {
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const [locations, setLocations] = useState([]);
   const [branches, setBranches] = useState([]);
 
@@ -434,17 +434,14 @@ function LocationsSection({ lockedBranchId }) {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="d-flex justify-content-end p-3 border-top">
-            <Pagination size="sm" className="mb-0">
-              <Pagination.Prev disabled={page <= 1} onClick={() => setPage((p) => Math.max(p - 1, 1))} />
-              {[...Array(totalPages).keys()].map((n) => (
-                <Pagination.Item key={n + 1} active={n + 1 === page} onClick={() => setPage(n + 1)}>
-                  {n + 1}
-                </Pagination.Item>
-              ))}
-              <Pagination.Next disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(p + 1, totalPages))} />
-            </Pagination>
-          </div>
+          <PaginationBar
+            size="sm"
+            page={page}
+            totalPages={totalPages}
+            onPageChange={(pg) => setPage(pg)}
+            wrapperClassName="d-flex justify-content-end p-3 border-top"
+            paginationClassName="mb-0"
+          />
         )}
       </Card>
 

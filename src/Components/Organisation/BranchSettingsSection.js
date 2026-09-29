@@ -17,11 +17,11 @@ import {
   fetchHolidayCalendarsDropdown,
 } from "../../services/organizationService";
 import { useSelector } from "react-redux";
-import { selectHasPermission, selectIsSystemAdmin } from "../../redux/slices/authSlice";
+import { useHasPermission, selectIsSystemAdmin } from "../../redux/slices/authSlice";
 import { useBranch } from "../../context/BranchContext";
 
 export default function BranchSettingsSection({ lockedBranchId = null }) {
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
+  const hasPermission = useHasPermission();
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const { branches: contextBranches, selectedBranchId, refreshBranches } = useBranch();
 

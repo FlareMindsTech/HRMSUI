@@ -17,9 +17,8 @@ import {
   MdChevronRight,
   MdCorporateFare,
 } from 'react-icons/md';
-import { logoutUser } from '../../services/attendanceService';
 import { useSelector, useDispatch } from 'react-redux';
-import { selectAuthUser, selectIsSystemAdmin, selectHasMenu, logout } from '../../redux/slices/authSlice';
+import { selectAuthUser, selectIsSystemAdmin, useHasMenu, logout } from '../../redux/slices/authSlice';
 import './Sidebar.css';
 
 const menuItems = [
@@ -50,7 +49,7 @@ function Sidebar({ isExpanded = false }) {
   const location = useLocation();
   const user = useSelector(selectAuthUser);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
-  const hasMenu = useSelector((state) => (menuCode) => selectHasMenu(state, menuCode));
+  const hasMenu = useHasMenu();
   const dispatch = useDispatch();
   const [hovered, setHovered] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -74,19 +73,15 @@ function Sidebar({ isExpanded = false }) {
     (item) => location.pathname.startsWith(item.path)
   )?.path || '/dashboard';
 
-  const handleLogout = async () => {
-    try {
-      await logoutUser();
-    } catch (e) {
-      console.warn('Logout request notice:', e);
-    } finally {
-      await dispatch(logout());
-      localStorage.removeItem('user');
-      localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('tenantId');
-      localStorage.removeItem('organizationId');
-      window.location.href = '/login';
-    }
+  const handleLogout = () => {
+    // Instant SPA logout: the logout thunk clears local session synchronously
+    // and logout.pending clears Redux state the same tick, so the App route
+    // gate redirects to /login. No window.location reload (full bundle
+    // re-parse) and no scattered localStorage removes here — the thunk owns
+    // the full key set. navigate() is a fallback for the transition tick.
+    setShowModal(false);
+    dispatch(logout());
+    navigate('/login', { replace: true });
   };
 
   const renderItem = (item) => {

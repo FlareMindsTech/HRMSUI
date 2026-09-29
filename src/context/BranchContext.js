@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
-import { selectAuthUser, selectIsSystemAdmin } from "../redux/slices/authSlice";
+import { selectAuthUser, selectIsSystemAdmin, selectAuthStatus } from "../redux/slices/authSlice";
 import { fetchMyOrganization, fetchBranchesDropdown, fetchBranches } from "../services/organizationService";
 
 const BranchContext = createContext(null);
@@ -8,6 +8,7 @@ const BranchContext = createContext(null);
 export const BranchProvider = ({ children }) => {
   const user = useSelector(selectAuthUser);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const authStatus = useSelector(selectAuthStatus);
 
   const [organization, setOrganization] = useState(null);
   const [branches, setBranches] = useState([]);
@@ -19,6 +20,13 @@ export const BranchProvider = ({ children }) => {
   });
 
   // Determine user access properties
+  // Stable identity for the signed-in user. The user object reference changes
+  // on every auth sync (login.fulfilled then fetchAuth.fulfilled) even when
+  // it is the same person — keying effects on the object re-fired
+  // loadOrganization + loadBranches on every login.
+  const userId = user?._id || user?.id || user?.email || null;
+  const orgLoadedForRef = useRef(null);
+  const branchesLoadedForRef = useRef(null);
   const isOwner = user?.roleCode === "OWNER" || user?.priority === 1;
   const rawAccessLevel = user?.accessLevel || (user?.primaryBranchId || (Array.isArray(user?.branchIds) && user.branchIds.length > 0) ? "BRANCH" : "ORGANIZATION");
   const accessLevel = isOwner ? "ORGANIZATION" : rawAccessLevel;
@@ -97,17 +105,40 @@ export const BranchProvider = ({ children }) => {
     }
   }, [accessLevel, isOwner, isSystemAdmin, userBranchIds, primaryBranchId]);
 
-  // Load on mount and when user context updates
+  // Organization does not depend on the access filter — load once per person.
   useEffect(() => {
-    if (user) {
-      loadOrganization();
-      loadBranches();
-    } else {
+    if (!userId) {
+      orgLoadedForRef.current = null;
       setOrganization(null);
+      return;
+    }
+    if (orgLoadedForRef.current === userId) return;
+    orgLoadedForRef.current = userId;
+    loadOrganization();
+  }, [userId, loadOrganization]);
+
+  // Branches depend on the access filter, so reload when the filter inputs
+  // actually change — but not mid-refresh (authStatus === 'loading' means the
+  // enriched fetchAuth user is incoming) and not twice for the same filter.
+  const branchIdsKey = Array.isArray(user?.branchIds)
+    ? user.branchIds.map((b) => (typeof b === 'object' && b !== null ? b._id || b.id : b)).join(',')
+    : '';
+  const branchesFilterKey = `${userId || ''}|${accessLevel}|${branchIdsKey}`;
+  useEffect(() => {
+    if (!userId) {
+      branchesLoadedForRef.current = null;
       setBranches([]);
       setLoading(false);
+      return;
     }
-  }, [user, loadOrganization, loadBranches]);
+    if (authStatus === 'loading') return;
+    if (branchesLoadedForRef.current === branchesFilterKey) return;
+    branchesLoadedForRef.current = branchesFilterKey;
+    loadBranches();
+    // loadBranches carries the access filter in its identity; branchIdsKey /
+    // accessLevel are folded into branchesFilterKey above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, authStatus, branchesFilterKey]);
 
   // Set Selected Branch with authorization check
   const setSelectedBranchId = useCallback(

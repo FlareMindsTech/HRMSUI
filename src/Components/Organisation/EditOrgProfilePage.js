@@ -35,7 +35,7 @@ import {
   normalizeOrganization,
 } from "../../services/organizationService";
 import { useSelector } from 'react-redux';
-import { selectHasPermission, selectIsSystemAdmin, selectAuthUser } from '../../redux/slices/authSlice';
+import { useHasPermission, selectIsSystemAdmin, selectAuthUser } from '../../redux/slices/authSlice';
 import { useBranch } from "../../context/BranchContext";
 import "./EditOrgProfilePage.css";
 
@@ -146,7 +146,7 @@ const getStr = (val, fallback = "") => {
 };
 
 export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, onOrgUpdated }) {
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin); const user = useSelector(selectAuthUser);
+  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin); const user = useSelector(selectAuthUser);
   const { organization, refreshOrganization, refreshBranches } = useBranch();
 
   const [activeTab, setActiveTab] = useState("entity");

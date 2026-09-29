@@ -4,7 +4,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import { BranchProvider } from './context/BranchContext';
 import {
   selectIsAuthenticated,
-  selectAuthStatus,
   fetchAuth,
   clearAuth,
 } from './redux/slices/authSlice';
@@ -34,7 +33,6 @@ const isAuthError = (msg) =>
 function App() {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
-  const authStatus = useSelector(selectAuthStatus);
   const [booted, setBooted] = useState(false);
   const [setupRequired, setSetupRequired] = useState(null);
 
@@ -51,8 +49,9 @@ function App() {
         if (!cancelled && fetchAuth.rejected.match(result) && isAuthError(result.payload)) {
           clearAuthToken();
           try {
-            localStorage.removeItem('isAuthenticated');
-            localStorage.removeItem('user');
+            ['isAuthenticated', 'user', 'tenantId', 'organizationId', 'selectedBranchId', 'cached_org_profile'].forEach((k) =>
+              localStorage.removeItem(k)
+            );
           } catch {
             // ignore storage errors
           }
@@ -91,8 +90,11 @@ function App() {
     }
   };
 
-  // Don't flash login/dashboard while the stored token is being validated.
-  if (!booted || authStatus === 'loading') {
+  // Boot splash only while the initial token validation is outstanding.
+  // Background refreshes (e.g. the post-login fetchAuth that loads
+  // menus/permissions) must NOT unmount the app back to a splash screen —
+  // that was the main perceived "login is slow" delay.
+  if (!booted) {
     return (
       <div
         className="app-boot-splash"

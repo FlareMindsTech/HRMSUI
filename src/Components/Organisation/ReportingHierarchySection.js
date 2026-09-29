@@ -31,7 +31,7 @@ import {
   fetchEmployeesDropdown,
 } from "../../services/organizationService";
 import { useSelector } from 'react-redux';
-import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 
 // Recursive Visual Hierarchy Tree Node Component
 function TreeNode({ node, level = 0 }) {
@@ -100,7 +100,7 @@ function TreeNode({ node, level = 0 }) {
 }
 
 function ReportingHierarchySection({ lockedBranchId }) {
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const [viewMode, setViewMode] = useState("tree"); // "tree" | "table"
 
   const [treeData, setTreeData] = useState(null);
