@@ -12,8 +12,6 @@ import {
   Alert,
   InputGroup,
   Pagination,
-  Nav,
-  Tab,
 } from "react-bootstrap";
 import {
   FaCodeBranch,
@@ -95,7 +93,7 @@ const BRANCH_TYPES = [
   { value: "OTHER", label: "Other Campus Facility" },
 ];
 
-export default function BranchesSection({ onSelectBranch = null, onToggleFullView = null }) {
+export default function BranchesSection({ onSelectBranch = null, onToggleFullView = null, onBackToOrg = null, isStandaloneView = false }) {
   const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const { organization, refreshBranches } = useBranch();
   const [branches, setBranches] = useState([]);
