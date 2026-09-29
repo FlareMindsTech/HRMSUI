@@ -35,10 +35,12 @@ import {
   reviewRegularizationRequest,
   fetchMyTeamAttendance,
   fetchAttendanceSettings,
-  updateAttendanceSettings
+  updateAttendanceSettings,
+  formatAttendanceError
 } from '../../Api/Attendance/attendance';
 import { fetchBranchesDropdown, fetchDepartmentsDropdown, fetchMyOrganizationsList } from '../../services/organizationService';
 import { formatTime, formatFullDate } from '../../utils/dateFormatter';
+import AttendanceVerificationMethodConfig from '../../Components/Attendance/AttendanceVerificationMethodConfig';
 import './Attendance.css';
 
 // ── Calendar Helper Utilities ──
@@ -349,6 +351,10 @@ function Attendance() {
     autoCloseEnabled: true,
     autoCloseCutoffHours: 12,
     attendanceMode: 'GEOFENCE',
+    staticIp: {
+      enabled: false,
+      allowedIps: [],
+    },
     weekStartDay: 'Monday',
   });
   const [settingsSubmitting, setSettingsSubmitting] = useState(false);
@@ -388,6 +394,7 @@ function Attendance() {
           autoCloseEnabled: res.data.autoCloseEnabled ?? true,
           autoCloseCutoffHours: res.data.autoCloseCutoffHours ?? 12,
           attendanceMode: res.data.attendanceMode || 'GEOFENCE',
+          staticIp: res.data.staticIp || { enabled: false, allowedIps: [] },
           weekStartDay: res.data.weekStartDay || 'Monday',
         });
       }
@@ -399,6 +406,17 @@ function Attendance() {
     setSettingsSubmitting(true);
     setSettingsSuccessMsg('');
     setSettingsErrMsg('');
+
+    // Validation: STATIC_IP or BOTH mode requires at least one allowed static IP
+    if (settingsForm.attendanceMode === 'STATIC_IP' || settingsForm.attendanceMode === 'BOTH') {
+      const ips = settingsForm.staticIp?.allowedIps || [];
+      if (!Array.isArray(ips) || ips.length === 0) {
+        setSettingsErrMsg('At least one valid static public IP must be configured in the allowed list for Wi-Fi / Office Network or Both mode.');
+        setSettingsSubmitting(false);
+        return;
+      }
+    }
+
     try {
       const payload = {
         ...(isOwner && selectedOrgId ? { organizationId: selectedOrgId } : {}),
@@ -599,25 +617,30 @@ function Attendance() {
   const handlePunchAction = async () => {
     setPunchLoading(true);
     try {
-      let coords = { latitude: 11.0168, longitude: 76.9558, accuracy: 10 };
-      if (navigator.geolocation) {
-        try {
-          const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 }));
-          coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy };
-        } catch (e) { console.warn("Geolocation fallback used."); }
+      let coords = null;
+      if (settingsForm?.attendanceMode !== 'STATIC_IP') {
+        if (navigator.geolocation) {
+          try {
+            const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 }));
+            coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy };
+          } catch (e) { console.warn("Geolocation fallback used:", e.message); }
+        }
       }
 
       if (todayRecord?.loginTime && !todayRecord?.logoutTime) {
-        const res = await punchOutUser(coords);
+        const res = await punchOutUser(coords || {});
         setFeedbackMessage({ type: 'success', text: res.message || 'Punched out successfully!' });
       } else {
-        const res = await punchInUser(coords);
-        setFeedbackMessage({ type: 'success', text: res.message || 'Punched in successfully!' });
+        const res = await punchInUser(coords || {});
+        const successMsg = settingsForm?.attendanceMode === 'STATIC_IP'
+          ? 'Office network verified. Punched in successfully!'
+          : (res.message || 'Punched in successfully!');
+        setFeedbackMessage({ type: 'success', text: successMsg });
       }
       loadTodayData();
       loadOwnMonthly();
     } catch (err) {
-      setFeedbackMessage({ type: 'danger', text: err.message || 'Punch action failed.' });
+      setFeedbackMessage({ type: 'danger', text: formatAttendanceError(err) });
     } finally { setPunchLoading(false); }
   };
 
@@ -1559,15 +1582,44 @@ function Attendance() {
                     <Form.Select
                       size="sm"
                       value={settingsForm.attendanceMode}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, attendanceMode: e.target.value })}
+                      onChange={(e) => {
+                        const newMode = e.target.value;
+                        setSettingsForm((prev) => ({
+                          ...prev,
+                          attendanceMode: newMode,
+                          staticIp: {
+                            ...prev.staticIp,
+                            enabled: newMode === 'STATIC_IP' || newMode === 'BOTH',
+                          },
+                        }));
+                      }}
+                      disabled={settingsSubmitting}
                     >
-                      <option value="GEOFENCE">GEOFENCE (Location Radius)</option>
+                      <option value="GEOFENCE">Geofence (Location Radius)</option>
                       <option value="GPS">GPS (Coordinates Only)</option>
-                      <option value="MANUAL">MANUAL Override Only</option>
-                      <option value="BIOMETRIC">BIOMETRIC Machine Integration</option>
-                      <option value="ANY">ANY (Unrestricted)</option>
+                      <option value="STATIC_IP">Wi-Fi / Office Network</option>
+                      <option value="BOTH">Both (Geofence + Wi-Fi)</option>
+                      <option value="MANUAL">Manual Override Only</option>
+                      <option value="BIOMETRIC">Biometric Machine Integration</option>
+                      <option value="ANY">Any (Unrestricted)</option>
                     </Form.Select>
                   </Form.Group>
+                </Col>
+
+                <Col md={12}>
+                  <AttendanceVerificationMethodConfig
+                    value={settingsForm.attendanceMode}
+                    staticIp={settingsForm.staticIp}
+                    onChange={(newMode, newStaticIp) => {
+                      setSettingsForm((prev) => ({
+                        ...prev,
+                        attendanceMode: newMode,
+                        staticIp: newStaticIp,
+                      }));
+                    }}
+                    organizationId={selectedOrgId || ''}
+                    disabled={settingsSubmitting}
+                  />
                 </Col>
 
                 <Col md={4}>

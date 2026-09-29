@@ -434,13 +434,13 @@ function OrganizationSettingsSection() {
                           onChange={(e) => setFormData({ ...formData, attendanceMode: e.target.value })}
                           disabled={!canUpdate}
                         >
-                          <option value="GEOFENCE">Geofenced Radius (Office / Site Boundaries)</option>
-                          <option value="GPS">GPS Coordinates</option>
-                          <option value="MANUAL">Manual / Open Punch</option>
-                          <option value="BIOMETRIC">Biometric Integration</option>
-                          <option value="QR_CODE">QR Code Scan</option>
-                          <option value="IP_RESTRICTED">IP-Restricted Network</option>
-                          <option value="ANY">Any Method Allowed</option>
+                          <option value="GEOFENCE">Geofence (Location Radius)</option>
+                          <option value="GPS">GPS (Coordinates Only)</option>
+                          <option value="STATIC_IP">Wi-Fi / Office Network</option>
+                          <option value="BOTH">Both (Geofence + Wi-Fi)</option>
+                          <option value="MANUAL">Manual Override Only</option>
+                          <option value="BIOMETRIC">Biometric Machine Integration</option>
+                          <option value="ANY">Any (Unrestricted)</option>
                         </Form.Select>
                       </Form.Group>
                     </Col>
