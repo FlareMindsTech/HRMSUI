@@ -247,11 +247,13 @@ export default function BranchSettingsSection({ lockedBranchId = null }) {
                           onChange={(e) => setFormData({ ...formData, attendanceMode: e.target.value })}
                           disabled={!canUpdate}
                         >
-                          <option value="GEOFENCE">Geofenced Radius (Office Radius Check)</option>
-                          <option value="GPS">GPS Coordinates (Any Location with Tag)</option>
-                          <option value="MANUAL">Manual Punch</option>
-                          <option value="BIOMETRIC">Biometric Machine Sync</option>
-                          <option value="QR_CODE">QR Code Scan at Entrance</option>
+                          <option value="GEOFENCE">Geofence (Location Radius)</option>
+                          <option value="GPS">GPS (Coordinates Only)</option>
+                          <option value="STATIC_IP">Wi-Fi / Office Network</option>
+                          <option value="BOTH">Both (Geofence + Wi-Fi)</option>
+                          <option value="MANUAL">Manual Override Only</option>
+                          <option value="BIOMETRIC">Biometric Machine Integration</option>
+                          <option value="ANY">Any (Unrestricted)</option>
                         </Form.Select>
                       </Form.Group>
                     </Col>
