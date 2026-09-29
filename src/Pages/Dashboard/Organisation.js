@@ -155,14 +155,17 @@ function Organisation() {
       } else if (organization) {
         setOrgData(normalizeOrganization(organization) || organization);
       } else {
-        setOrgData(null);
+        try {
+          const cached = localStorage.getItem("cached_org_profile");
+          if (cached) {
+            setOrgData(normalizeOrganization(JSON.parse(cached)));
+          }
+        } catch (e) {}
       }
     } catch (err) {
       console.warn("Could not load organization in parent header:", err);
       if (organization) {
         setOrgData(normalizeOrganization(organization) || organization);
-      } else {
-        setOrgData(null);
       }
     } finally {
       setLoadingOrg(false);
@@ -255,14 +258,24 @@ function Organisation() {
     ? `${user.firstName} ${user.lastName || ""}`.trim()
     : user?.roleName || "Organization Administrator";
 
-  const currentOrg = orgData || organization;
+  const storedCachedOrg = useMemo(() => {
+    try {
+      const s = localStorage.getItem("cached_org_profile");
+      return s ? JSON.parse(s) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const currentOrg = orgData || organization || storedCachedOrg || user?.organization;
   const isOwner =
     user?.roleCode === "OWNER" ||
     user?.priority === 1 ||
     user?.role === "OWNER" ||
     user?.permissions?.includes("*");
 
-  const hasNoOrg = !loadingOrg && (!currentOrg || (!currentOrg._id && !currentOrg.organizationName && !currentOrg.id));
+  const storedOrgId = localStorage.getItem("organizationId") || localStorage.getItem("tenantId") || user?.organizationId;
+  const hasNoOrg = !loadingOrg && !currentOrg && !storedOrgId;
   const canEdit = Boolean(
     (hasPermission && (hasPermission("organization.update") || hasPermission("organisation.update"))) ||
     isOwner
