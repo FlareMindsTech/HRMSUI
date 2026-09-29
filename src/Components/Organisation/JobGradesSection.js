@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
-  Table,
   Button,
   Badge,
   Modal,
@@ -11,7 +10,6 @@ import {
   Spinner,
   Alert,
   InputGroup,
-  Pagination,
 } from "react-bootstrap";
 import {
   FaLayerGroup,
@@ -31,10 +29,12 @@ import {
   fetchBranchesDropdown,
 } from "../../services/organizationService";
 import { useSelector } from 'react-redux';
-import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import DataTable from "../Common/DataTable";
+import PaginationBar from "../Common/PaginationBar";
 
 function JobGradesSection({ lockedBranchId }) {
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const [grades, setGrades] = useState([]);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -269,133 +269,157 @@ function JobGradesSection({ lockedBranchId }) {
 
       {/* ── Table ── */}
       <Card className="org-table-card">
-        <Table responsive hover className="org-table mb-0 align-middle">
-          <thead>
-            <tr>
-              <th>Grade Title & Code</th>
-              <th>Branch</th>
-              <th>Rank Level</th>
-              <th>Experience Band</th>
-              <th>Salary Range</th>
-              <th>Description</th>
-              <th>Status</th>
-              <th className="text-end">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={8} className="text-center py-5 text-muted">
-                  <Spinner animation="border" size="sm" variant="success" className="me-2" />
-                  Loading job grades...
-                </td>
-              </tr>
-            ) : grades.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="text-center py-5 text-muted">
-                  <div className="p-3">
-                    <p className="mb-2">No job grades found.</p>
-                    {canCreate && (
-                      <Button variant="outline-success" size="sm" onClick={handleOpenCreate}>
-                        <FaPlus className="me-1" /> Add First Job Grade
-                      </Button>
-                    )}
+        <DataTable
+          responsive
+          hover
+          className="org-table mb-0 align-middle"
+          columns={[
+            {
+              key: "grade",
+              header: "Grade Title & Code",
+              render: (g) => (
+                <>
+                  <div className="fw-semibold text-dark">{g.gradeName}</div>
+                  <div className="small font-monospace text-muted">{g.gradeCode}</div>
+                </>
+              ),
+            },
+            {
+              key: "branch",
+              header: "Branch",
+              render: (g) =>
+                g.branchId ? (
+                  <div className="small">
+                    <FaCodeBranch className="text-secondary me-1" />
+                    {g.branchId.branchName || "Branch"}
                   </div>
-                </td>
-              </tr>
-            ) : (
-              grades.map((g) => (
-                <tr key={g._id}>
-                  <td>
-                    <div className="fw-semibold text-dark">{g.gradeName}</div>
-                    <div className="small font-monospace text-muted">{g.gradeCode}</div>
-                  </td>
-                  <td>
-                    {g.branchId ? (
-                      <div className="small">
-                        <FaCodeBranch className="text-secondary me-1" />
-                        {g.branchId.branchName || "Branch"}
-                      </div>
-                    ) : (
-                      <span className="text-muted small">Global / Org-wide</span>
-                    )}
-                  </td>
-                  <td>
-                    <Badge bg="light" className="text-primary border font-monospace">
-                      Level {g.level || 1}
-                    </Badge>
-                  </td>
-                  <td>
-                    <div className="small text-muted">
-                      <FaBriefcase className="me-1" />
-                      {g.minimumExperience} - {g.maximumExperience} Years
-                    </div>
-                  </td>
-                  <td>
-                    <div className="small font-monospace text-dark">
-                      <FaMoneyBillWave className="text-success me-1" />
-                      {g.minimumSalary > 0 || g.maximumSalary > 0
-                        ? `${g.minimumSalary.toLocaleString()} - ${g.maximumSalary.toLocaleString()}`
-                        : "Not specified"}
-                    </div>
-                  </td>
-                  <td>
-                    <span className="small text-muted text-truncate d-inline-block" style={{ maxWidth: "200px" }}>
-                      {g.description || "-"}
-                    </span>
-                  </td>
-                  <td>
-                    <Badge bg={g.status === "ACTIVE" ? "success" : "secondary"}>
-                      {g.status}
-                    </Badge>
-                  </td>
-                  <td className="text-end">
-                    {canUpdate && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="text-primary p-1"
-                        title="Edit Job Grade"
-                        onClick={() => handleOpenEdit(g)}
-                      >
-                        <FaEdit />
-                      </Button>
-                    )}
-                    {canDelete && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="text-danger p-1"
-                        title="Delete Job Grade"
-                        onClick={() => {
-                          setDeletingId(g._id);
-                          setDeletingName(g.gradeName);
-                          setShowDeleteModal(true);
-                        }}
-                      >
-                        <FaTrash />
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </Table>
+                ) : (
+                  <span className="text-muted small">Global / Org-wide</span>
+                ),
+            },
+            {
+              key: "level",
+              header: "Rank Level",
+              render: (g) => (
+                <Badge bg="light" className="text-primary border font-monospace">
+                  Level {g.level || 1}
+                </Badge>
+              ),
+            },
+            {
+              key: "experience",
+              header: "Experience Band",
+              render: (g) => (
+                <div className="small text-muted">
+                  <FaBriefcase className="me-1" />
+                  {g.minimumExperience} - {g.maximumExperience} Years
+                </div>
+              ),
+            },
+            {
+              key: "salary",
+              header: "Salary Range",
+              render: (g) => (
+                <div className="small font-monospace text-dark">
+                  <FaMoneyBillWave className="text-success me-1" />
+                  {g.minimumSalary > 0 || g.maximumSalary > 0
+                    ? `${g.minimumSalary.toLocaleString()} - ${g.maximumSalary.toLocaleString()}`
+                    : "Not specified"}
+                </div>
+              ),
+            },
+            {
+              key: "description",
+              header: "Description",
+              render: (g) => (
+                <span className="small text-muted text-truncate d-inline-block" style={{ maxWidth: "200px" }}>
+                  {g.description || "-"}
+                </span>
+              ),
+            },
+            {
+              key: "status",
+              header: "Status",
+              render: (g) => (
+                <Badge bg={g.status === "ACTIVE" ? "success" : "secondary"}>
+                  {g.status}
+                </Badge>
+              ),
+            },
+            {
+              key: "actions",
+              header: "Actions",
+              headerClassName: "text-end",
+              cellClassName: "text-end",
+              render: (g) => (
+                <>
+                  {canUpdate && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-primary p-1"
+                      title="Edit Job Grade"
+                      onClick={() => handleOpenEdit(g)}
+                    >
+                      <FaEdit />
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-danger p-1"
+                      title="Delete Job Grade"
+                      onClick={() => {
+                        setDeletingId(g._id);
+                        setDeletingName(g.gradeName);
+                        setShowDeleteModal(true);
+                      }}
+                    >
+                      <FaTrash />
+                    </Button>
+                  )}
+                </>
+              ),
+            },
+          ]}
+          rows={grades}
+          rowKey={(g) => g._id}
+          loading={loading}
+          loadingComponent={
+            <tr>
+              <td colSpan={8} className="text-center py-5 text-muted">
+                <Spinner animation="border" size="sm" variant="success" className="me-2" />
+                Loading job grades...
+              </td>
+            </tr>
+          }
+          emptyComponent={
+            <tr>
+              <td colSpan={8} className="text-center py-5 text-muted">
+                <div className="p-3">
+                  <p className="mb-2">No job grades found.</p>
+                  {canCreate && (
+                    <Button variant="outline-success" size="sm" onClick={handleOpenCreate}>
+                      <FaPlus className="me-1" /> Add First Job Grade
+                    </Button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          }
+        />
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="d-flex justify-content-end p-3 border-top">
-            <Pagination size="sm" className="mb-0">
-              <Pagination.Prev disabled={page <= 1} onClick={() => setPage((p) => Math.max(p - 1, 1))} />
-              {[...Array(totalPages).keys()].map((n) => (
-                <Pagination.Item key={n + 1} active={n + 1 === page} onClick={() => setPage(n + 1)}>
-                  {n + 1}
-                </Pagination.Item>
-              ))}
-              <Pagination.Next disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(p + 1, totalPages))} />
-            </Pagination>
-          </div>
+          <PaginationBar
+            size="sm"
+            page={page}
+            totalPages={totalPages}
+            onPageChange={(pg) => setPage(pg)}
+            wrapperClassName="d-flex justify-content-end p-3 border-top"
+            paginationClassName="mb-0"
+          />
         )}
       </Card>
 

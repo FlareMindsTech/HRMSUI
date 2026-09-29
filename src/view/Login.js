@@ -50,9 +50,13 @@ const Login = ({ onLogin }) => {
     try {
       const result = await dispatch(login({ identifier: email, password }));
       if (login.fulfilled.match(result)) {
-        await dispatch(fetchAuth());
         setLoading(false);
+        // Navigate immediately: login.fulfilled already sets user + token,
+        // so the route gate opens now. Menus/permissions refresh in
+        // background without unmounting the app (App shows the boot splash
+        // only on initial boot, not on background refresh).
         onLogin && onLogin();
+        void dispatch(fetchAuth());
       } else {
         setError(result.payload || authError || 'Login failed. Please check your credentials.');
         setLoading(false);

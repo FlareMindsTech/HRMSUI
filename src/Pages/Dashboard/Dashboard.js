@@ -16,7 +16,7 @@ import {
 } from 'react-icons/fa';
 import AttendanceCard from '../../Components/Attendance/AttendanceCard';
 import { useSelector } from 'react-redux';
-import { selectAuthUser, selectHasPermission } from '../../redux/slices/authSlice';
+import { selectAuthUser, useHasPermission } from '../../redux/slices/authSlice';
 import './Dashboard.css';
 
 /**
@@ -31,7 +31,7 @@ import './Dashboard.css';
  */
 function Dashboard() {
   const user = useSelector(selectAuthUser);
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
+  const hasPermission = useHasPermission();
   const navigate = useNavigate();
 
   const employeeName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Team Member';

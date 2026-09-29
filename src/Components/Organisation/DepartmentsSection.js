@@ -40,7 +40,7 @@ import {
   fetchEmployeesDropdown,
 } from "../../services/organizationService";
 import { useSelector } from 'react-redux';
-import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 
 // Recursive Department Tree Node Component
 function DeptTreeNode({ node, level = 0, onEdit, onDelete, canUpdate, canDelete }) {
@@ -156,7 +156,7 @@ function DeptTreeNode({ node, level = 0, onEdit, onDelete, canUpdate, canDelete 
 }
 
 function DepartmentsSection({ lockedBranchId }) {
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const [viewMode, setViewMode] = useState("table"); // "table" | "tree"
   const [departments, setDepartments] = useState([]);
   const [parentDepts, setParentDepts] = useState([]);

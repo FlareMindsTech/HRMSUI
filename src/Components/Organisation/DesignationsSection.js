@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
-  Table,
   Button,
   Badge,
   Modal,
@@ -11,7 +10,6 @@ import {
   Spinner,
   Alert,
   InputGroup,
-  Pagination,
 } from "react-bootstrap";
 import {
   FaUserTag,
@@ -33,10 +31,12 @@ import {
   fetchBranchesDropdown,
 } from "../../services/organizationService";
 import { useSelector } from 'react-redux';
-import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import DataTable from "../Common/DataTable";
+import PaginationBar from "../Common/PaginationBar";
 
 function DesignationsSection({ lockedBranchId }) {
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const [designations, setDesignations] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [jobGrades, setJobGrades] = useState([]);
@@ -366,143 +366,164 @@ function DesignationsSection({ lockedBranchId }) {
 
       {/* ── Table ── */}
       <Card className="org-table-card">
-        <Table responsive hover className="org-table mb-0 align-middle">
-          <thead>
-            <tr>
-              <th>Designation Code & Title</th>
-              <th>Branch</th>
-              <th>Department</th>
-              <th>Job Grade</th>
-              <th>Job Level</th>
-              <th>Description</th>
-              <th>Status</th>
-              <th className="text-end">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={8} className="text-center py-5 text-muted">
-                  <Spinner animation="border" size="sm" variant="success" className="me-2" />
-                  Loading designations...
-                </td>
-              </tr>
-            ) : designations.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="text-center py-5 text-muted">
-                  <div className="p-3">
-                    <p className="mb-2">No designations found.</p>
-                    {canCreate && (
-                      <Button variant="outline-success" size="sm" onClick={handleOpenCreate}>
-                        <FaPlus className="me-1" /> Add First Designation
-                      </Button>
-                    )}
+        <DataTable
+          responsive
+          hover
+          className="org-table mb-0 align-middle"
+          columns={[
+            {
+              key: "designation",
+              header: "Designation Code & Title",
+              render: (desig) => (
+                <>
+                  <div className="fw-semibold text-dark">{desig.designationName}</div>
+                  <div className="small font-monospace text-muted">{desig.designationCode}</div>
+                </>
+              ),
+            },
+            {
+              key: "branch",
+              header: "Branch",
+              render: (desig) =>
+                desig.branchId ? (
+                  <div className="small">
+                    <FaCodeBranch className="text-secondary me-1" />
+                    {desig.branchId.branchName || "Branch"}
                   </div>
-                </td>
-              </tr>
-            ) : (
-              designations.map((desig) => (
-                <tr key={desig._id}>
-                  <td>
-                    <div className="fw-semibold text-dark">{desig.designationName}</div>
-                    <div className="small font-monospace text-muted">{desig.designationCode}</div>
-                  </td>
-                  <td>
-                    {desig.branchId ? (
-                      <div className="small">
-                        <FaCodeBranch className="text-secondary me-1" />
-                        {desig.branchId.branchName || "Branch"}
-                      </div>
-                    ) : (
-                      <span className="text-muted small">Global / Org-wide</span>
-                    )}
-                  </td>
-                  <td>
-                    {desig.departmentId ? (
-                      <div className="small">
-                        <FaSitemap className="text-success me-1" />
-                        {desig.departmentId.departmentName}
-                      </div>
-                    ) : (
-                      <span className="text-muted small">General / Global</span>
-                    )}
-                  </td>
-                  <td>
-                    {desig.jobGradeId ? (
-                      <Badge bg="light" className="text-dark border">
-                        <FaLayerGroup className="me-1 text-primary" />
-                        {desig.jobGradeId.gradeName || desig.jobGradeId.gradeCode}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted small">-</span>
-                    )}
-                  </td>
-                  <td>
-                    {desig.jobLevel ? (
-                      <span className="badge bg-secondary-subtle text-secondary border">
-                        {desig.jobLevel}
-                      </span>
-                    ) : (
-                      <span className="text-muted small">-</span>
-                    )}
-                  </td>
-                  <td>
-                    <span className="small text-muted text-truncate d-inline-block" style={{ maxWidth: "220px" }}>
-                      {desig.description || "N/A"}
-                    </span>
-                  </td>
-                  <td>
-                    <Badge bg={desig.status === "ACTIVE" ? "success" : "secondary"}>
-                      {desig.status}
-                    </Badge>
-                  </td>
-                  <td className="text-end">
-                    {canUpdate && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="text-primary p-1"
-                        title="Edit Designation"
-                        onClick={() => handleOpenEdit(desig)}
-                      >
-                        <FaEdit />
-                      </Button>
-                    )}
-                    {canDelete && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="text-danger p-1"
-                        title="Delete Designation"
-                        onClick={() => {
-                          setDeletingId(desig._id);
-                          setDeletingName(desig.designationName);
-                          setShowDeleteModal(true);
-                        }}
-                      >
-                        <FaTrash />
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </Table>
+                ) : (
+                  <span className="text-muted small">Global / Org-wide</span>
+                ),
+            },
+            {
+              key: "department",
+              header: "Department",
+              render: (desig) =>
+                desig.departmentId ? (
+                  <div className="small">
+                    <FaSitemap className="text-success me-1" />
+                    {desig.departmentId.departmentName}
+                  </div>
+                ) : (
+                  <span className="text-muted small">General / Global</span>
+                ),
+            },
+            {
+              key: "grade",
+              header: "Job Grade",
+              render: (desig) =>
+                desig.jobGradeId ? (
+                  <Badge bg="light" className="text-dark border">
+                    <FaLayerGroup className="me-1 text-primary" />
+                    {desig.jobGradeId.gradeName || desig.jobGradeId.gradeCode}
+                  </Badge>
+                ) : (
+                  <span className="text-muted small">-</span>
+                ),
+            },
+            {
+              key: "level",
+              header: "Job Level",
+              render: (desig) =>
+                desig.jobLevel ? (
+                  <span className="badge bg-secondary-subtle text-secondary border">
+                    {desig.jobLevel}
+                  </span>
+                ) : (
+                  <span className="text-muted small">-</span>
+                ),
+            },
+            {
+              key: "description",
+              header: "Description",
+              render: (desig) => (
+                <span className="small text-muted text-truncate d-inline-block" style={{ maxWidth: "220px" }}>
+                  {desig.description || "N/A"}
+                </span>
+              ),
+            },
+            {
+              key: "status",
+              header: "Status",
+              render: (desig) => (
+                <Badge bg={desig.status === "ACTIVE" ? "success" : "secondary"}>
+                  {desig.status}
+                </Badge>
+              ),
+            },
+            {
+              key: "actions",
+              header: "Actions",
+              headerClassName: "text-end",
+              cellClassName: "text-end",
+              render: (desig) => (
+                <>
+                  {canUpdate && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-primary p-1"
+                      title="Edit Designation"
+                      onClick={() => handleOpenEdit(desig)}
+                    >
+                      <FaEdit />
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-danger p-1"
+                      title="Delete Designation"
+                      onClick={() => {
+                        setDeletingId(desig._id);
+                        setDeletingName(desig.designationName);
+                        setShowDeleteModal(true);
+                      }}
+                    >
+                      <FaTrash />
+                    </Button>
+                  )}
+                </>
+              ),
+            },
+          ]}
+          rows={designations}
+          rowKey={(desig) => desig._id}
+          loading={loading}
+          loadingComponent={
+            <tr>
+              <td colSpan={8} className="text-center py-5 text-muted">
+                <Spinner animation="border" size="sm" variant="success" className="me-2" />
+                Loading designations...
+              </td>
+            </tr>
+          }
+          emptyComponent={
+            <tr>
+              <td colSpan={8} className="text-center py-5 text-muted">
+                <div className="p-3">
+                  <p className="mb-2">No designations found.</p>
+                  {canCreate && (
+                    <Button variant="outline-success" size="sm" onClick={handleOpenCreate}>
+                      <FaPlus className="me-1" /> Add First Designation
+                    </Button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          }
+        />
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="d-flex justify-content-end p-3 border-top">
-            <Pagination size="sm" className="mb-0">
-              <Pagination.Prev disabled={page <= 1} onClick={() => setPage((p) => Math.max(p - 1, 1))} />
-              {[...Array(totalPages).keys()].map((n) => (
-                <Pagination.Item key={n + 1} active={n + 1 === page} onClick={() => setPage(n + 1)}>
-                  {n + 1}
-                </Pagination.Item>
-              ))}
-              <Pagination.Next disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(p + 1, totalPages))} />
-            </Pagination>
-          </div>
+          <PaginationBar
+            size="sm"
+            page={page}
+            totalPages={totalPages}
+            onPageChange={(pg) => setPage(pg)}
+            wrapperClassName="d-flex justify-content-end p-3 border-top"
+            paginationClassName="mb-0"
+          />
         )}
       </Card>
 

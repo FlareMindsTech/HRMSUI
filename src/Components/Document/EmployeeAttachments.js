@@ -13,6 +13,7 @@ import {
   FaCalendarAlt,
   FaFilePdf,
 } from "react-icons/fa";
+import EmptyState from "../Common/EmptyState";
 
 const CATEGORY_LABELS = {
   OFFER_LETTER: "Offer Letter",
@@ -153,23 +154,26 @@ const EmployeeAttachments = ({
 
       <Card.Body className="p-4">
         {filteredAttachments.length === 0 ? (
-          <div className="text-center py-5">
-            <FaPaperclip className="fs-1 text-muted opacity-50 mb-2" />
-            <h6 className="fw-bold text-dark">No Documents Found</h6>
-            <p className="text-muted extra-small mb-3">
-              {attachments.length === 0
+          <EmptyState
+            variant="block"
+            className="text-center py-5"
+            icon={FaPaperclip}
+            iconClassName="fs-1 text-muted opacity-50 mb-2"
+            title="No Documents Found"
+            titleAs="h6"
+            titleClassName="fw-bold text-dark"
+            description={
+              attachments.length === 0
                 ? "No employee document attachments have been uploaded yet."
-                : "No documents matching the selected category or status filter."}
-            </p>
-            <Button
-              variant="outline-success"
-              size="sm"
-              className="rounded-pill px-3.5 extra-small"
-              onClick={onOpenUpload}
-            >
-              <FaPlus className="me-1" /> Upload First Document
-            </Button>
-          </div>
+                : "No documents matching the selected category or status filter."
+            }
+            descriptionClassName="text-muted extra-small mb-3"
+            actionLabel="Upload First Document"
+            onAction={onOpenUpload}
+            actionVariant="outline-success"
+            actionClassName="rounded-pill px-3.5 extra-small"
+            actionIcon={<FaPlus className="me-1" />}
+          />
         ) : (
           <Row className="g-3">
             {filteredAttachments.map((att, idx) => (

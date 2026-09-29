@@ -4,14 +4,12 @@ import {
   Container,
   Row,
   Col,
-  Table,
   Button,
   Modal,
   Form,
   Spinner,
   Alert,
   InputGroup,
-  Pagination,
 } from "react-bootstrap";
 import {
   FaPlus,
@@ -33,7 +31,10 @@ import {
 } from "react-icons/fa";
 import { MdDevices } from "react-icons/md";
 import { useSelector } from 'react-redux';
-import { selectHasMenu, selectHasPermission, selectAuthStatus } from '../../redux/slices/authSlice';
+import { useHasMenu, useHasPermission, selectAuthStatus } from '../../redux/slices/authSlice';
+import DataTable from '../../Components/Common/DataTable';
+import SearchInput from '../../Components/Common/SearchInput';
+import PaginationBar from '../../Components/Common/PaginationBar';
 import {
   getAssets,
   createAsset,
@@ -106,8 +107,8 @@ const getStatusBadge = (status) => {
 };
 
 function AssetManagement() {
-  const hasMenu = useSelector((state) => (menuCode) => selectHasMenu(state, menuCode));
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
+  const hasMenu = useHasMenu();
+  const hasPermission = useHasPermission();
   const authStatus = useSelector(selectAuthStatus);
   const authLoading = authStatus === 'loading';
 
@@ -556,18 +557,15 @@ function AssetManagement() {
       <div className="asset-filter-bar mb-4 p-3">
         <Row className="g-2 align-items-center">
           <Col xs={12} md={5}>
-            <InputGroup size="sm">
-              <InputGroup.Text className="bg-white border-end-0 text-muted rounded-start-3">
-                <FaSearch />
-              </InputGroup.Text>
-              <Form.Control
-                type="text"
-                placeholder="Search by code, name, serial, model, assignee..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="border-start-0 shadow-none rounded-end-3"
-              />
-            </InputGroup>
+            <SearchInput
+              size="sm"
+              inputGroupTextClassName="bg-white border-end-0 text-muted rounded-start-3"
+              inputClassName="border-start-0 shadow-none rounded-end-3"
+              type="text"
+              placeholder="Search by code, name, serial, model, assignee..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </Col>
 
           <Col xs={6} md={3}>
@@ -681,154 +679,166 @@ function AssetManagement() {
         ) : (
           <>
             <div className="table-responsive">
-              <Table hover className="asset-table align-middle mb-0" style={{ fontSize: "0.85rem" }}>
-                <thead>
-                  <tr>
-                    <th className="py-3 px-3">Asset Code</th>
-                    <th className="py-3 px-3">Asset Name</th>
-                    <th className="py-3 px-3">Category</th>
-                    <th className="py-3 px-3">Serial Number</th>
-                    <th className="py-3 px-3">Model / Manufacturer</th>
-                    <th className="py-3 px-3">Status</th>
-                    <th className="py-3 px-3">Current Assignee</th>
-                    <th className="py-3 px-3 text-end">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAssets.map((asset) => (
-                    <tr key={asset._id}>
-                      {/* Asset Code */}
-                      <td className="px-3 py-3">
-                        <span
-                          className="badge bg-light text-dark border fw-bold px-2 py-1 font-monospace"
-                          style={{ letterSpacing: "0.5px" }}
-                        >
-                          {asset.assetCode}
-                        </span>
-                      </td>
-
-                      {/* Asset Name */}
-                      <td className="px-3 py-3">
-                        <div className="fw-bold text-dark">{asset.name}</div>
-                      </td>
-
-                      {/* Category */}
-                      <td className="px-3 py-3">
-                        <span className="asset-category-tag">
-                          {getCategoryIcon(asset.category)}
-                          <span>{asset.category}</span>
-                        </span>
-                      </td>
-
-                      {/* Serial Number */}
-                      <td className="px-3 py-3">
-                        <span className="font-monospace text-muted small">
-                          {asset.serialNumber}
-                        </span>
-                      </td>
-
-                      {/* Model / Manufacturer */}
-                      <td className="px-3 py-3">
+              <DataTable
+                hover
+                className="asset-table align-middle mb-0"
+                style={{ fontSize: "0.85rem" }}
+                columns={[
+                  {
+                    key: "code",
+                    header: "Asset Code",
+                    headerClassName: "py-3 px-3",
+                    cellClassName: "px-3 py-3",
+                    render: (asset) => (
+                      <span
+                        className="badge bg-light text-dark border fw-bold px-2 py-1 font-monospace"
+                        style={{ letterSpacing: "0.5px" }}
+                      >
+                        {asset.assetCode}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "name",
+                    header: "Asset Name",
+                    headerClassName: "py-3 px-3",
+                    cellClassName: "px-3 py-3",
+                    render: (asset) => (
+                      <div className="fw-bold text-dark">{asset.name}</div>
+                    ),
+                  },
+                  {
+                    key: "category",
+                    header: "Category",
+                    headerClassName: "py-3 px-3",
+                    cellClassName: "px-3 py-3",
+                    render: (asset) => (
+                      <span className="asset-category-tag">
+                        {getCategoryIcon(asset.category)}
+                        <span>{asset.category}</span>
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "serial",
+                    header: "Serial Number",
+                    headerClassName: "py-3 px-3",
+                    cellClassName: "px-3 py-3",
+                    render: (asset) => (
+                      <span className="font-monospace text-muted small">
+                        {asset.serialNumber}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "model",
+                    header: "Model / Manufacturer",
+                    headerClassName: "py-3 px-3",
+                    cellClassName: "px-3 py-3",
+                    render: (asset) => (
+                      <>
                         <div className="text-dark fw-medium">{asset.modelName || "—"}</div>
                         {asset.manufacturer && (
                           <small className="text-muted d-block">{asset.manufacturer}</small>
                         )}
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-3 py-3">{getStatusBadge(asset.status)}</td>
-
-                      {/* Current Assignee */}
-                      <td className="px-3 py-3">
-                        {asset.currentAssignee ? (
-                          <div className="d-flex align-items-center gap-2">
-                            <div className="assignee-avatar-chip">
-                              {(asset.currentAssignee.firstName?.[0] || "E") + (asset.currentAssignee.lastName?.[0] || "")}
-                            </div>
-                            <div>
-                              <div className="fw-semibold text-dark">
-                                {asset.currentAssignee.firstName} {asset.currentAssignee.lastName}
-                              </div>
-                              <small className="text-muted extra-small">
-                                {asset.currentAssignee.employeeCode || asset.currentAssignee.email}
-                              </small>
-                            </div>
+                      </>
+                    ),
+                  },
+                  {
+                    key: "status",
+                    header: "Status",
+                    headerClassName: "py-3 px-3",
+                    cellClassName: "px-3 py-3",
+                    render: (asset) => getStatusBadge(asset.status),
+                  },
+                  {
+                    key: "assignee",
+                    header: "Current Assignee",
+                    headerClassName: "py-3 px-3",
+                    cellClassName: "px-3 py-3",
+                    render: (asset) =>
+                      asset.currentAssignee ? (
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="assignee-avatar-chip">
+                            {(asset.currentAssignee.firstName?.[0] || "E") + (asset.currentAssignee.lastName?.[0] || "")}
                           </div>
-                        ) : (
-                          <span className="text-muted small">—</span>
-                        )}
-                      </td>
-
-                      {/* Actions: Permission Guarded */}
-                      <td className="px-3 py-3 text-end">
-                        <div className="d-flex justify-content-end gap-2">
-                          {/* Assign Action */}
-                          {hasPermission("asset.assign") && asset.status === "AVAILABLE" && (
-                            <Button
-                              variant="outline-primary"
-                              size="sm"
-                              className="btn-asset-action"
-                              onClick={() => handleOpenAssignModal(asset)}
-                              title="Assign asset to employee"
-                            >
-                              <FaExchangeAlt />
-                              <span>Assign</span>
-                            </Button>
-                          )}
-
-                          {/* Return Action */}
-                          {hasPermission("asset.return") && asset.status === "ASSIGNED" && (
-                            <Button
-                              variant="outline-success"
-                              size="sm"
-                              className="btn-asset-action"
-                              onClick={() => handleOpenReturnModal(asset)}
-                              title="Return asset to inventory"
-                            >
-                              <FaUndoAlt />
-                              <span>Return</span>
-                            </Button>
-                          )}
-
-                          {/* Fallback for read-only view or terminal statuses */}
-                          {(!hasPermission("asset.assign") && !hasPermission("asset.return")) ||
-                          (asset.status !== "AVAILABLE" && asset.status !== "ASSIGNED") ? (
-                            <span className="text-muted small px-2">—</span>
-                          ) : null}
+                          <div>
+                            <div className="fw-semibold text-dark">
+                              {asset.currentAssignee.firstName} {asset.currentAssignee.lastName}
+                            </div>
+                            <small className="text-muted extra-small">
+                              {asset.currentAssignee.employeeCode || asset.currentAssignee.email}
+                            </small>
+                          </div>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
+                      ) : (
+                        <span className="text-muted small">—</span>
+                      ),
+                  },
+                  {
+                    key: "actions",
+                    header: "Actions",
+                    headerClassName: "py-3 px-3 text-end",
+                    cellClassName: "px-3 py-3 text-end",
+                    render: (asset) => (
+                      <div className="d-flex justify-content-end gap-2">
+                        {/* Assign Action */}
+                        {hasPermission("asset.assign") && asset.status === "AVAILABLE" && (
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            className="btn-asset-action"
+                            onClick={() => handleOpenAssignModal(asset)}
+                            title="Assign asset to employee"
+                          >
+                            <FaExchangeAlt />
+                            <span>Assign</span>
+                          </Button>
+                        )}
+
+                        {/* Return Action */}
+                        {hasPermission("asset.return") && asset.status === "ASSIGNED" && (
+                          <Button
+                            variant="outline-success"
+                            size="sm"
+                            className="btn-asset-action"
+                            onClick={() => handleOpenReturnModal(asset)}
+                            title="Return asset to inventory"
+                          >
+                            <FaUndoAlt />
+                            <span>Return</span>
+                          </Button>
+                        )}
+
+                        {/* Fallback for read-only view or terminal statuses */}
+                        {(!hasPermission("asset.assign") && !hasPermission("asset.return")) ||
+                        (asset.status !== "AVAILABLE" && asset.status !== "ASSIGNED") ? (
+                          <span className="text-muted small px-2">—</span>
+                        ) : null}
+                      </div>
+                    ),
+                  },
+                ]}
+                rows={filteredAssets}
+                rowKey={(asset) => asset._id}
+              />
             </div>
 
             {/* Pagination Controls */}
             {paginationInfo.totalPages > 1 && (
-              <div className="d-flex justify-content-between align-items-center p-3 px-4 border-top">
-                <small className="text-muted">
-                  Page {currentPage} of {paginationInfo.totalPages} ({paginationInfo.totalRecords} total assets)
-                </small>
-                <Pagination size="sm" className="mb-0">
-                  <Pagination.Prev
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  />
-                  {[...Array(paginationInfo.totalPages).keys()].map((n) => (
-                    <Pagination.Item
-                      key={n + 1}
-                      active={n + 1 === currentPage}
-                      onClick={() => setCurrentPage(n + 1)}
-                    >
-                      {n + 1}
-                    </Pagination.Item>
-                  ))}
-                  <Pagination.Next
-                    disabled={currentPage === paginationInfo.totalPages}
-                    onClick={() => setCurrentPage((p) => Math.min(paginationInfo.totalPages, p + 1))}
-                  />
-                </Pagination>
-              </div>
+              <PaginationBar
+                size="sm"
+                page={currentPage}
+                totalPages={paginationInfo.totalPages}
+                onPageChange={(pg) => setCurrentPage(pg)}
+                info={
+                  <small className="text-muted">
+                    Page {currentPage} of {paginationInfo.totalPages} ({paginationInfo.totalRecords} total assets)
+                  </small>
+                }
+                wrapperClassName="d-flex justify-content-between align-items-center p-3 px-4 border-top"
+                paginationClassName="mb-0"
+              />
             )}
           </>
         )}

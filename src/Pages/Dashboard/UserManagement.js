@@ -12,7 +12,6 @@ import {
   Spinner,
   Alert,
   InputGroup,
-  Pagination,
   Nav,
 } from "react-bootstrap";
 import {
@@ -62,15 +61,16 @@ import {
   provisionOnboardingAccount,
 } from "../../Api/Hr/hr";
 import { useSelector, useDispatch } from 'react-redux';
-import { selectAuthUser, selectHasPermission, selectIsSystemAdmin, fetchAuth } from '../../redux/slices/authSlice';
+import { selectAuthUser, useHasPermission, selectIsSystemAdmin, fetchAuth } from '../../redux/slices/authSlice';
 import { useBranch } from "../../context/BranchContext";
 import BranchAccessSelector from "../../Components/Common/BranchAccessSelector";
+import PaginationBar from "../../Components/Common/PaginationBar";
 import "./UserManagement.css";
 
 function UserManagement({ initialTab = "users" }) {
   const currentUser = useSelector(selectAuthUser);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
+  const hasPermission = useHasPermission();
   const dispatch = useDispatch();
   const refreshAuthContext = () => dispatch(fetchAuth());
   const { organization, branches: contextBranches } = useBranch();
@@ -622,46 +622,24 @@ function UserManagement({ initialTab = "users" }) {
     const endIdx = Math.min(userPage * USER_PAGE_SIZE, totalFilteredUsers);
 
     return (
-      <div className="user-mgmt-pagination-bar d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 px-md-4 py-2 bg-white border-top">
-        <div className="text-muted extra-small">
-          Showing <span className="fw-bold text-dark">{startIdx}–{endIdx}</span> of{" "}
-          <span className="fw-bold text-dark">{totalFilteredUsers}</span> employees
-        </div>
-        <Pagination size="sm" className="mb-0 user-mgmt-pagination">
-          <Pagination.Prev
-            disabled={userPage === 1}
-            onClick={() => setUserPage((p) => Math.max(1, p - 1))}
-          >
-            Previous
-          </Pagination.Prev>
-          {[...Array(totalUserPages)].map((_, i) => {
-            const pg = i + 1;
-            if (totalUserPages > 7) {
-              if (pg !== 1 && pg !== totalUserPages && Math.abs(pg - userPage) > 2) {
-                if (pg === 2 || pg === totalUserPages - 1) {
-                  return <Pagination.Ellipsis key={`ell-u-${pg}`} disabled />;
-                }
-                return null;
-              }
-            }
-            return (
-              <Pagination.Item
-                key={pg}
-                active={pg === userPage}
-                onClick={() => setUserPage(pg)}
-              >
-                {pg}
-              </Pagination.Item>
-            );
-          })}
-          <Pagination.Next
-            disabled={userPage === totalUserPages}
-            onClick={() => setUserPage((p) => Math.min(totalUserPages, p + 1))}
-          >
-            Next
-          </Pagination.Next>
-        </Pagination>
-      </div>
+      <PaginationBar
+        size="sm"
+        page={userPage}
+        totalPages={totalUserPages}
+        onPageChange={(pg) => setUserPage(pg)}
+        showEllipsis
+        ellipsisKeyPrefix="u"
+        prevLabel="Previous"
+        nextLabel="Next"
+        info={
+          <div className="text-muted extra-small">
+            Showing <span className="fw-bold text-dark">{startIdx}–{endIdx}</span> of{" "}
+            <span className="fw-bold text-dark">{totalFilteredUsers}</span> employees
+          </div>
+        }
+        wrapperClassName="user-mgmt-pagination-bar d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 px-md-4 py-2 bg-white border-top"
+        paginationClassName="mb-0 user-mgmt-pagination"
+      />
     );
   };
 
@@ -672,46 +650,24 @@ function UserManagement({ initialTab = "users" }) {
     const endIdx = Math.min(rolePage * ROLE_PAGE_SIZE, totalFilteredRoles);
 
     return (
-      <div className="user-mgmt-pagination-bar d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 px-md-4 py-2 bg-white border-top">
-        <div className="text-muted extra-small">
-          Showing <span className="fw-bold text-dark">{startIdx}–{endIdx}</span> of{" "}
-          <span className="fw-bold text-dark">{totalFilteredRoles}</span> roles
-        </div>
-        <Pagination size="sm" className="mb-0 user-mgmt-pagination">
-          <Pagination.Prev
-            disabled={rolePage === 1}
-            onClick={() => setRolePage((p) => Math.max(1, p - 1))}
-          >
-            Previous
-          </Pagination.Prev>
-          {[...Array(totalRolePages)].map((_, i) => {
-            const pg = i + 1;
-            if (totalRolePages > 7) {
-              if (pg !== 1 && pg !== totalRolePages && Math.abs(pg - rolePage) > 2) {
-                if (pg === 2 || pg === totalRolePages - 1) {
-                  return <Pagination.Ellipsis key={`ell-r-${pg}`} disabled />;
-                }
-                return null;
-              }
-            }
-            return (
-              <Pagination.Item
-                key={pg}
-                active={pg === rolePage}
-                onClick={() => setRolePage(pg)}
-              >
-                {pg}
-              </Pagination.Item>
-            );
-          })}
-          <Pagination.Next
-            disabled={rolePage === totalRolePages}
-            onClick={() => setRolePage((p) => Math.min(totalRolePages, p + 1))}
-          >
-            Next
-          </Pagination.Next>
-        </Pagination>
-      </div>
+      <PaginationBar
+        size="sm"
+        page={rolePage}
+        totalPages={totalRolePages}
+        onPageChange={(pg) => setRolePage(pg)}
+        showEllipsis
+        ellipsisKeyPrefix="r"
+        prevLabel="Previous"
+        nextLabel="Next"
+        info={
+          <div className="text-muted extra-small">
+            Showing <span className="fw-bold text-dark">{startIdx}–{endIdx}</span> of{" "}
+            <span className="fw-bold text-dark">{totalFilteredRoles}</span> roles
+          </div>
+        }
+        wrapperClassName="user-mgmt-pagination-bar d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 px-md-4 py-2 bg-white border-top"
+        paginationClassName="mb-0 user-mgmt-pagination"
+      />
     );
   };
 

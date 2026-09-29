@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
-  Table,
   Button,
   Badge,
   Modal,
@@ -11,7 +10,6 @@ import {
   Spinner,
   Alert,
   InputGroup,
-  Pagination,
 } from "react-bootstrap";
 import {
   FaUsers,
@@ -33,10 +31,14 @@ import {
   fetchEmployeesDropdown,
 } from "../../services/organizationService";
 import { useSelector } from 'react-redux';
-import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import DataTable from "../Common/DataTable";
+import EmptyState from "../Common/EmptyState";
+import SearchInput from "../Common/SearchInput";
+import PaginationBar from "../Common/PaginationBar";
 
 function TeamsSection({ lockedBranchId }) {
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const [teams, setTeams] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -273,20 +275,16 @@ function TeamsSection({ lockedBranchId }) {
         <Card.Body className="p-2">
           <Row className="g-2 align-items-center">
             <Col md={lockedBranchId ? 4 : 3}>
-              <InputGroup size="sm">
-                <InputGroup.Text className="bg-light border-end-0">
-                  <FaSearch className="text-muted" />
-                </InputGroup.Text>
-                <Form.Control
-                  placeholder="Search team name or code..."
-                  className="border-start-0 bg-light"
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPage(1);
-                  }}
-                />
-              </InputGroup>
+              <SearchInput
+                size="sm"
+                iconClassName="text-muted"
+                placeholder="Search team name or code..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+              />
             </Col>
             {!lockedBranchId && (
               <Col md={3}>
@@ -344,138 +342,157 @@ function TeamsSection({ lockedBranchId }) {
 
       {/* ── Teams Table ── */}
       <Card className="org-table-card">
-        <Table responsive hover className="org-table mb-0 align-middle">
-          <thead>
-            <tr>
-              <th>Team Code & Name</th>
-              <th>Branch</th>
-              <th>Department</th>
-              <th>Team Lead</th>
-              <th>Manager</th>
-              <th>Status</th>
-              <th className="text-end">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={7} className="text-center py-5 text-muted">
-                  <Spinner animation="border" size="sm" variant="success" className="me-2" />
-                  Loading teams...
-                </td>
-              </tr>
-            ) : teams.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-center py-5 text-muted">
-                  <div className="p-3">
-                    <p className="mb-2">No teams found.</p>
-                    {canCreate && (
-                      <Button variant="outline-success" size="sm" onClick={handleOpenCreate}>
-                        <FaPlus className="me-1" /> Add First Team
-                      </Button>
-                    )}
+        <DataTable
+          responsive
+          hover
+          className="org-table mb-0 align-middle"
+          columns={[
+            {
+              key: "team",
+              header: "Team Code & Name",
+              render: (t) => (
+                <>
+                  <div className="fw-semibold text-dark">{t.teamName}</div>
+                  <div className="small font-monospace text-muted">{t.teamCode}</div>
+                </>
+              ),
+            },
+            {
+              key: "branch",
+              header: "Branch",
+              render: (t) =>
+                t.branchId ? (
+                  <div className="small">
+                    <FaCodeBranch className="text-secondary me-1" />
+                    {t.branchId.branchName || "Branch"}
                   </div>
-                </td>
-              </tr>
-            ) : (
-              teams.map((t) => (
-                <tr key={t._id}>
-                  <td>
-                    <div className="fw-semibold text-dark">{t.teamName}</div>
-                    <div className="small font-monospace text-muted">{t.teamCode}</div>
-                  </td>
-                  <td>
-                    {t.branchId ? (
-                      <div className="small">
-                        <FaCodeBranch className="text-secondary me-1" />
-                        {t.branchId.branchName || "Branch"}
-                      </div>
-                    ) : (
-                      <span className="text-muted small">Global / Virtual</span>
-                    )}
-                  </td>
-                  <td>
-                    {t.departmentId ? (
-                      <div className="small">
-                        <FaSitemap className="text-success me-1" />
-                        {t.departmentId.departmentName}
-                      </div>
-                    ) : (
-                      <span className="text-muted small">Cross-Department</span>
-                    )}
-                  </td>
-                  <td>
-                    {t.teamLeadId ? (
-                      <div className="d-flex align-items-center gap-1">
-                        <FaUserTie className="text-primary small" />
-                        <span className="small">{t.teamLeadId.firstName} {t.teamLeadId.lastName}</span>
-                      </div>
-                    ) : (
-                      <span className="text-muted small">Unassigned</span>
-                    )}
-                  </td>
-                  <td>
-                    {t.teamManagerId ? (
-                      <div className="d-flex align-items-center gap-1">
-                        <FaUserTie className="text-dark small" />
-                        <span className="small">{t.teamManagerId.firstName} {t.teamManagerId.lastName}</span>
-                      </div>
-                    ) : (
-                      <span className="text-muted small">Unassigned</span>
-                    )}
-                  </td>
-                  <td>
-                    <Badge bg={t.status === "ACTIVE" ? "success" : "secondary"}>
-                      {t.status}
-                    </Badge>
-                  </td>
-                  <td className="text-end">
-                    {canUpdate && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="text-primary p-1"
-                        title="Edit Team"
-                        onClick={() => handleOpenEdit(t)}
-                      >
-                        <FaEdit />
-                      </Button>
-                    )}
-                    {canDelete && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="text-danger p-1"
-                        title="Delete Team"
-                        onClick={() => {
-                          setDeletingId(t._id);
-                          setDeletingName(t.teamName);
-                          setShowDeleteModal(true);
-                        }}
-                      >
-                        <FaTrash />
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </Table>
+                ) : (
+                  <span className="text-muted small">Global / Virtual</span>
+                ),
+            },
+            {
+              key: "department",
+              header: "Department",
+              render: (t) =>
+                t.departmentId ? (
+                  <div className="small">
+                    <FaSitemap className="text-success me-1" />
+                    {t.departmentId.departmentName}
+                  </div>
+                ) : (
+                  <span className="text-muted small">Cross-Department</span>
+                ),
+            },
+            {
+              key: "lead",
+              header: "Team Lead",
+              render: (t) =>
+                t.teamLeadId ? (
+                  <div className="d-flex align-items-center gap-1">
+                    <FaUserTie className="text-primary small" />
+                    <span className="small">{t.teamLeadId.firstName} {t.teamLeadId.lastName}</span>
+                  </div>
+                ) : (
+                  <span className="text-muted small">Unassigned</span>
+                ),
+            },
+            {
+              key: "manager",
+              header: "Manager",
+              render: (t) =>
+                t.teamManagerId ? (
+                  <div className="d-flex align-items-center gap-1">
+                    <FaUserTie className="text-dark small" />
+                    <span className="small">{t.teamManagerId.firstName} {t.teamManagerId.lastName}</span>
+                  </div>
+                ) : (
+                  <span className="text-muted small">Unassigned</span>
+                ),
+            },
+            {
+              key: "status",
+              header: "Status",
+              render: (t) => (
+                <Badge bg={t.status === "ACTIVE" ? "success" : "secondary"}>
+                  {t.status}
+                </Badge>
+              ),
+            },
+            {
+              key: "actions",
+              header: "Actions",
+              headerClassName: "text-end",
+              cellClassName: "text-end",
+              render: (t) => (
+                <>
+                  {canUpdate && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-primary p-1"
+                      title="Edit Team"
+                      onClick={() => handleOpenEdit(t)}
+                    >
+                      <FaEdit />
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-danger p-1"
+                      title="Delete Team"
+                      onClick={() => {
+                        setDeletingId(t._id);
+                        setDeletingName(t.teamName);
+                        setShowDeleteModal(true);
+                      }}
+                    >
+                      <FaTrash />
+                    </Button>
+                  )}
+                </>
+              ),
+            },
+          ]}
+          rows={teams}
+          rowKey={(t) => t._id}
+          loading={loading}
+          loadingComponent={
+            <tr>
+              <td colSpan={7} className="text-center py-5 text-muted">
+                <Spinner animation="border" size="sm" variant="success" className="me-2" />
+                Loading teams...
+              </td>
+            </tr>
+          }
+          emptyComponent={
+            <EmptyState
+              variant="table"
+              colSpan={7}
+              className="text-center py-5 text-muted"
+              bodyClassName="p-3"
+              title="No teams found."
+              titleAs="p"
+              titleClassName="mb-2"
+              actionLabel={canCreate ? "Add First Team" : undefined}
+              onAction={handleOpenCreate}
+              actionVariant="outline-success"
+              actionIcon={<FaPlus className="me-1" />}
+            />
+          }
+        />
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="d-flex justify-content-end p-3 border-top">
-            <Pagination size="sm" className="mb-0">
-              <Pagination.Prev disabled={page <= 1} onClick={() => setPage((p) => Math.max(p - 1, 1))} />
-              {[...Array(totalPages).keys()].map((n) => (
-                <Pagination.Item key={n + 1} active={n + 1 === page} onClick={() => setPage(n + 1)}>
-                  {n + 1}
-                </Pagination.Item>
-              ))}
-              <Pagination.Next disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(p + 1, totalPages))} />
-            </Pagination>
-          </div>
+          <PaginationBar
+            size="sm"
+            page={page}
+            totalPages={totalPages}
+            onPageChange={(pg) => setPage(pg)}
+            wrapperClassName="d-flex justify-content-end p-3 border-top"
+            paginationClassName="mb-0"
+          />
         )}
       </Card>
 

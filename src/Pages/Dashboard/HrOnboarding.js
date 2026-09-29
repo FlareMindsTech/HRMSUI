@@ -15,11 +15,14 @@ import {
   Spinner,
   InputGroup,
   Image,
-  Pagination,
   Dropdown,
   Toast,
   ToastContainer,
 } from "react-bootstrap";
+import LoadingSpinner from "../../Components/Common/LoadingSpinner";
+import EmptyState from "../../Components/Common/EmptyState";
+import SearchInput from "../../Components/Common/SearchInput";
+import PaginationBar from "../../Components/Common/PaginationBar";
 import {
   FaUser,
   FaBriefcase,
@@ -174,7 +177,7 @@ import {
 } from "../../services/organizationService";
 import { getAssets, createAsset, assignAsset, returnAsset } from "../../services/assetService";
 import { useSelector, useDispatch } from 'react-redux';
-import { selectAuthUser, selectHasPermission, selectIsSystemAdmin, fetchAuth } from '../../redux/slices/authSlice';
+import { selectAuthUser, useHasPermission, selectIsSystemAdmin, fetchAuth } from '../../redux/slices/authSlice';
 import { useBranch } from "../../context/BranchContext";
 import BranchAccessSelector from "../../Components/Common/BranchAccessSelector";
 import "./HrOnboarding.css";
@@ -766,7 +769,7 @@ const INITIAL_ONBOARDING_FORM_DATA = {
 function HrOnboarding() {
   const currentUser = useSelector(selectAuthUser);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
+  const hasPermission = useHasPermission();
   const dispatch = useDispatch();
   const refreshAuthContext = () => dispatch(fetchAuth());
   const { organization, branches: contextBranches } = useBranch();
@@ -817,46 +820,23 @@ function HrOnboarding() {
     const endIdx = Math.min(pipelinePage * PIPELINE_PAGE_SIZE, totalPipelineCandidates);
 
     return (
-      <div className="onboarding-pagination-bar d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 px-md-4 py-2 bg-white border-top">
-        <div className="text-muted extra-small">
-          Showing <span className="fw-bold text-dark">{startIdx}–{endIdx}</span> of{" "}
-          <span className="fw-bold text-dark">{totalPipelineCandidates}</span> candidates
-        </div>
-        <Pagination size="sm" className="mb-0 onboarding-pagination">
-          <Pagination.Prev
-            disabled={pipelinePage === 1}
-            onClick={() => setPipelinePage((p) => Math.max(1, p - 1))}
-          >
-            Previous
-          </Pagination.Prev>
-          {[...Array(totalPipelinePages)].map((_, i) => {
-            const pg = i + 1;
-            if (totalPipelinePages > 7) {
-              if (pg !== 1 && pg !== totalPipelinePages && Math.abs(pg - pipelinePage) > 2) {
-                if (pg === 2 || pg === totalPipelinePages - 1) {
-                  return <Pagination.Ellipsis key={`ell-${pg}`} disabled />;
-                }
-                return null;
-              }
-            }
-            return (
-              <Pagination.Item
-                key={pg}
-                active={pg === pipelinePage}
-                onClick={() => setPipelinePage(pg)}
-              >
-                {pg}
-              </Pagination.Item>
-            );
-          })}
-          <Pagination.Next
-            disabled={pipelinePage === totalPipelinePages}
-            onClick={() => setPipelinePage((p) => Math.min(totalPipelinePages, p + 1))}
-          >
-            Next
-          </Pagination.Next>
-        </Pagination>
-      </div>
+      <PaginationBar
+        size="sm"
+        page={pipelinePage}
+        totalPages={totalPipelinePages}
+        onPageChange={(pg) => setPipelinePage(pg)}
+        showEllipsis
+        prevLabel="Previous"
+        nextLabel="Next"
+        info={
+          <div className="text-muted extra-small">
+            Showing <span className="fw-bold text-dark">{startIdx}–{endIdx}</span> of{" "}
+            <span className="fw-bold text-dark">{totalPipelineCandidates}</span> candidates
+          </div>
+        }
+        wrapperClassName="onboarding-pagination-bar d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 px-md-4 py-2 bg-white border-top"
+        paginationClassName="mb-0 onboarding-pagination"
+      />
     );
   };
 
@@ -937,46 +917,23 @@ function HrOnboarding() {
     const endIdx = Math.min(directoryPage * DIRECTORY_PAGE_SIZE, totalDirectoryEmployees);
 
     return (
-      <div className="onboarding-pagination-bar d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 px-md-4 py-2 bg-white border-top">
-        <div className="text-muted extra-small">
-          Showing <span className="fw-bold text-dark">{startIdx}–{endIdx}</span> of{" "}
-          <span className="fw-bold text-dark">{totalDirectoryEmployees}</span> employees
-        </div>
-        <Pagination size="sm" className="mb-0 onboarding-pagination">
-          <Pagination.Prev
-            disabled={directoryPage === 1}
-            onClick={() => setDirectoryPage((p) => Math.max(1, p - 1))}
-          >
-            Previous
-          </Pagination.Prev>
-          {[...Array(totalDirectoryPages)].map((_, i) => {
-            const pg = i + 1;
-            if (totalDirectoryPages > 7) {
-              if (pg !== 1 && pg !== totalDirectoryPages && Math.abs(pg - directoryPage) > 2) {
-                if (pg === 2 || pg === totalDirectoryPages - 1) {
-                  return <Pagination.Ellipsis key={`ell-${pg}`} disabled />;
-                }
-                return null;
-              }
-            }
-            return (
-              <Pagination.Item
-                key={pg}
-                active={pg === directoryPage}
-                onClick={() => setDirectoryPage(pg)}
-              >
-                {pg}
-              </Pagination.Item>
-            );
-          })}
-          <Pagination.Next
-            disabled={directoryPage === totalDirectoryPages}
-            onClick={() => setDirectoryPage((p) => Math.min(totalDirectoryPages, p + 1))}
-          >
-            Next
-          </Pagination.Next>
-        </Pagination>
-      </div>
+      <PaginationBar
+        size="sm"
+        page={directoryPage}
+        totalPages={totalDirectoryPages}
+        onPageChange={(pg) => setDirectoryPage(pg)}
+        showEllipsis
+        prevLabel="Previous"
+        nextLabel="Next"
+        info={
+          <div className="text-muted extra-small">
+            Showing <span className="fw-bold text-dark">{startIdx}–{endIdx}</span> of{" "}
+            <span className="fw-bold text-dark">{totalDirectoryEmployees}</span> employees
+          </div>
+        }
+        wrapperClassName="onboarding-pagination-bar d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 px-md-4 py-2 bg-white border-top"
+        paginationClassName="mb-0 onboarding-pagination"
+      />
     );
   };
 
@@ -7505,15 +7462,16 @@ function HrOnboarding() {
 
             {/* Filters, Search & Refresh */}
             <div className="d-flex flex-wrap align-items-center gap-2">
-              <InputGroup size="sm" className="onboarding-search-input" style={{ width: "220px" }}>
-                <InputGroup.Text className="bg-light border-end-0 text-muted"><FaSearch /></InputGroup.Text>
-                <Form.Control
-                  placeholder="Search name, code, role..."
-                  value={directorySearch}
-                  onChange={(e) => handleDirectorySearchChange(e.target.value)}
-                  className="border-start-0 bg-light shadow-none"
-                />
-              </InputGroup>
+              <SearchInput
+                size="sm"
+                inputGroupClassName="onboarding-search-input"
+                inputGroupStyle={{ width: "220px" }}
+                inputGroupTextClassName="bg-light border-end-0 text-muted"
+                inputClassName="border-start-0 bg-light shadow-none"
+                placeholder="Search name, code, role..."
+                value={directorySearch}
+                onChange={(e) => handleDirectorySearchChange(e.target.value)}
+              />
 
               <Form.Select
                 size="sm"
@@ -8870,11 +8828,7 @@ function HrOnboarding() {
                                   );
                                 })
                               ) : (
-                                <tr>
-                                  <td colSpan={10} className="text-center text-muted py-3 extra-small">
-                                    No company or professional records registered.
-                                  </td>
-                                </tr>
+                                <EmptyState variant="table" colSpan={10} className="text-center text-muted py-3 extra-small" title="No company or professional records registered." />
                               )}
                             </tbody>
                           </Table>
@@ -9019,7 +8973,7 @@ function HrOnboarding() {
                                       >
                                         {uploadingEduIndex === i ? (
                                           <>
-                                            <Spinner animation="border" size="sm" className="me-1 spinner-mini" /> Uploading...
+                                            <LoadingSpinner variant="inline" size="sm" className="me-1 spinner-mini" /> Uploading...
                                           </>
                                         ) : (
                                           <>
@@ -9109,11 +9063,7 @@ function HrOnboarding() {
                                   );
                                 })
                               ) : (
-                                <tr>
-                                  <td colSpan={6} className="text-center text-muted py-3 extra-small">
-                                    No educational qualifications recorded yet.
-                                  </td>
-                                </tr>
+                                <EmptyState variant="table" colSpan={6} className="text-center text-muted py-3 extra-small" title="No educational qualifications recorded yet." />
                               )}
                             </tbody>
                           </Table>
@@ -9251,11 +9201,7 @@ function HrOnboarding() {
                                   </tr>
                                 ))
                               ) : (
-                                <tr>
-                                  <td colSpan={4} className="text-center text-muted py-3 extra-small">
-                                    No previous work experience recorded (Fresher).
-                                  </td>
-                                </tr>
+                                <EmptyState variant="table" colSpan={4} className="text-center text-muted py-3 extra-small" title="No previous work experience recorded (Fresher)." />
                               )}
                             </tbody>
                           </Table>
@@ -9425,11 +9371,7 @@ function HrOnboarding() {
                                   );
                                 })
                               ) : (
-                                <tr>
-                                  <td colSpan={5} className="text-center text-muted py-3 extra-small">
-                                    No address records registered yet.
-                                  </td>
-                                </tr>
+                                <EmptyState variant="table" colSpan={5} className="text-center text-muted py-3 extra-small" title="No address records registered yet." />
                               )}
                             </tbody>
                           </Table>

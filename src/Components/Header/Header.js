@@ -14,7 +14,6 @@ import { FaBuilding, FaCodeBranch, FaCheck } from 'react-icons/fa';
 import { useBranch } from '../../context/BranchContext';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectAuthUser, selectIsSystemAdmin, logout } from '../../redux/slices/authSlice';
-import { logoutUser } from '../../services/attendanceService';
 import './Header.css';
 
 function Header({ isMobile }) {
@@ -72,19 +71,11 @@ function Header({ isMobile }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await logoutUser();
-    } catch (e) {
-      console.warn('Logout request notice:', e);
-    } finally {
-      await dispatch(logout());
-      localStorage.removeItem('user');
-      localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('tenantId');
-      localStorage.removeItem('organizationId');
-      window.location.href = '/login';
-    }
+  const handleLogout = () => {
+    // Instant SPA logout — same contract as Sidebar: thunk owns session
+    // clear + server ping, route gate redirects. No full-page reload.
+    dispatch(logout());
+    navigate('/login', { replace: true });
   };
 
   return (

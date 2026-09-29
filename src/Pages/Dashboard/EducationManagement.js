@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Container, Alert, Spinner, Modal, Button } from "react-bootstrap";
+import { Container, Alert, Modal, Button } from "react-bootstrap";
 import { FaCheckCircle, FaExclamationTriangle, FaTrash } from "react-icons/fa";
 import { useSelector } from 'react-redux';
-import { selectAuthUser, selectIsSystemAdmin, selectHasMenu } from '../../redux/slices/authSlice';
+import { selectAuthUser, selectIsSystemAdmin, useHasMenu } from '../../redux/slices/authSlice';
+import LoadingSpinner from '../../Components/Common/LoadingSpinner';
 import { fetchAllUsers } from "../../services/rbacService";
 import {
   getEducationByUserId,
@@ -86,7 +87,7 @@ const initialEducationState = {
 function EducationManagement() {
   const currentUser = useSelector(selectAuthUser);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
-  const hasMenu = useSelector((state) => (menuCode) => selectHasMenu(state, menuCode));
+  const hasMenu = useHasMenu();
   const isHrOrAdmin = isSystemAdmin || (hasMenu && (hasMenu("USER_MANAGEMENT") || hasMenu("ROLE_MANAGEMENT")));
 
   // ── States ──
@@ -628,10 +629,7 @@ function EducationManagement() {
       )}
 
       {loading ? (
-        <div className="text-center py-5">
-          <Spinner animation="border" variant="success" style={{ width: 40, height: 40 }} />
-          <p className="text-muted small mt-2">Loading Academic Records...</p>
-        </div>
+        <LoadingSpinner variant="page" color="success" style={{ width: 40, height: 40 }} message="Loading Academic Records..." />
       ) : viewMode === "profile" ? (
         /* 3. Read-Only Employee Profile View */
         <EducationViewProfile

@@ -39,7 +39,7 @@ import {
   completeProjectApi,
 } from '../../Api/Project/project';
 import { useSelector } from 'react-redux';
-import { selectAuthUser, selectAuthPermissions, selectHasPermission } from '../../redux/slices/authSlice';
+import { selectAuthUser, selectAuthPermissions, useHasPermission } from '../../redux/slices/authSlice';
 import './ProjectManagement.css';
 
 // ============================================================
@@ -91,7 +91,7 @@ const TASK_PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
 function ProjectManagement() {
   const user = useSelector(selectAuthUser);
   const permissions = useSelector(selectAuthPermissions);
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
+  const hasPermission = useHasPermission();
 
   // Role & Capability determination
   const userPriority = user?.priority ?? user?.role?.priority;

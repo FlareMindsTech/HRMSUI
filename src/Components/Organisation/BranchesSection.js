@@ -61,7 +61,8 @@ import {
   fetchFinancialYearsDropdown,
 } from "../../services/organizationService";
 import { useSelector } from 'react-redux';
-import { selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import SearchInput from "../Common/SearchInput";
 import { useBranch } from "../../context/BranchContext";
 import "../../Pages/Dashboard/HrOnboarding.css";
 
@@ -89,7 +90,7 @@ const BRANCH_TYPES = [
 ];
 
 export default function BranchesSection({ onSelectBranch = null, onToggleFullView = null }) {
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode)); const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const { organization, refreshBranches } = useBranch();
   const [branches, setBranches] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -1881,15 +1882,14 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
           {assignModalSuccess && <Alert variant="success">{assignModalSuccess}</Alert>}
 
           <div className="mb-3">
-            <InputGroup>
-              <InputGroup.Text className="bg-white border-end-0"><FaSearch className="text-muted" /></InputGroup.Text>
-              <Form.Control
-                className="border-start-0 ps-0"
-                placeholder="Search staff by name, email, or department..."
-                value={memberSearch}
-                onChange={(e) => setMemberSearch(e.target.value)}
-              />
-            </InputGroup>
+            <SearchInput
+              inputGroupTextClassName="bg-white border-end-0"
+              iconClassName="text-muted"
+              inputClassName="border-start-0 ps-0"
+              placeholder="Search staff by name, email, or department..."
+              value={memberSearch}
+              onChange={(e) => setMemberSearch(e.target.value)}
+            />
           </div>
 
           <div style={{ maxHeight: 340, overflowY: "auto" }}>

@@ -28,7 +28,7 @@ import {
   FaSlidersH,
 } from "react-icons/fa";
 import { useSelector } from 'react-redux';
-import { selectAuthUser, selectHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import { selectAuthUser, useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import { useBranch } from "../../context/BranchContext";
 import { fetchMyOrganization, normalizeOrganization } from "../../services/organizationService";
 import OrgOverview from "../../Components/Organisation/OrgOverview";
@@ -113,7 +113,7 @@ function Organisation() {
   const location = useLocation();
   const user = useSelector(selectAuthUser);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
+  const hasPermission = useHasPermission();
   const { organization, refreshOrganization, refreshBranches } = useBranch();
 
   const [orgData, setOrgData] = useState(organization || null);

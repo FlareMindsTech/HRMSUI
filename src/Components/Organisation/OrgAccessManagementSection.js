@@ -14,13 +14,13 @@ import { fetchAllUsers } from "../../services/rbacService";
 import { fetchBranchesDropdown } from "../../services/organizationService";
 import { updateUserAccess } from "../../services/accessService";
 import { useSelector } from "react-redux";
-import { selectAuthUser, selectHasPermission, selectIsSystemAdmin } from "../../redux/slices/authSlice";
+import { selectAuthUser, useHasPermission, selectIsSystemAdmin } from "../../redux/slices/authSlice";
 import { useBranch } from "../../context/BranchContext";
 import BranchAccessSelector from "../Common/BranchAccessSelector";
 
 export default function OrgAccessManagementSection() {
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
+  const hasPermission = useHasPermission();
   const currentUser = useSelector(selectAuthUser);
   const { organization, branches: contextBranches, refreshBranches } = useBranch();
 

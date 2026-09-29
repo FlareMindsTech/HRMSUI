@@ -21,7 +21,7 @@ import {
   fetchOrganizationStructure,
 } from "../../services/organizationService";
 import { useSelector } from "react-redux";
-import { selectAuthUser, selectHasPermission, selectIsSystemAdmin } from "../../redux/slices/authSlice";
+import { selectAuthUser, useHasPermission, selectIsSystemAdmin } from "../../redux/slices/authSlice";
 import { useBranch } from "../../context/BranchContext";
 
 const ORG_TYPES = [
@@ -57,7 +57,7 @@ const TIMEZONES = [
 
 export default function OrganizationProfileView({ onNavigateTab }) {
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
+  const hasPermission = useHasPermission();
   const user = useSelector(selectAuthUser);
   const { organization, refreshOrganization, refreshBranches } = useBranch();
 

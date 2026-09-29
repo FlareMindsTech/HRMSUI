@@ -15,7 +15,7 @@ import { fetchTodayAttendance, punchInUser, punchOutUser, sendGeofencePing } fro
 import { getCurrentCoordinates } from '../../utils/geolocation';
 import { formatTime, formatFullDate } from '../../utils/dateFormatter';
 import { useSelector } from 'react-redux';
-import { selectAuthUser, selectHasPermission } from '../../redux/slices/authSlice';
+import { selectAuthUser, useHasPermission } from '../../redux/slices/authSlice';
 import './AttendanceCard.css';
 
 /**
@@ -31,7 +31,7 @@ import './AttendanceCard.css';
 function AttendanceCard() {
   const navigate = useNavigate();
   const user = useSelector(selectAuthUser);
-  const hasPermission = useSelector((state) => (permCode) => selectHasPermission(state, permCode));
+  const hasPermission = useHasPermission();
   const roleCode = (user?.roleCode || user?.roleName || '').toUpperCase();
   const isAdminOrOwner = roleCode.includes('ADMIN') || roleCode.includes('OWNER') || user?.priority === 1;
   const canPunchIn = !isAdminOrOwner && (hasPermission('attendance.punch_in') || roleCode.includes('EMPLOYEE') || roleCode.includes('HR'));

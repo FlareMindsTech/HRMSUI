@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Container, Row, Col, Card, Form, Button, Badge, Table, Modal, Spinner, Alert, Pagination, InputGroup, Nav
+  Container, Row, Col, Card, Form, Button, Badge, Table, Modal, Spinner, Alert, InputGroup, Nav
 } from 'react-bootstrap';
 import {
   FaClock, FaCalendarAlt, FaCheckCircle, FaExclamationTriangle,
@@ -11,6 +11,8 @@ import {
 } from 'react-icons/fa';
 import { useSelector } from 'react-redux';
 import { selectAuthUser } from '../../redux/slices/authSlice';
+import EmptyState from '../../Components/Common/EmptyState';
+import PaginationBar from '../../Components/Common/PaginationBar';
 import {
   fetchTodayAttendance,
   punchInUser,
@@ -1169,13 +1171,16 @@ function Attendance() {
             </tbody>
           </Table>
 
-          <div className="d-flex justify-content-between align-items-center mt-3">
-            <span className="extra-small text-muted">Page {currentPage} of {totalPages}</span>
-            <Pagination size="sm" className="mb-0">
-              <Pagination.Prev disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} />
-              <Pagination.Next disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} />
-            </Pagination>
-          </div>
+          <PaginationBar
+            size="sm"
+            variant="prev-next"
+            page={currentPage}
+            totalPages={totalPages}
+            onPageChange={(p) => setCurrentPage(p)}
+            info={<span className="extra-small text-muted">Page {currentPage} of {totalPages}</span>}
+            wrapperClassName="d-flex justify-content-between align-items-center mt-3"
+            paginationClassName="mb-0"
+          />
         </Card>
       )}
 
@@ -1224,7 +1229,7 @@ function Attendance() {
           {exceptionsLoading ? (
             <div className="text-center py-4"><Spinner animation="border" size="sm" /></div>
           ) : exceptionsList.length === 0 ? (
-            <div className="text-center py-4 text-muted small">No attendance exceptions found for selected date.</div>
+            <EmptyState variant="block" className="text-center py-4 text-muted small" title="No attendance exceptions found for selected date." />
           ) : (
             <Table hover responsive className="align-middle small">
               <thead className="bg-light">
@@ -1289,7 +1294,7 @@ function Attendance() {
           {regularizationLoading ? (
             <div className="text-center py-4"><Spinner animation="border" size="sm" /></div>
           ) : regularizationList.length === 0 ? (
-            <div className="text-center py-4 text-muted small">No regularization requests found.</div>
+            <EmptyState variant="block" className="text-center py-4 text-muted small" title="No regularization requests found." />
           ) : (
             <Table hover responsive className="align-middle small">
               <thead className="bg-light">
