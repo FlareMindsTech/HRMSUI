@@ -1068,6 +1068,7 @@ export const fetchSystemSetupStatus = async () => {
   if (!res.ok) {
     throw new Error(res.data?.message || "Failed to fetch system setup status");
   }
+  console.log("[setup-status] response:", res.data);
   return res.data;
 };
 

@@ -5,8 +5,6 @@ import {
   Row,
   Col,
   Button,
-  Spinner,
-  Alert,
   Badge,
 } from "react-bootstrap";
 import {
@@ -31,6 +29,7 @@ import {
 } from "../../redux/slices/themeSlice";
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import LoadingSpinner from "../Common/LoadingSpinner";
+import FeedbackAlert from "../Common/FeedbackAlert";
 import "./ThemeCustomizationSection.css";
 
 const COLOR_METADATA = [
@@ -177,17 +176,21 @@ function ThemeCustomizationSection() {
 
       {/* ── Status Alerts ── */}
       {error && (
-        <Alert variant="danger" dismissible onClose={() => dispatch(clearThemeStatus())}>
-          <FaExclamationTriangle className="me-2" />
-          {error}
-        </Alert>
+        <FeedbackAlert
+          variant="danger"
+          dismissible
+          onClose={() => dispatch(clearThemeStatus())}
+          message={<><FaExclamationTriangle className="me-2" />{error}</>}
+        />
       )}
 
       {successMessage && (
-        <Alert variant="success" dismissible onClose={() => dispatch(clearThemeStatus())}>
-          <FaCheck className="me-2" />
-          {successMessage}
-        </Alert>
+        <FeedbackAlert
+          variant="success"
+          dismissible
+          onClose={() => dispatch(clearThemeStatus())}
+          message={<><FaCheck className="me-2" />{successMessage}</>}
+        />
       )}
 
       {/* ── Built-in Theme Presets Row ── */}
@@ -385,7 +388,7 @@ function ThemeCustomizationSection() {
             >
               {saving ? (
                 <>
-                  <Spinner animation="border" size="sm" /> Saving Theme...
+                  <LoadingSpinner variant="inline" size="sm" /> Saving Theme...
                 </>
               ) : (
                 <>

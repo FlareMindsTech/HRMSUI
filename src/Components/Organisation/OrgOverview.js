@@ -6,7 +6,6 @@ import {
   Modal,
   Form,
   Spinner,
-  Alert,
   Nav,
   Tab,
 } from "react-bootstrap";
@@ -45,6 +44,8 @@ import {
 } from "../../services/organizationService";
 import { useSelector } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin, selectAuthUser } from '../../redux/slices/authSlice';
+import FeedbackAlert from "../Common/FeedbackAlert";
+import LoadingSpinner from "../Common/LoadingSpinner";
 import { useBranch } from "../../context/BranchContext";
 
 const ORG_TYPES = ["COMPANY", "LLP", "PARTNERSHIP", "PROPRIETORSHIP", "OTHER"];
@@ -507,8 +508,8 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
 
   return (
     <div className="org-overview-wrapper">
-      {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
-      {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
+      <FeedbackAlert variant="danger" dismissible onClose={() => setError("")} message={error} />
+      <FeedbackAlert variant="success" dismissible onClose={() => setSuccess("")} message={success} />
 
       {/* ── CASE 1: NO ORGANISATION DATA (FIRST TIME ONBOARDING VIEW) ── */}
       {!hasOrgData ? (
@@ -552,9 +553,11 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                   <FaPlus className="me-2" /> Create Organization Now
                 </Button>
               ) : (
-                <Alert variant="warning" className="mb-0">
-                  You do not have administrative permission to initialize the organization profile. Please contact your system administrator.
-                </Alert>
+                <FeedbackAlert
+                  variant="warning"
+                  className="mb-0"
+                  message="You do not have administrative permission to initialize the organization profile. Please contact your system administrator."
+                />
               )}
             </div>
           </div>
@@ -1123,7 +1126,7 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
           </Modal.Header>
 
           <Modal.Body className="p-0">
-            {modalError && <Alert variant="danger" className="m-3 mb-0">{modalError}</Alert>}
+            <FeedbackAlert variant="danger" className="m-3 mb-0" message={modalError} />
 
             <Tab.Container activeKey={modalActiveTab} onSelect={(k) => setModalActiveTab(k || "basic")}>
               <Nav variant="tabs" className="px-3 pt-2 bg-light border-bottom org-modal-nav">
@@ -1571,7 +1574,7 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
             <Button variant="success" size="sm" type="submit" disabled={modalLoading} className="px-3">
               {modalLoading ? (
                 <>
-                  <Spinner animation="border" size="sm" className="me-1" />
+                  <LoadingSpinner variant="button" size="sm" className="me-1" />
                   Saving...
                 </>
               ) : modalMode === "create" ? (

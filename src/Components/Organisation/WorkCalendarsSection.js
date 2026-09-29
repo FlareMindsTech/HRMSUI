@@ -1,24 +1,18 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
-  Table,
   Button,
   Badge,
-  Modal,
   Form,
   Row,
   Col,
   Spinner,
-  Alert,
-  InputGroup,
-  Pagination,
 } from "react-bootstrap";
 import {
   FaCalendarWeek,
   FaPlus,
   FaEdit,
   FaTrash,
-  FaSearch,
   FaClock,
   FaCodeBranch,
   FaCheckCircle,
@@ -34,6 +28,13 @@ import {
 } from "../../services/organizationService";
 import { useSelector } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import PaginationBar from "../Common/PaginationBar";
+import FeedbackAlert from "../Common/FeedbackAlert";
+import EmptyState from "../Common/EmptyState";
+import DataTable from "../Common/DataTable";
+import SearchInput from "../Common/SearchInput";
+import ConfirmModal from "../Common/ConfirmModal";
+import CrudModal from "../Common/CrudModal";
 
 const ALL_DAYS = [
   "Monday",
@@ -260,22 +261,23 @@ function WorkCalendarsSection({ lockedBranchId }) {
         )}
       </div>
 
-      {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
-      {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
+      <FeedbackAlert variant="danger" dismissible onClose={() => setError("")} message={error} />
+      <FeedbackAlert variant="success" dismissible onClose={() => setSuccess("")} message={success} />
 
       {/* ── Filters & Search ── */}
       <Card className="org-filter-card mb-3">
         <Card.Body className="py-2">
           <Row className="g-2 align-items-center">
             <Col md={6}>
-              <InputGroup size="sm">
-                <InputGroup.Text><FaSearch className="text-muted" /></InputGroup.Text>
-                <Form.Control
-                  placeholder="Search calendar name or code..."
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                />
-              </InputGroup>
+              <SearchInput
+                size="sm"
+                inputGroupTextClassName=""
+                inputClassName=""
+                iconClassName="text-muted"
+                placeholder="Search calendar name or code..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              />
             </Col>
             <Col md={3}>
               <Form.Select
@@ -297,40 +299,43 @@ function WorkCalendarsSection({ lockedBranchId }) {
 
       {/* ── Table ── */}
       <Card className="org-table-card">
-        <Table responsive hover className="org-table mb-0 align-middle">
-          <thead>
-            <tr>
-              <th>Calendar Code & Name</th>
-              <th>Working Days</th>
-              <th>Weekly Off Days</th>
-              <th>Default Shift</th>
-              <th>Branch</th>
-              <th>Status</th>
-              <th className="text-end">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={7} className="text-center py-5 text-muted">
-                  <Spinner animation="border" size="sm" variant="success" className="me-2" />
-                  Loading work calendars...
-                </td>
-              </tr>
-            ) : calendars.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-center py-5 text-muted">
-                  No work calendars found.
-                </td>
-              </tr>
-            ) : (
-              calendars.map((cal) => (
-                <tr key={cal._id}>
-                  <td>
-                    <div className="fw-semibold text-dark">{cal.calendarName}</div>
-                    <div className="small font-monospace text-muted">{cal.calendarCode}</div>
+            <DataTable
+              responsive
+              hover
+              className="org-table mb-0 align-middle"
+              rows={calendars}
+              loading={loading}
+              loadingComponent={
+                <tr>
+                  <td colSpan={7} className="text-center py-5 text-muted">
+                    <Spinner animation="border" size="sm" variant="success" className="me-2" />
+                    Loading work calendars...
                   </td>
-                  <td>
+                </tr>
+              }
+              emptyComponent={
+                <EmptyState
+                  variant="table"
+                  colSpan={7}
+                  className="text-center py-5 text-muted"
+                  title="No work calendars found."
+                />
+              }
+              columns={[
+                {
+                  key: "calendar",
+                  header: "Calendar Code & Name",
+                  render: (cal) => (
+                    <>
+                      <div className="fw-semibold text-dark">{cal.calendarName}</div>
+                      <div className="small font-monospace text-muted">{cal.calendarCode}</div>
+                    </>
+                  ),
+                },
+                {
+                  key: "workingDays",
+                  header: "Working Days",
+                  render: (cal) => (
                     <div className="d-flex flex-wrap gap-1" style={{ maxWidth: "240px" }}>
                       {(cal.workingDays || []).map((d) => (
                         <span key={d} className="badge bg-success-subtle text-success border" style={{ fontSize: "0.7rem" }}>
@@ -338,8 +343,12 @@ function WorkCalendarsSection({ lockedBranchId }) {
                         </span>
                       ))}
                     </div>
-                  </td>
-                  <td>
+                  ),
+                },
+                {
+                  key: "weeklyOff",
+                  header: "Weekly Off Days",
+                  render: (cal) => (
                     <div className="d-flex flex-wrap gap-1" style={{ maxWidth: "200px" }}>
                       {(cal.weeklyOffDays || []).map((d) => (
                         <span key={d} className="badge bg-secondary-subtle text-secondary border" style={{ fontSize: "0.7rem" }}>
@@ -347,95 +356,106 @@ function WorkCalendarsSection({ lockedBranchId }) {
                         </span>
                       ))}
                     </div>
-                  </td>
-                  <td>
-                    {cal.defaultShiftId ? (
+                  ),
+                },
+                {
+                  key: "shift",
+                  header: "Default Shift",
+                  render: (cal) =>
+                    cal.defaultShiftId ? (
                       <div className="small">
                         <FaClock className="text-primary me-1" />
                         {cal.defaultShiftId.shiftName || cal.defaultShiftId.shiftCode}
                       </div>
                     ) : (
                       <span className="text-muted small">Standard Shift</span>
-                    )}
-                  </td>
-                  <td>
-                    {cal.branchId ? (
+                    ),
+                },
+                {
+                  key: "branch",
+                  header: "Branch",
+                  render: (cal) =>
+                    cal.branchId ? (
                       <div className="small">
                         <FaCodeBranch className="text-secondary me-1" />
                         {cal.branchId.branchName}
                       </div>
                     ) : (
                       <span className="text-muted small">Global / All</span>
-                    )}
-                  </td>
-                  <td>
+                    ),
+                },
+                {
+                  key: "status",
+                  header: "Status",
+                  render: (cal) => (
                     <Badge bg={cal.status === "ACTIVE" ? "success" : "secondary"}>
                       {cal.status}
                     </Badge>
-                  </td>
-                  <td className="text-end">
-                    {canUpdate && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="text-primary p-1"
-                        title="Edit Work Calendar"
-                        onClick={() => handleOpenEdit(cal)}
-                      >
-                        <FaEdit />
-                      </Button>
-                    )}
-                    {canDelete && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="text-danger p-1"
-                        title="Delete Work Calendar"
-                        onClick={() => {
-                          setDeletingId(cal._id);
-                          setDeletingName(cal.calendarName);
-                          setShowDeleteModal(true);
-                        }}
-                      >
-                        <FaTrash />
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </Table>
+                  ),
+                },
+                {
+                  key: "actions",
+                  header: "Actions",
+                  headerClassName: "text-end",
+                  cellClassName: "text-end",
+                  render: (cal) => (
+                    <>
+                      {canUpdate && (
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="text-primary p-1"
+                          title="Edit Work Calendar"
+                          onClick={() => handleOpenEdit(cal)}
+                        >
+                          <FaEdit />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="text-danger p-1"
+                          title="Delete Work Calendar"
+                          onClick={() => {
+                            setDeletingId(cal._id);
+                            setDeletingName(cal.calendarName);
+                            setShowDeleteModal(true);
+                          }}
+                        >
+                          <FaTrash />
+                        </Button>
+                      )}
+                    </>
+                  ),
+                },
+              ]}
+            />
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="d-flex justify-content-end p-3 border-top">
-            <Pagination size="sm" className="mb-0">
-              <Pagination.Prev disabled={page <= 1} onClick={() => setPage((p) => Math.max(p - 1, 1))} />
-              {[...Array(totalPages).keys()].map((n) => (
-                <Pagination.Item key={n + 1} active={n + 1 === page} onClick={() => setPage(n + 1)}>
-                  {n + 1}
-                </Pagination.Item>
-              ))}
-              <Pagination.Next disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(p + 1, totalPages))} />
-            </Pagination>
-          </div>
+          <PaginationBar
+            size="sm"
+            page={page}
+            totalPages={totalPages}
+            onPageChange={(pg) => setPage(pg)}
+            wrapperClassName="d-flex justify-content-end p-3 border-top"
+            paginationClassName="mb-0"
+          />
         )}
       </Card>
 
       {/* ── Create / Edit Modal ── */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered backdrop="static">
-        <Form onSubmit={handleSubmit}>
-          <Modal.Header closeButton>
-            <Modal.Title className="d-flex align-items-center gap-2">
-              <FaCalendarWeek className="text-success" />
-              {editingCal ? "Edit Work Calendar" : "Add Work Calendar"}
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            {modalError && <Alert variant="danger">{modalError}</Alert>}
-
-            <Row className="g-3">
+      <CrudModal
+        show={showModal}
+        onClose={() => setShowModal(false)}
+        title={<><FaCalendarWeek className="text-success" />{editingCal ? "Edit Work Calendar" : "Add Work Calendar"}</>}
+        onSubmit={handleSubmit}
+        saving={modalLoading}
+        saveLabel="Save Calendar"
+        modalError={modalError}
+      >
+        <Row className="g-3">
               <Col md={6}>
                 <Form.Group>
                   <Form.Label>Calendar Name <span className="text-danger">*</span></Form.Label>
@@ -542,37 +562,17 @@ function WorkCalendarsSection({ lockedBranchId }) {
                 </Form.Group>
               </Col>
             </Row>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowModal(false)} disabled={modalLoading}>
-              Cancel
-            </Button>
-            <Button variant="success" type="submit" disabled={modalLoading}>
-              {modalLoading ? <Spinner size="sm" animation="border" /> : "Save Calendar"}
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
+      </CrudModal>
 
       {/* ── Delete Confirmation Modal ── */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="text-danger d-flex align-items-center gap-2">
-            <FaTrash /> Delete Work Calendar
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to delete work calendar <strong>{deletingName}</strong>?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={modalLoading}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={handleDelete} disabled={modalLoading}>
-            {modalLoading ? <Spinner size="sm" animation="border" /> : "Yes, Delete"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ConfirmModal
+        show={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title={<><FaTrash /> Delete Work Calendar</>}
+        message={<>Are you sure you want to delete work calendar <strong>{deletingName}</strong>?</>}
+        onConfirm={handleDelete}
+        loading={modalLoading}
+      />
     </div>
   );
 }

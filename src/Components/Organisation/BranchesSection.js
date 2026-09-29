@@ -9,9 +9,7 @@ import {
   Row,
   Col,
   Spinner,
-  Alert,
   InputGroup,
-  Pagination,
 } from "react-bootstrap";
 import {
   FaCodeBranch,
@@ -66,6 +64,9 @@ import {
 import { useSelector } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import SearchInput from "../Common/SearchInput";
+import PaginationBar from "../Common/PaginationBar";
+import FeedbackAlert from "../Common/FeedbackAlert";
+import LoadingSpinner from "../Common/LoadingSpinner";
 import { useBranch } from "../../context/BranchContext";
 import "../../Pages/Dashboard/HrOnboarding.css";
 import "./BranchesSection.css";
@@ -600,12 +601,18 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
 
               {/* Error Alert */}
               {modalError && (
-                <Alert variant="danger" dismissible onClose={() => setModalError("")} className="mb-4 shadow-sm">
-                  <div className="d-flex align-items-center gap-2">
-                    <FaExclamationTriangle className="text-danger flex-shrink-0" />
-                    <span><strong>Action Required:</strong> {modalError}</span>
-                  </div>
-                </Alert>
+                <FeedbackAlert
+                  variant="danger"
+                  dismissible
+                  onClose={() => setModalError("")}
+                  className="mb-4 shadow-sm"
+                  message={
+                    <div className="d-flex align-items-center gap-2">
+                      <FaExclamationTriangle className="text-danger flex-shrink-0" />
+                      <span><strong>Action Required:</strong> {modalError}</span>
+                    </div>
+                  }
+                />
               )}
 
               {/* ── STEP 1: Basic Information ── */}
@@ -1198,7 +1205,7 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                       disabled={modalLoading}
                       onClick={handleSubmitBranch}
                     >
-                      {modalLoading ? <Spinner animation="border" size="sm" className="me-2" /> : <FaCheckCircle className="me-2" />}
+                      {modalLoading ? <LoadingSpinner variant="button" size="sm" className="me-2" /> : <FaCheckCircle className="me-2" />}
                       {editingBranchId ? "Save Branch Changes" : "Initialize & Create Branch"}
                     </Button>
                   )}
@@ -1920,20 +1927,32 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
 
       {/* ── Alerts ── */}
       {error && (
-        <Alert variant="danger" dismissible onClose={() => setError("")} className="mb-4 shadow-sm">
-          <div className="d-flex align-items-center gap-2">
-            <FaExclamationTriangle className="text-danger flex-shrink-0" />
-            <span>{error}</span>
-          </div>
-        </Alert>
+        <FeedbackAlert
+          variant="danger"
+          dismissible
+          onClose={() => setError("")}
+          className="mb-4 shadow-sm"
+          message={
+            <div className="d-flex align-items-center gap-2">
+              <FaExclamationTriangle className="text-danger flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          }
+        />
       )}
       {success && (
-        <Alert variant="success" dismissible onClose={() => setSuccess("")} className="mb-4 shadow-sm">
-          <div className="d-flex align-items-center gap-2">
-            <FaCheckCircle className="text-success flex-shrink-0" />
-            <span>{success}</span>
-          </div>
-        </Alert>
+        <FeedbackAlert
+          variant="success"
+          dismissible
+          onClose={() => setSuccess("")}
+          className="mb-4 shadow-sm"
+          message={
+            <div className="d-flex align-items-center gap-2">
+              <FaCheckCircle className="text-success flex-shrink-0" />
+              <span>{success}</span>
+            </div>
+          }
+        />
       )}
 
       {/* ── 3. Search & Filter Toolbar ── */}
@@ -2349,20 +2368,19 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="d-flex justify-content-between align-items-center bg-white p-3 rounded-4 border shadow-sm mb-4">
-          <span className="small text-muted fw-semibold">
-            Showing page {page} of {totalPages} ({totalRecords} records)
-          </span>
-          <Pagination size="sm" className="mb-0">
-            <Pagination.Prev disabled={page === 1} onClick={() => setPage((p) => p - 1)} />
-            {Array.from({ length: totalPages }).map((_, idx) => (
-              <Pagination.Item key={idx + 1} active={page === idx + 1} onClick={() => setPage(idx + 1)}>
-                {idx + 1}
-              </Pagination.Item>
-            ))}
-            <Pagination.Next disabled={page === totalPages} onClick={() => setPage((p) => p + 1)} />
-          </Pagination>
-        </div>
+        <PaginationBar
+          size="sm"
+          page={page}
+          totalPages={totalPages}
+          onPageChange={(pg) => setPage(pg)}
+          wrapperClassName="d-flex justify-content-between align-items-center bg-white p-3 rounded-4 border shadow-sm mb-4"
+          paginationClassName="mb-0"
+          info={
+            <span className="small text-muted fw-semibold">
+              Showing page {page} of {totalPages} ({totalRecords} records)
+            </span>
+          }
+        />
       )}
 
 
@@ -2375,8 +2393,8 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-4">
-          {assignModalError && <Alert variant="danger">{assignModalError}</Alert>}
-          {assignModalSuccess && <Alert variant="success">{assignModalSuccess}</Alert>}
+          <FeedbackAlert variant="danger" message={assignModalError} />
+          <FeedbackAlert variant="success" message={assignModalSuccess} />
 
           <div className="mb-3">
             <SearchInput
@@ -2447,7 +2465,7 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
               Cancel
             </Button>
             <Button variant="success" size="sm" onClick={handleSaveMembers} disabled={assignLoading}>
-              {assignLoading ? <Spinner animation="border" size="sm" /> : "Save Staff Assignments"}
+              {assignLoading ? <LoadingSpinner variant="button" size="sm" /> : "Save Staff Assignments"}
             </Button>
           </div>
         </Modal.Footer>

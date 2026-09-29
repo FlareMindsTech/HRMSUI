@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Container, Alert, Modal, Button } from "react-bootstrap";
+import { Container, Modal, Button } from "react-bootstrap";
 import { FaCheckCircle, FaExclamationTriangle, FaTrash } from "react-icons/fa";
 import { useSelector } from 'react-redux';
 import { selectAuthUser, selectIsSystemAdmin, useHasMenu } from '../../redux/slices/authSlice';
 import LoadingSpinner from '../../Components/Common/LoadingSpinner';
+import FeedbackAlert from '../../Components/Common/FeedbackAlert';
 import { fetchAllUsers } from "../../services/rbacService";
 import {
   getEducationByUserId,
@@ -605,27 +606,23 @@ function EducationManagement() {
 
       {/* 2. Global Feedback Notifications */}
       {successMsg && (
-        <Alert
+        <FeedbackAlert
           variant="success"
           dismissible
           onClose={() => setSuccessMsg("")}
           className="rounded-3 shadow-xs border-success d-flex align-items-center gap-2 mb-4"
-        >
-          <FaCheckCircle className="text-success flex-shrink-0" />
-          <span className="small fw-semibold">{successMsg}</span>
-        </Alert>
+          message={<><FaCheckCircle className="text-success flex-shrink-0" /><span className="small fw-semibold">{successMsg}</span></>}
+        />
       )}
 
       {errorMsg && (
-        <Alert
+        <FeedbackAlert
           variant="danger"
           dismissible
           onClose={() => setErrorMsg("")}
           className="rounded-3 shadow-xs border-danger d-flex align-items-center gap-2 mb-4"
-        >
-          <FaExclamationTriangle className="text-danger flex-shrink-0" />
-          <span className="small fw-semibold">{errorMsg}</span>
-        </Alert>
+          message={<><FaExclamationTriangle className="text-danger flex-shrink-0" /><span className="small fw-semibold">{errorMsg}</span></>}
+        />
       )}
 
       {loading ? (

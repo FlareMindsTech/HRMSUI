@@ -1,16 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
-  Table,
   Button,
   Badge,
-  Modal,
   Form,
   Row,
   Col,
   Spinner,
-  Alert,
-  InputGroup,
   Nav,
 } from "react-bootstrap";
 import {
@@ -18,7 +14,6 @@ import {
   FaPlus,
   FaEdit,
   FaTrash,
-  FaSearch,
   FaCalendarAlt,
   FaCodeBranch,
 } from "react-icons/fa";
@@ -35,6 +30,12 @@ import {
 } from "../../services/organizationService";
 import { useSelector } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import FeedbackAlert from "../Common/FeedbackAlert";
+import EmptyState from "../Common/EmptyState";
+import DataTable from "../Common/DataTable";
+import SearchInput from "../Common/SearchInput";
+import ConfirmModal from "../Common/ConfirmModal";
+import CrudModal from "../Common/CrudModal";
 
 function HolidayCalendarsSection({ lockedBranchId }) {
   const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
@@ -318,8 +319,8 @@ function HolidayCalendarsSection({ lockedBranchId }) {
         </div>
       </div>
 
-      {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
-      {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
+      <FeedbackAlert variant="danger" dismissible onClose={() => setError("")} message={error} />
+      <FeedbackAlert variant="success" dismissible onClose={() => setSuccess("")} message={success} />
 
       {/* ── Year Filter Bar ── */}
       <Card className="org-filter-card mb-3">
@@ -341,14 +342,15 @@ function HolidayCalendarsSection({ lockedBranchId }) {
             </Col>
             {activeSubTab === "calendars" && (
               <Col md={5}>
-                <InputGroup size="sm">
-                  <InputGroup.Text><FaSearch className="text-muted" /></InputGroup.Text>
-                  <Form.Control
-                    placeholder="Search calendar name or code..."
-                    value={search}
-                    onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                  />
-                </InputGroup>
+                <SearchInput
+                  size="sm"
+                  inputGroupTextClassName=""
+                  inputClassName=""
+                  iconClassName="text-muted"
+                  placeholder="Search calendar name or code..."
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                />
               </Col>
             )}
             <Col className="text-end text-muted small">
@@ -361,204 +363,253 @@ function HolidayCalendarsSection({ lockedBranchId }) {
       {/* ── Table: Declared Holidays or Calendars ── */}
       <Card className="org-table-card">
         {activeSubTab === "holidays" ? (
-          <Table responsive hover className="org-table mb-0 align-middle">
-            <thead>
+          <DataTable
+            responsive
+            hover
+            className="org-table mb-0 align-middle"
+            rows={declaredHolidays}
+            loading={loading}
+            loadingComponent={
               <tr>
-                <th>Date & Day</th>
-                <th>Holiday Name</th>
-                <th>Holiday Type</th>
-                <th>Applicable Scope</th>
-                <th>Branch / Dept</th>
-                <th>Optional?</th>
-                <th>Status</th>
-                <th className="text-end">Actions</th>
+                <td colSpan={8} className="text-center py-5 text-muted">
+                  <Spinner animation="border" size="sm" variant="success" className="me-2" />
+                  Loading declared holidays...
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-5 text-muted">
-                    <Spinner animation="border" size="sm" variant="success" className="me-2" />
-                    Loading declared holidays...
-                  </td>
-                </tr>
-              ) : declaredHolidays.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-5 text-muted">
-                    No declared holidays for {filterYear}.
-                  </td>
-                </tr>
-              ) : (
-                declaredHolidays.map((h) => {
+            }
+            emptyComponent={
+              <EmptyState
+                variant="table"
+                colSpan={8}
+                className="text-center py-5 text-muted"
+                title={`No declared holidays for ${filterYear}.`}
+              />
+            }
+            columns={[
+              {
+                key: "date",
+                header: "Date & Day",
+                render: (h) => {
                   const dateObj = h.date ? new Date(h.date) : null;
                   const dayName = dateObj ? dateObj.toLocaleDateString("en-US", { weekday: "short" }) : "";
                   return (
-                    <tr key={h._id}>
-                      <td>
-                        <div className="fw-semibold text-dark font-monospace">{h.date}</div>
-                        <div className="small text-muted">{dayName}</div>
-                      </td>
-                      <td>
-                        <div className="fw-semibold text-dark">{h.title || h.holidayName}</div>
-                        <div className="small text-muted">{h.reason}</div>
-                      </td>
-                      <td>
-                        <Badge bg="light" className="text-dark border">
-                          {h.holidayType ? h.holidayType.replace("_", " ") : "COMPANY"}
-                        </Badge>
-                      </td>
-                      <td>
-                        <span className="small text-secondary fw-semibold">
-                          {h.scope || "ALL"}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="small text-muted">
-                          {h.branchId?.branchName || h.targetDepartment || "Organization-Wide"}
-                        </div>
-                      </td>
-                      <td>
-                        {h.isOptional ? (
-                          <Badge bg="warning" text="dark">Optional</Badge>
-                        ) : (
-                          <span className="text-muted small">Mandatory</span>
-                        )}
-                      </td>
-                      <td>
-                        <Badge bg={h.status === "ACTIVE" ? "success" : "secondary"}>
-                          {h.status || "ACTIVE"}
-                        </Badge>
-                      </td>
-                      <td className="text-end">
-                        {canDeclareHoliday && h.status !== "CANCELLED" && (
-                          <Button
-                            variant="link"
-                            size="sm"
-                            className="text-danger p-1"
-                            title="Cancel Holiday"
-                            onClick={() => {
-                              setDeletingType("holiday");
-                              setDeletingId(h._id);
-                              setDeletingName(h.title || h.holidayName);
-                              setShowDeleteModal(true);
-                            }}
-                          >
-                            <FaTrash />
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
+                    <>
+                      <div className="fw-semibold text-dark font-monospace">{h.date}</div>
+                      <div className="small text-muted">{dayName}</div>
+                    </>
                   );
-                })
-              )}
-            </tbody>
-          </Table>
+                },
+              },
+              {
+                key: "name",
+                header: "Holiday Name",
+                render: (h) => (
+                  <>
+                    <div className="fw-semibold text-dark">{h.title || h.holidayName}</div>
+                    <div className="small text-muted">{h.reason}</div>
+                  </>
+                ),
+              },
+              {
+                key: "type",
+                header: "Holiday Type",
+                render: (h) => (
+                  <Badge bg="light" className="text-dark border">
+                    {h.holidayType ? h.holidayType.replace("_", " ") : "COMPANY"}
+                  </Badge>
+                ),
+              },
+              {
+                key: "scope",
+                header: "Applicable Scope",
+                render: (h) => (
+                  <span className="small text-secondary fw-semibold">
+                    {h.scope || "ALL"}
+                  </span>
+                ),
+              },
+              {
+                key: "branch",
+                header: "Branch / Dept",
+                render: (h) => (
+                  <div className="small text-muted">
+                    {h.branchId?.branchName || h.targetDepartment || "Organization-Wide"}
+                  </div>
+                ),
+              },
+              {
+                key: "optional",
+                header: "Optional?",
+                render: (h) =>
+                  h.isOptional ? (
+                    <Badge bg="warning" text="dark">Optional</Badge>
+                  ) : (
+                    <span className="text-muted small">Mandatory</span>
+                  ),
+              },
+              {
+                key: "status",
+                header: "Status",
+                render: (h) => (
+                  <Badge bg={h.status === "ACTIVE" ? "success" : "secondary"}>
+                    {h.status || "ACTIVE"}
+                  </Badge>
+                ),
+              },
+              {
+                key: "actions",
+                header: "Actions",
+                headerClassName: "text-end",
+                cellClassName: "text-end",
+                render: (h) => (
+                  <>
+                    {canDeclareHoliday && h.status !== "CANCELLED" && (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="text-danger p-1"
+                        title="Cancel Holiday"
+                        onClick={() => {
+                          setDeletingType("holiday");
+                          setDeletingId(h._id);
+                          setDeletingName(h.title || h.holidayName);
+                          setShowDeleteModal(true);
+                        }}
+                      >
+                        <FaTrash />
+                      </Button>
+                    )}
+                  </>
+                ),
+              },
+            ]}
+          />
         ) : (
-          <Table responsive hover className="org-table mb-0 align-middle">
-            <thead>
+          <DataTable
+            responsive
+            hover
+            className="org-table mb-0 align-middle"
+            rows={holidayCalendars}
+            loading={loading}
+            loadingComponent={
               <tr>
-                <th>Calendar Code & Name</th>
-                <th>Year</th>
-                <th>Associated Branch</th>
-                <th>Description</th>
-                <th>Status</th>
-                <th className="text-end">Actions</th>
+                <td colSpan={6} className="text-center py-5 text-muted">
+                  <Spinner animation="border" size="sm" variant="success" className="me-2" />
+                  Loading holiday calendars...
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-5 text-muted">
-                    <Spinner animation="border" size="sm" variant="success" className="me-2" />
-                    Loading holiday calendars...
-                  </td>
-                </tr>
-              ) : holidayCalendars.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-5 text-muted">
-                    No holiday calendars found for {filterYear}.
-                  </td>
-                </tr>
-              ) : (
-                holidayCalendars.map((cal) => (
-                  <tr key={cal._id}>
-                    <td>
-                      <div className="fw-semibold text-dark">{cal.calendarName}</div>
-                      <div className="small font-monospace text-muted">{cal.calendarCode}</div>
-                    </td>
-                    <td>
-                      <Badge bg="light" className="text-primary border font-monospace">
-                        {cal.year}
-                      </Badge>
-                    </td>
-                    <td>
-                      {cal.branchId ? (
-                        <div className="small">
-                          <FaCodeBranch className="text-secondary me-1" />
-                          {cal.branchId.branchName}
-                        </div>
-                      ) : (
-                        <span className="text-muted small">Global / All Branches</span>
-                      )}
-                    </td>
-                    <td>
-                      <span className="small text-muted text-truncate d-inline-block" style={{ maxWidth: "200px" }}>
-                        {cal.description || "-"}
-                      </span>
-                    </td>
-                    <td>
-                      <Badge bg={cal.status === "ACTIVE" ? "success" : "secondary"}>
-                        {cal.status}
-                      </Badge>
-                    </td>
-                    <td className="text-end">
-                      {canManageCalendars && (
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="text-primary p-1"
-                          title="Edit Calendar"
-                          onClick={() => handleOpenCalendarEdit(cal)}
-                        >
-                          <FaEdit />
-                        </Button>
-                      )}
-                      {canManageCalendars && (
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="text-danger p-1"
-                          title="Delete Calendar"
-                          onClick={() => {
-                            setDeletingType("calendar");
-                            setDeletingId(cal._id);
-                            setDeletingName(cal.calendarName);
-                            setShowDeleteModal(true);
-                          }}
-                        >
-                          <FaTrash />
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </Table>
+            }
+            emptyComponent={
+              <EmptyState
+                variant="table"
+                colSpan={6}
+                className="text-center py-5 text-muted"
+                title={`No holiday calendars found for ${filterYear}.`}
+              />
+            }
+            columns={[
+              {
+                key: "calendar",
+                header: "Calendar Code & Name",
+                render: (cal) => (
+                  <>
+                    <div className="fw-semibold text-dark">{cal.calendarName}</div>
+                    <div className="small font-monospace text-muted">{cal.calendarCode}</div>
+                  </>
+                ),
+              },
+              {
+                key: "year",
+                header: "Year",
+                render: (cal) => (
+                  <Badge bg="light" className="text-primary border font-monospace">
+                    {cal.year}
+                  </Badge>
+                ),
+              },
+              {
+                key: "branch",
+                header: "Associated Branch",
+                render: (cal) =>
+                  cal.branchId ? (
+                    <div className="small">
+                      <FaCodeBranch className="text-secondary me-1" />
+                      {cal.branchId.branchName}
+                    </div>
+                  ) : (
+                    <span className="text-muted small">Global / All Branches</span>
+                  ),
+              },
+              {
+                key: "description",
+                header: "Description",
+                render: (cal) => (
+                  <span className="small text-muted text-truncate d-inline-block" style={{ maxWidth: "200px" }}>
+                    {cal.description || "-"}
+                  </span>
+                ),
+              },
+              {
+                key: "status",
+                header: "Status",
+                render: (cal) => (
+                  <Badge bg={cal.status === "ACTIVE" ? "success" : "secondary"}>
+                    {cal.status}
+                  </Badge>
+                ),
+              },
+              {
+                key: "actions",
+                header: "Actions",
+                headerClassName: "text-end",
+                cellClassName: "text-end",
+                render: (cal) => (
+                  <>
+                    {canManageCalendars && (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="text-primary p-1"
+                        title="Edit Calendar"
+                        onClick={() => handleOpenCalendarEdit(cal)}
+                      >
+                        <FaEdit />
+                      </Button>
+                    )}
+                    {canManageCalendars && (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="text-danger p-1"
+                        title="Delete Calendar"
+                        onClick={() => {
+                          setDeletingType("calendar");
+                          setDeletingId(cal._id);
+                          setDeletingName(cal.calendarName);
+                          setShowDeleteModal(true);
+                        }}
+                      >
+                        <FaTrash />
+                      </Button>
+                    )}
+                  </>
+                ),
+              },
+            ]}
+          />
         )}
       </Card>
 
       {/* ── Declare Holiday Modal ── */}
-      <Modal show={showHolidayModal} onHide={() => setShowHolidayModal(false)} size="lg" centered backdrop="static">
-        <Form onSubmit={handleSaveHoliday}>
-          <Modal.Header closeButton>
-            <Modal.Title className="d-flex align-items-center gap-2">
-              <FaUmbrellaBeach className="text-success" /> Declare Official Holiday
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            {modalError && <Alert variant="danger">{modalError}</Alert>}
-
+          <CrudModal
+            show={showHolidayModal}
+            onClose={() => setShowHolidayModal(false)}
+            title={<><FaUmbrellaBeach className="text-success" /> Declare Official Holiday</>}
+            onSubmit={handleSaveHoliday}
+            saving={modalLoading}
+            saveLabel="Declare Holiday"
+            modalError={modalError}
+          >
             <Row className="g-3">
               <Col md={8}>
                 <Form.Group>
@@ -672,30 +723,18 @@ function HolidayCalendarsSection({ lockedBranchId }) {
                 />
               </Col>
             </Row>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowHolidayModal(false)} disabled={modalLoading}>
-              Cancel
-            </Button>
-            <Button variant="success" type="submit" disabled={modalLoading}>
-              {modalLoading ? <Spinner size="sm" animation="border" /> : "Declare Holiday"}
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
+          </CrudModal>
 
       {/* ── Create / Edit Calendar Modal ── */}
-      <Modal show={showCalModal} onHide={() => setShowCalModal(false)} size="lg" centered backdrop="static">
-        <Form onSubmit={handleSaveCalendar}>
-          <Modal.Header closeButton>
-            <Modal.Title className="d-flex align-items-center gap-2">
-              <FaCalendarAlt className="text-success" />
-              {editingCal ? "Edit Holiday Calendar" : "Add Holiday Calendar"}
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            {modalError && <Alert variant="danger">{modalError}</Alert>}
-
+          <CrudModal
+            show={showCalModal}
+            onClose={() => setShowCalModal(false)}
+            title={<><FaCalendarAlt className="text-success" />{editingCal ? "Edit Holiday Calendar" : "Add Holiday Calendar"}</>}
+            onSubmit={handleSaveCalendar}
+            saving={modalLoading}
+            saveLabel="Save Calendar"
+            modalError={modalError}
+          >
             <Row className="g-3">
               <Col md={6}>
                 <Form.Group>
@@ -772,37 +811,18 @@ function HolidayCalendarsSection({ lockedBranchId }) {
                 </Form.Group>
               </Col>
             </Row>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowCalModal(false)} disabled={modalLoading}>
-              Cancel
-            </Button>
-            <Button variant="success" type="submit" disabled={modalLoading}>
-              {modalLoading ? <Spinner size="sm" animation="border" /> : "Save Calendar"}
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
+          </CrudModal>
 
       {/* ── Delete / Cancel Confirmation Modal ── */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="text-danger d-flex align-items-center gap-2">
-            <FaTrash /> Cancel / Delete {deletingType === "calendar" ? "Calendar" : "Holiday"}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to {deletingType === "calendar" ? "delete" : "cancel"} <strong>{deletingName}</strong>?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={modalLoading}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={handleDeleteConfirm} disabled={modalLoading}>
-            {modalLoading ? <Spinner size="sm" animation="border" /> : "Yes, Proceed"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ConfirmModal
+        show={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title={<><FaTrash /> Cancel / Delete {deletingType === "calendar" ? "Calendar" : "Holiday"}</>}
+        message={<>Are you sure you want to {deletingType === "calendar" ? "delete" : "cancel"} <strong>{deletingName}</strong>?</>}
+        onConfirm={handleDeleteConfirm}
+        confirmLabel="Yes, Proceed"
+        loading={modalLoading}
+      />
     </div>
   );
 }

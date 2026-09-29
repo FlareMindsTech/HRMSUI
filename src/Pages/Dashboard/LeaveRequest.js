@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Container, Row, Col, Card, Form, Button, Table, Modal, Tab, Alert, Spinner, InputGroup
+  Container, Row, Col, Card, Form, Button, Table, Modal, Tab, Spinner
 } from "react-bootstrap";
 import {
   FaCalendarAlt, FaClock, FaCheckCircle,
-  FaTimesCircle, FaPlus, FaBan, FaHistory, FaUserCheck, FaSearch, FaExclamationTriangle, FaUsers, FaUndo
+  FaTimesCircle, FaPlus, FaBan, FaHistory, FaUserCheck, FaExclamationTriangle, FaUsers, FaUndo
 } from "react-icons/fa";
 import { useSelector } from 'react-redux';
 import { selectAuthUser, useHasPermission } from '../../redux/slices/authSlice';
@@ -13,6 +13,8 @@ import EmptyState from '../../Components/Common/EmptyState';
 import DataTable from '../../Components/Common/DataTable';
 import SearchInput from '../../Components/Common/SearchInput';
 import PaginationBar from '../../Components/Common/PaginationBar';
+import ConfirmModal from '../../Components/Common/ConfirmModal';
+import FeedbackAlert from '../../Components/Common/FeedbackAlert';
 import {
   applyLeaveApi,
   fetchLeaveBalanceApi,
@@ -71,6 +73,10 @@ function LeaveRequest() {
   const [selectedLeaveId, setSelectedLeaveId] = useState(null);
   const [rejectionReasonInput, setRejectionReasonInput] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Cancel-confirmation Modal State (replaces window.confirm)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [pendingCancelId, setPendingCancelId] = useState(null);
 
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [auditData, setAuditData] = useState(null);
@@ -268,15 +274,30 @@ function LeaveRequest() {
   };
 
   // Cancel Pending Request Handler
-  const handleCancelRequest = async (leaveId) => {
-    if (!window.confirm("Are you sure you want to cancel this pending leave request?")) return;
+  // Opens the shared ConfirmModal; the actual cancel runs in
+  // handleConfirmCancel so accept/cancel semantics stay identical
+  // to the previous window.confirm flow.
+  const handleCancelRequest = (leaveId) => {
+    setPendingCancelId(leaveId);
+    setShowCancelConfirm(true);
+  };
+
+  const handleCloseCancelConfirm = () => {
+    setShowCancelConfirm(false);
+    setPendingCancelId(null);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!pendingCancelId) return;
     setErrorMsg("");
     setSuccessMsg("");
 
     try {
       setActionLoading(true);
-      await cancelLeaveApi(leaveId);
+      await cancelLeaveApi(pendingCancelId);
       setSuccessMsg("Leave request cancelled successfully.");
+      setShowCancelConfirm(false);
+      setPendingCancelId(null);
       loadBalance();
       loadMyLeaves();
     } catch (err) {
@@ -447,16 +468,10 @@ function LeaveRequest() {
 
       {/* Top Banner Alerts */}
       {errorMsg && (
-        <Alert variant="danger" dismissible onClose={() => setErrorMsg("")} className="py-2 px-3 small mb-2 rounded-3 shadow-xs">
-          <FaExclamationTriangle className="me-2" />
-          {errorMsg}
-        </Alert>
+        <FeedbackAlert variant="danger" dismissible onClose={() => setErrorMsg("")} className="py-2 px-3 small mb-2 rounded-3 shadow-xs" message={<><FaExclamationTriangle className="me-2" />{errorMsg}</>} />
       )}
       {successMsg && (
-        <Alert variant="success" dismissible onClose={() => setSuccessMsg("")} className="py-2 px-3 small mb-2 rounded-3 shadow-xs">
-          <FaCheckCircle className="me-2 text-success" />
-          {successMsg}
-        </Alert>
+        <FeedbackAlert variant="success" dismissible onClose={() => setSuccessMsg("")} className="py-2 px-3 small mb-2 rounded-3 shadow-xs" message={<><FaCheckCircle className="me-2 text-success" />{successMsg}</>} />
       )}
 
       {/* Balance Summary Header Cards (Hidden for Owner) */}
@@ -471,7 +486,7 @@ function LeaveRequest() {
                   </span>
                   <h5 className="leave-balance-value">
                     {balanceLoading ? (
-                      <Spinner size="sm" animation="border" variant="info" />
+                      <LoadingSpinner variant="inline" size="sm" color="info" />
                     ) : (
                       `${balance?.SL?.remaining ?? 2.0} / ${balance?.SL?.allocated ?? 2.0} Days`
                     )}
@@ -501,7 +516,7 @@ function LeaveRequest() {
                   </span>
                   <h5 className="leave-balance-value">
                     {balanceLoading ? (
-                      <Spinner size="sm" animation="border" variant="warning" />
+                      <LoadingSpinner variant="inline" size="sm" color="warning" />
                     ) : (
                       `${balance?.CL?.remaining ?? 1.0} / ${balance?.CL?.allocated ?? 1.0} Days`
                     )}
@@ -531,7 +546,7 @@ function LeaveRequest() {
                   </span>
                   <h5 className="leave-balance-value">
                     {balanceLoading ? (
-                      <Spinner size="sm" animation="border" variant="secondary" />
+                      <LoadingSpinner variant="inline" size="sm" color="secondary" />
                     ) : (
                       `${balance?.LOP?.used ?? 0} Days Used`
                     )}
@@ -624,9 +639,7 @@ function LeaveRequest() {
                             <FaPlus className="text-success" /> Apply for Leave
                           </h6>
                           {formValidationErr && (
-                            <Alert variant="warning" className="small py-1 px-2 mb-2 rounded-2">
-                              <FaExclamationTriangle className="me-1" /> {formValidationErr}
-                            </Alert>
+                            <FeedbackAlert variant="warning" className="small py-1 px-2 mb-2 rounded-2" message={<><FaExclamationTriangle className="me-1" /> {formValidationErr}</>} />
                           )}
 
                           <Form onSubmit={handleSubmitLeave}>
@@ -1007,18 +1020,17 @@ function LeaveRequest() {
                     </div>
 
                     <div className="d-flex align-items-center gap-2 flex-wrap">
-                      <InputGroup size="sm" className="leave-search-group">
-                        <InputGroup.Text className="bg-white border-end-0 text-muted">
-                          <FaSearch size={12} />
-                        </InputGroup.Text>
-                        <Form.Control
-                          type="text"
-                          placeholder="Search employee / reason..."
-                          value={searchQuery}
-                          onChange={(e) => handleSearchChange(e.target.value)}
-                          className="border-start-0 shadow-none leave-search-input"
-                        />
-                      </InputGroup>
+                      <SearchInput
+                        size="sm"
+                        iconSize={12}
+                        inputGroupClassName="leave-search-group"
+                        inputGroupTextClassName="bg-white border-end-0 text-muted"
+                        inputClassName="border-start-0 shadow-none leave-search-input"
+                        type="text"
+                        placeholder="Search employee / reason..."
+                        value={searchQuery}
+                        onChange={(e) => handleSearchChange(e.target.value)}
+                      />
 
                       <Form.Select
                         size="sm"
@@ -1141,18 +1153,17 @@ function LeaveRequest() {
 
                     {/* Single-Row Compact Filter Toolbar */}
                     <div className="d-flex align-items-center gap-2 flex-wrap">
-                      <InputGroup size="sm" className="leave-search-group">
-                        <InputGroup.Text className="bg-white border-end-0 text-muted">
-                          <FaSearch size={12} />
-                        </InputGroup.Text>
-                        <Form.Control
-                          type="text"
-                          placeholder="Search employee / code..."
-                          value={searchQuery}
-                          onChange={(e) => handleSearchChange(e.target.value)}
-                          className="border-start-0 shadow-none leave-search-input"
-                        />
-                      </InputGroup>
+                      <SearchInput
+                        size="sm"
+                        iconSize={12}
+                        inputGroupClassName="leave-search-group"
+                        inputGroupTextClassName="bg-white border-end-0 text-muted"
+                        inputClassName="border-start-0 shadow-none leave-search-input"
+                        type="text"
+                        placeholder="Search employee / code..."
+                        value={searchQuery}
+                        onChange={(e) => handleSearchChange(e.target.value)}
+                      />
 
                       <Form.Select
                         size="sm"
@@ -1362,6 +1373,17 @@ function LeaveRequest() {
           )}
         </Modal.Body>
       </Modal>
+
+      {/* Cancel Leave Confirmation */}
+      <ConfirmModal
+        show={showCancelConfirm}
+        onClose={handleCloseCancelConfirm}
+        onConfirm={handleConfirmCancel}
+        loading={actionLoading}
+        title={<><FaBan /> Cancel Leave Request</>}
+        message="Are you sure you want to cancel this pending leave request?"
+        confirmLabel="Yes, Cancel"
+      />
     </Container>
   );
 }

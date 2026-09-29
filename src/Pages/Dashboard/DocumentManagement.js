@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Container, Row, Col, Alert, Spinner, Modal, Button } from "react-bootstrap";
+import { Container, Row, Col, Spinner, Modal, Button } from "react-bootstrap";
 import { FaExclamationTriangle, FaTrash, FaPlus, FaCheckCircle } from "react-icons/fa";
 import { useSelector } from 'react-redux';
 import { selectAuthUser, selectIsSystemAdmin, selectAuthRole } from '../../redux/slices/authSlice';
@@ -18,6 +18,7 @@ import BankDetailsCard from "../../Components/Document/BankDetailsCard";
 import IdentityDetailsCard from "../../Components/Document/IdentityDetailsCard";
 import StatutoryDetailsCard from "../../Components/Document/StatutoryDetailsCard";
 import EmployeeAttachments from "../../Components/Document/EmployeeAttachments";
+import FeedbackAlert from "../../Components/Common/FeedbackAlert";
 import UploadDocumentModal from "../../Components/Document/UploadDocumentModal";
 import DocumentVerificationModal from "../../Components/Document/DocumentVerificationModal";
 
@@ -319,27 +320,23 @@ const DocumentManagement = () => {
 
         {/* Global Notifications */}
         {errorMsg && (
-          <Alert
+          <FeedbackAlert
             variant="danger"
             dismissible
             onClose={() => setErrorMsg("")}
             className="rounded-4 border-0 shadow-sm d-flex align-items-center gap-2 mb-4"
-          >
-            <FaExclamationTriangle className="text-danger flex-shrink-0" />
-            <div className="small fw-semibold">{errorMsg}</div>
-          </Alert>
+            message={<><FaExclamationTriangle className="text-danger flex-shrink-0" /><div className="small fw-semibold">{errorMsg}</div></>}
+          />
         )}
 
         {successMsg && (
-          <Alert
+          <FeedbackAlert
             variant="success"
             dismissible
             onClose={() => setSuccessMsg("")}
             className="rounded-4 border-0 shadow-sm d-flex align-items-center gap-2 mb-4"
-          >
-            <FaCheckCircle className="text-success flex-shrink-0" />
-            <div className="small fw-semibold">{successMsg}</div>
-          </Alert>
+            message={<><FaCheckCircle className="text-success flex-shrink-0" /><div className="small fw-semibold">{successMsg}</div></>}
+          />
         )}
 
         {/* Loading Spinner */}

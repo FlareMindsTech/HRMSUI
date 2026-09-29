@@ -1,24 +1,18 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
-  Table,
   Button,
   Badge,
-  Modal,
   Form,
   Row,
   Col,
   Spinner,
-  Alert,
-  InputGroup,
-  Pagination,
 } from "react-bootstrap";
 import {
   FaMoneyCheckAlt,
   FaPlus,
   FaEdit,
   FaTrash,
-  FaSearch,
   FaUserTie,
   FaSitemap,
   FaCodeBranch,
@@ -34,6 +28,13 @@ import {
 } from "../../services/organizationService";
 import { useSelector } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import PaginationBar from "../Common/PaginationBar";
+import FeedbackAlert from "../Common/FeedbackAlert";
+import EmptyState from "../Common/EmptyState";
+import DataTable from "../Common/DataTable";
+import SearchInput from "../Common/SearchInput";
+import ConfirmModal from "../Common/ConfirmModal";
+import CrudModal from "../Common/CrudModal";
 
 function CostCentersSection({ lockedBranchId }) {
   const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
@@ -231,22 +232,23 @@ function CostCentersSection({ lockedBranchId }) {
         )}
       </div>
 
-      {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
-      {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
+      <FeedbackAlert variant="danger" dismissible onClose={() => setError("")} message={error} />
+      <FeedbackAlert variant="success" dismissible onClose={() => setSuccess("")} message={success} />
 
       {/* ── Filters & Search ── */}
       <Card className="org-filter-card mb-3">
         <Card.Body className="py-2">
           <Row className="g-2 align-items-center">
             <Col md={4}>
-              <InputGroup size="sm">
-                <InputGroup.Text><FaSearch className="text-muted" /></InputGroup.Text>
-                <Form.Control
-                  placeholder="Search cost center name or code..."
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                />
-              </InputGroup>
+              <SearchInput
+                size="sm"
+                inputGroupTextClassName=""
+                inputClassName=""
+                iconClassName="text-muted"
+                placeholder="Search cost center name or code..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              />
             </Col>
             <Col md={3}>
               <Form.Select
@@ -292,142 +294,159 @@ function CostCentersSection({ lockedBranchId }) {
 
       {/* ── Table ── */}
       <Card className="org-table-card">
-        <Table responsive hover className="org-table mb-0 align-middle">
-          <thead>
+        <DataTable
+          responsive
+          hover
+          className="org-table mb-0 align-middle"
+          rows={costCenters}
+          loading={loading}
+          loadingComponent={
             <tr>
-              <th>Cost Center Code & Name</th>
-              <th>Department</th>
-              <th>Branch</th>
-              <th>Budget Manager</th>
-              <th>Description</th>
-              <th>Status</th>
-              <th className="text-end">Actions</th>
+              <td colSpan={7} className="text-center py-5 text-muted">
+                <Spinner animation="border" size="sm" variant="success" className="me-2" />
+                Loading cost centers...
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={7} className="text-center py-5 text-muted">
-                  <Spinner animation="border" size="sm" variant="success" className="me-2" />
-                  Loading cost centers...
-                </td>
-              </tr>
-            ) : costCenters.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-center py-5 text-muted">
-                  No cost centers found.
-                </td>
-              </tr>
-            ) : (
-              costCenters.map((cc) => (
-                <tr key={cc._id}>
-                  <td>
-                    <div className="fw-semibold text-dark">{cc.costCenterName}</div>
-                    <div className="small font-monospace text-muted">{cc.costCenterCode}</div>
-                  </td>
-                  <td>
-                    {cc.departmentId ? (
-                      <div className="small">
-                        <FaSitemap className="text-success me-1" />
-                        {cc.departmentId.departmentName}
-                      </div>
-                    ) : (
-                      <span className="text-muted small">Global</span>
-                    )}
-                  </td>
-                  <td>
-                    {cc.branchId ? (
-                      <div className="small">
-                        <FaCodeBranch className="text-secondary me-1" />
-                        {cc.branchId.branchName}
-                      </div>
-                    ) : (
-                      <span className="text-muted small">All Branches</span>
-                    )}
-                  </td>
-                  <td>
-                    {cc.managerId ? (
-                      <div className="d-flex align-items-center gap-1">
-                        <FaUserTie className="text-primary small" />
-                        <span className="small">{cc.managerId.firstName} {cc.managerId.lastName}</span>
-                      </div>
-                    ) : (
-                      <span className="text-muted small">Unassigned</span>
-                    )}
-                  </td>
-                  <td>
-                    <span className="small text-muted text-truncate d-inline-block" style={{ maxWidth: "200px" }}>
-                      {cc.description || "-"}
-                    </span>
-                  </td>
-                  <td>
-                    <Badge bg={cc.status === "ACTIVE" ? "success" : "secondary"}>
-                      {cc.status}
-                    </Badge>
-                  </td>
-                  <td className="text-end">
-                    {canUpdate && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="text-primary p-1"
-                        title="Edit Cost Center"
-                        onClick={() => handleOpenEdit(cc)}
-                      >
-                        <FaEdit />
-                      </Button>
-                    )}
-                    {canDelete && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="text-danger p-1"
-                        title="Delete Cost Center"
-                        onClick={() => {
-                          setDeletingId(cc._id);
-                          setDeletingName(cc.costCenterName);
-                          setShowDeleteModal(true);
-                        }}
-                      >
-                        <FaTrash />
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </Table>
+          }
+          emptyComponent={
+            <EmptyState
+              variant="table"
+              colSpan={7}
+              className="text-center py-5 text-muted"
+              title="No cost centers found."
+            />
+          }
+          columns={[
+            {
+              key: "costCenter",
+              header: "Cost Center Code & Name",
+              render: (cc) => (
+                <>
+                  <div className="fw-semibold text-dark">{cc.costCenterName}</div>
+                  <div className="small font-monospace text-muted">{cc.costCenterCode}</div>
+                </>
+              ),
+            },
+            {
+              key: "department",
+              header: "Department",
+              render: (cc) =>
+                cc.departmentId ? (
+                  <div className="small">
+                    <FaSitemap className="text-success me-1" />
+                    {cc.departmentId.departmentName}
+                  </div>
+                ) : (
+                  <span className="text-muted small">Global</span>
+                ),
+            },
+            {
+              key: "branch",
+              header: "Branch",
+              render: (cc) =>
+                cc.branchId ? (
+                  <div className="small">
+                    <FaCodeBranch className="text-secondary me-1" />
+                    {cc.branchId.branchName}
+                  </div>
+                ) : (
+                  <span className="text-muted small">All Branches</span>
+                ),
+            },
+            {
+              key: "manager",
+              header: "Budget Manager",
+              render: (cc) =>
+                cc.managerId ? (
+                  <div className="d-flex align-items-center gap-1">
+                    <FaUserTie className="text-primary small" />
+                    <span className="small">{cc.managerId.firstName} {cc.managerId.lastName}</span>
+                  </div>
+                ) : (
+                  <span className="text-muted small">Unassigned</span>
+                ),
+            },
+            {
+              key: "description",
+              header: "Description",
+              render: (cc) => (
+                <span className="small text-muted text-truncate d-inline-block" style={{ maxWidth: "200px" }}>
+                  {cc.description || "-"}
+                </span>
+              ),
+            },
+            {
+              key: "status",
+              header: "Status",
+              render: (cc) => (
+                <Badge bg={cc.status === "ACTIVE" ? "success" : "secondary"}>
+                  {cc.status}
+                </Badge>
+              ),
+            },
+            {
+              key: "actions",
+              header: "Actions",
+              headerClassName: "text-end",
+              cellClassName: "text-end",
+              render: (cc) => (
+                <>
+                  {canUpdate && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-primary p-1"
+                      title="Edit Cost Center"
+                      onClick={() => handleOpenEdit(cc)}
+                    >
+                      <FaEdit />
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-danger p-1"
+                      title="Delete Cost Center"
+                      onClick={() => {
+                        setDeletingId(cc._id);
+                        setDeletingName(cc.costCenterName);
+                        setShowDeleteModal(true);
+                      }}
+                    >
+                      <FaTrash />
+                    </Button>
+                  )}
+                </>
+              ),
+            },
+          ]}
+        />
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="d-flex justify-content-end p-3 border-top">
-            <Pagination size="sm" className="mb-0">
-              <Pagination.Prev disabled={page <= 1} onClick={() => setPage((p) => Math.max(p - 1, 1))} />
-              {[...Array(totalPages).keys()].map((n) => (
-                <Pagination.Item key={n + 1} active={n + 1 === page} onClick={() => setPage(n + 1)}>
-                  {n + 1}
-                </Pagination.Item>
-              ))}
-              <Pagination.Next disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(p + 1, totalPages))} />
-            </Pagination>
-          </div>
+          <PaginationBar
+            size="sm"
+            page={page}
+            totalPages={totalPages}
+            onPageChange={(pg) => setPage(pg)}
+            wrapperClassName="d-flex justify-content-end p-3 border-top"
+            paginationClassName="mb-0"
+          />
         )}
       </Card>
 
       {/* ── Create / Edit Modal ── */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered backdrop="static">
-        <Form onSubmit={handleSubmit}>
-          <Modal.Header closeButton>
-            <Modal.Title className="d-flex align-items-center gap-2">
-              <FaMoneyCheckAlt className="text-success" />
-              {editingCC ? "Edit Cost Center" : "Add Cost Center"}
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            {modalError && <Alert variant="danger">{modalError}</Alert>}
-
-            <Row className="g-3">
+      <CrudModal
+        show={showModal}
+        onClose={() => setShowModal(false)}
+        title={<><FaMoneyCheckAlt className="text-success" />{editingCC ? "Edit Cost Center" : "Add Cost Center"}</>}
+        onSubmit={handleSubmit}
+        saving={modalLoading}
+        saveLabel="Save Cost Center"
+        modalError={modalError}
+      >
+        <Row className="g-3">
               <Col md={6}>
                 <Form.Group>
                   <Form.Label>Cost Center Name <span className="text-danger">*</span></Form.Label>
@@ -526,37 +545,17 @@ function CostCentersSection({ lockedBranchId }) {
                 </Form.Group>
               </Col>
             </Row>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowModal(false)} disabled={modalLoading}>
-              Cancel
-            </Button>
-            <Button variant="success" type="submit" disabled={modalLoading}>
-              {modalLoading ? <Spinner size="sm" animation="border" /> : "Save Cost Center"}
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
+      </CrudModal>
 
       {/* ── Delete Confirmation Modal ── */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="text-danger d-flex align-items-center gap-2">
-            <FaTrash /> Delete Cost Center
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to delete cost center <strong>{deletingName}</strong>?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={modalLoading}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={handleDelete} disabled={modalLoading}>
-            {modalLoading ? <Spinner size="sm" animation="border" /> : "Yes, Delete"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ConfirmModal
+        show={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title={<><FaTrash /> Delete Cost Center</>}
+        message={<>Are you sure you want to delete cost center <strong>{deletingName}</strong>?</>}
+        onConfirm={handleDelete}
+        loading={modalLoading}
+      />
     </div>
   );
 }

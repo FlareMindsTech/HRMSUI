@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Row, Col, Card, Button, Badge, Spinner, Alert, Form } from "react-bootstrap";
+import { Row, Col, Card, Button, Badge, Spinner, Form } from "react-bootstrap";
 import {
   FaBuilding,
   FaEdit,
@@ -22,6 +22,8 @@ import {
 } from "../../services/organizationService";
 import { useSelector } from "react-redux";
 import { selectAuthUser, useHasPermission, selectIsSystemAdmin } from "../../redux/slices/authSlice";
+import FeedbackAlert from "../Common/FeedbackAlert";
+import LoadingSpinner from "../Common/LoadingSpinner";
 import { useBranch } from "../../context/BranchContext";
 
 const ORG_TYPES = [
@@ -329,7 +331,7 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
               >
                 {saving ? (
                   <>
-                    <Spinner animation="border" size="sm" /> Saving...
+                    <LoadingSpinner variant="inline" size="sm" /> Saving...
                   </>
                 ) : (
                   <>
@@ -342,8 +344,8 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
         </div>
       </div>
 
-      {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
-      {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
+      <FeedbackAlert variant="danger" dismissible onClose={() => setError("")} message={error} />
+      <FeedbackAlert variant="success" dismissible onClose={() => setSuccess("")} message={success} />
 
       {/* ── Compact Top Statistics Row ── */}
       <Row className="g-3 mb-4">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Row, Col, Card, Form, Button, Spinner, Alert } from "react-bootstrap";
+import { Row, Col, Card, Form, Button, Spinner } from "react-bootstrap";
 import {
   FaCodeBranch,
   FaSave,
@@ -18,6 +18,8 @@ import {
 } from "../../services/organizationService";
 import { useSelector } from "react-redux";
 import { useHasPermission, selectIsSystemAdmin } from "../../redux/slices/authSlice";
+import FeedbackAlert from "../Common/FeedbackAlert";
+import LoadingSpinner from "../Common/LoadingSpinner";
 import { useBranch } from "../../context/BranchContext";
 
 export default function BranchSettingsSection({ lockedBranchId = null }) {
@@ -189,8 +191,8 @@ export default function BranchSettingsSection({ lockedBranchId = null }) {
         )}
       </div>
 
-      {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
-      {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
+      <FeedbackAlert variant="danger" dismissible onClose={() => setError("")} message={error} />
+      <FeedbackAlert variant="success" dismissible onClose={() => setSuccess("")} message={success} />
 
       {loading ? (
         <div className="text-center py-5">
@@ -455,7 +457,7 @@ export default function BranchSettingsSection({ lockedBranchId = null }) {
                     className="d-flex align-items-center gap-1 fw-semibold px-3"
                     disabled={saving}
                   >
-                    {saving ? <Spinner animation="border" size="sm" /> : <FaSave />} Save Branch Settings
+                    {saving ? <LoadingSpinner variant="button" size="sm" /> : <FaSave />} Save Branch Settings
                   </Button>
                 </div>
               )}

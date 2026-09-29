@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Card, Row, Col, Button, Badge, Form } from "react-bootstrap";
+import { Card, Row, Col, Button, Form } from "react-bootstrap";
 import {
   FaPaperclip,
   FaPlus,
@@ -14,6 +14,7 @@ import {
   FaFilePdf,
 } from "react-icons/fa";
 import EmptyState from "../Common/EmptyState";
+import StatusBadge from "../Common/StatusBadge";
 
 const CATEGORY_LABELS = {
   OFFER_LETTER: "Offer Letter",
@@ -48,35 +49,50 @@ const EmployeeAttachments = ({
     return matchesStatus && matchesCat && matchesQuery;
   });
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "VERIFIED":
-        return (
-          <Badge bg="success-subtle" className="text-success border border-success-subtle rounded-pill extra-small px-2.5 py-1">
-            <FaCheckCircle className="me-1" /> VERIFIED
-          </Badge>
-        );
-      case "REJECTED":
-        return (
-          <Badge bg="danger-subtle" className="text-danger border border-danger-subtle rounded-pill extra-small px-2.5 py-1">
-            <FaTimesCircle className="me-1" /> REJECTED
-          </Badge>
-        );
-      case "EXPIRED":
-        return (
-          <Badge bg="secondary-subtle" className="text-secondary border rounded-pill extra-small px-2.5 py-1">
-            <FaExclamationCircle className="me-1" /> EXPIRED
-          </Badge>
-        );
-      case "PENDING":
-      default:
-        return (
-          <Badge bg="warning-subtle" className="text-warning-emphasis border border-warning-subtle rounded-pill extra-small px-2.5 py-1">
-            <FaExclamationCircle className="me-1" /> PENDING
-          </Badge>
-        );
-    }
+  // Verification-status → pill map. Same colors, classes, icons and text as
+  // the previous inline switch (including PENDING-on-unknown default).
+  const VERIFICATION_STATUS_MAP = {
+    VERIFIED: {
+      bg: "success-subtle",
+      className: "text-success border border-success-subtle rounded-pill extra-small px-2.5 py-1",
+      icon: FaCheckCircle,
+      iconClassName: "me-1",
+      label: "VERIFIED",
+    },
+    REJECTED: {
+      bg: "danger-subtle",
+      className: "text-danger border border-danger-subtle rounded-pill extra-small px-2.5 py-1",
+      icon: FaTimesCircle,
+      iconClassName: "me-1",
+      label: "REJECTED",
+    },
+    EXPIRED: {
+      bg: "secondary-subtle",
+      className: "text-secondary border rounded-pill extra-small px-2.5 py-1",
+      icon: FaExclamationCircle,
+      iconClassName: "me-1",
+      label: "EXPIRED",
+    },
+    PENDING: {
+      bg: "warning-subtle",
+      className: "text-warning-emphasis border border-warning-subtle rounded-pill extra-small px-2.5 py-1",
+      icon: FaExclamationCircle,
+      iconClassName: "me-1",
+      label: "PENDING",
+    },
   };
+
+  const VERIFICATION_STATUS_DEFAULT = {
+    bg: "warning-subtle",
+    className: "text-warning-emphasis border border-warning-subtle rounded-pill extra-small px-2.5 py-1",
+    icon: FaExclamationCircle,
+    iconClassName: "me-1",
+    label: "PENDING",
+  };
+
+  const getStatusBadge = (status) => (
+    <StatusBadge status={status} map={VERIFICATION_STATUS_MAP} defaultEntry={VERIFICATION_STATUS_DEFAULT} />
+  );
 
   return (
     <Card className="border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden">

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Row, Col, Form, Badge, Button, InputGroup, Alert, Spinner } from "react-bootstrap";
+import { Row, Col, Form, Badge, Button, InputGroup, Spinner } from "react-bootstrap";
 import {
   FaBuilding,
   FaCodeBranch,
@@ -11,6 +11,7 @@ import {
   FaStar,
 } from "react-icons/fa";
 import "./BranchAccessSelector.css";
+import FeedbackAlert from "./FeedbackAlert";
 
 /**
  * Reusable Branch Access Selector Component
@@ -254,9 +255,7 @@ function BranchAccessSelector({
           {isBranchSpecific && (
             <div className="branch-specific-panel p-3.5 bg-light rounded-3 border mb-3">
               {branches.length === 0 ? (
-                <Alert variant="warning" className="small py-2 mb-0">
-                  <FaExclamationCircle className="me-1.5" /> No branches configured for this organization yet. Please add a branch in the Organisation section.
-                </Alert>
+                <FeedbackAlert variant="warning" className="small py-2 mb-0" message={<><FaExclamationCircle className="me-1.5" /> No branches configured for this organization yet. Please add a branch in the Organisation section.</>} />
               ) : (
                 <>
                   {/* Primary Branch Dropdown */}

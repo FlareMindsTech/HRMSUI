@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Modal, Form, Button, Row, Col, Alert } from "react-bootstrap";
+import { Modal, Form, Button, Row, Col } from "react-bootstrap";
 import { FaFileUpload, FaCloudUploadAlt, FaFilePdf, FaFileImage } from "react-icons/fa";
+import FeedbackAlert from "../Common/FeedbackAlert";
 
 export const DOCUMENT_CATEGORIES = [
   { value: "OFFER_LETTER", label: "Offer Letter" },
@@ -99,9 +100,7 @@ const UploadDocumentModal = ({
       <Form onSubmit={handleSubmit}>
         <Modal.Body className="p-4">
           {error && (
-            <Alert variant="danger" className="py-2 px-3 extra-small mb-3">
-              {error}
-            </Alert>
+            <FeedbackAlert variant="danger" className="py-2 px-3 extra-small mb-3" message={error} />
           )}
 
           <Row className="g-3 mb-3">

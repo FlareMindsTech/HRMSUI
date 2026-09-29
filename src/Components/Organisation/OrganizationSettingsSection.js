@@ -5,7 +5,6 @@ import {
   Row,
   Col,
   Spinner,
-  Alert,
 } from "react-bootstrap";
 import {
   FaCog,
@@ -27,6 +26,7 @@ import {
 } from "../../services/organizationService";
 import { useSelector } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import FeedbackAlert from "../Common/FeedbackAlert";
 import ThemeCustomizationSection from "./ThemeCustomizationSection";
 
 function OrganizationSettingsSection() {
@@ -233,8 +233,8 @@ function OrganizationSettingsSection() {
         </div>
       </div>
 
-      {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
-      {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
+      <FeedbackAlert variant="danger" dismissible onClose={() => setError("")} message={error} />
+      <FeedbackAlert variant="success" dismissible onClose={() => setSuccess("")} message={success} />
 
       <div className="org-settings-layout">
         {/* ── Sidebar Navigation Tabs ── */}

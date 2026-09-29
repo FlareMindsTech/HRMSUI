@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Row, Col, Form, Button, Alert, Spinner, InputGroup, Card } from "react-bootstrap";
+import { Row, Col, Form, Button, InputGroup, Card } from "react-bootstrap";
 import {
   FaBuilding,
   FaShieldAlt,
@@ -38,6 +38,8 @@ import {
 } from "../../services/organizationService";
 import { useDispatch } from "react-redux";
 import { authSynced } from "../../redux/slices/authSlice";
+import FeedbackAlert from "../Common/FeedbackAlert";
+import LoadingSpinner from "../Common/LoadingSpinner";
 import { useBranch } from "../../context/BranchContext";
 import { API_BASE_URL, setAuthToken } from "../../config/api";
 import "../../Pages/Dashboard/HrOnboarding.css";
@@ -661,22 +663,32 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
 
             {/* Error Alert */}
             {error && (
-              <Alert variant="danger" dismissible onClose={() => setError("")} className="mb-4 shadow-sm">
-                <div className="d-flex align-items-center gap-2">
-                  <FaExclamationTriangle className="text-danger flex-shrink-0" />
-                  <span><strong>Action Required:</strong> {error}</span>
-                </div>
-              </Alert>
+              <FeedbackAlert
+                variant="danger"
+                dismissible
+                onClose={() => setError("")}
+                className="mb-4 shadow-sm"
+                message={
+                  <div className="d-flex align-items-center gap-2">
+                    <FaExclamationTriangle className="text-danger flex-shrink-0" />
+                    <span><strong>Action Required:</strong> {error}</span>
+                  </div>
+                }
+              />
             )}
 
             {/* Success Alert */}
             {successMessage && (
-              <Alert variant="success" className="mb-4 shadow-sm">
-                <div className="d-flex align-items-center gap-2">
-                  <FaCheckCircle className="text-success flex-shrink-0" />
-                  <span>{successMessage}</span>
-                </div>
-              </Alert>
+              <FeedbackAlert
+                variant="success"
+                className="mb-4 shadow-sm"
+                message={
+                  <div className="d-flex align-items-center gap-2">
+                    <FaCheckCircle className="text-success flex-shrink-0" />
+                    <span>{successMessage}</span>
+                  </div>
+                }
+              />
             )}
 
             {/* ── STEP 1: ENTITY & IDENTITY ── */}
@@ -1487,7 +1499,7 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
                   >
                     {loading ? (
                       <>
-                        <Spinner animation="border" size="sm" className="me-2" /> Initializing Organization & Owner...
+                        <LoadingSpinner variant="button" size="sm" className="me-2" /> Initializing Organization & Owner...
                       </>
                     ) : (
                       <>

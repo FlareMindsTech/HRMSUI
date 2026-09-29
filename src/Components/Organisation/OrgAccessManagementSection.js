@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Row, Col, Card, Table, Button, Badge, Form, InputGroup, Spinner, Alert, Modal } from "react-bootstrap";
+import { Row, Col, Card, Table, Button, Badge, Form, Spinner, Modal } from "react-bootstrap";
 import {
   FaShieldAlt,
-  FaSearch,
   FaBuilding,
   FaCodeBranch,
   FaSave,
@@ -17,6 +16,9 @@ import { useSelector } from "react-redux";
 import { selectAuthUser, useHasPermission, selectIsSystemAdmin } from "../../redux/slices/authSlice";
 import { useBranch } from "../../context/BranchContext";
 import BranchAccessSelector from "../Common/BranchAccessSelector";
+import FeedbackAlert from "../Common/FeedbackAlert";
+import LoadingSpinner from "../Common/LoadingSpinner";
+import SearchInput from "../Common/SearchInput";
 
 export default function OrgAccessManagementSection() {
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
@@ -163,25 +165,22 @@ export default function OrgAccessManagementSection() {
         </div>
       </div>
 
-      {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
-      {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
+      <FeedbackAlert variant="danger" dismissible onClose={() => setError("")} message={error} />
+      <FeedbackAlert variant="success" dismissible onClose={() => setSuccess("")} message={success} />
 
       {/* ── Filter Bar ── */}
       <Card className="border shadow-sm mb-4 bg-white">
         <Card.Body className="p-3">
           <Row className="g-3">
             <Col md={5}>
-              <InputGroup>
-                <InputGroup.Text className="bg-white border-end-0">
-                  <FaSearch className="text-muted" />
-                </InputGroup.Text>
-                <Form.Control
-                  className="border-start-0 ps-0"
-                  placeholder="Search user name, email, or role..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </InputGroup>
+              <SearchInput
+                inputGroupTextClassName="bg-white border-end-0"
+                inputClassName="border-start-0 ps-0"
+                iconClassName="text-muted"
+                placeholder="Search user name, email, or role..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
             </Col>
 
             <Col md={3}>
@@ -341,7 +340,7 @@ export default function OrgAccessManagementSection() {
           </Modal.Header>
 
           <Modal.Body className="p-4">
-            {modalError && <Alert variant="danger" dismissible onClose={() => setModalError("")}>{modalError}</Alert>}
+            <FeedbackAlert variant="danger" dismissible onClose={() => setModalError("")} message={modalError} />
 
             {selectedUser && (
               <div className="p-3 bg-light rounded border mb-4 d-flex align-items-center justify-content-between">
@@ -377,7 +376,7 @@ export default function OrgAccessManagementSection() {
               Cancel
             </Button>
             <Button variant="success" size="sm" type="submit" disabled={saving} className="d-flex align-items-center gap-1 px-3 fw-semibold">
-              {saving ? <Spinner animation="border" size="sm" /> : <FaSave />} Save Access Permissions
+              {saving ? <LoadingSpinner variant="button" size="sm" /> : <FaSave />} Save Access Permissions
             </Button>
           </Modal.Footer>
         </Form>

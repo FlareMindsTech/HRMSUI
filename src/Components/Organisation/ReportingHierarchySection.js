@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
-  Table,
   Button,
   Badge,
-  Modal,
   Form,
   Row,
   Col,
   Spinner,
-  Alert,
   Nav,
 } from "react-bootstrap";
 import {
@@ -32,6 +29,11 @@ import {
 } from "../../services/organizationService";
 import { useSelector } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import FeedbackAlert from "../Common/FeedbackAlert";
+import EmptyState from "../Common/EmptyState";
+import DataTable from "../Common/DataTable";
+import ConfirmModal from "../Common/ConfirmModal";
+import CrudModal from "../Common/CrudModal";
 
 // Recursive Visual Hierarchy Tree Node Component
 function TreeNode({ node, level = 0 }) {
@@ -246,8 +248,8 @@ function ReportingHierarchySection({ lockedBranchId }) {
         </div>
       </div>
 
-      {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
-      {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
+      <FeedbackAlert variant="danger" dismissible onClose={() => setError("")} message={error} />
+      <FeedbackAlert variant="success" dismissible onClose={() => setSuccess("")} message={success} />
 
       {loading ? (
         <div className="org-loader-container">
@@ -282,108 +284,127 @@ function ReportingHierarchySection({ lockedBranchId }) {
       ) : (
         /* ── Assignment Table View ── */
         <Card className="org-table-card">
-          <Table responsive hover className="org-table mb-0 align-middle">
-            <thead>
-              <tr>
-                <th>Employee</th>
-                <th>Reporting Manager</th>
-                <th>Relationship Type</th>
-                <th>Primary?</th>
-                <th>Effective Date</th>
-                <th>Status</th>
-                <th className="text-end">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {hierarchies.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-5 text-muted">
-                    No explicit reporting relationship records found.
-                  </td>
-                </tr>
-              ) : (
-                hierarchies.map((h) => (
-                  <tr key={h._id}>
-                    <td>
-                      <div className="d-flex align-items-center gap-2">
-                        <FaUser className="text-muted small" />
-                        <div>
-                          <div className="fw-semibold text-dark">
-                            {h.employeeId?.firstName} {h.employeeId?.lastName}
-                          </div>
-                          <div className="small text-muted font-monospace">{h.employeeId?.employeeCode}</div>
-                        </div>
+          <DataTable
+            responsive
+            hover
+            className="org-table mb-0 align-middle"
+            rows={hierarchies}
+            emptyComponent={
+              <EmptyState
+                variant="table"
+                colSpan={7}
+                className="text-center py-5 text-muted"
+                title="No explicit reporting relationship records found."
+              />
+            }
+            columns={[
+              {
+                key: "employee",
+                header: "Employee",
+                render: (h) => (
+                  <div className="d-flex align-items-center gap-2">
+                    <FaUser className="text-muted small" />
+                    <div>
+                      <div className="fw-semibold text-dark">
+                        {h.employeeId?.firstName} {h.employeeId?.lastName}
                       </div>
-                    </td>
-                    <td>
-                      <div className="d-flex align-items-center gap-2">
-                        <FaUserTie className="text-primary small" />
-                        <div>
-                          <div className="fw-semibold text-dark">
-                            {h.managerId?.firstName} {h.managerId?.lastName}
-                          </div>
-                          <div className="small text-muted font-monospace">{h.managerId?.employeeCode}</div>
-                        </div>
+                      <div className="small text-muted font-monospace">{h.employeeId?.employeeCode}</div>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                key: "manager",
+                header: "Reporting Manager",
+                render: (h) => (
+                  <div className="d-flex align-items-center gap-2">
+                    <FaUserTie className="text-primary small" />
+                    <div>
+                      <div className="fw-semibold text-dark">
+                        {h.managerId?.firstName} {h.managerId?.lastName}
                       </div>
-                    </td>
-                    <td>
-                      <Badge bg="light" className="text-dark border">
-                        {h.reportingType ? h.reportingType.replace("_", " ") : "PRIMARY"}
-                      </Badge>
-                    </td>
-                    <td>
-                      {h.isPrimary ? (
-                        <Badge bg="success">Yes</Badge>
-                      ) : (
-                        <span className="text-muted small">Secondary</span>
-                      )}
-                    </td>
-                    <td>
-                      <span className="small font-monospace">
-                        {h.effectiveFrom ? new Date(h.effectiveFrom).toLocaleDateString() : "Immediate"}
-                      </span>
-                    </td>
-                    <td>
-                      <Badge bg={h.status === "ACTIVE" ? "success" : "secondary"}>
-                        {h.status || "ACTIVE"}
-                      </Badge>
-                    </td>
-                    <td className="text-end">
-                      {canManage && (
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="text-danger p-1"
-                          title="Remove Manager Relationship"
-                          onClick={() => {
-                            setDeletingId(h._id);
-                            setShowDeleteModal(true);
-                          }}
-                        >
-                          <FaTrash />
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </Table>
+                      <div className="small text-muted font-monospace">{h.managerId?.employeeCode}</div>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                key: "type",
+                header: "Relationship Type",
+                render: (h) => (
+                  <Badge bg="light" className="text-dark border">
+                    {h.reportingType ? h.reportingType.replace("_", " ") : "PRIMARY"}
+                  </Badge>
+                ),
+              },
+              {
+                key: "primary",
+                header: "Primary?",
+                render: (h) =>
+                  h.isPrimary ? (
+                    <Badge bg="success">Yes</Badge>
+                  ) : (
+                    <span className="text-muted small">Secondary</span>
+                  ),
+              },
+              {
+                key: "effective",
+                header: "Effective Date",
+                render: (h) => (
+                  <span className="small font-monospace">
+                    {h.effectiveFrom ? new Date(h.effectiveFrom).toLocaleDateString() : "Immediate"}
+                  </span>
+                ),
+              },
+              {
+                key: "status",
+                header: "Status",
+                render: (h) => (
+                  <Badge bg={h.status === "ACTIVE" ? "success" : "secondary"}>
+                    {h.status || "ACTIVE"}
+                  </Badge>
+                ),
+              },
+              {
+                key: "actions",
+                header: "Actions",
+                headerClassName: "text-end",
+                cellClassName: "text-end",
+                render: (h) => (
+                  <>
+                    {canManage && (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="text-danger p-1"
+                        title="Remove Manager Relationship"
+                        onClick={() => {
+                          setDeletingId(h._id);
+                          setShowDeleteModal(true);
+                        }}
+                      >
+                        <FaTrash />
+                      </Button>
+                    )}
+                  </>
+                ),
+              },
+            ]}
+          />
         </Card>
       )}
 
       {/* ── Assign Manager Modal ── */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered backdrop="static">
-        <Form onSubmit={handleSubmit}>
-          <Modal.Header closeButton>
-            <Modal.Title className="d-flex align-items-center gap-2">
-              <FaLink className="text-success" /> Assign Reporting Manager
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            {modalError && <Alert variant="danger">{modalError}</Alert>}
-
-            <Row className="g-3">
+      <CrudModal
+        show={showModal}
+        onClose={() => setShowModal(false)}
+        title={<><FaLink className="text-success" /> Assign Reporting Manager</>}
+        onSubmit={handleSubmit}
+        saving={modalLoading}
+        saveLabel="Confirm Assignment"
+        modalError={modalError}
+      >
+        <Row className="g-3">
               <Col md={6}>
                 <Form.Group>
                   <Form.Label>Target Employee <span className="text-danger">*</span></Form.Label>
@@ -457,37 +478,18 @@ function ReportingHierarchySection({ lockedBranchId }) {
                 />
               </Col>
             </Row>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowModal(false)} disabled={modalLoading}>
-              Cancel
-            </Button>
-            <Button variant="success" type="submit" disabled={modalLoading}>
-              {modalLoading ? <Spinner size="sm" animation="border" /> : "Confirm Assignment"}
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
+      </CrudModal>
 
       {/* ── Delete Confirmation Modal ── */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="text-danger d-flex align-items-center gap-2">
-            <FaTrash /> Remove Reporting Relationship
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to remove this reporting relationship?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={modalLoading}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={handleDelete} disabled={modalLoading}>
-            {modalLoading ? <Spinner size="sm" animation="border" /> : "Yes, Remove"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ConfirmModal
+        show={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title={<><FaTrash /> Remove Reporting Relationship</>}
+        message="Are you sure you want to remove this reporting relationship?"
+        onConfirm={handleDelete}
+        confirmLabel="Yes, Remove"
+        loading={modalLoading}
+      />
     </div>
   );
 }

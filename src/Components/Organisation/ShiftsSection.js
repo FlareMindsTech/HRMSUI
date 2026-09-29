@@ -1,23 +1,18 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
-  Table,
   Button,
   Badge,
-  Modal,
   Form,
   Row,
   Col,
   Spinner,
-  Alert,
-  InputGroup,
 } from "react-bootstrap";
 import {
   FaClock,
   FaPlus,
   FaEdit,
   FaTrash,
-  FaSearch,
   FaMoon,
   FaSun,
   FaCodeBranch,
@@ -32,6 +27,12 @@ import {
 import { useSelector } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import PaginationBar from "../Common/PaginationBar";
+import FeedbackAlert from "../Common/FeedbackAlert";
+import EmptyState from "../Common/EmptyState";
+import DataTable from "../Common/DataTable";
+import SearchInput from "../Common/SearchInput";
+import ConfirmModal from "../Common/ConfirmModal";
+import CrudModal from "../Common/CrudModal";
 
 function ShiftsSection({ lockedBranchId }) {
   const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
@@ -227,22 +228,23 @@ function ShiftsSection({ lockedBranchId }) {
         )}
       </div>
 
-      {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
-      {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
+      <FeedbackAlert variant="danger" dismissible onClose={() => setError("")} message={error} />
+      <FeedbackAlert variant="success" dismissible onClose={() => setSuccess("")} message={success} />
 
       {/* ── Filters & Search ── */}
       <Card className="org-filter-card mb-3">
         <Card.Body className="py-2">
           <Row className="g-2 align-items-center">
             <Col md={5}>
-              <InputGroup size="sm">
-                <InputGroup.Text><FaSearch className="text-muted" /></InputGroup.Text>
-                <Form.Control
-                  placeholder="Search shift name or code..."
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                />
-              </InputGroup>
+              <SearchInput
+                size="sm"
+                inputGroupTextClassName=""
+                inputClassName=""
+                iconClassName="text-muted"
+                placeholder="Search shift name or code..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              />
             </Col>
             <Col md={3}>
               <Form.Select
@@ -276,41 +278,44 @@ function ShiftsSection({ lockedBranchId }) {
 
       {/* ── Table ── */}
       <Card className="org-table-card">
-        <Table responsive hover className="org-table mb-0 align-middle">
-          <thead>
-            <tr>
-              <th>Shift Code & Name</th>
-              <th>Working Hours</th>
-              <th>Break Duration</th>
-              <th>Grace Period</th>
-              <th>Late Threshold</th>
-              <th>Type / Branch</th>
-              <th>Status</th>
-              <th className="text-end">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
+          <DataTable
+            responsive
+            hover
+            className="org-table mb-0 align-middle"
+            rows={shifts}
+            loading={loading}
+            loadingComponent={
               <tr>
                 <td colSpan={8} className="text-center py-5 text-muted">
                   <Spinner animation="border" size="sm" variant="success" className="me-2" />
                   Loading shifts...
                 </td>
               </tr>
-            ) : shifts.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="text-center py-5 text-muted">
-                  No shifts configured.
-                </td>
-              </tr>
-            ) : (
-              shifts.map((s) => (
-                <tr key={s._id}>
-                  <td>
+            }
+            emptyComponent={
+              <EmptyState
+                variant="table"
+                colSpan={8}
+                className="text-center py-5 text-muted"
+                title="No shifts configured."
+              />
+            }
+            columns={[
+              {
+                key: "shift",
+                header: "Shift Code & Name",
+                render: (s) => (
+                  <>
                     <div className="fw-semibold text-dark">{s.shiftName}</div>
                     <div className="small font-monospace text-muted">{s.shiftCode}</div>
-                  </td>
-                  <td>
+                  </>
+                ),
+              },
+              {
+                key: "hours",
+                header: "Working Hours",
+                render: (s) => (
+                  <>
                     <div className="d-flex align-items-center gap-1 font-monospace">
                       {s.isNightShift ? <FaMoon className="text-indigo me-1" /> : <FaSun className="text-warning me-1" />}
                       <span>{s.startTime} - {s.endTime}</span>
@@ -320,28 +325,56 @@ function ShiftsSection({ lockedBranchId }) {
                         Overnight
                       </span>
                     )}
-                  </td>
-                  <td>
-                    <span className="small text-muted">{s.breakDurationMinutes || 60} mins</span>
-                  </td>
-                  <td>
-                    <span className="small text-success fw-semibold">+{s.gracePeriodMinutes || 15} mins</span>
-                  </td>
-                  <td>
-                    <span className="small text-danger fw-semibold">{s.lateThresholdMinutes || 30} mins</span>
-                  </td>
-                  <td>
-                    <div className="small">
-                      <FaCodeBranch className="text-secondary me-1" />
-                      {s.branchId?.branchName || "Global / All"}
-                    </div>
-                  </td>
-                  <td>
-                    <Badge bg={s.status === "ACTIVE" ? "success" : "secondary"}>
-                      {s.status}
-                    </Badge>
-                  </td>
-                  <td className="text-end">
+                  </>
+                ),
+              },
+              {
+                key: "break",
+                header: "Break Duration",
+                render: (s) => (
+                  <span className="small text-muted">{s.breakDurationMinutes || 60} mins</span>
+                ),
+              },
+              {
+                key: "grace",
+                header: "Grace Period",
+                render: (s) => (
+                  <span className="small text-success fw-semibold">+{s.gracePeriodMinutes || 15} mins</span>
+                ),
+              },
+              {
+                key: "late",
+                header: "Late Threshold",
+                render: (s) => (
+                  <span className="small text-danger fw-semibold">{s.lateThresholdMinutes || 30} mins</span>
+                ),
+              },
+              {
+                key: "branch",
+                header: "Type / Branch",
+                render: (s) => (
+                  <div className="small">
+                    <FaCodeBranch className="text-secondary me-1" />
+                    {s.branchId?.branchName || "Global / All"}
+                  </div>
+                ),
+              },
+              {
+                key: "status",
+                header: "Status",
+                render: (s) => (
+                  <Badge bg={s.status === "ACTIVE" ? "success" : "secondary"}>
+                    {s.status}
+                  </Badge>
+                ),
+              },
+              {
+                key: "actions",
+                header: "Actions",
+                headerClassName: "text-end",
+                cellClassName: "text-end",
+                render: (s) => (
+                  <>
                     {canUpdate && (
                       <Button
                         variant="link"
@@ -368,12 +401,11 @@ function ShiftsSection({ lockedBranchId }) {
                         <FaTrash />
                       </Button>
                     )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </Table>
+                  </>
+                ),
+              },
+            ]}
+          />
 
         {/* Pagination */}
         {totalPages > 1 && (
@@ -389,18 +421,16 @@ function ShiftsSection({ lockedBranchId }) {
       </Card>
 
       {/* ── Create / Edit Modal ── */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered backdrop="static">
-        <Form onSubmit={handleSubmit}>
-          <Modal.Header closeButton>
-            <Modal.Title className="d-flex align-items-center gap-2">
-              <FaClock className="text-success" />
-              {editingShift ? "Edit Shift" : "Add Shift"}
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            {modalError && <Alert variant="danger">{modalError}</Alert>}
-
-            <Row className="g-3">
+      <CrudModal
+        show={showModal}
+        onClose={() => setShowModal(false)}
+        title={<><FaClock className="text-success" />{editingShift ? "Edit Shift" : "Add Shift"}</>}
+        onSubmit={handleSubmit}
+        saving={modalLoading}
+        saveLabel="Save Shift"
+        modalError={modalError}
+      >
+        <Row className="g-3">
               <Col md={6}>
                 <Form.Group>
                   <Form.Label>Shift Name <span className="text-danger">*</span></Form.Label>
@@ -547,37 +577,17 @@ function ShiftsSection({ lockedBranchId }) {
                 </div>
               </Col>
             </Row>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowModal(false)} disabled={modalLoading}>
-              Cancel
-            </Button>
-            <Button variant="success" type="submit" disabled={modalLoading}>
-              {modalLoading ? <Spinner size="sm" animation="border" /> : "Save Shift"}
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
+      </CrudModal>
 
       {/* ── Delete Confirmation Modal ── */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="text-danger d-flex align-items-center gap-2">
-            <FaTrash /> Delete Shift
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to delete shift <strong>{deletingName}</strong>?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={modalLoading}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={handleDelete} disabled={modalLoading}>
-            {modalLoading ? <Spinner size="sm" animation="border" /> : "Yes, Delete"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ConfirmModal
+        show={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title={<><FaTrash /> Delete Shift</>}
+        message={<>Are you sure you want to delete shift <strong>{deletingName}</strong>?</>}
+        onConfirm={handleDelete}
+        loading={modalLoading}
+      />
     </div>
   );
 }

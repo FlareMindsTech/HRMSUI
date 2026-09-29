@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Alert, Spinner, Button } from 'react-bootstrap';
+import { Card, Spinner, Button } from 'react-bootstrap';
+import LoadingSpinner from '../Common/LoadingSpinner';
+import FeedbackAlert from '../Common/FeedbackAlert';
 import {
   FaCalendarCheck,
   FaClock,
@@ -292,18 +294,12 @@ function AttendanceCard() {
       <div className="p-4">
         {/* Error Notification */}
         {errorMessage && (
-          <Alert variant="danger" dismissible onClose={() => setErrorMessage('')} className="py-2 px-3 small mb-3 rounded-3">
-            <FaExclamationTriangle className="me-2" />
-            {errorMessage}
-          </Alert>
+          <FeedbackAlert variant="danger" dismissible onClose={() => setErrorMessage('')} className="py-2 px-3 small mb-3 rounded-3" message={<><FaExclamationTriangle className="me-2" />{errorMessage}</>} />
         )}
 
         {/* Success Notification */}
         {successMessage && (
-          <Alert variant="success" dismissible onClose={() => setSuccessMessage('')} className="py-2 px-3 small mb-3 rounded-3">
-            <FaCheckCircle className="me-2 text-success" />
-            {successMessage}
-          </Alert>
+          <FeedbackAlert variant="success" dismissible onClose={() => setSuccessMessage('')} className="py-2 px-3 small mb-3 rounded-3" message={<><FaCheckCircle className="me-2 text-success" />{successMessage}</>} />
         )}
 
         {/* Initial Loading Spinner */}
@@ -334,7 +330,7 @@ function AttendanceCard() {
                 >
                   {actionInProgress ? (
                     <span className="d-inline-flex align-items-center gap-2">
-                      <Spinner animation="border" size="sm" />
+                      <LoadingSpinner variant="button" size="sm" />
                       <span>{actionStageText || 'Processing...'}</span>
                     </span>
                   ) : (
@@ -406,7 +402,7 @@ function AttendanceCard() {
                 >
                   {actionInProgress ? (
                     <span className="d-inline-flex align-items-center gap-2">
-                      <Spinner animation="border" size="sm" />
+                      <LoadingSpinner variant="button" size="sm" />
                       <span>{actionStageText || 'Punching out...'}</span>
                     </span>
                   ) : (

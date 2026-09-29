@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Container, Row, Col, Card, Form, Button, Badge, Table, Modal, Spinner, Alert, InputGroup, Nav
+  Container, Row, Col, Card, Form, Button, Badge, Table, Modal, Spinner, InputGroup, Nav
 } from 'react-bootstrap';
 import {
   FaClock, FaCalendarAlt, FaCheckCircle, FaExclamationTriangle,
@@ -13,6 +13,9 @@ import { useSelector } from 'react-redux';
 import { selectAuthUser } from '../../redux/slices/authSlice';
 import EmptyState from '../../Components/Common/EmptyState';
 import PaginationBar from '../../Components/Common/PaginationBar';
+import StatusBadge from '../../Components/Common/StatusBadge';
+import LoadingSpinner from '../../Components/Common/LoadingSpinner';
+import FeedbackAlert from '../../Components/Common/FeedbackAlert';
 import {
   fetchTodayAttendance,
   punchInUser,
@@ -256,19 +259,30 @@ function LocationModal({ show, onHide, record }) {
   );
 }
 
-// Static status badge
+// Static status badge — same map, classes and N/A fallback as before,
+// rendered through the shared StatusBadge (shared pill shape appended).
+const ATTENDANCE_STATUS_MAP = {
+  Present: { bg: 'success-subtle', className: 'text-success border-success-subtle' },
+  Working: { bg: 'info-subtle', className: 'text-info border-info-subtle' },
+  Late: { bg: 'warning-subtle', className: 'text-warning border-warning-subtle' },
+  'Half Day': { bg: 'secondary-subtle', className: 'text-secondary border-secondary-subtle' },
+  Absent: { bg: 'danger-subtle', className: 'text-danger border-danger-subtle' },
+  Weekend: { bg: 'light', className: 'text-muted' },
+  Leave: { bg: 'primary-subtle', className: 'text-primary border-primary-subtle' },
+};
+const ATTENDANCE_STATUS_DEFAULT = { bg: 'light', className: 'text-dark' };
+const ATTENDANCE_BADGE_CLASS = 'border px-2.5 py-0.5 rounded-pill fw-semibold att-badge-status-compact';
+
 function renderStatusBadgeStatic(status) {
-  const map = {
-    'Present': { bg: 'success-subtle', cls: 'text-success border-success-subtle' },
-    'Working': { bg: 'info-subtle', cls: 'text-info border-info-subtle' },
-    'Late': { bg: 'warning-subtle', cls: 'text-warning border-warning-subtle' },
-    'Half Day': { bg: 'secondary-subtle', cls: 'text-secondary border-secondary-subtle' },
-    'Absent': { bg: 'danger-subtle', cls: 'text-danger border-danger-subtle' },
-    'Weekend': { bg: 'light', cls: 'text-muted' },
-    'Leave': { bg: 'primary-subtle', cls: 'text-primary border-primary-subtle' },
-  };
-  const s = map[status] || { bg: 'light', cls: 'text-dark' };
-  return <Badge bg={s.bg} className={`${s.cls} border px-2.5 py-0.5 rounded-pill fw-semibold att-badge-status-compact`}>{status || 'N/A'}</Badge>;
+  return (
+    <StatusBadge
+      status={status}
+      map={ATTENDANCE_STATUS_MAP}
+      defaultEntry={ATTENDANCE_STATUS_DEFAULT}
+      className={ATTENDANCE_BADGE_CLASS}
+      fallbackLabel="N/A"
+    />
+  );
 }
 
 // ======================================================
@@ -710,14 +724,13 @@ function Attendance() {
 
       {/* Feedback Toast Alert */}
       {feedbackMessage.text && (
-        <Alert
+        <FeedbackAlert
           variant={feedbackMessage.type}
           dismissible
           onClose={() => setFeedbackMessage({ type: '', text: '' })}
           className="shadow-sm border-0 rounded-3 mb-3 py-2 px-3 small"
-        >
-          {feedbackMessage.text}
-        </Alert>
+          message={feedbackMessage.text}
+        />
       )}
 
       {/* ── 1. OWNER NAVIGATION TABS ── */}
@@ -1467,15 +1480,11 @@ function Attendance() {
             </h6>
 
             {settingsSuccessMsg && (
-              <Alert variant="success" dismissible onClose={() => setSettingsSuccessMsg('')} className="py-2 small">
-                <FaCheckCircle className="me-2" /> {settingsSuccessMsg}
-              </Alert>
+              <FeedbackAlert variant="success" dismissible onClose={() => setSettingsSuccessMsg('')} className="py-2 small" message={<><FaCheckCircle className="me-2" /> {settingsSuccessMsg}</>} />
             )}
 
             {settingsErrMsg && (
-              <Alert variant="danger" dismissible onClose={() => setSettingsErrMsg('')} className="py-2 small">
-                <FaExclamationTriangle className="me-2" /> {settingsErrMsg}
-              </Alert>
+              <FeedbackAlert variant="danger" dismissible onClose={() => setSettingsErrMsg('')} className="py-2 small" message={<><FaExclamationTriangle className="me-2" /> {settingsErrMsg}</>} />
             )}
 
             <Form onSubmit={handleSavePolicySettings}>
@@ -1616,7 +1625,7 @@ function Attendance() {
 
               <div className="d-flex justify-content-end">
                 <Button type="submit" variant="primary" size="sm" disabled={settingsSubmitting} className="rounded-3 px-4 fw-bold">
-                  {settingsSubmitting ? <Spinner size="sm" animation="border" /> : <><FaCheck className="me-1" /> Save Attendance Policy</>}
+                  {settingsSubmitting ? <LoadingSpinner variant="button" size="sm" /> : <><FaCheck className="me-1" /> Save Attendance Policy</>}
                 </Button>
               </div>
             </Form>
@@ -1649,7 +1658,7 @@ function Attendance() {
                   onClick={handlePunchAction}
                   disabled={punchLoading}
                 >
-                  {punchLoading ? <Spinner animation="border" size="sm" /> : (
+                  {punchLoading ? <LoadingSpinner variant="button" size="sm" /> : (
                     <div>
                       <FaClock size={24} className="mb-1 d-block mx-auto" />
                       {todayRecord?.loginTime && !todayRecord?.logoutTime ? 'PUNCH OUT' : 'PUNCH IN'}
