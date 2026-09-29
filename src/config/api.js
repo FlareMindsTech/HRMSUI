@@ -114,7 +114,13 @@ export const apiFetch = async (path, options = {}, isRetry = false) => {
       }
     } else {
       const text = await res.text();
-      data = { message: text || `HTTP ${res.status} ${res.statusText}` };
+      let cleanMessage = text;
+      if (text.includes("<pre>") && text.includes("</pre>")) {
+        cleanMessage = text.split("<pre>")[1].split("</pre>")[0].trim();
+      } else if (text.startsWith("<!DOCTYPE") || text.includes("<html")) {
+        cleanMessage = `Server error (${res.status} ${res.statusText || "Not Found"}) on ${path}`;
+      }
+      data = { message: cleanMessage || `HTTP ${res.status} ${res.statusText}` };
     }
 
     // Auto-recovery if branch mismatch error is returned
@@ -125,6 +131,15 @@ export const apiFetch = async (path, options = {}, isRetry = false) => {
       const retryHeaders = { ...options.headers };
       delete retryHeaders["x-branch-id"];
       return apiFetch(path, { ...options, headers: retryHeaders }, true);
+    }
+
+    // Auto-recovery for 404 route prefix mismatch: automatically try with /api prefix
+    if (!res.ok && res.status === 404 && !isRetry) {
+      if (!path.startsWith("/api") && !API_BASE_URL.endsWith("/api")) {
+        return apiFetch(`/api${path}`, options, true);
+      } else if (path.startsWith("/api")) {
+        return apiFetch(path.replace(/^\/api/, ""), options, true);
+      }
     }
 
     return { ok: res.ok, status: res.status, data };

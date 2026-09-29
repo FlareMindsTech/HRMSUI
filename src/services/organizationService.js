@@ -54,7 +54,7 @@ export const normalizeOrganization = (raw) => {
       if (!isNaN(d.getTime())) {
         incDate = d.toISOString().split("T")[0];
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   let fyStart = org.financialYearStart || org.financialYearPeriod || org.fyStart || org.financialYear || "04-01";
@@ -126,7 +126,7 @@ export const clearOrganizationCache = () => {
   cachedOrganization = null;
   try {
     localStorage.removeItem("cached_org_profile");
-  } catch (e) {}
+  } catch (e) { }
 };
 
 export const fetchMyOrganization = async (forceRefresh = false) => {
@@ -134,13 +134,26 @@ export const fetchMyOrganization = async (forceRefresh = false) => {
 
   const fastEndpoints = [
     "/organization/me",
+    "/api/organization/me",
     "/organization",
+    "/api/organization",
     "/organizations",
+    "/api/organizations",
     "/organization/structure",
+    "/api/organization/structure",
+    "/system/setup-status",
+    "/api/system/setup-status",
+    "/organization/list",
+    "/api/organization/list",
+    "/organization/get",
+    "/api/organization/get",
   ];
 
   if (storedOrgId) {
+    fastEndpoints.unshift(`/api/organization/${storedOrgId}`);
     fastEndpoints.unshift(`/organization/${storedOrgId}`);
+    fastEndpoints.unshift(`/api/organization/get/${storedOrgId}`);
+    fastEndpoints.unshift(`/organization/get/${storedOrgId}`);
   }
 
   let foundOrg = null;
@@ -156,11 +169,19 @@ export const fetchMyOrganization = async (forceRefresh = false) => {
       if (resObj.status === "fulfilled" && resObj.value?.ok && resObj.value?.data) {
         apiSuccess = true;
         const rawData = resObj.value.data.data !== undefined ? resObj.value.data.data : resObj.value.data;
-        let org = rawData?.organization || rawData?.org || rawData?.organizations?.[0] || rawData?.orgs?.[0] || rawData?.result || rawData?.results?.[0] || rawData;
+        let org =
+          rawData?.organization ||
+          rawData?.org ||
+          rawData?.organizations?.[0] ||
+          rawData?.orgs?.[0] ||
+          rawData?.result ||
+          rawData?.results?.[0] ||
+          rawData;
         if (Array.isArray(org)) org = org[0];
+        if (org?.organization) org = org.organization;
         if (org && (org.organizationName || org.name || org.orgName || org.companyName || org.legalName || org.displayName || org._id || org.id)) {
           const norm = normalizeOrganization(org);
-          if (!foundOrg || (norm.logo && !foundOrg.logo)) {
+          if (!foundOrg || (norm.logo && !foundOrg.logo) || (norm.city && !foundOrg.city)) {
             foundOrg = norm;
           }
         }
@@ -182,7 +203,7 @@ export const fetchMyOrganization = async (forceRefresh = false) => {
     cachedOrganization = foundOrg;
     try {
       localStorage.setItem("cached_org_profile", JSON.stringify(foundOrg));
-    } catch (e) {}
+    } catch (e) { }
     const orgId = foundOrg._id || foundOrg.id;
     if (orgId) {
       localStorage.setItem("organizationId", orgId);
@@ -198,33 +219,56 @@ export const fetchMyOrganization = async (forceRefresh = false) => {
       cachedOrganization = JSON.parse(saved);
       return cachedOrganization;
     }
-  } catch (e) {}
+  } catch (e) { }
 
   return cachedOrganization || null;
 };
 
 export const createOrganization = async (payload) => {
-  let res = await apiFetch("/organization", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    if (res.status === 404) {
-      res = await apiFetch("/organization/create", {
+  const candidateEndpoints = [
+    "/organization",
+    "/api/organization",
+    "/organization/create",
+    "/api/organization/create",
+    "/organizations",
+    "/api/organizations",
+  ];
+
+  let res = null;
+  let lastErrorMessage = "";
+
+  for (const ep of candidateEndpoints) {
+    try {
+      res = await apiFetch(ep, {
         method: "POST",
         body: JSON.stringify(payload),
       });
-    }
-    if (!res.ok) {
-      throw new Error(res.data?.message || "Failed to create organization");
+      if (res.ok && res.data && typeof res.data === "object") {
+        break;
+      }
+      if (res.status !== 404 && res.data?.message) {
+        lastErrorMessage = res.data.message;
+      }
+    } catch (e) {
+      lastErrorMessage = e.message;
     }
   }
+
+  if (!res || !res.ok) {
+    let cleanMsg = res?.data?.message || lastErrorMessage || "Failed to create organization";
+    if (typeof cleanMsg === "string" && (cleanMsg.includes("<!DOCTYPE") || cleanMsg.includes("<html") || cleanMsg.includes("Cannot POST"))) {
+      cleanMsg = "Organization creation route not found on server (404). Ensure app.use('/organization', ...) or app.use('/api/organization', ...) is registered in backend index.js.";
+    }
+    throw new Error(cleanMsg);
+  }
+
   const resultData = res.data?.data || res.data;
   let org = resultData?.organization || resultData?.org || resultData;
   if (Array.isArray(org)) org = org[0];
   if (org?.organization) org = org.organization;
 
   const normalized = normalizeOrganization(org || resultData);
+  console.log("[setup-organization] response:", normalized || resultData);
 
   const orgId = normalized?._id || normalized?.id;
   if (orgId) {
@@ -238,7 +282,7 @@ export const createOrganization = async (payload) => {
         u.tenantId = orgId;
         localStorage.setItem("user", JSON.stringify(u));
       }
-    } catch (e) {}
+    } catch (e) { }
   }
   return normalized || resultData;
 };
@@ -253,14 +297,28 @@ export const updateMyOrganization = async (payload, orgIdOverride = null) => {
 
   const candidateEndpoints = [
     { path: "/organization/structure", method: "PUT" },
+    { path: "/api/organization/structure", method: "PUT" },
     { path: "/organization/me", method: "PUT" },
+    { path: "/api/organization/me", method: "PUT" },
     { path: "/organization", method: "PUT" },
+    { path: "/api/organization", method: "PUT" },
     { path: "/organization/update", method: "PUT" },
+    { path: "/api/organization/update", method: "PUT" },
     { path: "/organization/update", method: "POST" },
+    { path: "/api/organization/update", method: "POST" },
+    { path: "/organization/edit", method: "PUT" },
+    { path: "/api/organization/edit", method: "PUT" },
+    { path: "/organization/edit", method: "POST" },
+    { path: "/api/organization/edit", method: "POST" },
   ];
 
   if (storedOrgId) {
-    candidateEndpoints.splice(2, 0, { path: `/organization/${storedOrgId}`, method: "PUT" });
+    candidateEndpoints.unshift({ path: `/api/organization/${storedOrgId}`, method: "PUT" });
+    candidateEndpoints.unshift({ path: `/organization/${storedOrgId}`, method: "PUT" });
+    candidateEndpoints.unshift({ path: `/api/organization/update/${storedOrgId}`, method: "PUT" });
+    candidateEndpoints.unshift({ path: `/organization/update/${storedOrgId}`, method: "PUT" });
+    candidateEndpoints.unshift({ path: `/api/organization/update/${storedOrgId}`, method: "POST" });
+    candidateEndpoints.unshift({ path: `/organization/update/${storedOrgId}`, method: "POST" });
   }
 
   let res = null;
@@ -304,7 +362,7 @@ export const updateMyOrganization = async (payload, orgIdOverride = null) => {
     cachedOrganization = normalized;
     try {
       localStorage.setItem("cached_org_profile", JSON.stringify(normalized));
-    } catch (e) {}
+    } catch (e) { }
     const newId = normalized._id || normalized.id;
     if (newId) {
       localStorage.setItem("organizationId", newId);
@@ -933,7 +991,7 @@ export const fetchOnboardedEmployees = async (params = {}) => {
       if (res.ok && Array.isArray(res.data?.data)) {
         list = res.data.data;
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   // Normalize employee list
@@ -1064,11 +1122,26 @@ export const removeEmployeeFromBranch = async (branchId, userId) => {
  * Returns: { setupRequired: boolean, organizationExists: boolean, ownerExists: boolean, organization, subscription }
  */
 export const fetchSystemSetupStatus = async () => {
-  const res = await apiFetch("/system/setup-status", { method: "GET" });
-  if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to fetch system setup status");
+  const candidateEndpoints = [
+    "/system/setup-status",
+    "/api/system/setup-status",
+    "/organization/setup-status",
+  ];
+
+  for (const ep of candidateEndpoints) {
+    try {
+      const res = await apiFetch(ep, { method: "GET" });
+      if (res.ok && res.data && typeof res.data === "object") {
+        console.log("[setup-status] response:", res.data);
+        return res.data;
+      }
+    } catch (e) {
+      // Continue to next candidate endpoint
+    }
   }
-  return res.data;
+
+  // If no endpoint is found or registered yet
+  return null;
 };
 
 /**
@@ -1076,13 +1149,43 @@ export const fetchSystemSetupStatus = async () => {
  * Payload: { organizationId, firstName, lastName, email, password, mobileNo, ... }
  */
 export const registerSystemOwner = async (payload) => {
-  const res = await apiFetch("/auth/register-owner", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to register owner account");
+  console.log("[register-owner] request payload:", { ...payload, password: "***" });
+  const candidateEndpoints = [
+    "/auth/register-owner",
+    "/api/auth/register-owner",
+    "/auth/register",
+    "/api/auth/register",
+  ];
+
+  let res = null;
+  let lastErrorMessage = "";
+
+  for (const ep of candidateEndpoints) {
+    try {
+      res = await apiFetch(ep, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      if (res.ok && res.data && typeof res.data === "object") {
+        break;
+      }
+      if (res.status !== 404 && res.data?.message) {
+        lastErrorMessage = res.data.message;
+      }
+    } catch (e) {
+      lastErrorMessage = e.message;
+    }
   }
+
+  if (!res || !res.ok) {
+    let cleanMsg = res?.data?.message || lastErrorMessage || "Failed to register owner account";
+    if (typeof cleanMsg === "string" && (cleanMsg.includes("<!DOCTYPE") || cleanMsg.includes("<html") || cleanMsg.includes("Cannot POST"))) {
+      cleanMsg = "Owner registration route not found on server (404). Ensure app.use('/auth', ...) or app.use('/api/auth', ...) is registered in backend index.js.";
+    }
+    throw new Error(cleanMsg);
+  }
+
+  console.log("[register-owner] response:", res.data);
   return res.data;
 };
 

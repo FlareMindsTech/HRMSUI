@@ -230,33 +230,31 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
     });
   }, []);
 
-  // Fetch initial profile if missing
+  // Fetch live organization profile directly from backend
   const loadFreshOrg = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
-      const org = await fetchMyOrganization();
+      const org = await fetchMyOrganization(true);
       if (org) {
         populateFormData(org);
+      } else if (initialOrgData) {
+        populateFormData(initialOrgData);
       } else if (organization) {
         populateFormData(organization);
       }
     } catch (err) {
       console.warn("Could not load organization in edit page:", err);
-      if (organization) populateFormData(organization);
+      if (initialOrgData) populateFormData(initialOrgData);
+      else if (organization) populateFormData(organization);
     } finally {
       setLoading(false);
     }
-  }, [organization, populateFormData]);
+  }, [initialOrgData, organization, populateFormData]);
 
-  const initialOrgId = initialOrgData?._id || initialOrgData?.id;
   useEffect(() => {
-    if (initialOrgData) {
-      populateFormData(initialOrgData);
-    } else {
-      loadFreshOrg();
-    }
-  }, [initialOrgId, loadFreshOrg, populateFormData]);
+    loadFreshOrg();
+  }, [loadFreshOrg]);
 
   // Handle Logo file selection
   const handleLogoUpload = (e) => {

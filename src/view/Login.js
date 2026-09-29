@@ -28,6 +28,12 @@ const Login = ({ onLogin }) => {
   useEffect(() => {
     fetchSystemSetupStatus()
       .then((status) => {
+        if (status?.ownerExists) {
+          console.log("[owner-details] Owner exists:", status.owner || {
+            ownerExists: true,
+            organization: status.organization,
+          });
+        }
         if (status?.setupRequired && !status?.ownerExists) {
           setSetupRequired(true);
           setSetupDetails(status);
