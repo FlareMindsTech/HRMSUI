@@ -799,7 +799,161 @@
   color: #334155;
 }
 
-/* ── Branch Category Pills Navigation ── */
+/* ── Categorized Navigation System ── */
+.branch-nav-system-wrapper {
+  background: #ffffff;
+  border: 1px solid rgba(196, 154, 85, 0.28);
+  border-radius: 16px;
+  padding: 10px 14px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03);
+}
+
+.branch-nav-system-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.branch-category-segment-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.branch-category-segment-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4b5563;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.branch-category-icon {
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.branch-category-segment-btn:hover {
+  color: #8c6729;
+  background: rgba(196, 154, 85, 0.09);
+  border-color: rgba(196, 154, 85, 0.2);
+}
+
+.branch-category-segment-btn.active {
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  color: #f3deac;
+  border-color: rgba(196, 154, 85, 0.4);
+  box-shadow: 0 4px 14px rgba(17, 24, 39, 0.25);
+}
+
+.branch-category-segment-btn.active .branch-category-icon {
+  color: #c49a55;
+  opacity: 1;
+}
+
+.branch-category-count-pill {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 12px;
+  background: rgba(107, 114, 128, 0.12);
+  color: inherit;
+}
+
+.branch-category-segment-btn.active .branch-category-count-pill {
+  background: rgba(196, 154, 85, 0.25);
+  color: #fdfbf7;
+  border: 1px solid rgba(196, 154, 85, 0.4);
+}
+
+.branch-quick-jump-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.branch-quick-jump-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.branch-quick-jump-select {
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1f2937;
+  border: 1px solid rgba(196, 154, 85, 0.35);
+  background-color: #fdfbf7;
+  min-width: 170px;
+}
+
+.branch-quick-jump-select:focus {
+  border-color: #c49a55;
+  box-shadow: 0 0 0 3px rgba(196, 154, 85, 0.15);
+}
+
+/* Tier 2: Sub-tabs Tray */
+.branch-subtabs-tray {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  margin-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.branch-subtab-pill {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: #f8fafc;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.branch-subtab-pill:hover {
+  background: rgba(196, 154, 85, 0.08);
+  color: #8c6729;
+  border-color: rgba(196, 154, 85, 0.2);
+}
+
+.branch-subtab-pill.active {
+  background: #ffffff;
+  color: #8c6729;
+  font-weight: 700;
+  border-color: rgba(196, 154, 85, 0.45);
+  box-shadow: 0 2px 8px rgba(196, 154, 85, 0.15);
+}
+
+.branch-subtab-icon {
+  font-size: 12px;
+  color: inherit;
+}
+
+/* ── Legacy Branch Category Pills Navigation ── */
 .branch-category-pills-bar {
   display: flex;
   align-items: center;

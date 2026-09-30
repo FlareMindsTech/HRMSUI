@@ -5,7 +5,6 @@ import {
   Row,
   Col,
   Spinner,
-  Alert,
 } from "react-bootstrap";
 import {
   FaCog,
@@ -17,12 +16,11 @@ import {
   FaIdCard,
   FaPalette,
   FaFileAlt,
+  FaArrowRight,
 } from "react-icons/fa";
 import {
   fetchOrganizationSettings,
   updateOrganizationSettings,
-  fetchWorkCalendarsDropdown,
-  fetchShiftsDropdown,
   fetchHolidayCalendarsDropdown,
 } from "../../services/organizationService";
 import {
@@ -34,15 +32,12 @@ import { useHasPermission, selectIsSystemAdmin, selectAuthUser } from '../../red
 import FeedbackAlert from "../Common/FeedbackAlert";
 import ThemeCustomizationSection from "./ThemeCustomizationSection";
 
-function OrganizationSettingsSection() {
+function OrganizationSettingsSection({ onNavigateTab }) {
   const authUser = useSelector(selectAuthUser);
   const isOwner = authUser?.priority === 1 || (authUser?.roleCode || authUser?.roleName || "").toUpperCase() === "OWNER";
   const hasPermission = useHasPermission();
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
-  const currentOrgId = authUser?.organizationId?._id || authUser?.organizationId || "";
 
-  const [workCalendars, setWorkCalendars] = useState([]);
-  const [shifts, setShifts] = useState([]);
   const [holidayCalendars, setHolidayCalendars] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -125,7 +120,7 @@ function OrganizationSettingsSection() {
     try {
       setLoading(true);
       setError("");
-      const [sett, attRes, wcList, shList, holList] = await Promise.all([
+      const [sett, attRes, holList] = await Promise.all([
         fetchOrganizationSettings().catch((err) => {
           console.warn("fetchOrganizationSettings error:", err);
           return null;
@@ -134,8 +129,6 @@ function OrganizationSettingsSection() {
           console.warn("fetchAttendanceSettings error:", err);
           return null;
         }),
-        fetchWorkCalendarsDropdown().catch(() => []),
-        fetchShiftsDropdown().catch(() => []),
         fetchHolidayCalendarsDropdown().catch(() => []),
       ]);
 
@@ -213,8 +206,6 @@ function OrganizationSettingsSection() {
           inAppNotificationEnabled: sett?.inAppNotificationEnabled !== undefined ? sett.inAppNotificationEnabled : true,
         });
       }
-      setWorkCalendars(wcList);
-      setShifts(shList);
       setHolidayCalendars(holList);
     } catch (err) {
       setError(err.message || "Failed to load organization settings");
@@ -500,334 +491,78 @@ function OrganizationSettingsSection() {
                 </div>
               )}
 
-              {/* TAB 2: Attendance & Shifts (Single Source of Truth) */}
+              {/* TAB 2: Attendance & Shifts (Redirect to Dedicated Attendance Workspace) */}
               {activeTab === "attendance" && (
                 <div>
-                  <div className="d-flex justify-content-between align-items-center mb-3">
+                  <div className="d-flex justify-content-between align-items-center mb-4">
                     <div>
                       <h5 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
-                        <FaCalendarCheck className="text-success" /> Organization Attendance Policy & Verification
+                        <FaCalendarCheck className="text-success" /> Attendance Management
                       </h5>
                       <p className="text-muted small mb-0">
-                        Single source of truth for organization-wide attendance rules, verification modes, office geofencing, static IP office networks, and work thresholds.
+                        Attendance configurations have moved to the dedicated Workplace Attendance workspace.
                       </p>
                     </div>
                   </div>
 
-                  {/* Section 1: Verification Mode */}
-                  <div className="p-3 bg-white rounded border mb-4 shadow-sm">
-                    <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                      <FaShieldAlt className="text-primary" /> Organization Baseline Verification Method
-                    </h6>
-                    <Row className="g-3 mb-3">
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label className="small fw-semibold">Default Verification Mode</Form.Label>
-                          <Form.Select
-                            value={formData.attendanceMode}
-                            onChange={(e) => {
-                              const newMode = e.target.value;
-                              setFormData((prev) => ({
-                                ...prev,
-                                attendanceMode: newMode,
-                              }));
-                            }}
-                            disabled={!canUpdate}
-                          >
-                            <option value="GEOFENCE">Geofence (Location Radius)</option>
-                            <option value="GPS">GPS (Coordinates Only)</option>
-                            <option value="STATIC_IP">Wi-Fi / Office Network</option>
-                            <option value="BOTH">Both (Geofence + Wi-Fi)</option>
-                            <option value="MANUAL">Manual Override Only</option>
-                            <option value="BIOMETRIC">Biometric Machine Integration</option>
-                            <option value="ANY">Any (Unrestricted)</option>
-                          </Form.Select>
-                          <Form.Text className="extra-small text-muted">
-                            Baseline organization default. Active branches can override this verification mode under Branch Settings.
-                          </Form.Text>
-                        </Form.Group>
-                      </Col>
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label className="small fw-semibold">Timezone</Form.Label>
-                          <Form.Select
-                            value={formData.timeZone}
-                            onChange={(e) => setFormData({ ...formData, timeZone: e.target.value })}
-                            disabled={!canUpdate}
-                          >
-                            <option value="Asia/Kolkata">Asia/Kolkata (IST +05:30)</option>
-                            <option value="America/New_York">America/New_York (EST/EDT)</option>
-                            <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
-                            <option value="Europe/London">Europe/London (GMT/BST)</option>
-                            <option value="Asia/Dubai">Asia/Dubai (GST +04:00)</option>
-                            <option value="Asia/Singapore">Asia/Singapore (SGT +08:00)</option>
-                            <option value="UTC">UTC (Coordinated Universal Time)</option>
-                          </Form.Select>
-                          <Form.Text className="extra-small text-muted">
-                            Operating timezone for daily attendance logs and shifts.
-                          </Form.Text>
-                        </Form.Group>
-                      </Col>
-
-                      <Col md={12}>
-                        <Alert variant="light" className="border d-flex align-items-center justify-content-between p-3 mb-0">
-                          <div>
-                            <div className="small fw-bold text-dark d-flex align-items-center gap-2">
-                              <FaShieldAlt className="text-primary" /> Branch-Level Attendance & Network Configuration
-                            </div>
-                            <div className="extra-small text-muted mt-1">
-                              Office coordinates (latitude, longitude), geofence perimeters, and Wi-Fi / office network public static IPs are managed per-branch under <strong>Branch Settings → Attendance & Geofence</strong>.
-                            </div>
-                          </div>
-                          <div className="ms-3">
-                            <span className="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 small fw-semibold">
-                              Managed in Branch Settings
-                            </span>
-                          </div>
-                        </Alert>
-                      </Col>
-                    </Row>
-                  </div>
-
-                  {/* Section 2: Working Hours & Cutoff Thresholds */}
-                  <div className="p-3 bg-white rounded border mb-4 shadow-sm">
-                    <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                      <FaClock className="text-success" /> Working Hours & Timing Thresholds
-                    </h6>
-                    <Row className="g-3">
-                      <Col md={4}>
-                        <Form.Group>
-                          <Form.Label className="small fw-semibold">Standard Working Minutes</Form.Label>
-                          <Form.Control
-                            type="number"
-                            min="60"
-                            max="1440"
-                            value={formData.standardWorkingMinutes}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              setFormData((prev) => ({
-                                ...prev,
-                                standardWorkingMinutes: val,
-                                defaultWorkingHours: Math.round((val / 60) * 10) / 10,
-                              }));
-                            }}
-                            disabled={!canUpdate}
-                          />
-                          <Form.Text className="extra-small text-muted">
-                            Target full-day duration ({formData.standardWorkingMinutes ? (formData.standardWorkingMinutes / 60).toFixed(1) : 0} hours).
-                          </Form.Text>
-                        </Form.Group>
-                      </Col>
-                      <Col md={4}>
-                        <Form.Group>
-                          <Form.Label className="small fw-semibold">Half-Day Threshold Minutes</Form.Label>
-                          <Form.Control
-                            type="number"
-                            min="30"
-                            max="720"
-                            value={formData.halfDayMinutes}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              setFormData((prev) => ({
-                                ...prev,
-                                halfDayMinutes: val,
-                                halfDayThresholdHours: Math.round((val / 60) * 10) / 10,
-                              }));
-                            }}
-                            disabled={!canUpdate}
-                          />
-                          <Form.Text className="extra-small text-muted">
-                            Minimum duration for half-day credit ({formData.halfDayMinutes ? (formData.halfDayMinutes / 60).toFixed(1) : 0} hours).
-                          </Form.Text>
-                        </Form.Group>
-                      </Col>
-                      <Col md={4}>
-                        <Form.Group>
-                          <Form.Label className="small fw-semibold">Late Cutoff Time</Form.Label>
-                          <Form.Control
-                            type="text"
-                            placeholder="e.g. 09:15 AM"
-                            value={formData.lateCutoff}
-                            onChange={(e) => setFormData({ ...formData, lateCutoff: e.target.value })}
-                            disabled={!canUpdate}
-                          />
-                          <Form.Text className="extra-small text-muted">
-                            Punch-in after this marks the record as late.
-                          </Form.Text>
-                        </Form.Group>
-                      </Col>
-                      <Col md={4}>
-                        <Form.Group>
-                          <Form.Label className="small fw-semibold">Punch-In Grace Period (Minutes)</Form.Label>
-                          <Form.Control
-                            type="number"
-                            min="0"
-                            max="120"
-                            value={formData.gracePeriodMinutes}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              setFormData((prev) => ({
-                                ...prev,
-                                gracePeriodMinutes: val,
-                                attendanceGracePeriod: val,
-                              }));
-                            }}
-                            disabled={!canUpdate}
-                          />
-                          <Form.Text className="extra-small text-muted">
-                            Allowable minutes after shift start before late penalty.
-                          </Form.Text>
-                        </Form.Group>
-                      </Col>
-                      <Col md={4}>
-                        <Form.Group>
-                          <Form.Label className="small fw-semibold">Default Shift</Form.Label>
-                          <Form.Select
-                            value={formData.defaultShiftId}
-                            onChange={(e) => setFormData({ ...formData, defaultShiftId: e.target.value })}
-                            disabled={!canUpdate}
-                          >
-                            <option value="">-- Select Shift --</option>
-                            {shifts.map((s) => (
-                              <option key={s._id} value={s._id}>
-                                {s.shiftName} ({s.startTime} - {s.endTime})
-                              </option>
-                            ))}
-                          </Form.Select>
-                        </Form.Group>
-                      </Col>
-                      <Col md={4}>
-                        <Form.Group>
-                          <Form.Label className="small fw-semibold">Default Work Calendar</Form.Label>
-                          <Form.Select
-                            value={formData.defaultWorkCalendarId}
-                            onChange={(e) => setFormData({ ...formData, defaultWorkCalendarId: e.target.value })}
-                            disabled={!canUpdate}
-                          >
-                            <option value="">-- Select Calendar --</option>
-                            {workCalendars.map((c) => (
-                              <option key={c._id} value={c._id}>{c.calendarName}</option>
-                            ))}
-                          </Form.Select>
-                        </Form.Group>
-                      </Col>
-                    </Row>
-                  </div>
-
-                  {/* Section 3: Overtime & Auto-Close Policies */}
-                  <div className="p-3 bg-white rounded border mb-4 shadow-sm">
-                    <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                      <FaClock className="text-warning" /> Overtime & Auto-Close Policies
-                    </h6>
-                    <Row className="g-3">
-                      <Col md={6}>
-                        <div className="p-3 bg-light rounded border h-100">
-                          <Form.Check
-                            type="switch"
-                            id="overtimePolicySwitch"
-                            label="Enable Overtime Policy"
-                            checked={formData.overtimeEnabled}
-                            onChange={(e) => setFormData({ ...formData, overtimeEnabled: e.target.checked })}
-                            disabled={!canUpdate}
-                            className="fw-bold mb-2"
-                          />
-                          <p className="extra-small text-muted mb-3">
-                            Calculate overtime hours when working duration exceeds the standard working schedule.
-                          </p>
-                          {formData.overtimeEnabled && (
-                            <Row className="g-2">
-                              <Col sm={6}>
-                                <Form.Label className="extra-small fw-semibold text-muted">Start OT After (Mins)</Form.Label>
-                                <Form.Control
-                                  type="number"
-                                  size="sm"
-                                  value={formData.overtimeStartAfterMinutes}
-                                  onChange={(e) => setFormData({ ...formData, overtimeStartAfterMinutes: Number(e.target.value) })}
-                                  disabled={!canUpdate}
-                                />
-                              </Col>
-                              <Col sm={6}>
-                                <Form.Label className="extra-small fw-semibold text-muted">Min OT Threshold (Mins)</Form.Label>
-                                <Form.Control
-                                  type="number"
-                                  size="sm"
-                                  value={formData.minimumOvertimeMinutes}
-                                  onChange={(e) => setFormData({ ...formData, minimumOvertimeMinutes: Number(e.target.value) })}
-                                  disabled={!canUpdate}
-                                />
-                              </Col>
-                              <Col sm={12}>
-                                <Form.Label className="extra-small fw-semibold text-muted">Max OT Cap (Mins)</Form.Label>
-                                <Form.Control
-                                  type="number"
-                                  size="sm"
-                                  value={formData.maximumOvertimeMinutes}
-                                  onChange={(e) => setFormData({ ...formData, maximumOvertimeMinutes: Number(e.target.value) })}
-                                  disabled={!canUpdate}
-                                />
-                              </Col>
-                            </Row>
-                          )}
-                        </div>
-                      </Col>
-
-                      <Col md={6}>
-                        <div className="p-3 bg-light rounded border h-100">
-                          <Form.Check
-                            type="switch"
-                            id="autoClosePolicySwitch"
-                            label="Enable Automatic Session Auto-Close"
-                            checked={formData.autoCloseEnabled}
-                            onChange={(e) => setFormData({ ...formData, autoCloseEnabled: e.target.checked })}
-                            disabled={!canUpdate}
-                            className="fw-bold mb-2"
-                          />
-                          <p className="extra-small text-muted mb-3">
-                            Automatically close active sessions if an employee forgets to clock out after the shift.
-                          </p>
-                          {formData.autoCloseEnabled && (
-                            <div>
-                              <Form.Label className="extra-small fw-semibold text-muted">Auto-Close Cutoff Window (Hours)</Form.Label>
-                              <Form.Control
-                                type="number"
-                                size="sm"
-                                style={{ maxWidth: "200px" }}
-                                value={formData.autoCloseCutoffHours}
-                                onChange={(e) => setFormData({ ...formData, autoCloseCutoffHours: Number(e.target.value) })}
-                                disabled={!canUpdate}
-                              />
-                              <Form.Text className="extra-small text-muted">
-                                Unclosed sessions past this window will be swept and finalized.
-                              </Form.Text>
-                            </div>
-                          )}
-                        </div>
-                      </Col>
-
-                      <Col md={12}>
-                        <div className="p-3 bg-light rounded border">
-                          <Form.Check
-                            type="checkbox"
-                            id="autoClockOutCheck"
-                            label="Enable System Fixed-Time Clock-Out for Inactive Shifts"
-                            checked={formData.autoClockOutEnabled}
-                            onChange={(e) => setFormData({ ...formData, autoClockOutEnabled: e.target.checked })}
-                            disabled={!canUpdate}
-                          />
-                          {formData.autoClockOutEnabled && (
-                            <div className="mt-2" style={{ maxWidth: "250px" }}>
-                              <Form.Label className="small fw-semibold">Fixed Clock-Out Time</Form.Label>
-                              <Form.Control
-                                type="time"
-                                value={formData.autoClockOutTime}
-                                onChange={(e) => setFormData({ ...formData, autoClockOutTime: e.target.value })}
-                                disabled={!canUpdate}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </Col>
-                    </Row>
+                  <div
+                    style={{
+                      background: "#FDFBF7",
+                      border: "1px solid #EAE0D0",
+                      borderRadius: "12px",
+                      padding: "32px 24px",
+                      textAlign: "center",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "60px",
+                        height: "60px",
+                        borderRadius: "50%",
+                        background: "#FEF3C7",
+                        color: "#92400E",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "26px",
+                        margin: "0 auto 16px auto",
+                      }}
+                    >
+                      <FaCalendarCheck />
+                    </div>
+                    <h4 style={{ fontWeight: "700", color: "#111827", marginBottom: "8px" }}>
+                      Dedicated Attendance Workspace
+                    </h4>
+                    <p style={{ color: "#6B7280", maxWidth: "560px", margin: "0 auto 24px auto", fontSize: "14px", lineHeight: "1.6" }}>
+                      Organization baseline policies (verification methods, shifts, overtime, cutoff thresholds) and branch-specific geofencing &amp; network overrides are now managed centrally in the <strong>Workplace &rarr; Attendance</strong> workspace.
+                    </p>
+                    <div>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          if (onNavigateTab) {
+                            onNavigateTab("attendance");
+                          } else {
+                            window.location.href = "/organisation/attendance";
+                          }
+                        }}
+                        style={{
+                          background: "#C49A55",
+                          borderColor: "#C49A55",
+                          color: "#FFFFFF",
+                          fontWeight: "600",
+                          padding: "10px 24px",
+                          borderRadius: "8px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          boxShadow: "0 2px 4px rgba(196,154,85,0.25)",
+                        }}
+                      >
+                        <FaCalendarCheck /> Manage Attendance <FaArrowRight size={12} />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}

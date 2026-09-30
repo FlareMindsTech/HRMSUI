@@ -47,6 +47,9 @@ import {
   FaList,
   FaSyncAlt,
   FaShieldAlt,
+  FaProjectDiagram,
+  FaLayerGroup,
+  FaMoneyCheckAlt,
 } from "react-icons/fa";
 import {
   fetchBranches,
@@ -92,6 +95,57 @@ const BRANCH_TYPES = [
   { value: "SALES_OFFICE", label: "Sales & Client Office" },
   { value: "OPERATIONS_HUB", label: "Operations & Logistics Hub" },
   { value: "OTHER", label: "Other Campus Facility" },
+];
+
+const BRANCH_DETAIL_NAV_GROUPS = [
+  {
+    groupId: "overview",
+    groupTitle: "Overview",
+    groupIcon: FaBuilding,
+    tabs: [
+      { key: "overview", label: "Branch Overview", icon: FaBuilding },
+    ],
+  },
+  {
+    groupId: "people",
+    groupTitle: "People & Structure",
+    groupIcon: FaSitemap,
+    tabs: [
+      { key: "departments", label: "Departments", icon: FaSitemap },
+      { key: "designations", label: "Designations", icon: FaUserTie },
+      { key: "teams", label: "Teams", icon: FaUsers },
+      { key: "reporting", label: "Reporting Hierarchy", icon: FaProjectDiagram },
+    ],
+  },
+  {
+    groupId: "workplace",
+    groupTitle: "Workplace & Operations",
+    groupIcon: FaMapMarkerAlt,
+    tabs: [
+      { key: "locations", label: "Locations", icon: FaMapMarkerAlt },
+      { key: "work-calendars", label: "Work Calendar", icon: FaCalendarWeek },
+      { key: "shifts", label: "Shifts", icon: FaClock },
+      { key: "holidays", label: "Holiday Calendars", icon: FaUmbrellaBeach },
+    ],
+  },
+  {
+    groupId: "masters",
+    groupTitle: "HR Masters",
+    groupIcon: FaLayerGroup,
+    tabs: [
+      { key: "job-grades", label: "Job Grades", icon: FaShieldAlt },
+      { key: "cost-centers", label: "Cost Centers", icon: FaMoneyCheckAlt },
+      { key: "financial-years", label: "Financial Years", icon: FaCalendarAlt },
+    ],
+  },
+  {
+    groupId: "settings",
+    groupTitle: "Settings",
+    groupIcon: FaCog,
+    tabs: [
+      { key: "settings", label: "Branch Settings", icon: FaCog },
+    ],
+  },
 ];
 
 export default function BranchesSection({ onSelectBranch = null, onToggleFullView = null, onBackToOrg = null, isStandaloneView = false }) {
@@ -1339,33 +1393,50 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
       ? managerName.split(" ").map((n) => n[0]).filter(Boolean).slice(0, 2).join("").toUpperCase()
       : "BM";
 
-    const detailTabsList = [
-      { key: "overview", label: "Overview", icon: FaBuilding },
-      { key: "departments", label: "Departments", icon: FaSitemap },
-      { key: "designations", label: "Designations", icon: FaUserTie },
-      { key: "teams", label: "Teams", icon: FaUsers },
-      { key: "locations", label: "Locations", icon: FaMapMarkerAlt },
-      { key: "reporting", label: "Reporting", icon: FaSitemap },
-      { key: "job-grades", label: "Job Grades", icon: FaShieldAlt },
-      { key: "cost-centers", label: "Cost Centers", icon: FaBuilding },
-      { key: "work-calendars", label: "Work Calendar", icon: FaCalendarWeek },
-      { key: "shifts", label: "Shifts", icon: FaClock },
-      { key: "holidays", label: "Holidays", icon: FaUmbrellaBeach },
-      { key: "financial-years", label: "Financial Year", icon: FaCalendarAlt },
-      { key: "settings", label: "Branch Settings", icon: FaCog },
-    ];
+    const activeGroup = BRANCH_DETAIL_NAV_GROUPS.find((g) =>
+      g.tabs.some((t) => t.key === detailActiveTab)
+    ) || BRANCH_DETAIL_NAV_GROUPS[0];
+
+    const handleCategoryClick = (group) => {
+      if (!group.tabs.some((t) => t.key === detailActiveTab)) {
+        setDetailActiveTab(group.tabs[0].key);
+      }
+    };
 
     return (
       <div className="branch-detail-workspace">
         {/* ── 1. Top Action Bar & Navigation ── */}
         <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
-          <button
-            type="button"
-            className="branches-btn-secondary"
-            onClick={() => setSelectedBranchDetail(null)}
-          >
-            <FaArrowLeft /> Back to All Branches
-          </button>
+          <div className="d-flex align-items-center gap-3 flex-wrap">
+            <button
+              type="button"
+              className="branches-btn-secondary"
+              onClick={() => setSelectedBranchDetail(null)}
+            >
+              <FaArrowLeft /> Back to All Branches
+            </button>
+
+            {branches.length > 1 && (
+              <div className="d-flex align-items-center gap-2">
+                <span className="text-muted small fw-bold">Active Branch:</span>
+                <select
+                  className="form-select form-select-sm"
+                  value={lockedBId}
+                  onChange={(e) => {
+                    const targetB = branches.find((br) => String(br._id || br.id) === e.target.value);
+                    if (targetB) setSelectedBranchDetail(targetB);
+                  }}
+                  style={{ width: "auto", minWidth: 200, fontWeight: 600, borderColor: "rgba(196, 154, 85, 0.4)" }}
+                >
+                  {branches.map((br) => (
+                    <option key={br._id || br.id} value={br._id || br.id}>
+                      {br.branchName} ({br.branchCode || "Branch"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
 
           <div className="d-flex align-items-center gap-2 flex-wrap">
             {canUpdate && (
@@ -1510,23 +1581,75 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
           </div>
         </div>
 
-        {/* ── 4. Category Navigation Tabs (Pill Style) ── */}
-        <div className="branch-category-pills-bar">
-          {detailTabsList.map((tab) => {
-            const TabIcon = tab.icon;
-            const isActive = detailActiveTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                className={`branch-pill-tab ${isActive ? "active" : ""}`}
-                onClick={() => setDetailActiveTab(tab.key)}
+        {/* ── 4. Categorized Navigation Hub ── */}
+        <div className="branch-nav-system-wrapper mb-4">
+          <div className="branch-nav-system-header">
+            {/* Tier 1: Category Segments Bar */}
+            <div className="branch-category-segment-bar" role="tablist">
+              {BRANCH_DETAIL_NAV_GROUPS.map((group) => {
+                const GroupIcon = group.groupIcon;
+                const isGroupActive = activeGroup.groupId === group.groupId;
+                return (
+                  <button
+                    key={group.groupId}
+                    type="button"
+                    role="tab"
+                    aria-selected={isGroupActive}
+                    className={`branch-category-segment-btn ${isGroupActive ? "active" : ""}`}
+                    onClick={() => handleCategoryClick(group)}
+                  >
+                    <GroupIcon className="branch-category-icon" />
+                    <span className="branch-category-btn-text">{group.groupTitle}</span>
+                    <span className="branch-category-count-pill">{group.tabs.length}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Quick direct jump dropdown for convenience */}
+            <div className="branch-quick-jump-box">
+              <span className="branch-quick-jump-label">Jump to:</span>
+              <select
+                className="form-select form-select-sm branch-quick-jump-select"
+                value={detailActiveTab}
+                onChange={(e) => setDetailActiveTab(e.target.value)}
+                aria-label="Direct module navigation"
               >
-                <TabIcon />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
+                {BRANCH_DETAIL_NAV_GROUPS.map((group) => (
+                  <optgroup key={group.groupId} label={group.groupTitle}>
+                    {group.tabs.map((tab) => (
+                      <option key={tab.key} value={tab.key}>
+                        {tab.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Tier 2: Sub-module Tabs (displayed when active category has >1 tab) */}
+          {activeGroup.tabs.length > 1 && (
+            <div className="branch-subtabs-tray">
+              {activeGroup.tabs.map((tab) => {
+                const TabIcon = tab.icon;
+                const isTabActive = detailActiveTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={isTabActive}
+                    className={`branch-subtab-pill ${isTabActive ? "active" : ""}`}
+                    onClick={() => setDetailActiveTab(tab.key)}
+                  >
+                    <TabIcon className="branch-subtab-icon" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* ── 5. Tab Content Panes ── */}

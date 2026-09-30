@@ -21,7 +21,6 @@ import {
   FaCog,
   FaPlus,
   FaBriefcase,
-  FaChartBar,
   FaUserFriends,
   FaUserTie,
   FaRegBuilding,
@@ -33,6 +32,14 @@ import {
   FaShieldAlt,
   FaCopy,
   FaExternalLinkAlt,
+  FaCrown,
+  FaProjectDiagram,
+  FaCalendarWeek,
+  FaMoneyCheckAlt,
+  FaUmbrellaBeach,
+  FaUserShield,
+  FaSlidersH,
+  FaCalendarCheck,
 } from "react-icons/fa";
 import {
   fetchMyOrganization,
@@ -43,7 +50,7 @@ import {
   normalizeOrganization,
 } from "../../services/organizationService";
 import { useSelector } from 'react-redux';
-import { useHasPermission, selectIsSystemAdmin, selectAuthUser } from '../../redux/slices/authSlice';
+import { useHasPermission, selectAuthUser } from '../../redux/slices/authSlice';
 import FeedbackAlert from "../Common/FeedbackAlert";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { useBranch } from "../../context/BranchContext";
@@ -109,7 +116,8 @@ const getStr = (val, fallback = "") => {
 };
 
 function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal, onEditModalHandled, onOrgUpdated }) {
-  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin); const user = useSelector(selectAuthUser);
+  const hasPermission = useHasPermission();
+  const user = useSelector(selectAuthUser);
   const { organization, refreshOrganization, refreshBranches } = useBranch();
   const [orgData, setOrgData] = useState(initialOrgData || organization || null);
   const [structureData, setStructureData] = useState(null);
@@ -402,87 +410,213 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
     }
   };
 
-  // 10 Quick Access Modules Config
-  const quickAccessItems = [
+  // Structured Architecture Domains Config
+  const overviewModuleDomains = [
     {
-      title: "Branches",
-      desc: "Manage offices and campuses",
-      icon: FaBuilding,
+      domainKey: "company",
+      domainTitle: "Company",
+      domainIcon: FaBuilding,
       color: "#C49A55",
       bgColor: "#F5EFE3",
-      key: "branches",
+      items: [
+        {
+          key: "profile",
+          title: "Organization Profile",
+          desc: "Corporate identity, tax IDs & contact details",
+          icon: FaBuilding,
+          color: "#C49A55",
+          bgColor: "#F5EFE3",
+        },
+        {
+          key: "subscription",
+          title: "Subscription / Plan",
+          desc: "Active tier limits, quota usage & billing cycle",
+          icon: FaCrown,
+          color: "#C49A55",
+          bgColor: "#F5EFE3",
+        },
+      ],
     },
     {
-      title: "Departments",
-      desc: "Create and organize departments",
-      icon: FaSitemap,
+      domainKey: "people",
+      domainTitle: "People & Structure",
+      domainIcon: FaSitemap,
       color: "#3b82f6",
       bgColor: "#eff6ff",
-      key: "departments",
+      items: [
+        {
+          key: "departments",
+          title: "Departments",
+          desc: "Create and organize divisional structures",
+          icon: FaSitemap,
+          color: "#3b82f6",
+          bgColor: "#eff6ff",
+        },
+        {
+          key: "designations",
+          title: "Designations",
+          desc: "Manage job roles, responsibilities and levels",
+          icon: FaBriefcase,
+          color: "#8b5cf6",
+          bgColor: "#f5f3ff",
+        },
+        {
+          key: "teams",
+          title: "Teams",
+          desc: "Create and manage work squads and project units",
+          icon: FaUsers,
+          color: "#ec4899",
+          bgColor: "#fdf2f8",
+        },
+        {
+          key: "reporting-hierarchy",
+          title: "Reporting Hierarchy",
+          desc: "Define reporting lines and approval chains",
+          icon: FaProjectDiagram,
+          color: "#059669",
+          bgColor: "#ecfdf5",
+        },
+      ],
     },
     {
-      title: "Designations",
-      desc: "Manage job roles and levels",
-      icon: FaBriefcase,
-      color: "#8b5cf6",
-      bgColor: "#f5f3ff",
-      key: "designations",
-    },
-    {
-      title: "Teams",
-      desc: "Create and manage work squads",
-      icon: FaUsers,
-      color: "#ec4899",
-      bgColor: "#fdf2f8",
-      key: "teams",
-    },
-    {
-      title: "Locations",
-      desc: "Manage office locations",
-      icon: FaMapMarkerAlt,
+      domainKey: "workplace",
+      domainTitle: "Workplace",
+      domainIcon: FaMapMarkerAlt,
       color: "#f97316",
       bgColor: "#fff7ed",
-      key: "locations",
+      items: [
+        {
+          key: "locations",
+          title: "Locations",
+          desc: "Geofenced office coordinates and perimeters",
+          icon: FaMapMarkerAlt,
+          color: "#f97316",
+          bgColor: "#fff7ed",
+        },
+        {
+          key: "work-calendars",
+          title: "Work Calendars",
+          desc: "Configure working days, weekends and schedules",
+          icon: FaCalendarWeek,
+          color: "#0284c7",
+          bgColor: "#f0f9ff",
+        },
+        {
+          key: "attendance",
+          title: "Attendance",
+          desc: "Verification modes, timing cutoffs, geofence & branch IP rules",
+          icon: FaCalendarCheck,
+          color: "#10b981",
+          bgColor: "#ecfdf5",
+        },
+      ],
     },
     {
-      title: "Reporting Hierarchy",
-      desc: "Define reporting lines",
-      icon: FaSitemap,
-      color: "#C49A55",
-      bgColor: "#F5EFE3",
-      key: "reporting-hierarchy",
-    },
-    {
-      title: "Job Grades",
-      desc: "Configure grade levels",
-      icon: FaChartBar,
-      color: "#3b82f6",
-      bgColor: "#eff6ff",
-      key: "job-grades",
-    },
-    {
-      title: "Cost Centers",
-      desc: "Manage cost centers",
-      icon: FaLayerGroup,
+      domainKey: "hr-masters",
+      domainTitle: "HR Masters",
+      domainIcon: FaLayerGroup,
       color: "#8b5cf6",
       bgColor: "#f5f3ff",
-      key: "cost-centers",
+      items: [
+        {
+          key: "job-grades",
+          title: "Job Grades",
+          desc: "Salary bands, seniority levels & experience rules",
+          icon: FaLayerGroup,
+          color: "#8b5cf6",
+          bgColor: "#f5f3ff",
+        },
+        {
+          key: "shifts",
+          title: "Shifts",
+          desc: "Shift hours, half-day cuts and grace periods",
+          icon: FaClock,
+          color: "#d97706",
+          bgColor: "#fffbeb",
+        },
+        {
+          key: "holiday-calendars",
+          title: "Holiday Calendars",
+          desc: "Annual public holidays and optional leave days",
+          icon: FaUmbrellaBeach,
+          color: "#06b6d4",
+          bgColor: "#ecfeff",
+        },
+        {
+          key: "financial-years",
+          title: "Financial Years",
+          desc: "Accounting periods and active financial cycle",
+          icon: FaCalendarAlt,
+          color: "#10b981",
+          bgColor: "#ecfdf5",
+        },
+        {
+          key: "cost-centers",
+          title: "Cost Centers",
+          desc: "Budget codes and cost center allocations",
+          icon: FaMoneyCheckAlt,
+          color: "#6366f1",
+          bgColor: "#eef2ff",
+        },
+      ],
     },
     {
-      title: "Work Calendars",
-      desc: "Set working days & shifts",
-      icon: FaCalendarAlt,
-      color: "#ec4899",
-      bgColor: "#fdf2f8",
-      key: "work-calendars",
+      domainKey: "access",
+      domainTitle: "Access & Security",
+      domainIcon: FaShieldAlt,
+      color: "#10b981",
+      bgColor: "#ecfdf5",
+      items: [
+        {
+          key: "users",
+          title: "Users",
+          desc: "Employee credentials and portal user accounts",
+          icon: FaUsers,
+          color: "#3b82f6",
+          bgColor: "#eff6ff",
+        },
+        {
+          key: "roles",
+          title: "Roles & Permissions",
+          desc: "RBAC security policies and capability catalog",
+          icon: FaUserShield,
+          color: "#8b5cf6",
+          bgColor: "#f5f3ff",
+        },
+        {
+          key: "organization-access",
+          title: "Organization Access",
+          desc: "Branch-specific and global tenant access scoping",
+          icon: FaShieldAlt,
+          color: "#10b981",
+          bgColor: "#ecfdf5",
+        },
+      ],
     },
     {
-      title: "Shifts",
-      desc: "Create and manage shifts",
-      icon: FaClock,
-      color: "#f97316",
-      bgColor: "#fff7ed",
-      key: "shifts",
+      domainKey: "settings",
+      domainTitle: "Settings",
+      domainIcon: FaCog,
+      color: "#475569",
+      bgColor: "#f1f5f9",
+      items: [
+        {
+          key: "settings",
+          title: "Organization Settings",
+          desc: "Global attendance, payroll, localization & theme rules",
+          icon: FaCog,
+          color: "#C49A55",
+          bgColor: "#F5EFE3",
+        },
+        {
+          key: "branch-settings",
+          title: "Branch Settings",
+          desc: "Branch-level overrides, static IPs and notification rules",
+          icon: FaSlidersH,
+          color: "#64748b",
+          bgColor: "#f8fafc",
+        },
+      ],
     },
   ];
 
@@ -1063,12 +1197,12 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
             </Col>
           </Row>
 
-          {/* ── 4. Quick Access Modules (Full Width Grid) ── */}
-          <div className="org-bento-card mb-3">
+          {/* ── 4. Quick Access Modules (Grouped by Target Architecture Domains) ── */}
+          <div className="org-bento-card mb-4">
             <div className="org-bento-header">
               <div>
                 <h4 className="org-bento-title">Organization Modules & Sub-systems</h4>
-                <div className="org-bento-sub">Access and configure departments, branches, job grades, and shifts</div>
+                <div className="org-bento-sub">Access and configure company profile, structure, workplace, HR masters, security, and settings</div>
               </div>
               <button
                 type="button"
@@ -1079,27 +1213,50 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
               </button>
             </div>
 
-            <div className="org-quick-module-grid">
-              {quickAccessItems.map((item) => {
-                const IconComponent = item.icon;
+            <div className="org-domain-clusters-container">
+              {overviewModuleDomains.map((domain) => {
+                const DomainIcon = domain.domainIcon;
                 return (
-                  <div
-                    key={item.key}
-                    className="org-module-box"
-                    onClick={() => onNavigateTab(item.key)}
-                    role="button"
-                  >
-                    <div
-                      className="org-module-box-icon"
-                      style={{ background: item.bgColor, color: item.color }}
-                    >
-                      <IconComponent />
+                  <div key={domain.domainKey} className="org-domain-cluster-card">
+                    <div className="org-domain-cluster-header">
+                      <div className="org-domain-cluster-title-wrap">
+                        <div
+                          className="org-domain-cluster-icon"
+                          style={{ background: domain.bgColor, color: domain.color }}
+                        >
+                          <DomainIcon />
+                        </div>
+                        <h5 className="org-domain-cluster-title">{domain.domainTitle}</h5>
+                      </div>
+                      <span className="org-domain-cluster-count">{domain.items.length} Modules</span>
                     </div>
-                    <div className="org-module-box-content">
-                      <div className="org-module-box-title">{item.title}</div>
-                      <div className="org-module-box-desc">{item.desc}</div>
+
+                    <div className="org-quick-module-grid">
+                      {domain.items.map((item) => {
+                        const IconComponent = item.icon;
+                        return (
+                          <div
+                            key={item.key}
+                            className="org-module-box"
+                            onClick={() => onNavigateTab(item.key)}
+                            role="button"
+                            tabIndex={0}
+                          >
+                            <div
+                              className="org-module-box-icon"
+                              style={{ background: item.bgColor, color: item.color }}
+                            >
+                              <IconComponent />
+                            </div>
+                            <div className="org-module-box-content">
+                              <div className="org-module-box-title">{item.title}</div>
+                              <div className="org-module-box-desc">{item.desc}</div>
+                            </div>
+                            <FaChevronRight className="org-module-box-arrow" />
+                          </div>
+                        );
+                      })}
                     </div>
-                    <FaChevronRight className="org-module-box-arrow" />
                   </div>
                 );
               })}

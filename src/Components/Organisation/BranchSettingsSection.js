@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Row, Col, Card, Form, Button, Spinner, Alert, Badge } from "react-bootstrap";
+import { Row, Col, Card, Form, Button, Spinner } from "react-bootstrap";
 import {
   FaCodeBranch,
   FaSave,
@@ -8,12 +8,8 @@ import {
   FaBell,
   FaIdCard,
   FaMapMarkerAlt,
-  FaWifi,
   FaShieldAlt,
-  FaPlus,
-  FaTimes,
-  FaInfoCircle,
-  FaCheckCircle,
+  FaArrowRight,
 } from "react-icons/fa";
 
 import {
@@ -24,23 +20,17 @@ import {
   fetchShiftsDropdown,
   fetchHolidayCalendarsDropdown,
 } from "../../services/organizationService";
-import { useSelector } from "react-redux";
-import { useHasPermission, selectIsSystemAdmin } from "../../redux/slices/authSlice";
+import { useHasPermission } from "../../redux/slices/authSlice";
 import FeedbackAlert from "../Common/FeedbackAlert";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { useBranch } from "../../context/BranchContext";
 
-const IPV4_REGEX =
-  /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-
-export default function BranchSettingsSection({ lockedBranchId = null }) {
+export default function BranchSettingsSection({ lockedBranchId = null, onNavigateTab }) {
   const hasPermission = useHasPermission();
-  const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const { branches: contextBranches, selectedBranchId, refreshBranches } = useBranch();
 
   const [branches, setBranches] = useState([]);
   const [activeBranchId, setActiveBranchId] = useState(lockedBranchId || selectedBranchId || "");
-  const [branchDetails, setBranchDetails] = useState(null);
 
   const [shifts, setShifts] = useState([]);
   const [workCalendars, setWorkCalendars] = useState([]);
@@ -77,50 +67,6 @@ export default function BranchSettingsSection({ lockedBranchId = null }) {
     status: "ACTIVE",
   });
 
-  const [newIpInput, setNewIpInput] = useState("");
-  const [ipError, setIpError] = useState("");
-
-  const handleAddIp = (e) => {
-    if (e) e.preventDefault();
-    setIpError("");
-    const trimmed = (newIpInput || "").trim();
-    if (!trimmed) {
-      setIpError("Please enter a valid IPv4 address.");
-      return;
-    }
-    if (!IPV4_REGEX.test(trimmed)) {
-      setIpError(`"${trimmed}" is not a valid IPv4 address. Example: 203.0.113.195`);
-      return;
-    }
-    const currentIps = formData.staticIp?.allowedIps || [];
-    if (currentIps.includes(trimmed)) {
-      setIpError(`IP address "${trimmed}" is already added.`);
-      return;
-    }
-    setFormData((prev) => ({
-      ...prev,
-      staticIp: {
-        ...prev.staticIp,
-        enabled: true,
-        allowedIps: [...currentIps, trimmed],
-      },
-    }));
-    setNewIpInput("");
-  };
-
-  const handleRemoveIp = (ipToRemove) => {
-    setFormData((prev) => {
-      const remaining = (prev.staticIp?.allowedIps || []).filter((ip) => ip !== ipToRemove);
-      return {
-        ...prev,
-        staticIp: {
-          ...prev.staticIp,
-          allowedIps: remaining,
-        },
-      };
-    });
-  };
-
   // Load Dropdowns
   const loadDropdowns = useCallback(async () => {
     try {
@@ -151,7 +97,6 @@ export default function BranchSettingsSection({ lockedBranchId = null }) {
       setError("");
       const data = await fetchBranchById(bId);
       if (data) {
-        setBranchDetails(data);
         setFormData({
           attendanceMode: data.attendanceMode || "GEOFENCE",
           staticIp: data.staticIp || { enabled: false, allowedIps: [] },
@@ -310,231 +255,79 @@ export default function BranchSettingsSection({ lockedBranchId = null }) {
 
           <Card.Body className="p-4">
             <Form onSubmit={handleSave}>
-              {/* TAB 1: Attendance & Geofence */}
+              {/* TAB 1: Attendance & Geofence (Redirect to Dedicated Attendance Workspace) */}
               {activeTab === "attendance" && (
                 <div>
-                  <div className="d-flex justify-content-between align-items-center mb-3">
+                  <div className="d-flex justify-content-between align-items-center mb-4">
                     <div>
                       <h6 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
-                        <FaShieldAlt className="text-primary" /> Branch Attendance Verification & Office Boundaries
+                        <FaShieldAlt className="text-primary" /> Branch Attendance &amp; Geofence Management
                       </h6>
                       <p className="text-muted extra-small mb-0">
-                        Configure branch-specific attendance verification rules, physical geofence coordinates, and authorized office public IP networks.
+                        Branch-specific attendance overrides have moved to the dedicated Workplace Attendance workspace.
                       </p>
                     </div>
                   </div>
 
-                  <Row className="g-3">
-                    <Col md={12}>
-                      <Form.Group>
-                        <Form.Label className="small fw-semibold">Attendance Verification Mode</Form.Label>
-                        <Form.Select
-                          value={formData.attendanceMode}
-                          onChange={(e) => {
-                            const newMode = e.target.value;
-                            setFormData((prev) => ({
-                              ...prev,
-                              attendanceMode: newMode,
-                              staticIp: {
-                                ...prev.staticIp,
-                                enabled: newMode === "STATIC_IP" || newMode === "BOTH",
-                              },
-                            }));
-                          }}
-                          disabled={!canUpdate}
-                        >
-                          <option value="GEOFENCE">Geofence (Location Radius)</option>
-                          <option value="GPS">GPS (Coordinates Only)</option>
-                          <option value="STATIC_IP">Wi-Fi / Office Network</option>
-                          <option value="BOTH">Both (Geofence + Wi-Fi)</option>
-                          <option value="MANUAL">Manual Override Only</option>
-                          <option value="BIOMETRIC">Biometric Machine Integration</option>
-                          <option value="ANY">Any (Unrestricted)</option>
-                        </Form.Select>
-                        <Form.Text className="extra-small text-muted">
-                          Select the verification method enforced when employees assigned to this branch punch in.
-                        </Form.Text>
-                      </Form.Group>
-                    </Col>
-
-                    {/* Geofence Configuration (Visible when GEOFENCE or BOTH) */}
-                    {(formData.attendanceMode === "GEOFENCE" || formData.attendanceMode === "BOTH") && (
-                      <Col md={12}>
-                        <div className="p-3 bg-light rounded border">
-                          <h6 className="small fw-bold text-dark mb-2 d-flex align-items-center gap-2">
-                            <FaMapMarkerAlt className="text-danger" /> Office Geofence Coordinates & Perimeter
-                          </h6>
-                          <p className="extra-small text-muted mb-3">
-                            Set the physical center coordinates and allowable perimeter radius for this branch office.
-                          </p>
-                          <Row className="g-3">
-                            <Col md={4}>
-                              <Form.Group>
-                                <Form.Label className="extra-small fw-semibold">Office Latitude</Form.Label>
-                                <Form.Control
-                                  type="number"
-                                  step="0.000001"
-                                  placeholder="e.g. 11.016844"
-                                  value={formData.latitude}
-                                  onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
-                                  disabled={!canUpdate}
-                                />
-                              </Form.Group>
-                            </Col>
-                            <Col md={4}>
-                              <Form.Group>
-                                <Form.Label className="extra-small fw-semibold">Office Longitude</Form.Label>
-                                <Form.Control
-                                  type="number"
-                                  step="0.000001"
-                                  placeholder="e.g. 76.955832"
-                                  value={formData.longitude}
-                                  onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
-                                  disabled={!canUpdate}
-                                />
-                              </Form.Group>
-                            </Col>
-                            <Col md={4}>
-                              <Form.Group>
-                                <Form.Label className="extra-small fw-semibold">Geofence Radius (Meters)</Form.Label>
-                                <Form.Control
-                                  type="number"
-                                  min="20"
-                                  max="5000"
-                                  value={formData.officeRadiusMeters}
-                                  onChange={(e) => setFormData({ ...formData, officeRadiusMeters: e.target.value })}
-                                  disabled={!canUpdate}
-                                />
-                                <Form.Text className="extra-small text-muted">Allowable radius (default: 200m)</Form.Text>
-                              </Form.Group>
-                            </Col>
-                          </Row>
-                        </div>
-                      </Col>
-                    )}
-
-                    {/* Static Public IP Configuration (Visible when STATIC_IP or BOTH) */}
-                    {(formData.attendanceMode === "STATIC_IP" || formData.attendanceMode === "BOTH") && (
-                      <Col md={12}>
-                        <div className="p-3 bg-light rounded border">
-                          <h6 className="small fw-bold text-dark mb-2 d-flex align-items-center gap-2">
-                            <FaWifi className="text-info" /> Office Static Public IP Configuration
-                          </h6>
-                          <p className="extra-small text-muted mb-3">
-                            Configure the authorized public static IP address(es) for this branch office network. Check-ins from this branch will verify the connection's public IP against this list.
-                          </p>
-
-                          <div className="d-flex gap-2 mb-2" style={{ maxWidth: "500px" }}>
-                            <Form.Control
-                              type="text"
-                              size="sm"
-                              placeholder="Enter static public IPv4 (e.g. 203.0.113.195)"
-                              value={newIpInput}
-                              onChange={(e) => {
-                                setNewIpInput(e.target.value);
-                                if (ipError) setIpError("");
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  handleAddIp();
-                                }
-                              }}
-                              disabled={!canUpdate}
-                            />
-                            <Button
-                              type="button"
-                              variant="primary"
-                              size="sm"
-                              onClick={handleAddIp}
-                              disabled={!canUpdate || !newIpInput.trim()}
-                              className="d-flex align-items-center gap-1"
-                            >
-                              <FaPlus size={10} /> Add IP
-                            </Button>
-                          </div>
-
-                          {ipError && (
-                            <Alert variant="danger" className="py-1 px-2 extra-small mb-2" dismissible onClose={() => setIpError("")}>
-                              {ipError}
-                            </Alert>
-                          )}
-
-                          <div className="mt-2">
-                            <Form.Label className="extra-small fw-semibold text-muted d-block mb-1">
-                              Allowed Public IP Addresses:
-                            </Form.Label>
-                            {(!formData.staticIp?.allowedIps || formData.staticIp.allowedIps.length === 0) ? (
-                              <div className="extra-small text-muted fst-italic">
-                                No static IPs added yet. At least one static public IP is required for verification.
-                              </div>
-                            ) : (
-                              <div className="d-flex flex-wrap gap-2">
-                                {formData.staticIp.allowedIps.map((ip) => (
-                                  <Badge
-                                    key={ip}
-                                    bg="white"
-                                    text="dark"
-                                    className="border px-2 py-1.5 d-flex align-items-center gap-1.5 fw-semibold shadow-sm"
-                                  >
-                                    <FaWifi className="text-primary me-1" size={10} />
-                                    <span>{ip}</span>
-                                    {canUpdate && (
-                                      <button
-                                        type="button"
-                                        className="btn btn-sm p-0 ms-1 text-danger border-0 bg-transparent lh-1"
-                                        onClick={() => handleRemoveIp(ip)}
-                                        title={`Remove ${ip}`}
-                                      >
-                                        <FaTimes size={10} />
-                                      </button>
-                                    )}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </Col>
-                    )}
-
-                    {/* Contextual Info for other modes */}
-                    {formData.attendanceMode === "GPS" && (
-                      <Col md={12}>
-                        <Alert variant="info" className="extra-small mb-0">
-                          <FaInfoCircle className="me-2" />
-                          <strong>GPS (Coordinates Only):</strong> Captures geolocation coordinates upon check-in without enforcing distance boundary restrictions.
-                        </Alert>
-                      </Col>
-                    )}
-
-                    {formData.attendanceMode === "MANUAL" && (
-                      <Col md={12}>
-                        <Alert variant="warning" className="extra-small mb-0">
-                          <FaInfoCircle className="me-2" />
-                          <strong>Manual Override Only:</strong> Direct self punch-in is restricted. Attendance records require manual entry or administrative regularization.
-                        </Alert>
-                      </Col>
-                    )}
-
-                    {formData.attendanceMode === "BIOMETRIC" && (
-                      <Col md={12}>
-                        <Alert variant="secondary" className="extra-small mb-0">
-                          <FaInfoCircle className="me-2" />
-                          <strong>Biometric Machine Integration:</strong> Check-in logs synchronize directly from physical biometric hardware assigned to this branch.
-                        </Alert>
-                      </Col>
-                    )}
-
-                    {formData.attendanceMode === "ANY" && (
-                      <Col md={12}>
-                        <Alert variant="success" className="extra-small mb-0">
-                          <FaCheckCircle className="me-2" />
-                          <strong>Any (Unrestricted):</strong> Employees assigned to this branch can punch in from any location or device without network restrictions.
-                        </Alert>
-                      </Col>
-                    )}
-                  </Row>
+                  <div
+                    style={{
+                      background: "#FDFBF7",
+                      border: "1px solid #EAE0D0",
+                      borderRadius: "12px",
+                      padding: "32px 24px",
+                      textAlign: "center",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "60px",
+                        height: "60px",
+                        borderRadius: "50%",
+                        background: "#FEF3C7",
+                        color: "#92400E",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "26px",
+                        margin: "0 auto 16px auto",
+                      }}
+                    >
+                      <FaMapMarkerAlt />
+                    </div>
+                    <h4 style={{ fontWeight: "700", color: "#111827", marginBottom: "8px" }}>
+                      Branch Attendance &amp; Geofencing
+                    </h4>
+                    <p style={{ color: "#6B7280", maxWidth: "560px", margin: "0 auto 24px auto", fontSize: "14px", lineHeight: "1.6" }}>
+                      Branch verification modes, GPS geofence coordinates, perimeter radius, and static office IP allowlists are now managed centrally in the <strong>Workplace &rarr; Attendance &rarr; Branch Configuration</strong> tab.
+                    </p>
+                    <div>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          if (onNavigateTab) {
+                            onNavigateTab("attendance");
+                          } else {
+                            window.location.href = "/organisation/attendance";
+                          }
+                        }}
+                        style={{
+                          background: "#C49A55",
+                          borderColor: "#C49A55",
+                          color: "#FFFFFF",
+                          fontWeight: "600",
+                          padding: "10px 24px",
+                          borderRadius: "8px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          boxShadow: "0 2px 4px rgba(196,154,85,0.25)",
+                        }}
+                      >
+                        <FaCalendarCheck /> Manage Branch Attendance <FaArrowRight size={12} />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
 
