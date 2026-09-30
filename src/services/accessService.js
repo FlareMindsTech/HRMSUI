@@ -1,21 +1,10 @@
-import { apiFetch } from "../config/api";
+import { apiFetch, apiError, buildQuery } from "../config/api";
 
 /**
  * Access Control & Branch Access Service
  * 
  * Provides centralized API integration for User Organization & Branch Access.
  */
-
-const buildQuery = (params = {}) => {
-  const query = new URLSearchParams();
-  Object.entries(params).forEach(([key, val]) => {
-    if (val !== undefined && val !== null && val !== "") {
-      query.append(key, val);
-    }
-  });
-  const qStr = query.toString();
-  return qStr ? `?${qStr}` : "";
-};
 
 /**
  * Fetch access configuration for a specific user (GET /users/:userId/access or fallback /user/:userId/access)
@@ -35,7 +24,7 @@ export const fetchUserAccess = async (userId) => {
   }
 
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load user access configuration");
+    throw apiError(res, "Failed to load user access configuration");
   }
 
   const data = res.data?.data || res.data || {};
@@ -80,7 +69,7 @@ export const updateUserAccess = async (userId, payload) => {
   }
 
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to update user access configuration");
+    throw apiError(res, "Failed to update user access configuration");
   }
 
   return res.data;

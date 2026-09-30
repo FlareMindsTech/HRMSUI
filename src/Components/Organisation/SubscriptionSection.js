@@ -12,13 +12,16 @@ import {
   FaSyncAlt,
 } from "react-icons/fa";
 import { useBranch } from "../../context/BranchContext";
-import { fetchOrganizationStructure } from "../../services/organizationService";
+import { useSelector, useDispatch } from "react-redux";
+import { fetchOrgResource, selectOrgStructure } from "../../redux/slices/organizationSlice";
 
 export default function SubscriptionSection() {
   const { organization } = useBranch();
+  const dispatch = useDispatch();
+  // Shared structure tree (single guarded fetch); plan constants stay local.
+  const structure = useSelector(selectOrgStructure);
 
   const [loading, setLoading] = useState(true);
-  const [structure, setStructure] = useState(null);
   const [subscription] = useState({
     planName: "Enterprise Tier (Unlimited SaaS)",
     status: "ACTIVE",
@@ -42,14 +45,13 @@ export default function SubscriptionSection() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await fetchOrganizationStructure().catch(() => null);
-      setStructure(data);
+      await dispatch(fetchOrgResource({ key: "structure" })).catch(() => null);
     } catch (e) {
       console.warn("Subscription load notice:", e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     loadData();

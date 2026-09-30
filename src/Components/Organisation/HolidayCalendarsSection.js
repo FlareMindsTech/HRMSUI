@@ -28,7 +28,8 @@ import {
   fetchBranchesDropdown,
   fetchDepartmentsDropdown,
 } from "../../services/organizationService";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { invalidateOrgResource } from '../../redux/slices/organizationSlice';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import FeedbackAlert from "../Common/FeedbackAlert";
 import EmptyState from "../Common/EmptyState";
@@ -38,7 +39,7 @@ import ConfirmModal from "../Common/ConfirmModal";
 import CrudModal from "../Common/CrudModal";
 
 function HolidayCalendarsSection({ lockedBranchId }) {
-  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin); const dispatch = useDispatch();
   const [activeSubTab, setActiveSubTab] = useState("holidays"); // "holidays" | "calendars"
 
   const [holidayCalendars, setHolidayCalendars] = useState([]);
@@ -226,6 +227,7 @@ function HolidayCalendarsSection({ lockedBranchId }) {
         setSuccess(res.message || "Holiday calendar created successfully");
       }
       setShowCalModal(false);
+      dispatch(invalidateOrgResource("holidayCalendars"));
       loadData();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
@@ -255,6 +257,7 @@ function HolidayCalendarsSection({ lockedBranchId }) {
       const res = await declareBulkHoliday(payload);
       setSuccess(res.message || "Holiday declared successfully");
       setShowHolidayModal(false);
+      dispatch(invalidateOrgResource("holidayCalendars"));
       loadData();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
@@ -275,6 +278,7 @@ function HolidayCalendarsSection({ lockedBranchId }) {
         setSuccess(res.message || "Declared holiday cancelled");
       }
       setShowDeleteModal(false);
+      dispatch(invalidateOrgResource("holidayCalendars"));
       loadData();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {

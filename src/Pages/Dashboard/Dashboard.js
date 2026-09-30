@@ -128,6 +128,9 @@ function Dashboard() {
                     <div
                       className="app-quick-card"
                       onClick={() => navigate('/attendance')}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate('/attendance'); } }}
                     >
                       <div className="app-quick-icon">
                         <FaCalendarCheck />
@@ -143,6 +146,9 @@ function Dashboard() {
                     <div
                       className="app-quick-card"
                       onClick={() => navigate('/leave')}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate('/leave'); } }}
                     >
                       <div className="app-quick-icon">
                         <FaFileAlt />
@@ -174,6 +180,9 @@ function Dashboard() {
               <div
                 className="app-quick-card p-3"
                 onClick={() => navigate('/attendance')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate('/attendance'); } }}
               >
                 <div className="app-quick-icon dash-icon-mint">
                   <FaCalendarCheck />
@@ -190,6 +199,9 @@ function Dashboard() {
               <div
                 className="app-quick-card p-3"
                 onClick={() => navigate('/roles')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate('/roles'); } }}
               >
                 <div className="app-quick-icon dash-icon-purple">
                   <FaUserShield />
@@ -206,6 +218,9 @@ function Dashboard() {
               <div
                 className="app-quick-card p-3"
                 onClick={() => navigate('/projects')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate('/projects'); } }}
               >
                 <div className="app-quick-icon dash-icon-sky">
                   <FaTasks />
@@ -222,6 +237,9 @@ function Dashboard() {
               <div
                 className="app-quick-card p-3"
                 onClick={() => navigate('/assets')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate('/assets'); } }}
               >
                 <div className="app-quick-icon dash-icon-amber">
                   <FaLaptop />
@@ -238,6 +256,9 @@ function Dashboard() {
               <div
                 className="app-quick-card p-3"
                 onClick={() => navigate('/onboarding')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate('/onboarding'); } }}
               >
                 <div className="app-quick-icon dash-icon-pink">
                   <FaUsers />
@@ -254,6 +275,9 @@ function Dashboard() {
               <div
                 className="app-quick-card p-3"
                 onClick={() => navigate('/leave')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate('/leave'); } }}
               >
                 <div className="app-quick-icon dash-icon-emerald">
                   <FaFileAlt />

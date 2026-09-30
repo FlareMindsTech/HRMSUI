@@ -5,21 +5,7 @@
  * Interacts with /api/onboarding/* and /api/user/* using central apiFetch configuration.
  */
 
-import { apiFetch, API_BASE_URL, authHeaders } from "../../config/api";
-
-/**
- * Helper to construct query string from params object
- */
-const buildQuery = (params = {}) => {
-  const queryParams = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      queryParams.append(key, value);
-    }
-  });
-  const qs = queryParams.toString();
-  return qs ? `?${qs}` : "";
-};
+import { apiFetch, apiError, buildQuery } from "../../config/api";
 
 // =========================================================================
 // 1. LIFECYCLE & CORE ONBOARDING RECORDS
@@ -32,7 +18,7 @@ const buildQuery = (params = {}) => {
 export const fetchOnboardings = async (params = {}) => {
   const res = await apiFetch(`/onboarding/all${buildQuery(params)}`, { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load onboarding records.");
+    throw apiError(res, "Failed to load onboarding records.");
   }
   return res.data;
 };
@@ -44,7 +30,7 @@ export const fetchOnboardings = async (params = {}) => {
 export const fetchOnboardingById = async (id) => {
   const res = await apiFetch(`/onboarding/${id}`, { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load onboarding details.");
+    throw apiError(res, "Failed to load onboarding details.");
   }
   return res.data;
 };
@@ -56,7 +42,7 @@ export const fetchOnboardingById = async (id) => {
 export const fetchOnboardingByEmployeeId = async (employeeId) => {
   const res = await apiFetch(`/onboarding/employee/${employeeId}`, { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load employee onboarding details.");
+    throw apiError(res, "Failed to load employee onboarding details.");
   }
   return res.data;
 };
@@ -67,7 +53,6 @@ export const fetchOnboardingByEmployeeId = async (employeeId) => {
  */
 export const registerUserWithFiles = async (payload) => {
   let body = payload;
-  const headers = { ...authHeaders() };
 
   if (!(payload instanceof FormData)) {
     const formData = new FormData();
@@ -85,17 +70,15 @@ export const registerUserWithFiles = async (payload) => {
     body = formData;
   }
 
-  const response = await fetch(`${API_BASE_URL}/user/register`, {
+  const res = await apiFetch(`/user/register`, {
     method: "POST",
-    headers,
     body,
   });
 
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data?.message || `User registration failed with status ${response.status}`);
+  if (!res.ok) {
+    throw apiError(res, `User registration failed with status ${res.status}`);
   }
-  return data;
+  return res.data;
 };
 
 /**
@@ -108,7 +91,7 @@ export const initiateOnboarding = async (payload) => {
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to initiate onboarding.");
+    throw apiError(res, "Failed to initiate onboarding.");
   }
   return res.data;
 };
@@ -124,7 +107,7 @@ export const initiateOnboarding = async (payload) => {
 export const fetchEmployeeInfo = async (id) => {
   const res = await apiFetch(`/onboarding/${id}`, { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load employee info.");
+    throw apiError(res, "Failed to load employee info.");
   }
   const data = res.data?.data || res.data || {};
   const emp = data.employeeId || data.employee || data.user || {};
@@ -180,25 +163,28 @@ export const fetchCandidateProfessional = async (id) => {
  */
 export const createCurrentCompanyApi = async (payload) => {
   let body = payload;
-  let headers = { ...authHeaders() };
 
   if (payload instanceof FormData) {
-    const res = await fetch(`${API_BASE_URL}/current-company/create`, {
-      method: "POST",
-      headers,
-      body,
-    }).catch(() => null) || await fetch(`${API_BASE_URL}/currentCompany/create`, {
-      method: "POST",
-      headers,
-      body,
-    }).catch(() => null) || await fetch(`${API_BASE_URL}/current-company`, {
-      method: "POST",
-      headers,
-      body,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data?.message || "Failed to create current company.");
-    return data;
+    // Mirror the previous transport: alternate routes are probed only when
+    // the request never reaches the server; an HTTP response surfaces
+    // immediately instead of probing the remaining routes.
+    const endpoints = [
+      `/current-company/create`,
+      `/currentCompany/create`,
+      `/current-company`,
+    ];
+    let lastError = null;
+    for (const ep of endpoints) {
+      const uploadRes = await apiFetch(ep, {
+        method: "POST",
+        body,
+      });
+      if (uploadRes.ok) return uploadRes.data;
+      if (uploadRes.status === 0) continue;
+      lastError = apiError(uploadRes, "Failed to create current company.");
+      break;
+    }
+    throw lastError || new Error("Failed to create current company.");
   }
 
   const res = await apiFetch("/current-company/create", {
@@ -213,7 +199,7 @@ export const createCurrentCompanyApi = async (payload) => {
   });
 
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to create current company.");
+    throw apiError(res, "Failed to create current company.");
   }
   return res.data;
 };
@@ -286,7 +272,7 @@ export const createAddressApi = async (payload) => {
     body: JSON.stringify(normalized),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to create address.");
+    throw apiError(res, "Failed to create address.");
   }
   return res.data;
 };
@@ -402,7 +388,7 @@ export const fetchFamilyByUserId = async (userId) => {
 export const fetchCandidatePayroll = async (id) => {
   const res = await apiFetch(`/onboarding/${id}`, { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load payroll details.");
+    throw apiError(res, "Failed to load payroll details.");
   }
   const data = res.data?.data || res.data || {};
   const emp = data.employeeId || data.employee || data.user || {};
@@ -432,7 +418,7 @@ export const updateEmployeeInfo = async (id, payload) => {
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to update employee information.");
+    throw apiError(res, "Failed to update employee information.");
   }
   return res.data;
 };
@@ -448,7 +434,7 @@ export const updateEmployment = async (id, payload) => {
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to update employment details.");
+    throw apiError(res, "Failed to update employment details.");
   }
   return res.data;
 };
@@ -464,7 +450,7 @@ export const updatePayroll = async (id, payload) => {
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to update payroll details.");
+    throw apiError(res, "Failed to update payroll details.");
   }
 };
 
@@ -588,7 +574,7 @@ export const updateCandidateFamily = async (id, emergencyContact) => {
 export const fetchOnboardingDocuments = async (id) => {
   const res = await apiFetch(`/onboarding/${id}/documents`, { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load candidate documents.");
+    throw apiError(res, "Failed to load candidate documents.");
   }
   return res.data;
 };
@@ -603,7 +589,7 @@ export const verifyOnboardingDocument = async (id, documentId) => {
     method: "PUT",
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to verify document.");
+    throw apiError(res, "Failed to verify document.");
   }
   return res.data;
 };
@@ -620,7 +606,7 @@ export const rejectOnboardingDocument = async (id, documentId, rejectionReason) 
     body: JSON.stringify({ rejectionReason }),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to reject document.");
+    throw apiError(res, "Failed to reject document.");
   }
   return res.data;
 };
@@ -632,29 +618,26 @@ export const rejectOnboardingDocument = async (id, documentId, rejectionReason) 
  */
 export const uploadOnboardingDocument = async (id, formData, meta = {}) => {
   const endpoints = [
-    `${API_BASE_URL}/onboarding/${id}/documents`,
-    `${API_BASE_URL}/onboarding/${id}/document`,
-    `${API_BASE_URL}/onboarding/documents/${id}`,
-    `${API_BASE_URL}/onboarding/${id}/upload-document`,
-    `${API_BASE_URL}/onboarding/${id}/upload`,
-    `${API_BASE_URL}/document/upload`,
+    `/onboarding/${id}/documents`,
+    `/onboarding/${id}/document`,
+    `/onboarding/documents/${id}`,
+    `/onboarding/${id}/upload-document`,
+    `/onboarding/${id}/upload`,
+    `/document/upload`,
   ];
   let lastError = null;
-  for (const url of endpoints) {
+  for (const ep of endpoints) {
     try {
-      const res = await fetch(url, {
+      const res = await apiFetch(ep, {
         method: "POST",
-        headers: {
-          ...authHeaders(),
-        },
         body: formData,
       });
-      const data = await res.json().catch(() => null);
       if (res.ok) {
+        const data = res.data;
         return data?.data || data;
       }
       if (res.status !== 404) {
-        lastError = new Error(data?.message || `Failed with status ${res.status}`);
+        lastError = apiError(res, `Failed with status ${res.status}`);
       }
     } catch (err) {
       lastError = err;
@@ -771,7 +754,7 @@ export const uploadBankPassbook = async (id, file) => {
 export const fetchOnboardingTasks = async (id) => {
   const res = await apiFetch(`/onboarding/${id}/tasks`, { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load onboarding tasks.");
+    throw apiError(res, "Failed to load onboarding tasks.");
   }
   return res.data;
 };
@@ -787,7 +770,7 @@ export const addOnboardingTask = async (id, taskData) => {
     body: JSON.stringify(taskData),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to add onboarding task.");
+    throw apiError(res, "Failed to add onboarding task.");
   }
   return res.data;
 };
@@ -804,7 +787,7 @@ export const updateOnboardingTask = async (id, taskId, taskData) => {
     body: JSON.stringify(taskData),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to update onboarding task.");
+    throw apiError(res, "Failed to update onboarding task.");
   }
   return res.data;
 };
@@ -819,7 +802,7 @@ export const deleteOnboardingTask = async (id, taskId) => {
     method: "DELETE",
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to delete onboarding task.");
+    throw apiError(res, "Failed to delete onboarding task.");
   }
   return res.data;
 };
@@ -835,7 +818,7 @@ export const deleteOnboardingTask = async (id, taskId) => {
 export const fetchOnboardingAssets = async (id) => {
   const res = await apiFetch(`/onboarding/${id}/assets`, { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load assigned assets.");
+    throw apiError(res, "Failed to load assigned assets.");
   }
   return res.data;
 };
@@ -851,7 +834,7 @@ export const assignOnboardingAsset = async (id, assetData) => {
     body: JSON.stringify(assetData),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to assign asset.");
+    throw apiError(res, "Failed to assign asset.");
   }
   return res.data;
 };
@@ -868,7 +851,7 @@ export const unassignOnboardingAsset = async (id, assetId, remarks = "") => {
     body: JSON.stringify({ remarks }),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to unassign asset.");
+    throw apiError(res, "Failed to unassign asset.");
   }
   return res.data;
 };
@@ -884,7 +867,7 @@ export const unassignOnboardingAsset = async (id, assetId, remarks = "") => {
 export const fetchOnboardingAccess = async (id) => {
   const res = await apiFetch(`/onboarding/${id}/access`, { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load system access list.");
+    throw apiError(res, "Failed to load system access list.");
   }
   return res.data;
 };
@@ -900,7 +883,7 @@ export const addOnboardingAccess = async (id, accessData) => {
     body: JSON.stringify(accessData),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to add system access.");
+    throw apiError(res, "Failed to add system access.");
   }
   return res.data;
 };
@@ -917,7 +900,7 @@ export const updateOnboardingAccess = async (id, accessId, updateData) => {
     body: JSON.stringify(updateData),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to update access status.");
+    throw apiError(res, "Failed to update access status.");
   }
   return res.data;
 };
@@ -933,7 +916,7 @@ export const updateOnboardingAccess = async (id, accessId, updateData) => {
 export const fetchOnboardingTraining = async (id) => {
   const res = await apiFetch(`/onboarding/${id}/training`, { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load training schedule.");
+    throw apiError(res, "Failed to load training schedule.");
   }
   return res.data;
 };
@@ -949,7 +932,7 @@ export const addOnboardingTraining = async (id, trainingData) => {
     body: JSON.stringify(trainingData),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to schedule training.");
+    throw apiError(res, "Failed to schedule training.");
   }
   return res.data;
 };
@@ -966,7 +949,7 @@ export const updateOnboardingTraining = async (id, trainingId, updateData) => {
     body: JSON.stringify(updateData),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to update training status.");
+    throw apiError(res, "Failed to update training status.");
   }
   return res.data;
 };
@@ -982,7 +965,7 @@ export const updateOnboardingTraining = async (id, trainingId, updateData) => {
 export const fetchOnboardingAgreements = async (id) => {
   const res = await apiFetch(`/onboarding/${id}/agreements`, { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load agreements.");
+    throw apiError(res, "Failed to load agreements.");
   }
   return res.data;
 };
@@ -998,7 +981,7 @@ export const addOnboardingAgreement = async (id, agreeData) => {
     body: JSON.stringify(agreeData),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to add agreement.");
+    throw apiError(res, "Failed to add agreement.");
   }
   return res.data;
 };
@@ -1015,7 +998,7 @@ export const acknowledgeOnboardingAgreement = async (id, agreementId, status = "
     body: JSON.stringify({ status }),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to acknowledge agreement.");
+    throw apiError(res, "Failed to acknowledge agreement.");
   }
   return res.data;
 };
@@ -1062,6 +1045,8 @@ export const completeOnboarding = async (id, payload = {}) => {
   if (!res.ok) {
     const dataObj = res.data?.data || res.data || {};
     const err = new Error(res.data?.message || dataObj.message || "Failed to complete onboarding.");
+    err.status = res.status;
+    err.data = res.data;
     err.missingRequirements =
       dataObj.missingRequirements ||
       res.data?.missingRequirements ||
@@ -1092,7 +1077,7 @@ export const fetchUserById = async (userId) => {
 export const activateEmployee = async (id) => {
   const res = await apiFetch(`/onboarding/${id}/activate`, { method: "POST" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to activate employee.");
+    throw apiError(res, "Failed to activate employee.");
   }
   return res.data;
 };
@@ -1108,7 +1093,7 @@ export const provisionOnboardingAccount = async (id, payload) => {
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to provision login credentials.");
+    throw apiError(res, "Failed to provision login credentials.");
   }
   return res.data;
 };
@@ -1120,7 +1105,7 @@ export const provisionOnboardingAccount = async (id, payload) => {
 export const enableLogin = async (id) => {
   const res = await apiFetch(`/onboarding/${id}/enable-login`, { method: "PUT" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to enable login.");
+    throw apiError(res, "Failed to enable login.");
   }
   return res.data;
 };
@@ -1132,7 +1117,7 @@ export const enableLogin = async (id) => {
 export const disableLogin = async (id) => {
   const res = await apiFetch(`/onboarding/${id}/disable-login`, { method: "PUT" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to disable login.");
+    throw apiError(res, "Failed to disable login.");
   }
   return res.data;
 };

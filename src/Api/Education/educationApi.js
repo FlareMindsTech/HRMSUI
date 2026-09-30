@@ -5,21 +5,7 @@
  * Compatible with EducationController & EducationModule schema and controller routes.
  */
 
-import { apiFetch, API_BASE_URL, authHeaders } from "../../config/api";
-
-/**
- * Helper to construct query string from params object
- */
-const buildQuery = (params = {}) => {
-  const queryParams = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      queryParams.append(key, value);
-    }
-  });
-  const qs = queryParams.toString();
-  return qs ? `?${qs}` : "";
-};
+import { apiFetch, apiError, buildQuery } from "../../config/api";
 
 /**
  * Fetch Education details by User ID / Employee ID
@@ -93,30 +79,28 @@ export const getAllEducations = async (params = {}) => {
  */
 export const createEducation = async (payload) => {
   let body = payload;
-  const headers = { ...authHeaders() };
 
   if (payload instanceof FormData) {
     const endpoints = [
-      `${API_BASE_URL}/education`,
-      `${API_BASE_URL}/education/createEducation`,
-      `${API_BASE_URL}/education/create`,
-      `${API_BASE_URL}/education/add`,
-      `${API_BASE_URL}/education/save`,
+      `/education`,
+      `/education/createEducation`,
+      `/education/create`,
+      `/education/add`,
+      `/education/save`,
     ];
 
     let lastError = null;
-    for (const url of endpoints) {
+    for (const ep of endpoints) {
       try {
-        const response = await fetch(url, {
+        const res = await apiFetch(ep, {
           method: "POST",
-          headers,
           body,
         });
-        const data = await response.json().catch(() => ({}));
-        if (response.ok) {
+        if (res.ok) {
+          const data = res.data;
           return data.data || data.education || data.educationRecord || data;
         }
-        lastError = new Error(data.message || `Failed with status ${response.status}`);
+        lastError = apiError(res, `Failed with status ${res.status}`);
       } catch (e) {
         lastError = e;
       }
@@ -143,7 +127,7 @@ export const createEducation = async (payload) => {
     });
 
   if (!res || !res.ok) {
-    throw new Error(res?.data?.message || "Failed to create education record.");
+    throw apiError(res, "Failed to create education record.");
   }
   return res.data?.data || res.data?.education || res.data;
 };
@@ -157,32 +141,30 @@ export const createEducation = async (payload) => {
 export const updateEducation = async (id, payload) => {
   if (!id) throw new Error("Education ID / User ID is required for update.");
   let body = payload;
-  const headers = { ...authHeaders() };
 
   if (payload instanceof FormData) {
     const endpoints = [
-      { url: `${API_BASE_URL}/education/${id}`, method: "PUT" },
-      { url: `${API_BASE_URL}/education/updateEducation/${id}`, method: "PUT" },
-      { url: `${API_BASE_URL}/education/update/${id}`, method: "PUT" },
-      { url: `${API_BASE_URL}/education/user/${id}`, method: "PUT" },
-      { url: `${API_BASE_URL}/education/updateByUserId/${id}`, method: "PUT" },
-      { url: `${API_BASE_URL}/education/update/${id}`, method: "POST" },
-      { url: `${API_BASE_URL}/education/${id}`, method: "POST" },
+      { ep: `/education/${id}`, method: "PUT" },
+      { ep: `/education/updateEducation/${id}`, method: "PUT" },
+      { ep: `/education/update/${id}`, method: "PUT" },
+      { ep: `/education/user/${id}`, method: "PUT" },
+      { ep: `/education/updateByUserId/${id}`, method: "PUT" },
+      { ep: `/education/update/${id}`, method: "POST" },
+      { ep: `/education/${id}`, method: "POST" },
     ];
 
     let lastError = null;
-    for (const ep of endpoints) {
+    for (const { ep, method } of endpoints) {
       try {
-        const response = await fetch(ep.url, {
-          method: ep.method,
-          headers,
+        const res = await apiFetch(ep, {
+          method,
           body,
         });
-        const data = await response.json().catch(() => ({}));
-        if (response.ok) {
+        if (res.ok) {
+          const data = res.data;
           return data.data || data.education || data.educationRecord || data;
         }
-        lastError = new Error(data.message || `Failed with status ${response.status}`);
+        lastError = apiError(res, `Failed with status ${res.status}`);
       } catch (e) {
         lastError = e;
       }
@@ -220,7 +202,10 @@ export const updateEducation = async (id, payload) => {
     try {
       return await createEducation({ ...payload, userId: id });
     } catch (createErr) {
-      throw new Error(res?.data?.message || createErr.message || "Failed to update education record.");
+      const updateErr = new Error(res?.data?.message || createErr.message || "Failed to update education record.");
+      updateErr.status = res?.status;
+      updateErr.data = res?.data;
+      throw updateErr;
     }
   }
   return res.data?.data || res.data?.education || res.data;
@@ -237,7 +222,7 @@ export const deleteEducation = async (id) => {
     || await apiFetch(`/education/${id}`, { method: "DELETE" });
 
   if (!res || !res.ok) {
-    throw new Error(res?.data?.message || "Failed to delete education record.");
+    throw apiError(res, "Failed to delete education record.");
   }
   return res.data;
 };

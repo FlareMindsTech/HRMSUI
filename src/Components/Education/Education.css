@@ -18,7 +18,7 @@
    Education Summary
    -------------------------------------------------------------------------- */
 .edu-summary-card {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
 }
 
 .edu-summary-accent-bar {
@@ -28,7 +28,7 @@
 
 .edu-icon-summary {
   background: linear-gradient(135deg, #E2C278 0%, #C49A55 50%, #B8860B 100%) !important;
-  color: #ffffff !important;
+  color: var(--color-text, #1C1D1D) !important;
   box-shadow: 0 2px 6px rgba(196, 154, 85, 0.28);
 }
 
@@ -44,7 +44,7 @@
 .edu-icon-phd,
 .edu-icon-gold {
   background: linear-gradient(135deg, #E2C278 0%, #C49A55 50%, #B8860B 100%) !important;
-  color: #ffffff !important;
+  color: var(--color-text, #1C1D1D) !important;
   box-shadow: 0 2px 6px rgba(196, 154, 85, 0.28) !important;
   width: 32px;
   height: 32px;
@@ -61,7 +61,7 @@
 .edu-icon-pg svg,
 .edu-icon-phd svg,
 .edu-icon-gold svg {
-  color: #ffffff !important;
+  color: var(--color-surface, #FFFFFF) !important;
 }
 
 /* --------------------------------------------------------------------------

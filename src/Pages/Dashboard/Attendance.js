@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Container, Row, Col, Card, Form, Button, Badge, Table, Modal, Spinner, InputGroup, Nav, Alert
+  Container, Row, Col, Card, Form, Button, Badge, Table, Modal, InputGroup, Nav
 } from 'react-bootstrap';
 import {
   FaClock, FaCalendarAlt, FaCheckCircle, FaExclamationTriangle,
@@ -9,7 +9,7 @@ import {
   FaCalendarPlus, FaShieldAlt, FaInfoCircle, FaBuilding, FaSitemap, FaFileAlt,
   FaFileContract, FaCheck, FaTimes, FaFilter, FaDownload, FaCrosshairs, FaCheckDouble, FaCog
 } from 'react-icons/fa';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { selectAuthUser } from '../../redux/slices/authSlice';
 import EmptyState from '../../Components/Common/EmptyState';
 import PaginationBar from '../../Components/Common/PaginationBar';
@@ -41,7 +41,13 @@ import {
   updateAttendanceSettings,
   formatAttendanceError
 } from '../../Api/Attendance/attendance';
-import { fetchBranchesDropdown, fetchDepartmentsDropdown, fetchMyOrganizationsList } from '../../services/organizationService';
+import { fetchBranchesDropdown, fetchMyOrganizationsList } from '../../services/organizationService';
+import {
+  fetchOrgResource,
+  invalidateOrgResource,
+  selectAttendancePolicy,
+  selectDepartmentsDropdown,
+} from '../../redux/slices/organizationSlice';
 import { formatTime, formatFullDate } from '../../utils/dateFormatter';
 import './Attendance.css';
 
@@ -151,13 +157,13 @@ function AttendanceCalendar({ monthlyRecords, month, year, onMonthChange, onDayC
   return (
     <Card className="border-0 shadow-sm attendance-calendar rounded-4 overflow-hidden bg-white">
       <div className="calendar-header d-flex justify-content-between align-items-center p-3 px-4 border-bottom">
-        <button className="calendar-nav-btn" onClick={handlePrev} title="Previous Month">
+        <button type="button" className="calendar-nav-btn" onClick={handlePrev} title="Previous Month" aria-label="Previous Month">
           <FaChevronLeft size={12} />
         </button>
         <span className="calendar-month-label fw-bold">
           {MONTH_NAMES[month - 1]} {year}
         </span>
-        <button className="calendar-nav-btn" onClick={handleNext} title="Next Month">
+        <button type="button" className="calendar-nav-btn" onClick={handleNext} title="Next Month" aria-label="Next Month">
           <FaChevronRight size={12} />
         </button>
       </div>
@@ -170,7 +176,7 @@ function AttendanceCalendar({ monthlyRecords, month, year, onMonthChange, onDayC
 
       {loading ? (
         <div className="text-center py-5">
-          <Spinner animation="border" variant="success" size="sm" className="me-2" />
+          <LoadingSpinner color="success" size="sm" className="me-2" />
           <span className="small text-muted">Loading attendance calendar...</span>
         </div>
       ) : (
@@ -187,6 +193,9 @@ function AttendanceCalendar({ monthlyRecords, month, year, onMonthChange, onDayC
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
             const isFuture = dateStr > todayStr;
             const dotClass = isLate ? 'calendar-dot--late' : getStatusDotClass(status);
+            // Only days with a real record open the correction flow on click;
+            // keyboard access mirrors that exact condition (no behavior change).
+            const isDayActionable = Boolean(record && !record.isGenerated && onDayClick);
 
             return (
               <div
@@ -194,6 +203,15 @@ function AttendanceCalendar({ monthlyRecords, month, year, onMonthChange, onDayC
                 className={`calendar-day ${isToday ? 'calendar-day--today' : ''} ${isWeekend && !record?.loginTime ? 'calendar-day--weekend' : ''} ${isFuture && !record ? 'calendar-day--future' : ''}`}
                 onClick={() => record && !record.isGenerated && onDayClick && onDayClick(record)}
                 title={record ? `${dateStr}: ${status}` : dateStr}
+                role={isDayActionable ? "button" : undefined}
+                tabIndex={isDayActionable ? 0 : undefined}
+                aria-label={isDayActionable ? `${dateStr}: ${status}. Activate to request a correction.` : undefined}
+                onKeyDown={isDayActionable ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onDayClick(record);
+                  }
+                } : undefined}
               >
                 <span>{day}</span>
                 {dotClass && <div className={`calendar-dot ${dotClass}`} />}
@@ -347,6 +365,11 @@ function Attendance() {
   const [regularizationList, setRegularizationList] = useState([]);
   const [regularizationLoading, setRegularizationLoading] = useState(false);
   const [attendancePolicy, setAttendancePolicy] = useState(null);
+  const dispatch = useDispatch();
+  // Shared default-scope attendance policy + departments (single guarded
+  // fetches); scoped per-org policy reads stay direct service calls.
+  const attendancePolicyBody = useSelector(selectAttendancePolicy);
+  const departmentsShared = useSelector(selectDepartmentsDropdown);
 
   // ── Multi-Organization Policy States (Phase 4A) ──
   const [organizationsList, setOrganizationsList] = useState([]);
@@ -423,6 +446,9 @@ function Attendance() {
       if (res?.success) {
         setSettingsSuccessMsg(res.message || 'Attendance policy updated successfully.');
         if (res.data) setAttendancePolicy(res.data);
+        // The saved policy changed shared data: invalidate so other
+        // consumers (and the next guarded read) fetch fresh.
+        dispatch(invalidateOrgResource("attendancePolicy"));
       }
     } catch (err) {
       setSettingsErrMsg(err.message || 'Failed to update attendance policy.');
@@ -431,14 +457,17 @@ function Attendance() {
     }
   };
 
-  // Load organization attendance policy for punch action context
+  // Load organization attendance policy for punch action context (shared slice).
   useEffect(() => {
-    fetchAttendanceSettings()
-      .then((res) => {
-        if (res?.success && res.data) setAttendancePolicy(res.data);
-      })
-      .catch((err) => console.warn('Attendance policy fetch notice:', err.message));
-  }, []);
+    dispatch(fetchOrgResource({ key: "attendancePolicy" })).catch(() => null);
+  }, [dispatch]);
+
+  // Apply the shared policy body, preserving the legacy success-shape gate.
+  useEffect(() => {
+    if (attendancePolicyBody?.success && attendancePolicyBody.data) {
+      setAttendancePolicy(attendancePolicyBody.data);
+    }
+  }, [attendancePolicyBody]);
 
   // ── Modals & Actions ──
   const [locationModalRecord, setLocationModalRecord] = useState(null);
@@ -476,22 +505,26 @@ function Attendance() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Load dropdown lists on mount
+  // Load dropdown lists on mount (branches stay direct; departments shared).
   useEffect(() => {
     const loadDropdowns = async () => {
       try {
-        const [bData, dData] = await Promise.all([
+        const [bData] = await Promise.all([
           fetchBranchesDropdown().catch(() => []),
-          fetchDepartmentsDropdown().catch(() => [])
+          dispatch(fetchOrgResource({ key: "departments" })).catch(() => null),
         ]);
         setBranchesList(bData || []);
-        setDepartmentsList(dData || []);
       } catch (err) {
         console.warn("Failed loading org dropdowns:", err);
       }
     };
     loadDropdowns();
-  }, []);
+  }, [dispatch]);
+
+  // Apply the shared departments list (same array contract as before).
+  useEffect(() => {
+    setDepartmentsList(departmentsShared || []);
+  }, [departmentsShared]);
 
   // ── Loaders ──
   const loadTodayData = useCallback(async () => {
@@ -1055,7 +1088,7 @@ function Attendance() {
 
             {teamLoading ? (
               <div className="text-center py-4">
-                <Spinner animation="border" variant="success" size="sm" />
+                <LoadingSpinner color="success" size="sm" />
                 <div className="extra-small text-muted mt-2">Loading attendance roster...</div>
               </div>
             ) : (
@@ -1214,7 +1247,7 @@ function Attendance() {
           </h6>
 
           {myTeamLoading ? (
-            <div className="text-center py-4"><Spinner animation="border" size="sm" /></div>
+            <div className="text-center py-4"><LoadingSpinner size="sm" /></div>
           ) : (
             <Row className="g-3">
               {(myTeamData?.teamRoster || []).map((m) => (
@@ -1248,7 +1281,7 @@ function Attendance() {
           </h6>
 
           {exceptionsLoading ? (
-            <div className="text-center py-4"><Spinner animation="border" size="sm" /></div>
+            <div className="text-center py-4"><LoadingSpinner size="sm" /></div>
           ) : exceptionsList.length === 0 ? (
             <EmptyState variant="block" className="text-center py-4 text-muted small" title="No attendance exceptions found for selected date." />
           ) : (
@@ -1313,7 +1346,7 @@ function Attendance() {
           </div>
 
           {regularizationLoading ? (
-            <div className="text-center py-4"><Spinner animation="border" size="sm" /></div>
+            <div className="text-center py-4"><LoadingSpinner size="sm" /></div>
           ) : regularizationList.length === 0 ? (
             <EmptyState variant="block" className="text-center py-4 text-muted small" title="No regularization requests found." />
           ) : (
@@ -1371,7 +1404,7 @@ function Attendance() {
           </h6>
 
           {overtimeLoading ? (
-            <div className="text-center py-4"><Spinner animation="border" size="sm" /></div>
+            <div className="text-center py-4"><LoadingSpinner size="sm" /></div>
           ) : (
             <Table hover responsive className="align-middle small">
               <thead className="bg-light">
@@ -1411,7 +1444,7 @@ function Attendance() {
           </h6>
 
           {auditLogLoading ? (
-            <div className="text-center py-4"><Spinner animation="border" size="sm" /></div>
+            <div className="text-center py-4"><LoadingSpinner size="sm" /></div>
           ) : (
             <Table hover responsive className="align-middle small">
               <thead className="bg-light">
@@ -1488,15 +1521,11 @@ function Attendance() {
             </h6>
 
             {settingsSuccessMsg && (
-              <Alert variant="success" dismissible onClose={() => setSettingsSuccessMsg('')} className="py-2 small">
-                <FaCheckCircle className="me-2" /> {settingsSuccessMsg}
-              </Alert>
+              <FeedbackAlert variant="success" dismissible onClose={() => setSettingsSuccessMsg('')} className="py-2 small" message={<><FaCheckCircle className="me-2" /> {settingsSuccessMsg}</>} />
             )}
 
             {settingsErrMsg && (
-              <Alert variant="danger" dismissible onClose={() => setSettingsErrMsg('')} className="py-2 small">
-                <FaExclamationTriangle className="me-2" /> {settingsErrMsg}
-              </Alert>
+              <FeedbackAlert variant="danger" dismissible onClose={() => setSettingsErrMsg('')} className="py-2 small" message={<><FaExclamationTriangle className="me-2" /> {settingsErrMsg}</>} />
             )}
 
             <Form onSubmit={handleSavePolicySettings}>
@@ -1637,7 +1666,7 @@ function Attendance() {
 
               <div className="d-flex justify-content-end">
                 <Button type="submit" variant="primary" size="sm" disabled={settingsSubmitting} className="rounded-3 px-4 fw-bold">
-                  {settingsSubmitting ? <Spinner size="sm" animation="border" /> : <><FaCheck className="me-1" /> Save Attendance Policy</>}
+                  {settingsSubmitting ? <LoadingSpinner size="sm" /> : <><FaCheck className="me-1" /> Save Attendance Policy</>}
                 </Button>
               </div>
             </Form>
@@ -1730,7 +1759,7 @@ function Attendance() {
           </h6>
 
           {ownLoading ? (
-            <div className="text-center py-4"><Spinner animation="border" size="sm" /></div>
+            <div className="text-center py-4"><LoadingSpinner size="sm" /></div>
           ) : (
             <Table hover responsive className="align-middle small">
               <thead className="bg-light">

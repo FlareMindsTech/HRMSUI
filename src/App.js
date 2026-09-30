@@ -6,8 +6,10 @@ import {
   selectIsAuthenticated,
   fetchAuth,
   clearAuth,
+  logout,
 } from './redux/slices/authSlice';
-import { getAuthToken, clearAuthToken } from './config/api';
+import { getAuthToken, clearAuthToken, setUnauthorizedHandler } from './config/api';
+import { store } from './redux/store';
 import Layout from './Layout/Layout';
 import Dashboard from './Pages/Dashboard/Dashboard';
 import Organisation from './Pages/Dashboard/Organisation';
@@ -35,6 +37,30 @@ function App() {
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const [booted, setBooted] = useState(false);
   const [setupRequired, setSetupRequired] = useState(null);
+
+  // Central runtime-401 recovery, registered once. Any authenticated API
+  // call that comes back 401 (expired/revoked token mid-session) funnels
+  // through the EXISTING logout flow: the thunk clears the session
+  // synchronously and logout.pending flips the route gate to /login
+  // declaratively — no reload, no per-page handling needed. Single-flight
+  // holds at two levels: apiFetch notifies only once per expiry episode,
+  // and the state re-check below collapses any residual duplicates (logout
+  // itself is idempotent, so even a double dispatch is harmless).
+  // Auth-owned paths (/auth/login, /auth/me, /user/logout) and token-less
+  // requests never notify — boot owns /auth/me explicitly and Login owns
+  // its own 401 messaging.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      try {
+        const st = store.getState();
+        if (!st.auth?.user && !getAuthToken()) return;
+        dispatch(logout());
+      } catch {
+        // Recovery must never break the app shell.
+      }
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [dispatch]);
 
   // Boot: validate any stored token via Redux (replaces AuthContext.loadAuthContext).
   useEffect(() => {
@@ -83,11 +109,10 @@ function App() {
   }, []);
 
   const handleLogin = () => {
-    try {
-      localStorage.setItem('isAuthenticated', 'true');
-    } catch {
-      // ignore storage errors — route gating comes from Redux selector
-    }
+    // Route gating comes from the Redux selector (user + token); the legacy
+    // localStorage sentinel is no longer written (reads of it remain only
+    // where the initial Redux state hydrates, and cleanup lists still remove
+    // it for existing installs).
   };
 
   // Boot splash only while the initial token validation is outstanding.

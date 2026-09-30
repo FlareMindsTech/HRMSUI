@@ -5,7 +5,7 @@
  * Reuses central apiFetch and authorization header configuration.
  */
 
-import { apiFetch } from "../../config/api";
+import { apiFetch, apiError } from "../../config/api";
 
 /**
  * Submit a new leave application.
@@ -18,7 +18,7 @@ export const applyLeaveApi = async (leaveData) => {
   });
 
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to submit leave application.");
+    throw apiError(result, "Failed to submit leave application.");
   }
   return result.data;
 };
@@ -37,7 +37,7 @@ export const fetchLeaveBalanceApi = async (params = {}) => {
   const result = await apiFetch(`/leave/balance${queryString}`, { method: "GET" });
 
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to fetch leave balance.");
+    throw apiError(result, "Failed to fetch leave balance.");
   }
   return result.data;
 };
@@ -48,7 +48,7 @@ export const fetchLeaveBalanceApi = async (params = {}) => {
 export const fetchMyLeavesApi = async () => {
   const result = await apiFetch("/leave/my", { method: "GET" });
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to fetch personal leave requests.");
+    throw apiError(result, "Failed to fetch personal leave requests.");
   }
   return result.data;
 };
@@ -59,7 +59,7 @@ export const fetchMyLeavesApi = async () => {
 export const fetchTeamLeavesApi = async () => {
   const result = await apiFetch("/leave/team", { method: "GET" });
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to fetch team leave requests.");
+    throw apiError(result, "Failed to fetch team leave requests.");
   }
   return result.data;
 };
@@ -70,7 +70,7 @@ export const fetchTeamLeavesApi = async () => {
 export const fetchAllLeavesApi = async () => {
   const result = await apiFetch("/leave/all", { method: "GET" });
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to fetch company leave requests.");
+    throw apiError(result, "Failed to fetch company leave requests.");
   }
   return result.data;
 };
@@ -82,7 +82,7 @@ export const fetchAllLeavesApi = async () => {
 export const fetchLeaveByIdApi = async (id) => {
   const result = await apiFetch(`/leave/${id}`, { method: "GET" });
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to fetch leave application details.");
+    throw apiError(result, "Failed to fetch leave application details.");
   }
   return result.data;
 };
@@ -94,7 +94,7 @@ export const fetchLeaveByIdApi = async (id) => {
 export const cancelLeaveApi = async (id) => {
   const result = await apiFetch(`/leave/cancel/${id}`, { method: "PUT" });
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to cancel leave request.");
+    throw apiError(result, "Failed to cancel leave request.");
   }
   return result.data;
 };
@@ -106,7 +106,7 @@ export const cancelLeaveApi = async (id) => {
 export const approveLeaveApi = async (id) => {
   const result = await apiFetch(`/leave/approve/${id}`, { method: "PUT" });
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to approve leave request.");
+    throw apiError(result, "Failed to approve leave request.");
   }
   return result.data;
 };
@@ -122,7 +122,7 @@ export const rejectLeaveApi = async (id, reason = "") => {
     body: JSON.stringify({ reason }),
   });
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to reject leave request.");
+    throw apiError(result, "Failed to reject leave request.");
   }
   return result.data;
 };
@@ -134,7 +134,7 @@ export const rejectLeaveApi = async (id, reason = "") => {
 export const fetchLeaveAuditApi = async (id) => {
   const result = await apiFetch(`/leave/audit/${id}`, { method: "GET" });
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to fetch leave audit log.");
+    throw apiError(result, "Failed to fetch leave audit log.");
   }
   return result.data;
 };

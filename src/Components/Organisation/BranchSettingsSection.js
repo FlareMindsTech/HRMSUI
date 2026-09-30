@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Row, Col, Card, Form, Button, Spinner } from "react-bootstrap";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Row, Col, Card, Form, Button, Spinner, Alert, Badge } from "react-bootstrap";
 import {
   FaCodeBranch,
   FaSave,
@@ -16,11 +16,15 @@ import {
   fetchBranchesDropdown,
   fetchBranchById,
   updateBranch,
-  fetchWorkCalendarsDropdown,
-  fetchShiftsDropdown,
-  fetchHolidayCalendarsDropdown,
 } from "../../services/organizationService";
-import { useHasPermission } from "../../redux/slices/authSlice";
+import { useSelector, useDispatch } from "react-redux";
+import { useHasPermission, selectIsSystemAdmin } from "../../redux/slices/authSlice";
+import {
+  fetchOrgResource,
+  selectShiftsDropdown,
+  selectWorkCalendarsDropdown,
+  selectHolidayCalendarsDropdown,
+} from "../../redux/slices/organizationSlice";
 import FeedbackAlert from "../Common/FeedbackAlert";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { useBranch } from "../../context/BranchContext";
@@ -28,6 +32,18 @@ import { useBranch } from "../../context/BranchContext";
 export default function BranchSettingsSection({ lockedBranchId = null, onNavigateTab }) {
   const hasPermission = useHasPermission();
   const { branches: contextBranches, selectedBranchId, refreshBranches } = useBranch();
+  const dispatch = useDispatch();
+  // Shared shift/calendar dropdowns (single guarded fetches); branch data
+  // stays Context-owned and the settings form stays local.
+  const cachedShifts = useSelector(selectShiftsDropdown);
+  const cachedWorkCalendars = useSelector(selectWorkCalendarsDropdown);
+  const cachedHolidayCalendars = useSelector(selectHolidayCalendarsDropdown);
+  const dropdownCacheRef = useRef(null);
+  dropdownCacheRef.current = {
+    sh: cachedShifts,
+    wc: cachedWorkCalendars,
+    hol: cachedHolidayCalendars,
+  };
 
   const [branches, setBranches] = useState([]);
   const [activeBranchId, setActiveBranchId] = useState(lockedBranchId || selectedBranchId || "");
@@ -70,16 +86,16 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
   // Load Dropdowns
   const loadDropdowns = useCallback(async () => {
     try {
-      const [brList, shList, wcList, holList] = await Promise.all([
+      const [brList, shRes, wcRes, holRes] = await Promise.all([
         fetchBranchesDropdown().catch(() => []),
-        fetchShiftsDropdown().catch(() => []),
-        fetchWorkCalendarsDropdown().catch(() => []),
-        fetchHolidayCalendarsDropdown().catch(() => []),
+        dispatch(fetchOrgResource({ key: "shifts" })).catch(() => null),
+        dispatch(fetchOrgResource({ key: "workCalendars" })).catch(() => null),
+        dispatch(fetchOrgResource({ key: "holidayCalendars" })).catch(() => null),
       ]);
       setBranches(brList.length > 0 ? brList : contextBranches || []);
-      setShifts(shList);
-      setWorkCalendars(wcList);
-      setHolidayCalendars(holList);
+      setShifts(shRes?.payload?.data ?? dropdownCacheRef.current?.sh ?? []);
+      setWorkCalendars(wcRes?.payload?.data ?? dropdownCacheRef.current?.wc ?? []);
+      setHolidayCalendars(holRes?.payload?.data ?? dropdownCacheRef.current?.hol ?? []);
 
       if (!activeBranchId && brList.length > 0) {
         setActiveBranchId(String(brList[0]._id || brList[0].id));
@@ -87,7 +103,7 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
     } catch (e) {
       console.warn("Dropdown loading notice:", e);
     }
-  }, [contextBranches, activeBranchId]);
+  }, [contextBranches, activeBranchId, dispatch]);
 
   // Load Active Branch Details
   const loadBranchConfig = useCallback(async (bId) => {

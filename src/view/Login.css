@@ -1,7 +1,7 @@
 /* ============================================================
    Login Portal Styles — TeamHub Gold & Black Luxury Design System
    Dedicated stylesheet for src/view/Login.js
-   Brand Palette: Gold (#C49A55), Black (#1C1D1D), Cream (#F1E8D6), White (#FFFFFF)
+   Brand Palette: Gold (var(--color-primary, #C49A55)), Black (var(--color-text, #1C1D1D)), Cream (var(--color-primary-light, #F1E8D6)), White (var(--color-surface, #FFFFFF))
    ============================================================ */
 
 .login-page {
@@ -41,7 +41,7 @@
 
 /* ── Main Login Card ── */
 .login-card {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border-radius: 22px;
   box-shadow: 0 20px 60px rgba(28, 29, 29, 0.14), 0 4px 20px rgba(28, 29, 29, 0.08);
   display: flex;
@@ -62,7 +62,7 @@
   padding: 2.25rem 1.75rem;
   display: flex;
   flex-direction: column;
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   position: relative;
 }
 
@@ -82,20 +82,20 @@
 .login-logo-text {
   font-size: 24px;
   font-weight: 800;
-  color: #C49A55;
+  color: var(--color-primary, #C49A55);
 }
 
 .login-brand-title {
   font-size: 1.55rem;
   font-weight: 800;
   margin: 0 0 0.25rem 0;
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   letter-spacing: -0.3px;
 }
 
 .login-brand-sub {
   font-size: 0.82rem;
-  color: #F1E8D6;
+  color: var(--color-primary-light, #F1E8D6);
   opacity: 0.85;
   margin: 0 0 2rem 0;
   line-height: 1.5;
@@ -117,9 +117,9 @@
 .login-feature-dot {
   width: 20px;
   height: 20px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs, 6px);
   background: rgba(196, 154, 85, 0.22);
-  color: #C49A55;
+  color: var(--color-primary, #C49A55);
   border: 1px solid rgba(196, 154, 85, 0.35);
   display: flex;
   align-items: center;
@@ -132,7 +132,7 @@
 
 .login-feature-text {
   font-size: 0.84rem;
-  color: #F1E8D6;
+  color: var(--color-primary-light, #F1E8D6);
   opacity: 0.92;
   line-height: 1.45;
 }
@@ -157,7 +157,7 @@
   display: block;
   font-size: 1.15rem;
   font-weight: 800;
-  color: #C49A55;
+  color: var(--color-primary, #C49A55);
   line-height: 1.1;
 }
 
@@ -165,7 +165,7 @@
   display: block;
   font-size: 0.62rem;
   font-weight: 600;
-  color: #F1E8D6;
+  color: var(--color-primary-light, #F1E8D6);
   opacity: 0.78;
   margin-top: 0.25rem;
   text-transform: uppercase;
@@ -179,7 +179,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
 }
 
 .login-form-header {
@@ -189,7 +189,7 @@
 .login-form-title {
   font-size: 1.45rem;
   font-weight: 800;
-  color: #1C1D1D;
+  color: var(--color-text, #1C1D1D);
   margin: 0 0 0.35rem 0;
   letter-spacing: -0.3px;
 }
@@ -229,7 +229,7 @@
   display: block;
   font-size: 0.76rem;
   font-weight: 700;
-  color: #1C1D1D;
+  color: var(--color-text, #1C1D1D);
   margin-bottom: 0.4rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -259,21 +259,21 @@
   border-radius: 11px;
   background: #FAF7F0;
   font-size: 0.9rem;
-  color: #1C1D1D;
+  color: var(--color-text, #1C1D1D);
   outline: none;
   transition: all 0.2s ease;
   font-family: inherit;
 }
 
 .login-input:focus {
-  border-color: #C49A55;
-  background: #ffffff;
+  border-color: var(--color-primary, #C49A55);
+  background: var(--color-surface, #FFFFFF);
   box-shadow: 0 0 0 3.5px rgba(196, 154, 85, 0.2);
 }
 
 .login-input:focus + .login-input-icon,
 .login-input-wrap:focus-within .login-input-icon {
-  color: #C49A55;
+  color: var(--color-primary, #C49A55);
 }
 
 .login-input.password-input {
@@ -292,17 +292,17 @@
   font-size: 1rem;
   padding: 6px;
   color: #A4977E;
-  border-radius: 6px;
+  border-radius: var(--radius-xs, 6px);
   transition: color 0.15s ease, background 0.15s ease;
 }
 
 .login-eye-btn:hover {
-  color: #C49A55;
+  color: var(--color-primary, #C49A55);
   background: rgba(196, 154, 85, 0.1);
 }
 
 .login-eye-btn:focus-visible {
-  outline: 2px solid #C49A55;
+  outline: 2px solid var(--color-primary, #C49A55);
   outline-offset: 1px;
 }
 
@@ -318,7 +318,7 @@
   border: none;
   padding: 0;
   font-size: 0.8rem;
-  color: #C49A55;
+  color: var(--color-primary, #C49A55);
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
@@ -332,7 +332,7 @@
 }
 
 .login-forgot-btn:focus-visible {
-  outline: 2px solid #C49A55;
+  outline: 2px solid var(--color-primary, #C49A55);
   outline-offset: 2px;
 }
 
@@ -342,7 +342,7 @@
   background: linear-gradient(135deg, #C49A55 0%, #9B7229 100%);
   border: none;
   border-radius: 11px;
-  color: #ffffff;
+  color: var(--color-text, #1C1D1D);
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
@@ -377,7 +377,7 @@
   width: 18px;
   height: 18px;
   border: 2.5px solid rgba(255, 255, 255, 0.4);
-  border-top-color: #ffffff;
+  border-top-color: var(--color-surface, #FFFFFF);
   border-radius: 50%;
   animation: login-spin 0.7s linear infinite;
   display: inline-block;

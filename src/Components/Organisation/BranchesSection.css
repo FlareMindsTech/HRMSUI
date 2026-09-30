@@ -41,11 +41,11 @@
 }
 
 .branches-breadcrumb-link:hover {
-  color: #C49A55;
+  color: var(--color-primary, #C49A55);
 }
 
 .branches-breadcrumb-current {
-  color: #C49A55;
+  color: var(--color-primary, #C49A55);
 }
 
 .branches-header-title-wrap {
@@ -70,7 +70,7 @@
   color: #9B7229;
   border: 1px solid rgba(196, 154, 85, 0.35);
   padding: 3px 10px;
-  border-radius: 20px;
+  border-radius: var(--radius-xl, 20px);
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -92,11 +92,11 @@
 /* ── Primary Action Button ── */
 .branches-btn-add {
   background: var(--primary-gradient, linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%));
-  color: #ffffff !important;
+  color: var(--color-text, #1C1D1D) !important;
   font-weight: 700;
   font-size: 13.5px;
   border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   padding: 9px 18px;
   display: inline-flex;
   align-items: center;
@@ -110,16 +110,16 @@
 .branches-btn-add:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(196, 154, 85, 0.45);
-  color: #ffffff !important;
+  color: var(--color-surface, #FFFFFF) !important;
 }
 
 .branches-btn-secondary {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   color: #334155;
   font-weight: 600;
   font-size: 13px;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   padding: 9px 15px;
   display: inline-flex;
   align-items: center;
@@ -144,9 +144,9 @@
 }
 
 .branches-kpi-card {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
+  border-radius: var(--radius-lg, 16px);
   padding: 18px 20px;
   display: flex;
   align-items: center;
@@ -228,9 +228,9 @@
 
 /* ── Filter & Search Toolbar ── */
 .branches-toolbar-card {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
+  border-radius: var(--radius-lg, 16px);
   padding: 14px 18px;
   margin-bottom: 22px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
@@ -266,7 +266,7 @@
   padding: 9px 14px 9px 38px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   font-size: 13.5px;
   color: #0f172a;
   outline: none;
@@ -274,8 +274,8 @@
 }
 
 .branches-search-input:focus {
-  background: #ffffff;
-  border-color: #C49A55;
+  background: var(--color-surface, #FFFFFF);
+  border-color: var(--color-primary, #C49A55);
   box-shadow: 0 0 0 3px rgba(196, 154, 85, 0.15);
 }
 
@@ -300,8 +300,8 @@
 }
 
 .branches-filter-select:focus {
-  border-color: #C49A55;
-  background: #ffffff;
+  border-color: var(--color-primary, #C49A55);
+  background: var(--color-surface, #FFFFFF);
 }
 
 .branches-view-toggle {
@@ -316,7 +316,7 @@
   border: none;
   background: transparent;
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 8px);
   font-size: 13px;
   color: #64748b;
   cursor: pointer;
@@ -327,7 +327,7 @@
 }
 
 .branches-view-btn.active {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   color: #0f172a;
   font-weight: 700;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
@@ -342,7 +342,7 @@
 }
 
 .branch-card {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid #e2e8f0;
   border-radius: 18px;
   overflow: hidden;
@@ -372,7 +372,7 @@
 .branch-card-avatar {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   background: linear-gradient(135deg, #1C1D1D 0%, #2A2B2C 100%);
   color: #E2C278;
   border: 1px solid rgba(196, 154, 85, 0.35);
@@ -402,7 +402,7 @@
 }
 
 .branch-card-name:hover {
-  color: #C49A55;
+  color: var(--color-primary, #C49A55);
 }
 
 .branch-card-meta {
@@ -419,7 +419,7 @@
   background: #f1f5f9;
   color: #475569;
   padding: 2px 7px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs, 6px);
   border: 1px solid #e2e8f0;
 }
 
@@ -429,7 +429,7 @@
   color: #9B7229;
   background: rgba(196, 154, 85, 0.12);
   padding: 2px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs, 6px);
 }
 
 .branch-status-indicator {
@@ -439,7 +439,7 @@
   font-size: 11.5px;
   font-weight: 700;
   padding: 4px 10px;
-  border-radius: 20px;
+  border-radius: var(--radius-xl, 20px);
   white-space: nowrap;
   flex-shrink: 0;
   letter-spacing: 0.02em;
@@ -485,11 +485,11 @@
 }
 
 .branch-info-icon.blue {
-  color: #3b82f6;
+  color: var(--color-info, #3B82F6);
 }
 
 .branch-info-icon.gold {
-  color: #C49A55;
+  color: var(--color-primary, #C49A55);
 }
 
 /* Branch Manager Chip */
@@ -508,7 +508,7 @@
   height: 26px;
   border-radius: 50%;
   background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   font-size: 11px;
   font-weight: 700;
   display: flex;
@@ -538,7 +538,7 @@
   gap: 8px;
   padding: 10px 14px;
   background: #f8fafc;
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   border: 1px solid #f1f5f9;
 }
 
@@ -567,13 +567,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
 }
 
 .branch-btn-hub {
   font-size: 12.5px;
   font-weight: 700;
-  color: #C49A55;
+  color: var(--color-primary, #C49A55);
   background: transparent;
   border: none;
   padding: 4px 0;
@@ -598,7 +598,7 @@
 .branch-card-action-btn {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 8px);
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   color: #475569;
@@ -624,7 +624,7 @@
 
 /* ── Modern Table View ── */
 .branches-table-card {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid #e2e8f0;
   border-radius: 18px;
   overflow: hidden;
@@ -666,7 +666,7 @@
 .branches-empty-state {
   text-align: center;
   padding: 60px 20px;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border-radius: 18px;
   border: 1px solid #e2e8f0;
 }
@@ -674,9 +674,9 @@
 .branches-empty-icon {
   width: 72px;
   height: 72px;
-  border-radius: 20px;
+  border-radius: var(--radius-xl, 20px);
   background: linear-gradient(135deg, rgba(196, 154, 85, 0.15) 0%, rgba(196, 154, 85, 0.04) 100%);
-  color: #C49A55;
+  color: var(--color-primary, #C49A55);
   border: 1px solid rgba(196, 154, 85, 0.25);
   display: flex;
   align-items: center;
@@ -708,9 +708,9 @@
 }
 
 .branch-detail-hero-card {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid #e2e8f0;
-  border-radius: 20px;
+  border-radius: var(--radius-xl, 20px);
   padding: 24px 28px;
   margin-bottom: 24px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
@@ -739,7 +739,7 @@
 .branch-detail-avatar {
   width: 60px;
   height: 60px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg, 16px);
   background: linear-gradient(135deg, #1C1D1D 0%, #2A2B2C 100%);
   color: #E2C278;
   border: 1px solid rgba(196, 154, 85, 0.35);
@@ -780,7 +780,7 @@
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   padding: 8px 14px;
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   text-align: right;
 }
 
@@ -959,9 +959,9 @@
   align-items: center;
   gap: 8px;
   padding: 6px;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
+  border-radius: var(--radius-lg, 16px);
   margin-bottom: 24px;
   overflow-x: auto;
   scrollbar-width: none;
@@ -1002,9 +1002,9 @@
 
 /* ── Branch Info Detail Cards (Modern Visual Widget Architecture) ── */
 .branch-info-card {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid #e2e8f0;
-  border-radius: 20px;
+  border-radius: var(--radius-xl, 20px);
   overflow: hidden;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03);
   height: 100%;
@@ -1020,7 +1020,7 @@
 
 .branch-info-card-header {
   padding: 18px 22px;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border-bottom: 1px solid #f1f5f9;
   display: flex;
   align-items: center;
@@ -1066,7 +1066,7 @@
 }
 
 .branch-field-tile:hover {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border-color: #e2e8f0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
@@ -1142,9 +1142,9 @@
 /* ── Geofence Radar Widget ── */
 .branch-radar-hero-box {
   background: linear-gradient(135deg, #1C1D1D 0%, #2A2B2C 100%);
-  border-radius: 16px;
+  border-radius: var(--radius-lg, 16px);
   padding: 20px;
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   display: flex;
   align-items: center;
   gap: 20px;
@@ -1189,7 +1189,7 @@
 .branch-radar-title {
   font-size: 15px;
   font-weight: 800;
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   margin: 0 0 4px;
 }
 
@@ -1208,7 +1208,7 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #F3DEAC;
   padding: 3px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs, 6px);
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -1218,7 +1218,7 @@
 .branch-manager-spotlight-box {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
+  border-radius: var(--radius-lg, 16px);
   padding: 16px 18px;
   display: flex;
   align-items: center;
@@ -1238,7 +1238,7 @@
   height: 48px;
   border-radius: 14px;
   background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   font-size: 18px;
   font-weight: 800;
   display: flex;
@@ -1274,7 +1274,7 @@
 .branch-contact-chip {
   padding: 7px 12px;
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid #e2e8f0;
   font-size: 12.5px;
   font-weight: 600;
@@ -1287,7 +1287,7 @@
 }
 
 .branch-contact-chip:hover {
-  border-color: #C49A55;
+  border-color: var(--color-primary, #C49A55);
   color: #9B7229;
   background: #fdfbf7;
   transform: translateY(-1px);
@@ -1312,7 +1312,7 @@
 }
 
 .branch-schedule-card:hover {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border-color: #cbd5e1;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
 }

@@ -49,6 +49,10 @@ const initialState = {
   lastFetched: null,
 };
 
+// Freshness window for skipping redundant session revalidations. Post-
+// mutation callers pass { force: true } and always refetch.
+const AUTH_TTL_MS = 60 * 1000;
+
 // Fetch live auth context (GET /auth/me).
 export const fetchAuth = createAsyncThunk('auth/fetchAuth', async (_, { rejectWithValue }) => {
   try {
@@ -68,11 +72,38 @@ export const fetchAuth = createAsyncThunk('auth/fetchAuth', async (_, { rejectWi
       user: data?.user || null,
       menus: data?.menus || [],
       permissions: data?.permissions || [],
+      // Timestamp is produced here in the thunk (side-effect-capable layer)
+      // so the reducer stays a pure state transition.
+      fetchedAt: Date.now(),
     };
   } catch (err) {
     return rejectWithValue(err.message || 'Failed to load session');
   }
-});
+},
+  {
+    // Skip redundant revalidations: same-tick duplicates (StrictMode/boot),
+    // and refreshes within the TTL when a user with access data is already
+    // loaded. A fetch still proceeds when there is no user, no menus (e.g.
+    // a login response that carried no access data), or stale data — so the
+    // login background refresh and boot validation behave exactly as before
+    // in every case that matters. Post-mutation callers pass { force: true }.
+    condition: (arg, { getState }) => {
+      if (arg?.force) return true;
+      const s = getState().auth;
+      if (!s) return true;
+      if (s.status === 'loading') return false;
+      if (
+        s.user &&
+        (s.menus || []).length > 0 &&
+        s.lastFetched &&
+        Date.now() - s.lastFetched < AUTH_TTL_MS
+      ) {
+        return false;
+      }
+      return true;
+    },
+  }
+);
 
 // Login thunk (POST /auth/login).
 export const login = createAsyncThunk(
@@ -104,6 +135,9 @@ export const login = createAsyncThunk(
         token: data.token || null,
         menus: data.menus || data.user?.menus || [],
         permissions: data.permissions || data.user?.permissions || [],
+        // Timestamp is produced here in the thunk (side-effect-capable layer)
+        // so the reducer stays a pure state transition.
+        fetchedAt: Date.now(),
       };
     } catch (err) {
       return rejectWithValue(err.message || 'Unable to reach the server. Please try again.');
@@ -140,13 +174,6 @@ export const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    setAuth: (state, action) => {
-      const { user, role, permissions } = action.payload || {};
-      state.user = user || null;
-      state.role = role || user?.roleCode || user?.roleName || null;
-      state.permissions = Array.isArray(permissions) ? permissions : [];
-      state.isAuthenticated = Boolean(user);
-    },
     clearAuth: (state) => {
       state.user = null;
       state.role = null;
@@ -158,11 +185,8 @@ export const authSlice = createSlice({
       state.error = null;
       state.lastFetched = null;
     },
-    setPermissions: (state, action) => {
-      state.permissions = Array.isArray(action.payload) ? action.payload : [];
-    },
     authSynced: (state, action) => {
-      const { user, role, menus, permissions, tokenPresent } = action.payload || {};
+      const { user, role, menus, permissions, tokenPresent, fetchedAt } = action.payload || {};
       if (user !== undefined) state.user = user || null;
       const resolvedRole = role || state.user?.roleCode || state.user?.roleName || null;
       state.role = resolvedRole;
@@ -171,13 +195,14 @@ export const authSlice = createSlice({
       // Prefer the caller-supplied flag; reading localStorage inside a reducer
       // is a side effect and costs main-thread I/O on every sync.
       state.tokenPresent = tokenPresent !== undefined ? Boolean(tokenPresent) : state.tokenPresent;
-      state.isAuthenticated = Boolean(state.user);
+      // Derived from the same inputs as selectIsAuthenticated (user +
+      // tokenPresent) instead of a second independent truth source. The
+      // timestamp arrives via the action payload so the reducer performs no
+      // clock reads.
+      state.isAuthenticated = Boolean(state.user) && state.tokenPresent === true;
       state.status = 'succeeded';
       state.error = null;
-      state.lastFetched = Date.now();
-    },
-    clearAuthError: (state) => {
-      state.error = null;
+      if (fetchedAt !== undefined) state.lastFetched = fetchedAt;
     },
   },
   extraReducers: (builder) => {
@@ -195,9 +220,9 @@ export const authSlice = createSlice({
         // The request just succeeded with the stored token, so it is present.
         // (Avoids a localStorage read inside the reducer.)
         state.tokenPresent = true;
-        state.isAuthenticated = Boolean(action.payload.user);
+        state.isAuthenticated = Boolean(action.payload.user) && state.tokenPresent === true;
         state.error = null;
-        state.lastFetched = Date.now();
+        if (action.payload.fetchedAt !== undefined) state.lastFetched = action.payload.fetchedAt;
       })
       .addCase(fetchAuth.rejected, (state, action) => {
         state.status = 'failed';
@@ -219,9 +244,9 @@ export const authSlice = createSlice({
         if (Array.isArray(action.payload?.permissions)) state.permissions = action.payload.permissions;
         // Login just stored the token in the thunk — no need to re-read storage.
         if (action.payload?.token) state.tokenPresent = true;
-        state.isAuthenticated = Boolean(state.user);
+        state.isAuthenticated = Boolean(state.user) && state.tokenPresent === true;
         state.error = null;
-        state.lastFetched = Date.now();
+        if (action.payload?.fetchedAt !== undefined) state.lastFetched = action.payload.fetchedAt;
       })
       .addCase(login.rejected, (state, action) => {
         state.status = 'failed';
@@ -255,32 +280,51 @@ export const authSlice = createSlice({
   },
 });
 
-export const { setAuth, clearAuth, setPermissions, authSynced, clearAuthError } = authSlice.actions;
+export const { clearAuth, authSynced } = authSlice.actions;
 
-// ---- Selectors ----
-const selectAuth = (state) => state.auth;
-
-export const selectAuthUser = createSelector([selectAuth], (s) => s?.user || null);
-export const selectAuthRole = createSelector([selectAuth], (s) => s?.role || null);
-export const selectAuthMenus = createSelector([selectAuth], (s) => s?.menus || []);
-export const selectAuthPermissions = createSelector([selectAuth], (s) => s?.permissions || []);
-export const selectAuthStatus = createSelector([selectAuth], (s) => s?.status || 'idle');
-export const selectAuthError = createSelector([selectAuth], (s) => s?.error || null);
-export const selectIsAuthenticated = createSelector(
-  [selectAuth],
-  (s) => Boolean(s?.user) && s?.tokenPresent === true
+// ---- Selectors (field-level inputs: each recomputes ONLY when its own
+// field changes, never on unrelated status/error/lastFetched churn) ----
+export const selectAuthUser = createSelector(
+  [(state) => state.auth?.user],
+  (user) => user || null
 );
-export const selectIsSystemAdmin = createSelector([selectAuth], (s) => {
-  const user = s?.user;
-  const permissions = s?.permissions || [];
-  return (
-    user?.priority === 1 ||
-    user?.priority === 2 ||
-    user?.roleCode === 'OWNER' ||
-    user?.roleCode === 'ADMIN' ||
-    permissions.includes('*')
-  );
-});
+export const selectAuthRole = createSelector(
+  [(state) => state.auth?.role],
+  (role) => role || null
+);
+export const selectAuthMenus = createSelector(
+  [(state) => state.auth?.menus],
+  (menus) => menus || []
+);
+export const selectAuthPermissions = createSelector(
+  [(state) => state.auth?.permissions],
+  (permissions) => permissions || []
+);
+export const selectAuthStatus = createSelector(
+  [(state) => state.auth?.status],
+  (status) => status || 'idle'
+);
+export const selectAuthError = createSelector(
+  [(state) => state.auth?.error],
+  (error) => error || null
+);
+export const selectIsAuthenticated = createSelector(
+  [(state) => state.auth?.user, (state) => state.auth?.tokenPresent],
+  (user, tokenPresent) => Boolean(user) && tokenPresent === true
+);
+export const selectIsSystemAdmin = createSelector(
+  [(state) => state.auth?.user, (state) => state.auth?.permissions],
+  (user, permissions) => {
+    const perms = permissions || [];
+    return (
+      user?.priority === 1 ||
+      user?.priority === 2 ||
+      user?.roleCode === 'OWNER' ||
+      user?.roleCode === 'ADMIN' ||
+      perms.includes('*')
+    );
+  }
+);
 export const selectHasPermission = (state, permCode) => {
   const s = state.auth;
   if (!s?.user) return false;

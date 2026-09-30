@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Container, Row, Col, Spinner, Modal, Button } from "react-bootstrap";
+import { Container, Row, Col, Modal, Button } from "react-bootstrap";
 import { FaExclamationTriangle, FaTrash, FaPlus, FaCheckCircle } from "react-icons/fa";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { selectAuthUser, selectIsSystemAdmin, selectAuthRole } from '../../redux/slices/authSlice';
-import { fetchAllUsers } from "../../services/rbacService";
+import { fetchDirectory, selectAllEmployees } from '../../redux/slices/directorySlice';
 import {
   getDocumentByUserId,
   createDocumentApi,
@@ -19,6 +19,7 @@ import IdentityDetailsCard from "../../Components/Document/IdentityDetailsCard";
 import StatutoryDetailsCard from "../../Components/Document/StatutoryDetailsCard";
 import EmployeeAttachments from "../../Components/Document/EmployeeAttachments";
 import FeedbackAlert from "../../Components/Common/FeedbackAlert";
+import LoadingSpinner from "../../Components/Common/LoadingSpinner";
 import UploadDocumentModal from "../../Components/Document/UploadDocumentModal";
 import DocumentVerificationModal from "../../Components/Document/DocumentVerificationModal";
 
@@ -43,7 +44,10 @@ const DocumentManagement = () => {
   const isHrOrAdmin = isSystemAdmin || role === "HR" || role === "ADMIN" || role === "HR_MANAGER";
 
   // Employees & Selection
-  const [employees, setEmployees] = useState([]);
+  // The employee picker roster comes from the shared directory slice;
+  // selection and document states stay local.
+  const dispatch = useDispatch();
+  const employees = useSelector(selectAllEmployees);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [selectedEmployeeName, setSelectedEmployeeName] = useState("");
 
@@ -65,29 +69,32 @@ const DocumentManagement = () => {
   const [selectedAttachmentIndex, setSelectedAttachmentIndex] = useState(-1);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // 1. Load Employee Directory
+  // 1. Load Employee Directory (shared slice; default selection below
+  // reacts to the roster arriving so a cached directory still selects).
   const loadEmployees = useCallback(async () => {
     try {
-      const userList = await fetchAllUsers();
-      if (Array.isArray(userList) && userList.length > 0) {
-        setEmployees(userList);
-        // Default select current user or first employee
-        const defaultId = currentUser?._id || currentUser?.id || userList[0]._id || userList[0].id;
-        setSelectedUserId(defaultId);
-      } else if (currentUser?._id || currentUser?.id) {
-        setSelectedUserId(currentUser._id || currentUser.id);
-      }
+      await dispatch(fetchDirectory()).catch(() => null);
     } catch (e) {
       console.warn("loadEmployees notice:", e.message);
-      if (currentUser?._id || currentUser?.id) {
-        setSelectedUserId(currentUser._id || currentUser.id);
-      }
     }
-  }, [currentUser]);
+  }, [dispatch]);
 
   useEffect(() => {
     loadEmployees();
   }, [loadEmployees]);
+
+  // Default selection: first visit (or empty roster + current user fallbacks).
+  // Guarded by `selectedUserId` so later directory refreshes never clobber a
+  // manual selection.
+  useEffect(() => {
+    if (selectedUserId) return;
+    if (Array.isArray(employees) && employees.length > 0) {
+      const defaultId = currentUser?._id || currentUser?.id || employees[0]._id || employees[0].id;
+      setSelectedUserId(defaultId);
+    } else if (currentUser?._id || currentUser?.id) {
+      setSelectedUserId(currentUser._id || currentUser.id);
+    }
+  }, [employees, currentUser, selectedUserId]);
 
   // Update selected employee name
   useEffect(() => {
@@ -342,7 +349,7 @@ const DocumentManagement = () => {
         {/* Loading Spinner */}
         {loading ? (
           <div className="text-center py-5">
-            <Spinner animation="border" variant="success" className="mb-2" />
+            <LoadingSpinner color="success" className="mb-2" />
             <div className="text-muted small fw-semibold">Loading employee documents & details...</div>
           </div>
         ) : (

@@ -11,7 +11,7 @@
 
 /* ── Primary Create Button ── */
 .user-mgmt-create-btn {
-  background: #C49A55 !important;
+  background: var(--color-primary, #C49A55) !important;
   border: none !important;
   font-size: 0.84rem !important;
   transition: all 0.15s ease-in-out !important;
@@ -25,7 +25,7 @@
 
 /* ── KPI Stat Cards ── */
 .user-mgmt-kpi-card {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid #E8E2D5;
   border-radius: 14px;
   padding: 1rem 1.2rem;
@@ -52,7 +52,7 @@
 
 .user-mgmt-kpi-icon.icon-employees {
   background: #F5EFE3;
-  color: #C49A55;
+  color: var(--color-primary, #C49A55);
 }
 
 .user-mgmt-kpi-icon.icon-active {
@@ -80,7 +80,7 @@
 .user-mgmt-kpi-lbl {
   font-size: 0.68rem;
   font-weight: 700;
-  color: #77736B;
+  color: var(--color-secondary-text, #77736B);
   text-transform: uppercase;
   letter-spacing: 0.4px;
   margin-top: 0.2rem;
@@ -88,7 +88,7 @@
 
 /* ── Section Navigation Tabs ── */
 .user-mgmt-nav-wrapper {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   padding: 4px 6px;
   border-radius: 9999px;
   display: inline-flex;
@@ -109,19 +109,19 @@
 }
 
 .user-mgmt-nav-tab.active {
-  background: #C49A55 !important;
-  color: #ffffff !important;
+  background: var(--color-primary, #C49A55) !important;
+  color: var(--color-text, #1C1D1D) !important;
   box-shadow: 0 2px 6px rgba(196, 154, 85, 0.3) !important;
 }
 
 .user-mgmt-nav-tab:not(.active) {
   background: transparent !important;
-  color: #1C1D1D !important;
+  color: var(--color-text, #1C1D1D) !important;
 }
 
 .user-mgmt-nav-tab:not(.active):hover {
-  background: #F7F5F0 !important;
-  color: #1C1D1D !important;
+  background: var(--color-background, #F7F5F0) !important;
+  color: var(--color-text, #1C1D1D) !important;
 }
 
 .user-mgmt-tab-count {
@@ -132,7 +132,7 @@
 
 /* ── Table Card & Header ── */
 .user-mgmt-table-card {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid #E8E2D5;
   border-radius: 14px;
   overflow: hidden;
@@ -143,13 +143,13 @@
 .user-mgmt-filter-header {
   padding: 0.85rem 1.15rem;
   border-bottom: 1px solid #E8E2D5;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
 }
 
 .user-mgmt-ctrl {
   height: 32px !important;
   font-size: 0.8rem !important;
-  border-radius: 6px !important;
+  border-radius: var(--radius-xs, 6px) !important;
   border-color: #E8E2D5 !important;
 }
 
@@ -163,8 +163,8 @@
   white-space: nowrap;
   vertical-align: middle;
   letter-spacing: 0.4px;
-  background-color: #F1E8D6 !important;
-  color: #1C1D1D !important;
+  background-color: var(--color-primary-light, #F1E8D6) !important;
+  color: var(--color-text, #1C1D1D) !important;
   font-weight: 700 !important;
   border-bottom: 1px solid #E8E2D5 !important;
   text-transform: uppercase;
@@ -174,7 +174,7 @@
 .user-mgmt-table td {
   padding: 0.75rem 0.95rem !important;
   vertical-align: middle;
-  border-bottom: 1px solid #F7F5F0;
+  border-bottom: 1px solid var(--color-background, #F7F5F0);
 }
 
 .user-mgmt-table tr:last-child td {
@@ -228,7 +228,7 @@
 .user-mgmt-avatar-chip {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -239,62 +239,62 @@
 }
 
 .user-mgmt-avatar-chip.account-active {
-  background: #C49A55;
-  color: #ffffff;
+  background: var(--color-primary, #C49A55);
+  color: var(--color-text, #1C1D1D);
 }
 
 .user-mgmt-avatar-chip.account-none {
-  background: #F1E8D6;
-  color: #77736B;
+  background: var(--color-primary-light, #F1E8D6);
+  color: var(--color-secondary-text, #77736B);
 }
 
 /* ── Interactive Checkbox Cards (Role Modal) ── */
 .user-mgmt-checkbox-item {
   cursor: pointer;
   transition: all 0.15s ease;
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 8px);
   border: 1px solid #E8E2D5;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
 }
 
 .user-mgmt-checkbox-item:hover {
-  border-color: #C49A55;
+  border-color: var(--color-primary, #C49A55);
   box-shadow: 0 2px 6px rgba(196, 154, 85, 0.15);
 }
 
 .user-mgmt-checkbox-item.selected {
-  border-color: #C49A55;
-  background: #F7F5F0;
+  border-color: var(--color-primary, #C49A55);
+  background: var(--color-background, #F7F5F0);
 }
 
 /* ── Pagination Bar & Controls ── */
 .user-mgmt-pagination-bar {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border-top: 1px solid #E8E2D5;
 }
 
 .user-mgmt-pagination .page-link {
   padding: 4px 10px;
   font-size: 0.78rem;
-  color: #77736B;
+  color: var(--color-secondary-text, #77736B);
   border-color: #E8E2D5;
   box-shadow: none !important;
-  border-radius: 6px;
+  border-radius: var(--radius-xs, 6px);
   margin: 0 2px;
   cursor: pointer;
 }
 
 .user-mgmt-pagination .page-item.active .page-link {
-  background-color: #C49A55;
-  border-color: #C49A55;
-  color: #ffffff;
+  background-color: var(--color-primary, #C49A55);
+  border-color: var(--color-primary, #C49A55);
+  color: var(--color-text, #1C1D1D);
   font-weight: 700;
 }
 
 .user-mgmt-pagination .page-link:hover:not(.active) {
   background-color: #F5EFE3;
-  color: #C49A55;
-  border-color: #C49A55;
+  color: var(--color-primary, #C49A55);
+  border-color: var(--color-primary, #C49A55);
 }
 
 .user-mgmt-pagination .page-item.disabled .page-link {

@@ -15,13 +15,17 @@ import {
   FaExternalLinkAlt,
 } from "react-icons/fa";
 import {
-  fetchMyOrganization,
   updateMyOrganization,
   normalizeOrganization,
-  fetchOrganizationStructure,
 } from "../../services/organizationService";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { selectAuthUser, useHasPermission, selectIsSystemAdmin } from "../../redux/slices/authSlice";
+import {
+  fetchOrgResource,
+  invalidateOrgResource,
+  selectOrgProfile,
+  selectOrgStructure,
+} from "../../redux/slices/organizationSlice";
 import FeedbackAlert from "../Common/FeedbackAlert";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { useBranch } from "../../context/BranchContext";
@@ -62,6 +66,10 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
   const hasPermission = useHasPermission();
   const user = useSelector(selectAuthUser);
   const { organization, refreshOrganization, refreshBranches } = useBranch();
+  const dispatch = useDispatch();
+  // Shared profile + structure (single guarded fetches); forms stay local.
+  const orgProfile = useSelector(selectOrgProfile);
+  const orgStructure = useSelector(selectOrgStructure);
 
   const [orgData, setOrgData] = useState(null);
   const [stats, setStats] = useState({ branches: 0, departments: 0, employees: 0, users: 0 });
@@ -176,30 +184,32 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
     try {
       setLoading(true);
       setError("");
-      const [org, structure] = await Promise.all([
-        fetchMyOrganization(true).catch(() => null),
-        fetchOrganizationStructure().catch(() => null),
-      ]);
-
-      const active = org || organization;
-      if (active) {
-        const norm = normalizeOrganization(active);
-        setOrgData(norm);
-        populateForm(norm);
-      }
-
-      setStats({
-        branches: structure?.branches?.length ?? active?.stats?.branchCount ?? 1,
-        departments: structure?.departments?.length ?? active?.stats?.departmentCount ?? 1,
-        employees: active?.stats?.employeeCount ?? 1,
-        users: active?.stats?.userCount ?? 1,
-      });
+      await dispatch(fetchOrgResource({ key: "profile" })).catch(() => null);
+      await dispatch(fetchOrgResource({ key: "structure" })).catch(() => null);
     } catch (err) {
       setError(err.message || "Failed to load organization profile");
     } finally {
       setLoading(false);
     }
-  }, [organization, populateForm]);
+  }, [dispatch]);
+
+  // Sync local view state from shared profile/structure, preserving the
+  // legacy priority (fetched profile → branch context).
+  useEffect(() => {
+    const active = orgProfile || organization;
+    if (active) {
+      const norm = normalizeOrganization(active);
+      setOrgData(norm);
+      populateForm(norm);
+    }
+
+    setStats({
+      branches: orgStructure?.branches?.length ?? active?.stats?.branchCount ?? 1,
+      departments: orgStructure?.departments?.length ?? active?.stats?.departmentCount ?? 1,
+      employees: active?.stats?.employeeCount ?? 1,
+      users: active?.stats?.userCount ?? 1,
+    });
+  }, [orgProfile, orgStructure, organization, populateForm]);
 
   useEffect(() => {
     loadData();
@@ -261,6 +271,8 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
       const res = await updateMyOrganization(payload);
       setSuccess(res?.message || "Organization profile saved successfully!");
       setIsEditing(false);
+      // The saved profile changed shared data: invalidate so loadData refetches.
+      dispatch(invalidateOrgResource("profile"));
       await loadData();
       if (refreshOrganization) await refreshOrganization();
       if (refreshBranches) await refreshBranches();

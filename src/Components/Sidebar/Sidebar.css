@@ -57,7 +57,7 @@
 }
 
 .sidebar-logo-mark {
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   font-weight: 900;
   font-size: 24px;
   line-height: 1;
@@ -99,7 +99,7 @@
 .sidebar-brand-name {
   font-size: 15px;
   font-weight: 800;
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
@@ -192,20 +192,20 @@
 .sidebar-menu-item.is-hovered {
   background: rgba(255, 255, 255, 0.07);
   border-color: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
 }
 
 .sidebar-menu-item.active {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid var(--color-primary, #C49A55);
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
 }
 
 .sidebar-menu-item.parent-active {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(196, 154, 85, 0.25);
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
 }
 
 /* ── Icon Wrap (BIG 48px by default when unhovered, normal 36px when hovered) ── */
@@ -237,7 +237,7 @@
 .sidebar-menu-item.is-hovered .sidebar-icon-wrap {
   background: rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   transform: scale(1.04);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
 }
@@ -245,7 +245,7 @@
 .sidebar-menu-item.active .sidebar-icon-wrap {
   background: var(--primary-gradient, linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%));
   border-color: rgba(255, 255, 255, 0.35);
-  color: #ffffff;
+  color: var(--color-text, #1C1D1D);
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
   transform: scale(1.02);
 }
@@ -267,7 +267,7 @@
 
 .sidebar-menu-item.active .sidebar-icon {
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
 }
 
 /* ── Menu Label ── */
@@ -299,7 +299,7 @@
 }
 
 .sidebar-menu-item.active .sidebar-label {
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   font-weight: 700;
   letter-spacing: -0.01em;
 }
@@ -310,7 +310,7 @@
   margin-right: 4px;
   width: 22px;
   height: 22px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs, 6px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -421,7 +421,7 @@
 .sidebar-submenu-item:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.09);
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   transform: translateX(3px);
 }
 
@@ -493,7 +493,7 @@
   justify-content: center;
   font-size: 20px;
   font-weight: 800;
-  color: #ffffff;
+  color: var(--color-text, #1C1D1D);
   flex-shrink: 0;
   box-shadow: 0 4px 18px rgba(196, 154, 85, 0.42);
   border: 1px solid rgba(255, 255, 255, 0.25);
@@ -538,7 +538,7 @@
 .sidebar-user-name {
   font-size: 13px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -547,7 +547,7 @@
 
 .sidebar-user-role {
   font-size: 10.5px;
-  color: #C49A55;
+  color: var(--color-primary, #C49A55);
   margin-top: 1px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -597,7 +597,7 @@
 }
 
 .sidebar-logout-button:hover .sidebar-logout-icon {
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
 }
 
 /* ── Logout Confirmation Dialog ── */
@@ -614,9 +614,9 @@
 }
 
 .sidebar-modal-content {
-  background: #1C1D1D;
+  background: var(--color-sidebar, #1C1D1D);
   border: 1px solid rgba(196, 154, 85, 0.3);
-  border-radius: 20px;
+  border-radius: var(--radius-xl, 20px);
   padding: 28px 26px 22px;
   width: 90%;
   max-width: 380px;
@@ -644,7 +644,7 @@
 .sidebar-modal-title {
   font-size: 18px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   margin: 0 0 6px;
 }
 
@@ -676,7 +676,7 @@
 
 .sidebar-cancel-btn:hover {
   background: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
 }
 
 .sidebar-confirm-btn {
@@ -684,7 +684,7 @@
   padding: 10px 0;
   border: none;
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   border-radius: 10px;
   cursor: pointer;
   font-size: 13.5px;

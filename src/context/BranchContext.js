@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
 import { selectAuthUser, selectIsSystemAdmin, selectAuthStatus } from "../redux/slices/authSlice";
+import { setBranchMismatchHandler } from "../config/api";
 import { fetchMyOrganization, fetchBranchesDropdown, fetchBranches } from "../services/organizationService";
 
 const BranchContext = createContext(null);
@@ -116,6 +117,18 @@ export const BranchProvider = ({ children }) => {
     orgLoadedForRef.current = userId;
     loadOrganization();
   }, [userId, loadOrganization]);
+
+  // Keep authoritative React state in sync when apiFetch recovers from a
+  // branch mismatch: it already cleared storage and retried without the
+  // branch header, so mirror the reset here ("All branches") instead of
+  // diverging until reload. Ownership stays in this context — apiFetch only
+  // notifies; the state write below is the single writer.
+  useEffect(() => {
+    setBranchMismatchHandler(() => {
+      setSelectedBranchIdState("");
+    });
+    return () => setBranchMismatchHandler(null);
+  }, []);
 
   // Branches depend on the access filter, so reload when the filter inputs
   // actually change — but not mid-refresh (authStatus === 'loading' means the

@@ -159,6 +159,15 @@ function DocumentUploadBox({
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
+          role="button"
+          tabIndex={0}
+          aria-label="Upload certificate. PDF, JPG, or PNG, maximum 10MB. Activate to browse files."
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              fileInputRef.current?.click();
+            }
+          }}
           className={`p-3 rounded-3 text-center cursor-pointer transition-all bg-white border border-2 border-dashed ${
             error ? "border-danger bg-danger-subtle bg-opacity-10" : "border-secondary-subtle hover-border-success"
           }`}

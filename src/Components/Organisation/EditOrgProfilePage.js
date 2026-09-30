@@ -28,13 +28,17 @@ import {
   FaUserTie,
 } from "react-icons/fa";
 import {
-  fetchMyOrganization,
   updateMyOrganization,
   createOrganization,
   normalizeOrganization,
 } from "../../services/organizationService";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin, selectAuthUser } from '../../redux/slices/authSlice';
+import {
+  fetchOrgResource,
+  invalidateOrgResource,
+  selectOrgProfile,
+} from '../../redux/slices/organizationSlice';
 import FeedbackAlert from "../Common/FeedbackAlert";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { useBranch } from "../../context/BranchContext";
@@ -149,6 +153,9 @@ const getStr = (val, fallback = "") => {
 export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, onOrgUpdated }) {
   const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin); const user = useSelector(selectAuthUser);
   const { organization, refreshOrganization, refreshBranches } = useBranch();
+  const dispatch = useDispatch();
+  // Shared profile (single guarded fetch); the edit form stays local.
+  const orgProfile = useSelector(selectOrgProfile);
 
   const [activeTab, setActiveTab] = useState("entity");
   const [formData, setFormData] = useState(INITIAL_FORM);
@@ -231,27 +238,29 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
     });
   }, []);
 
-  // Fetch live organization profile directly from backend
+  // Fetch live organization profile (shared slice) with the legacy
+  // fallback priority: fetched profile → prop → branch context.
   const loadFreshOrg = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
-      const org = await fetchMyOrganization(true);
-      if (org) {
-        populateFormData(org);
-      } else if (initialOrgData) {
-        populateFormData(initialOrgData);
-      } else if (organization) {
-        populateFormData(organization);
-      }
+      await dispatch(fetchOrgResource({ key: "profile" })).catch(() => null);
     } catch (err) {
       console.warn("Could not load organization in edit page:", err);
-      if (initialOrgData) populateFormData(initialOrgData);
-      else if (organization) populateFormData(organization);
     } finally {
       setLoading(false);
     }
-  }, [initialOrgData, organization, populateFormData]);
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (orgProfile) {
+      populateFormData(orgProfile);
+    } else if (initialOrgData) {
+      populateFormData(initialOrgData);
+    } else if (organization) {
+      populateFormData(organization);
+    }
+  }, [orgProfile, initialOrgData, organization, populateFormData]);
 
   useEffect(() => {
     loadFreshOrg();
@@ -352,6 +361,9 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
 
       if (refreshOrganization) await refreshOrganization();
       if (refreshBranches) await refreshBranches();
+      // The saved profile changed shared data: invalidate so the next
+      // guarded read refetches instead of serving the stale cache.
+      dispatch(invalidateOrgResource("profile"));
       if (onOrgUpdated) onOrgUpdated(savedOrg);
 
       setTimeout(() => {

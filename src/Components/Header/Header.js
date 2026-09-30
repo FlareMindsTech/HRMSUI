@@ -108,6 +108,12 @@ function Header({ isMobile }) {
           <div
             className="header-org-chip"
             onClick={() => (isSystemAdmin || user?.roleCode === 'OWNER') && navigate('/organisation')}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                if (isSystemAdmin || user?.roleCode === 'OWNER') navigate('/organisation');
+              }
+            }}
             title={`Organization: ${orgDisplayName}`}
             role="button"
             tabIndex={0}
@@ -144,8 +150,17 @@ function Header({ isMobile }) {
                   setShowProfileMenu(false);
                   setShowNotifMenu(false);
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setShowBranchMenu((p) => !p);
+                    setShowProfileMenu(false);
+                    setShowNotifMenu(false);
+                  }
+                }}
                 role="button"
                 tabIndex={0}
+                aria-expanded={showBranchMenu}
                 title="Switch Active Branch Filter"
               >
                 <div className="header-branch-icon-wrap">
@@ -180,6 +195,15 @@ function Header({ isMobile }) {
                         setSelectedBranchId('');
                         setShowBranchMenu(false);
                       }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedBranchId('');
+                          setShowBranchMenu(false);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
                     >
                       <div className="d-flex align-items-center gap-2">
                         <div className="header-branch-item-icon">
@@ -209,6 +233,15 @@ function Header({ isMobile }) {
                           setSelectedBranchId(bId);
                           setShowBranchMenu(false);
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setSelectedBranchId(bId);
+                            setShowBranchMenu(false);
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
                       >
                         <div className="d-flex align-items-center gap-2 min-w-0">
                           <div className={`header-branch-item-icon ${isSelected ? 'icon-active' : ''}`}>
@@ -292,8 +325,16 @@ function Header({ isMobile }) {
               setShowProfileMenu(p => !p);
               setShowNotifMenu(false);
             }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setShowProfileMenu(p => !p);
+                setShowNotifMenu(false);
+              }
+            }}
             role="button"
             tabIndex={0}
+            aria-expanded={showProfileMenu}
           >
             <div className="header-avatar">{initials}</div>
             {!isMobile && (
@@ -328,6 +369,15 @@ function Header({ isMobile }) {
                     setShowProfileMenu(false);
                     navigate('/attendance');
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setShowProfileMenu(false);
+                      navigate('/attendance');
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
                 >
                   <MdAccessTime size={16} color="#2DC58A" />
                   <span>My Attendance</span>
@@ -338,6 +388,15 @@ function Header({ isMobile }) {
                     setShowProfileMenu(false);
                     navigate('/projects');
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setShowProfileMenu(false);
+                      navigate('/projects');
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
                 >
                   <MdWork size={16} color="#0ea5e9" />
                   <span>My Projects & Tasks</span>
@@ -349,6 +408,15 @@ function Header({ isMobile }) {
                       setShowProfileMenu(false);
                       navigate('/roles');
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setShowProfileMenu(false);
+                        navigate('/roles');
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
                   >
                     <MdAdminPanelSettings size={16} color="#8b5cf6" />
                     <span>Role & Access Control</span>
@@ -361,6 +429,14 @@ function Header({ isMobile }) {
               <div
                 className="header-dropdown-item header-dropdown-item--danger"
                 onClick={handleLogout}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleLogout();
+                  }
+                }}
+                role="button"
+                tabIndex={0}
               >
                 <MdLogout size={16} color="#ef4444" />
                 <span>Sign Out</span>

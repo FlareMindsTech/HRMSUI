@@ -1,22 +1,8 @@
-import { apiFetch } from "../config/api";
+import { apiFetch, apiError, buildQuery } from "../config/api";
 
 // ============================================================
 // Organization Service (Multi-Tenant SaaS HRMS)
 // ============================================================
-
-/**
- * Helper to serialize query parameters
- */
-const buildQuery = (params = {}) => {
-  const query = new URLSearchParams();
-  Object.entries(params).forEach(([key, val]) => {
-    if (val !== undefined && val !== null && val !== "") {
-      query.append(key, val);
-    }
-  });
-  const qStr = query.toString();
-  return qStr ? `?${qStr}` : "";
-};
 
 // ─── 1. ORGANIZATION OVERVIEW & PROFILE ───────────────────────────
 
@@ -200,7 +186,7 @@ export const createOrganization = async (payload) => {
   });
 
   if (!res.ok) {
-    throw new Error(res?.data?.message || "Failed to create organization");
+    throw apiError(res, "Failed to create organization");
   }
 
   const resultData = res.data?.data || res.data;
@@ -235,7 +221,7 @@ export const updateMyOrganization = async (payload, orgIdOverride = null) => {
   });
 
   if (!res.ok) {
-    throw new Error(res?.data?.message || "Failed to update organization profile");
+    throw apiError(res, "Failed to update organization profile");
   }
 
   const rawData = res.data?.data !== undefined ? res.data?.data : res.data;
@@ -269,13 +255,13 @@ export const updateMyOrganization = async (payload, orgIdOverride = null) => {
 
 export const fetchOrganizationStructure = async () => {
   const res = await apiFetch("/organization/structure", { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch organization structure");
+  if (!res.ok) throw apiError(res, "Failed to fetch organization structure");
   return res.data?.data;
 };
 
 export const fetchReportingTree = async () => {
   const res = await apiFetch("/organization/reporting-tree", { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch reporting tree");
+  if (!res.ok) throw apiError(res, "Failed to fetch reporting tree");
   return res.data?.data;
 };
 
@@ -283,19 +269,19 @@ export const fetchReportingTree = async () => {
 
 export const fetchBranches = async (params = {}) => {
   const res = await apiFetch(`/branches${buildQuery(params)}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch branches");
+  if (!res.ok) throw apiError(res, "Failed to fetch branches");
   return res.data;
 };
 
 export const fetchBranchesDropdown = async () => {
   const res = await apiFetch("/branches/dropdown", { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch branch dropdown");
+  if (!res.ok) throw apiError(res, "Failed to fetch branch dropdown");
   return res.data?.data || [];
 };
 
 export const fetchBranchById = async (id) => {
   const res = await apiFetch(`/branches/${id}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch branch");
+  if (!res.ok) throw apiError(res, "Failed to fetch branch");
   return res.data?.data;
 };
 
@@ -304,7 +290,7 @@ export const createBranch = async (payload) => {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to create branch");
+  if (!res.ok) throw apiError(res, "Failed to create branch");
   return res.data;
 };
 
@@ -313,13 +299,13 @@ export const updateBranch = async (id, payload) => {
     method: "PUT",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to update branch");
+  if (!res.ok) throw apiError(res, "Failed to update branch");
   return res.data;
 };
 
 export const deleteBranch = async (id) => {
   const res = await apiFetch(`/branches/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to delete branch");
+  if (!res.ok) throw apiError(res, "Failed to delete branch");
   return res.data;
 };
 
@@ -327,19 +313,19 @@ export const deleteBranch = async (id) => {
 
 export const fetchDepartments = async (params = {}) => {
   const res = await apiFetch(`/departments${buildQuery(params)}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch departments");
+  if (!res.ok) throw apiError(res, "Failed to fetch departments");
   return res.data;
 };
 
 export const fetchDepartmentsDropdown = async (params = {}) => {
   const res = await apiFetch(`/departments/dropdown${buildQuery(params)}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch department dropdown");
+  if (!res.ok) throw apiError(res, "Failed to fetch department dropdown");
   return res.data?.data || [];
 };
 
 export const fetchDepartmentById = async (id) => {
   const res = await apiFetch(`/departments/${id}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch department");
+  if (!res.ok) throw apiError(res, "Failed to fetch department");
   return res.data?.data;
 };
 
@@ -348,7 +334,7 @@ export const createDepartment = async (payload) => {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to create department");
+  if (!res.ok) throw apiError(res, "Failed to create department");
   return res.data;
 };
 
@@ -357,13 +343,13 @@ export const updateDepartment = async (id, payload) => {
     method: "PUT",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to update department");
+  if (!res.ok) throw apiError(res, "Failed to update department");
   return res.data;
 };
 
 export const deleteDepartment = async (id) => {
   const res = await apiFetch(`/departments/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to delete department");
+  if (!res.ok) throw apiError(res, "Failed to delete department");
   return res.data;
 };
 
@@ -371,25 +357,25 @@ export const deleteDepartment = async (id) => {
 
 export const fetchDesignations = async (params = {}) => {
   const res = await apiFetch(`/designations${buildQuery(params)}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch designations");
+  if (!res.ok) throw apiError(res, "Failed to fetch designations");
   return res.data;
 };
 export const fetchMyOrganizationsList = async () => {
   const res = await apiFetch("/organization/list", { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to fetch organizations list");
+    throw apiError(res, "Failed to fetch organizations list");
   }
   return res.data?.data || [];
 };
 export const fetchDesignationsDropdown = async (params = {}) => {
   const res = await apiFetch(`/designations/dropdown${buildQuery(params)}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch designation dropdown");
+  if (!res.ok) throw apiError(res, "Failed to fetch designation dropdown");
   return res.data?.data || [];
 };
 
 export const fetchDesignationById = async (id) => {
   const res = await apiFetch(`/designations/${id}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch designation");
+  if (!res.ok) throw apiError(res, "Failed to fetch designation");
   return res.data?.data;
 };
 
@@ -398,7 +384,7 @@ export const createDesignation = async (payload) => {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to create designation");
+  if (!res.ok) throw apiError(res, "Failed to create designation");
   return res.data;
 };
 
@@ -407,13 +393,13 @@ export const updateDesignation = async (id, payload) => {
     method: "PUT",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to update designation");
+  if (!res.ok) throw apiError(res, "Failed to update designation");
   return res.data;
 };
 
 export const deleteDesignation = async (id) => {
   const res = await apiFetch(`/designations/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to delete designation");
+  if (!res.ok) throw apiError(res, "Failed to delete designation");
   return res.data;
 };
 
@@ -421,19 +407,19 @@ export const deleteDesignation = async (id) => {
 
 export const fetchTeams = async (params = {}) => {
   const res = await apiFetch(`/teams${buildQuery(params)}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch teams");
+  if (!res.ok) throw apiError(res, "Failed to fetch teams");
   return res.data;
 };
 
 export const fetchTeamsDropdown = async () => {
   const res = await apiFetch("/teams/dropdown", { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch team dropdown");
+  if (!res.ok) throw apiError(res, "Failed to fetch team dropdown");
   return res.data?.data || [];
 };
 
 export const fetchTeamById = async (id) => {
   const res = await apiFetch(`/teams/${id}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch team");
+  if (!res.ok) throw apiError(res, "Failed to fetch team");
   return res.data?.data;
 };
 
@@ -442,7 +428,7 @@ export const createTeam = async (payload) => {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to create team");
+  if (!res.ok) throw apiError(res, "Failed to create team");
   return res.data;
 };
 
@@ -451,19 +437,19 @@ export const updateTeam = async (id, payload) => {
     method: "PUT",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to update team");
+  if (!res.ok) throw apiError(res, "Failed to update team");
   return res.data;
 };
 
 export const deleteTeam = async (id) => {
   const res = await apiFetch(`/teams/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to delete team");
+  if (!res.ok) throw apiError(res, "Failed to delete team");
   return res.data;
 };
 
 export const fetchTeamProductivity = async (userId) => {
   const res = await apiFetch(`/teams/productivity/${userId}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch team productivity");
+  if (!res.ok) throw apiError(res, "Failed to fetch team productivity");
   return res.data;
 };
 
@@ -471,19 +457,19 @@ export const fetchTeamProductivity = async (userId) => {
 
 export const fetchLocations = async (params = {}) => {
   const res = await apiFetch(`/locations${buildQuery(params)}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch locations");
+  if (!res.ok) throw apiError(res, "Failed to fetch locations");
   return res.data;
 };
 
 export const fetchLocationsDropdown = async () => {
   const res = await apiFetch("/locations/dropdown", { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch location dropdown");
+  if (!res.ok) throw apiError(res, "Failed to fetch location dropdown");
   return res.data?.data || [];
 };
 
 export const fetchLocationById = async (id) => {
   const res = await apiFetch(`/locations/${id}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch location");
+  if (!res.ok) throw apiError(res, "Failed to fetch location");
   return res.data?.data;
 };
 
@@ -492,7 +478,7 @@ export const createLocation = async (payload) => {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to create location");
+  if (!res.ok) throw apiError(res, "Failed to create location");
   return res.data;
 };
 
@@ -501,13 +487,13 @@ export const updateLocation = async (id, payload) => {
     method: "PUT",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to update location");
+  if (!res.ok) throw apiError(res, "Failed to update location");
   return res.data;
 };
 
 export const deleteLocation = async (id) => {
   const res = await apiFetch(`/locations/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to delete location");
+  if (!res.ok) throw apiError(res, "Failed to delete location");
   return res.data;
 };
 
@@ -515,7 +501,7 @@ export const deleteLocation = async (id) => {
 
 export const fetchReportingHierarchies = async (params = {}) => {
   const res = await apiFetch(`/reporting-hierarchy${buildQuery(params)}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch reporting hierarchy");
+  if (!res.ok) throw apiError(res, "Failed to fetch reporting hierarchy");
   return res.data;
 };
 
@@ -524,25 +510,25 @@ export const assignReportingManager = async (payload) => {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to assign reporting manager");
+  if (!res.ok) throw apiError(res, "Failed to assign reporting manager");
   return res.data;
 };
 
 export const fetchUserHierarchy = async (userId) => {
   const res = await apiFetch(`/reporting-hierarchy/user/${userId}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch user hierarchy");
+  if (!res.ok) throw apiError(res, "Failed to fetch user hierarchy");
   return res.data?.data;
 };
 
 export const fetchDirectReports = async (userId) => {
   const res = await apiFetch(`/reporting-hierarchy/direct-reports/${userId}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch direct reports");
+  if (!res.ok) throw apiError(res, "Failed to fetch direct reports");
   return res.data?.data;
 };
 
 export const removeReportingManager = async (idOrUserId) => {
   const res = await apiFetch(`/reporting-hierarchy/${idOrUserId}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to remove reporting relationship");
+  if (!res.ok) throw apiError(res, "Failed to remove reporting relationship");
   return res.data;
 };
 
@@ -550,19 +536,19 @@ export const removeReportingManager = async (idOrUserId) => {
 
 export const fetchJobGrades = async (params = {}) => {
   const res = await apiFetch(`/job-grades${buildQuery(params)}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch job grades");
+  if (!res.ok) throw apiError(res, "Failed to fetch job grades");
   return res.data;
 };
 
 export const fetchJobGradesDropdown = async () => {
   const res = await apiFetch("/job-grades/dropdown", { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch job grade dropdown");
+  if (!res.ok) throw apiError(res, "Failed to fetch job grade dropdown");
   return res.data?.data || [];
 };
 
 export const fetchJobGradeById = async (id) => {
   const res = await apiFetch(`/job-grades/${id}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch job grade");
+  if (!res.ok) throw apiError(res, "Failed to fetch job grade");
   return res.data?.data;
 };
 
@@ -571,7 +557,7 @@ export const createJobGrade = async (payload) => {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to create job grade");
+  if (!res.ok) throw apiError(res, "Failed to create job grade");
   return res.data;
 };
 
@@ -580,13 +566,13 @@ export const updateJobGrade = async (id, payload) => {
     method: "PUT",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to update job grade");
+  if (!res.ok) throw apiError(res, "Failed to update job grade");
   return res.data;
 };
 
 export const deleteJobGrade = async (id) => {
   const res = await apiFetch(`/job-grades/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to delete job grade");
+  if (!res.ok) throw apiError(res, "Failed to delete job grade");
   return res.data;
 };
 
@@ -594,19 +580,19 @@ export const deleteJobGrade = async (id) => {
 
 export const fetchCostCenters = async (params = {}) => {
   const res = await apiFetch(`/cost-centers${buildQuery(params)}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch cost centers");
+  if (!res.ok) throw apiError(res, "Failed to fetch cost centers");
   return res.data;
 };
 
 export const fetchCostCentersDropdown = async () => {
   const res = await apiFetch("/cost-centers/dropdown", { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch cost center dropdown");
+  if (!res.ok) throw apiError(res, "Failed to fetch cost center dropdown");
   return res.data?.data || [];
 };
 
 export const fetchCostCenterById = async (id) => {
   const res = await apiFetch(`/cost-centers/${id}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch cost center");
+  if (!res.ok) throw apiError(res, "Failed to fetch cost center");
   return res.data?.data;
 };
 
@@ -615,7 +601,7 @@ export const createCostCenter = async (payload) => {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to create cost center");
+  if (!res.ok) throw apiError(res, "Failed to create cost center");
   return res.data;
 };
 
@@ -624,13 +610,13 @@ export const updateCostCenter = async (id, payload) => {
     method: "PUT",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to update cost center");
+  if (!res.ok) throw apiError(res, "Failed to update cost center");
   return res.data;
 };
 
 export const deleteCostCenter = async (id) => {
   const res = await apiFetch(`/cost-centers/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to delete cost center");
+  if (!res.ok) throw apiError(res, "Failed to delete cost center");
   return res.data;
 };
 
@@ -638,19 +624,19 @@ export const deleteCostCenter = async (id) => {
 
 export const fetchWorkCalendars = async (params = {}) => {
   const res = await apiFetch(`/work-calendars${buildQuery(params)}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch work calendars");
+  if (!res.ok) throw apiError(res, "Failed to fetch work calendars");
   return res.data;
 };
 
 export const fetchWorkCalendarsDropdown = async () => {
   const res = await apiFetch("/work-calendars/dropdown", { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch work calendar dropdown");
+  if (!res.ok) throw apiError(res, "Failed to fetch work calendar dropdown");
   return res.data?.data || [];
 };
 
 export const fetchWorkCalendarById = async (id) => {
   const res = await apiFetch(`/work-calendars/${id}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch work calendar");
+  if (!res.ok) throw apiError(res, "Failed to fetch work calendar");
   return res.data?.data;
 };
 
@@ -659,7 +645,7 @@ export const createWorkCalendar = async (payload) => {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to create work calendar");
+  if (!res.ok) throw apiError(res, "Failed to create work calendar");
   return res.data;
 };
 
@@ -668,13 +654,13 @@ export const updateWorkCalendar = async (id, payload) => {
     method: "PUT",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to update work calendar");
+  if (!res.ok) throw apiError(res, "Failed to update work calendar");
   return res.data;
 };
 
 export const deleteWorkCalendar = async (id) => {
   const res = await apiFetch(`/work-calendars/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to delete work calendar");
+  if (!res.ok) throw apiError(res, "Failed to delete work calendar");
   return res.data;
 };
 
@@ -682,19 +668,19 @@ export const deleteWorkCalendar = async (id) => {
 
 export const fetchShifts = async (params = {}) => {
   const res = await apiFetch(`/shifts${buildQuery(params)}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch shifts");
+  if (!res.ok) throw apiError(res, "Failed to fetch shifts");
   return res.data;
 };
 
 export const fetchShiftsDropdown = async () => {
   const res = await apiFetch("/shifts/dropdown", { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch shift dropdown");
+  if (!res.ok) throw apiError(res, "Failed to fetch shift dropdown");
   return res.data?.data || [];
 };
 
 export const fetchShiftById = async (id) => {
   const res = await apiFetch(`/shifts/${id}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch shift");
+  if (!res.ok) throw apiError(res, "Failed to fetch shift");
   return res.data?.data;
 };
 
@@ -703,7 +689,7 @@ export const createShift = async (payload) => {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to create shift");
+  if (!res.ok) throw apiError(res, "Failed to create shift");
   return res.data;
 };
 
@@ -712,13 +698,13 @@ export const updateShift = async (id, payload) => {
     method: "PUT",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to update shift");
+  if (!res.ok) throw apiError(res, "Failed to update shift");
   return res.data;
 };
 
 export const deleteShift = async (id) => {
   const res = await apiFetch(`/shifts/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to delete shift");
+  if (!res.ok) throw apiError(res, "Failed to delete shift");
   return res.data;
 };
 
@@ -726,19 +712,19 @@ export const deleteShift = async (id) => {
 
 export const fetchFinancialYears = async (params = {}) => {
   const res = await apiFetch(`/financial-years${buildQuery(params)}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch financial years");
+  if (!res.ok) throw apiError(res, "Failed to fetch financial years");
   return res.data;
 };
 
 export const fetchFinancialYearsDropdown = async () => {
   const res = await apiFetch("/financial-years/dropdown", { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch financial year dropdown");
+  if (!res.ok) throw apiError(res, "Failed to fetch financial year dropdown");
   return res.data?.data || [];
 };
 
 export const fetchFinancialYearById = async (id) => {
   const res = await apiFetch(`/financial-years/${id}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch financial year");
+  if (!res.ok) throw apiError(res, "Failed to fetch financial year");
   return res.data?.data;
 };
 
@@ -747,7 +733,7 @@ export const createFinancialYear = async (payload) => {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to create financial year");
+  if (!res.ok) throw apiError(res, "Failed to create financial year");
   return res.data;
 };
 
@@ -756,7 +742,7 @@ export const updateFinancialYear = async (id, payload) => {
     method: "PUT",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to update financial year");
+  if (!res.ok) throw apiError(res, "Failed to update financial year");
   return res.data;
 };
 
@@ -764,13 +750,13 @@ export const setCurrentFinancialYear = async (id) => {
   const res = await apiFetch(`/financial-years/${id}/set-current`, {
     method: "PATCH",
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to set active financial year");
+  if (!res.ok) throw apiError(res, "Failed to set active financial year");
   return res.data;
 };
 
 export const deleteFinancialYear = async (id) => {
   const res = await apiFetch(`/financial-years/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to delete financial year");
+  if (!res.ok) throw apiError(res, "Failed to delete financial year");
   return res.data;
 };
 
@@ -778,19 +764,19 @@ export const deleteFinancialYear = async (id) => {
 
 export const fetchHolidayCalendars = async (params = {}) => {
   const res = await apiFetch(`/holiday-calendars${buildQuery(params)}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch holiday calendars");
+  if (!res.ok) throw apiError(res, "Failed to fetch holiday calendars");
   return res.data;
 };
 
 export const fetchHolidayCalendarsDropdown = async () => {
   const res = await apiFetch("/holiday-calendars/dropdown", { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch holiday calendar dropdown");
+  if (!res.ok) throw apiError(res, "Failed to fetch holiday calendar dropdown");
   return res.data?.data || [];
 };
 
 export const fetchHolidayCalendarById = async (id) => {
   const res = await apiFetch(`/holiday-calendars/${id}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch holiday calendar");
+  if (!res.ok) throw apiError(res, "Failed to fetch holiday calendar");
   return res.data?.data;
 };
 
@@ -799,7 +785,7 @@ export const createHolidayCalendar = async (payload) => {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to create holiday calendar");
+  if (!res.ok) throw apiError(res, "Failed to create holiday calendar");
   return res.data;
 };
 
@@ -808,19 +794,19 @@ export const updateHolidayCalendar = async (id, payload) => {
     method: "PUT",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to update holiday calendar");
+  if (!res.ok) throw apiError(res, "Failed to update holiday calendar");
   return res.data;
 };
 
 export const deleteHolidayCalendar = async (id) => {
   const res = await apiFetch(`/holiday-calendars/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to delete holiday calendar");
+  if (!res.ok) throw apiError(res, "Failed to delete holiday calendar");
   return res.data;
 };
 
 export const fetchDeclaredHolidays = async (params = {}) => {
   const res = await apiFetch(`/attendance/holidays${buildQuery(params)}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch holidays");
+  if (!res.ok) throw apiError(res, "Failed to fetch holidays");
   return res.data;
 };
 
@@ -829,13 +815,13 @@ export const declareBulkHoliday = async (payload) => {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to declare holiday");
+  if (!res.ok) throw apiError(res, "Failed to declare holiday");
   return res.data;
 };
 
 export const cancelDeclaredHoliday = async (id) => {
   const res = await apiFetch(`/attendance/holidays/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to cancel holiday");
+  if (!res.ok) throw apiError(res, "Failed to cancel holiday");
   return res.data;
 };
 
@@ -843,7 +829,7 @@ export const cancelDeclaredHoliday = async (id) => {
 
 export const fetchOrganizationSettings = async () => {
   const res = await apiFetch("/organization-settings", { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch organization settings");
+  if (!res.ok) throw apiError(res, "Failed to fetch organization settings");
   return res.data?.data;
 };
 
@@ -852,7 +838,7 @@ export const updateOrganizationSettings = async (payload) => {
     method: "PUT",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to update organization settings");
+  if (!res.ok) throw apiError(res, "Failed to update organization settings");
   return res.data;
 };
 
@@ -860,7 +846,7 @@ export const updateOrganizationSettings = async (payload) => {
 
 export const fetchEmployeesDropdown = async (params = {}) => {
   const res = await apiFetch(`/user/get${buildQuery({ limit: 100, isActive: true, ...params })}`, { method: "GET" });
-  if (!res.ok) throw new Error(res.data?.message || "Failed to fetch employee roster");
+  if (!res.ok) throw apiError(res, "Failed to fetch employee roster");
   return res.data?.data || [];
 };
 
@@ -1019,7 +1005,7 @@ export const removeEmployeeFromBranch = async (branchId, userId) => {
 export const fetchSystemSetupStatus = async () => {
   const res = await apiFetch("/system/setup-status", { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to fetch system setup status");
+    throw apiError(res, "Failed to fetch system setup status");
   }
   console.log("[setup-status] response:", res.data);
   return res.data;
@@ -1037,7 +1023,7 @@ export const registerSystemOwner = async (payload) => {
   });
 
   if (!res.ok) {
-    throw new Error(res?.data?.message || "Failed to register organization owner");
+    throw apiError(res, "Failed to register organization owner");
   }
 
   console.log("[register-owner] response:", res.data);

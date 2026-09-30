@@ -5,7 +5,7 @@
  * Reuses central API configuration and standard authorization headers.
  */
 
-import { apiFetch } from "../config/api";
+import { apiFetch, apiError, buildQuery } from "../config/api";
 
 /**
  * Fetch assets list with optional pagination and filtering
@@ -13,20 +13,11 @@ import { apiFetch } from "../config/api";
  * @returns {Promise<{ success: boolean, data: Array, pagination: Object }>}
  */
 export const getAssets = async (params = {}) => {
-  const queryParams = new URLSearchParams();
-
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      queryParams.append(key, value);
-    }
-  });
-
-  const queryString = queryParams.toString();
-  const path = `/asset/all${queryString ? `?${queryString}` : ""}`;
+  const path = `/asset/all${buildQuery(params)}`;
 
   const res = await apiFetch(path, { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load assets.");
+    throw apiError(res, "Failed to load assets.");
   }
   return res.data;
 };
@@ -42,7 +33,7 @@ export const createAsset = async (assetData) => {
     body: JSON.stringify(assetData),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to create asset.");
+    throw apiError(res, "Failed to create asset.");
   }
   return res.data;
 };
@@ -58,7 +49,7 @@ export const assignAsset = async (assetData) => {
     body: JSON.stringify(assetData),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to assign asset.");
+    throw apiError(res, "Failed to assign asset.");
   }
   return res.data;
 };
@@ -75,7 +66,7 @@ export const returnAsset = async (assetId, returnData = {}) => {
     body: JSON.stringify(returnData),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to return asset.");
+    throw apiError(res, "Failed to return asset.");
   }
   return res.data;
 };

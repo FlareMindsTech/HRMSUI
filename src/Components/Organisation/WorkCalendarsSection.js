@@ -26,7 +26,8 @@ import {
   fetchShiftsDropdown,
   fetchBranchesDropdown,
 } from "../../services/organizationService";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { invalidateOrgResource } from '../../redux/slices/organizationSlice';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import PaginationBar from "../Common/PaginationBar";
 import FeedbackAlert from "../Common/FeedbackAlert";
@@ -47,7 +48,7 @@ const ALL_DAYS = [
 ];
 
 function WorkCalendarsSection({ lockedBranchId }) {
-  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin); const dispatch = useDispatch();
   const [calendars, setCalendars] = useState([]);
   const [shifts, setShifts] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -217,6 +218,7 @@ function WorkCalendarsSection({ lockedBranchId }) {
         setSuccess(res.message || "Work calendar created successfully");
       }
       setShowModal(false);
+      dispatch(invalidateOrgResource("workCalendars"));
       loadCalendars();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
@@ -232,6 +234,7 @@ function WorkCalendarsSection({ lockedBranchId }) {
       const res = await deleteWorkCalendar(deletingId);
       setSuccess(res.message || "Work calendar deleted successfully");
       setShowDeleteModal(false);
+      dispatch(invalidateOrgResource("workCalendars"));
       loadCalendars();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useLayoutEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Form,
@@ -26,6 +26,13 @@ import {
   DEFAULT_THEME,
   THEME_PRESETS,
   fetchTheme,
+  applyThemeToCssVariables,
+  selectTheme,
+  selectPreviewTheme,
+  selectThemeLoading,
+  selectThemeSaving,
+  selectThemeError,
+  selectThemeSuccessMessage,
 } from "../../redux/slices/themeSlice";
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import LoadingSpinner from "../Common/LoadingSpinner";
@@ -105,9 +112,12 @@ const HEX_REGEX = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
 function ThemeCustomizationSection() {
   const dispatch = useDispatch();
   const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
-  const { theme, previewTheme, loading, saving, error, successMessage } = useSelector(
-    (state) => state.theme
-  );
+  const theme = useSelector(selectTheme);
+  const previewTheme = useSelector(selectPreviewTheme);
+  const loading = useSelector(selectThemeLoading);
+  const saving = useSelector(selectThemeSaving);
+  const error = useSelector(selectThemeError);
+  const successMessage = useSelector(selectThemeSuccessMessage);
 
   const canUpdate =
     isSystemAdmin ||
@@ -120,6 +130,15 @@ function ThemeCustomizationSection() {
       dispatch(fetchTheme());
     }
   }, [dispatch, theme]);
+
+  // Live preview: reducers are pure state transitions, so the DOM
+  // CSS-variable update they used to perform happens here in the editor
+  // that owns preview state. Layout timing preserves the previous
+  // synchronous paint behavior on every preview change (keystroke, preset,
+  // reset) and on save-failure revert.
+  useLayoutEffect(() => {
+    applyThemeToCssVariables(previewTheme);
+  }, [previewTheme]);
 
   const handleColorChange = (key, val) => {
     dispatch(setPreviewColor({ key, value: val }));

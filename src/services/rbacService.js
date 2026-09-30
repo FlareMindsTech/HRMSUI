@@ -1,4 +1,4 @@
-import { apiFetch } from "../config/api";
+import { apiFetch, apiError } from "../config/api";
 
 /**
  * Fetch Current Authenticated User & Access Context (Role, Menus, Permissions)
@@ -6,7 +6,7 @@ import { apiFetch } from "../config/api";
 export const fetchAuthContext = async () => {
   const res = await apiFetch("/auth/me", { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load authentication context");
+    throw apiError(res, "Failed to load authentication context");
   }
   return res.data?.data;
 };
@@ -17,7 +17,7 @@ export const fetchAuthContext = async () => {
 export const fetchPermissionCatalog = async () => {
   const res = await apiFetch("/permission/catalog", { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load permission catalog");
+    throw apiError(res, "Failed to load permission catalog");
   }
   return res.data?.data;
 };
@@ -28,7 +28,7 @@ export const fetchPermissionCatalog = async () => {
 export const fetchAllMenus = async () => {
   const res = await apiFetch("/menu/getAll-menu", { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load menus");
+    throw apiError(res, "Failed to load menus");
   }
   return res.data?.data;
 };
@@ -39,7 +39,7 @@ export const fetchAllMenus = async () => {
 export const fetchAllRoles = async () => {
   const res = await apiFetch("/role", { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load roles");
+    throw apiError(res, "Failed to load roles");
   }
   return res.data?.data;
 };
@@ -50,7 +50,7 @@ export const fetchAllRoles = async () => {
 export const fetchAssignableRoles = async () => {
   const res = await apiFetch("/role/assignable-roles", { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load assignable roles");
+    throw apiError(res, "Failed to load assignable roles");
   }
   return res.data?.data || [];
 };
@@ -61,7 +61,7 @@ export const fetchAssignableRoles = async () => {
 export const fetchRoleAccessConfig = async (roleId) => {
   const res = await apiFetch(`/role/${roleId}/access`, { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load role configuration");
+    throw apiError(res, "Failed to load role configuration");
   }
   return res.data?.data;
 };
@@ -75,7 +75,7 @@ export const createCustomRole = async ({ roleName, description, priority, menuId
     body: JSON.stringify({ roleName, description, priority, menuIds, permissionCodes }),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to create custom role");
+    throw apiError(res, "Failed to create custom role");
   }
   return res.data;
 };
@@ -89,7 +89,7 @@ export const updateCustomRole = async (roleId, { roleName, description, priority
     body: JSON.stringify({ roleName, description, priority, isActive, menuIds, permissionCodes }),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to update custom role");
+    throw apiError(res, "Failed to update custom role");
   }
   return res.data;
 };
@@ -100,7 +100,7 @@ export const updateCustomRole = async (roleId, { roleName, description, priority
 export const deleteCustomRole = async (roleId) => {
   const res = await apiFetch(`/role/${roleId}`, { method: "DELETE" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to delete role");
+    throw apiError(res, "Failed to delete role");
   }
   return res.data;
 };
@@ -114,7 +114,7 @@ export const provisionUserAccount = async ({ employeeId, roleId, password, isAct
     body: JSON.stringify({ employeeId, roleId, password, isActive }),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to provision login account");
+    throw apiError(res, "Failed to provision login account");
   }
   return res.data;
 };
@@ -128,7 +128,7 @@ export const updateAccountStatus = async (userId, { isActive, isBlocked }) => {
     body: JSON.stringify({ isActive, isBlocked }),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to update account status");
+    throw apiError(res, "Failed to update account status");
   }
   return res.data;
 };
@@ -142,7 +142,7 @@ export const resetAccountCredentials = async (userId, password) => {
     body: JSON.stringify({ password }),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to reset credentials");
+    throw apiError(res, "Failed to reset credentials");
   }
   return res.data;
 };
@@ -156,7 +156,7 @@ export const assignUserRole = async (userId, roleId) => {
     body: JSON.stringify({ role: roleId }),
   });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to update user role");
+    throw apiError(res, "Failed to update user role");
   }
   return res.data;
 };
@@ -167,7 +167,7 @@ export const assignUserRole = async (userId, roleId) => {
 export const fetchAllUsers = async () => {
   const res = await apiFetch("/user/get?limit=100", { method: "GET" });
   if (!res.ok) {
-    throw new Error(res.data?.message || "Failed to load users list");
+    throw apiError(res, "Failed to load users list");
   }
   return res.data?.data;
 };

@@ -85,7 +85,7 @@
 
 /* ── Main Workspace Card ── */
 .placeholder-workspace-card {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid rgba(220, 235, 228, 0.9);
   border-radius: 18px;
   padding: 2.25rem;
@@ -105,7 +105,7 @@
 .placeholder-hero-icon-wrapper {
   width: 76px;
   height: 76px;
-  border-radius: 20px;
+  border-radius: var(--radius-xl, 20px);
   margin: 0 auto 1.25rem auto;
   display: flex;
   align-items: center;
@@ -157,7 +157,7 @@
   background: #fffbeb;
   border: 1px solid #fef3c7;
   border-left: 4px solid #f59e0b;
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   padding: 1rem 1.25rem;
   text-align: left;
   display: flex;
@@ -217,7 +217,7 @@
 }
 
 .placeholder-scope-item:hover {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border-color: rgba(45, 197, 138, 0.4);
   box-shadow: 0 4px 12px rgba(0, 40, 20, 0.04);
   transform: translateY(-2px);
@@ -252,7 +252,7 @@
 
 /* ── Navigation Shortcuts Section ── */
 .placeholder-shortcuts-card {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid rgba(220, 235, 228, 0.9);
   border-radius: 18px;
   padding: 1.75rem 2rem;
@@ -302,8 +302,8 @@
 }
 
 .placeholder-shortcut-btn:hover {
-  background: #ffffff;
-  border-color: var(--primary, #2DC58A);
+  background: var(--color-surface, #FFFFFF);
+  border-color: var(--color-primary, #C49A55);
   box-shadow: 0 6px 18px rgba(45, 197, 138, 0.12);
   transform: translateY(-2px);
 }
@@ -317,7 +317,7 @@
 .placeholder-shortcut-icon {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   background: rgba(45, 197, 138, 0.12);
   color: var(--primary-dark, #20a673);
   display: flex;

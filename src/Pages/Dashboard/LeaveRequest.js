@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Container, Row, Col, Card, Form, Button, Table, Modal, Tab, Spinner
+  Container, Row, Col, Card, Form, Button, Table, Modal, Tab
 } from "react-bootstrap";
 import {
   FaCalendarAlt, FaClock, FaCheckCircle,
@@ -820,6 +820,7 @@ function LeaveRequest() {
                                       size="sm"
                                       className="leave-audit-btn p-1 text-muted border-0 shadow-none"
                                       title="View Audit Trail"
+                                      aria-label="View Audit Trail"
                                       onClick={() => handleViewAudit(item._id)}
                                     >
                                       <FaHistory size={13} />
@@ -986,6 +987,7 @@ function LeaveRequest() {
                                               className="leave-audit-btn p-1 text-muted border-0 shadow-none"
                                               onClick={() => handleViewAudit(item._id)}
                                               title="Audit Trail"
+                                              aria-label="Audit Trail"
                                             >
                                               <FaHistory size={13} />
                                             </Button>
@@ -1345,7 +1347,7 @@ function LeaveRequest() {
         </Modal.Header>
         <Modal.Body>
           {auditLoading ? (
-            <div className="text-center py-4"><Spinner animation="border" variant="success" /></div>
+            <div className="text-center py-4"><LoadingSpinner color="success" /></div>
           ) : auditData ? (
             <div>
               <div className="mb-3 p-3 bg-light rounded-3 border">

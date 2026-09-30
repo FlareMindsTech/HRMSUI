@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Button,
   Form,
@@ -19,16 +19,22 @@ import {
   FaArrowRight,
 } from "react-icons/fa";
 import {
-  fetchOrganizationSettings,
   updateOrganizationSettings,
-  fetchHolidayCalendarsDropdown,
 } from "../../services/organizationService";
 import {
-  fetchAttendanceSettings,
   updateAttendanceSettings,
 } from "../../Api/Attendance/attendance";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin, selectAuthUser } from '../../redux/slices/authSlice';
+import {
+  fetchOrgResource,
+  invalidateOrgResource,
+  selectOrgSettings,
+  selectAttendancePolicy,
+  selectShiftsDropdown,
+  selectWorkCalendarsDropdown,
+  selectHolidayCalendarsDropdown,
+} from '../../redux/slices/organizationSlice';
 import FeedbackAlert from "../Common/FeedbackAlert";
 import ThemeCustomizationSection from "./ThemeCustomizationSection";
 
@@ -39,6 +45,26 @@ function OrganizationSettingsSection({ onNavigateTab }) {
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
 
   const [holidayCalendars, setHolidayCalendars] = useState([]);
+  const dispatch = useDispatch();
+  // Shared settings/policy/dropdowns (single guarded fetches each). The
+  // values below seed the local edit form on load only — later cache
+  // refreshes never touch in-progress edits.
+  const cachedSettings = useSelector(selectOrgSettings);
+  const cachedPolicyBody = useSelector(selectAttendancePolicy);
+  const cachedWorkCalendars = useSelector(selectWorkCalendarsDropdown);
+  const cachedShifts = useSelector(selectShiftsDropdown);
+  const cachedHolidayCalendars = useSelector(selectHolidayCalendarsDropdown);
+  // Ref mirror of the cached values so loadData (stable identity, runs on
+  // mount and after saves) can fall back to them when the TTL guard skips
+  // the network — without subscribing the callback to cache updates.
+  const cacheRef = useRef(null);
+  cacheRef.current = {
+    sett: cachedSettings,
+    pol: cachedPolicyBody,
+    wc: cachedWorkCalendars,
+    sh: cachedShifts,
+    hol: cachedHolidayCalendars,
+  };
 
   const [loading, setLoading] = useState(true);
   const [saveLoading, setSaveLoading] = useState(false);
@@ -120,19 +146,28 @@ function OrganizationSettingsSection({ onNavigateTab }) {
     try {
       setLoading(true);
       setError("");
-      const [sett, attRes, holList] = await Promise.all([
-        fetchOrganizationSettings().catch((err) => {
+      // Guarded shared fetches; each result falls back to the cached slice
+      // value when the TTL guard skips the network (same values a fresh
+      // fetch would resolve with while the cache is valid).
+      const [settRes, polRes, wcRes, shRes, holRes] = await Promise.all([
+        dispatch(fetchOrgResource({ key: "settings" })).catch((err) => {
           console.warn("fetchOrganizationSettings error:", err);
           return null;
         }),
-        fetchAttendanceSettings().catch((err) => {
+        dispatch(fetchOrgResource({ key: "attendancePolicy" })).catch((err) => {
           console.warn("fetchAttendanceSettings error:", err);
           return null;
         }),
-        fetchHolidayCalendarsDropdown().catch(() => []),
+        dispatch(fetchOrgResource({ key: "workCalendars" })).catch(() => null),
+        dispatch(fetchOrgResource({ key: "shifts" })).catch(() => null),
+        dispatch(fetchOrgResource({ key: "holidayCalendars" })).catch(() => null),
       ]);
 
-      const pol = attRes?.data || null;
+      const sett = settRes?.payload?.data ?? cacheRef.current?.sett ?? null;
+      const pol = (polRes?.payload?.data ?? cacheRef.current?.pol)?.data || null;
+      const wcList = wcRes?.payload?.data ?? cacheRef.current?.wc ?? [];
+      const shList = shRes?.payload?.data ?? cacheRef.current?.sh ?? [];
+      const holList = holRes?.payload?.data ?? cacheRef.current?.hol ?? [];
 
       if (sett || pol) {
         const standardMins = pol?.standardWorkingMinutes !== undefined
@@ -212,7 +247,7 @@ function OrganizationSettingsSection({ onNavigateTab }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     loadData();
@@ -275,6 +310,9 @@ function OrganizationSettingsSection({ onNavigateTab }) {
       ]);
 
       setSuccess(orgRes?.message || "Organization settings and Attendance Policy updated successfully");
+      // The saved settings/policy changed shared data: invalidate so the
+      // reload below (and other consumers) fetch fresh instead of TTL cache.
+      dispatch(invalidateOrgResource(["settings", "attendancePolicy"]));
       loadData();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {

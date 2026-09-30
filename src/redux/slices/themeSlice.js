@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, createSelector } from "@reduxjs/toolkit";
 import {
   fetchOrganizationSettings,
   updateOrganizationSettings as updateOrgSettingsApi,
@@ -125,6 +125,12 @@ export const fetchTheme = createAsyncThunk(
       applyThemeToCssVariables(DEFAULT_THEME);
       return rejectWithValue(err.message || "Failed to load theme");
     }
+  },
+  {
+    // Collapse concurrent mount dispatches (Layout + editor, StrictMode
+    // remounts) into a single request. Genuine reloads dispatch after the
+    // in-flight one settles.
+    condition: (_, { getState }) => getState().theme?.loading !== true,
   }
 );
 
@@ -140,6 +146,10 @@ export const saveTheme = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(err.message || "Failed to save theme settings");
     }
+  },
+  {
+    // Drop double-submit saves while one is in flight; the first save wins.
+    condition: (_, { getState }) => getState().theme?.saving !== true,
   }
 );
 
@@ -156,24 +166,24 @@ export const themeSlice = createSlice({
   name: "theme",
   initialState,
   reducers: {
+    // Pure state transitions only. DOM CSS-variable updates live in the
+    // thunks (fetch/save paths) and in the editor's preview effect, never
+    // in reducers — reducers must stay free of DOM side effects so they
+    // remain deterministic under time-travel and StrictMode re-invocation.
     setPreviewColor: (state, action) => {
       const { key, value } = action.payload || {};
       if (key && Object.prototype.hasOwnProperty.call(DEFAULT_THEME, key)) {
         state.previewTheme[key] = value;
-        applyThemeToCssVariables(state.previewTheme);
       }
     },
     setFullPreviewTheme: (state, action) => {
       state.previewTheme = { ...DEFAULT_THEME, ...(action.payload || {}) };
-      applyThemeToCssVariables(state.previewTheme);
     },
     resetPreviewToSaved: (state) => {
       state.previewTheme = { ...state.theme };
-      applyThemeToCssVariables(state.theme);
     },
     resetToDefaultTheme: (state) => {
       state.previewTheme = { ...DEFAULT_THEME };
-      applyThemeToCssVariables(DEFAULT_THEME);
     },
     clearThemeStatus: (state) => {
       state.error = null;
@@ -213,8 +223,8 @@ export const themeSlice = createSlice({
       .addCase(saveTheme.rejected, (state, action) => {
         state.saving = false;
         state.error = action.payload;
-        // Revert live preview back to active persisted theme on save failure
-        applyThemeToCssVariables(state.theme);
+        // The editor's preview effect re-applies state.theme to the DOM when
+        // previewTheme resets here — no direct DOM write in the reducer.
         state.previewTheme = { ...state.theme };
       });
   },
@@ -227,5 +237,33 @@ export const {
   resetToDefaultTheme,
   clearThemeStatus,
 } = themeSlice.actions;
+
+// ---- Focused selectors with field-level inputs (each recomputes ONLY
+// when its own field changes, never on unrelated loading/saving churn;
+// prefer these over selecting the whole slice) ----
+export const selectTheme = createSelector(
+  [(state) => state.theme?.theme],
+  (theme) => theme || { ...DEFAULT_THEME }
+);
+export const selectPreviewTheme = createSelector(
+  [(state) => state.theme?.previewTheme],
+  (previewTheme) => previewTheme || { ...DEFAULT_THEME }
+);
+export const selectThemeLoading = createSelector(
+  [(state) => state.theme?.loading],
+  (loading) => loading === true
+);
+export const selectThemeSaving = createSelector(
+  [(state) => state.theme?.saving],
+  (saving) => saving === true
+);
+export const selectThemeError = createSelector(
+  [(state) => state.theme?.error],
+  (error) => error || null
+);
+export const selectThemeSuccessMessage = createSelector(
+  [(state) => state.theme?.successMessage],
+  (successMessage) => successMessage || null
+);
 
 export default themeSlice.reducer;

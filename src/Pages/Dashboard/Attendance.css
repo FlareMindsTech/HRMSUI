@@ -22,9 +22,9 @@
 }
 
 .calendar-nav-btn {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid #dce5e0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 8px);
   width: 30px;
   height: 30px;
   display: flex;
@@ -38,8 +38,8 @@
 
 .calendar-nav-btn:hover {
   background: rgba(196, 154, 85, 0.12);
-  border-color: #C49A55;
-  color: #C49A55;
+  border-color: var(--color-primary, #C49A55);
+  color: var(--color-primary, #C49A55);
   transform: translateY(-1px);
 }
 
@@ -83,7 +83,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 8px);
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 0.82rem;
@@ -104,10 +104,10 @@
 }
 
 .calendar-day--today {
-  border: 2px solid #C49A55 !important;
+  border: 2px solid var(--color-primary, #C49A55) !important;
   background: rgba(196, 154, 85, 0.12);
   font-weight: 800;
-  color: #C49A55;
+  color: var(--color-primary, #C49A55);
 }
 
 .calendar-day--weekend {
@@ -160,7 +160,7 @@
 }
 
 .calendar-dot--leave {
-  background: #3b82f6;
+  background: var(--color-info, #3B82F6);
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
@@ -183,7 +183,7 @@
 }
 
 .summary-metric-card {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid var(--card-border, rgba(220, 235, 228, 0.9));
   border-radius: 10px;
   padding: 0.55rem 0.75rem;
@@ -225,7 +225,7 @@
   text-align: center;
   padding: 0.85rem;
   background: #f8faf9;
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   border: 1px solid #e8f0ec;
 }
 
@@ -332,8 +332,8 @@
 }
 
 .attendance-tab--active {
-  background: #ffffff;
-  color: var(--primary, #2DC58A);
+  background: var(--color-surface, #FFFFFF);
+  color: var(--color-primary, #C49A55);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
   font-weight: 700;
 }
@@ -356,7 +356,7 @@
 .analytics-stat-icon {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -420,7 +420,7 @@
   .calendar-day {
     min-height: 40px;
     font-size: 0.8rem;
-    border-radius: 8px;
+    border-radius: var(--radius-sm, 8px);
   }
 
   .calendar-dot {
@@ -452,7 +452,7 @@
 .legend-dot.dot-present { background: #22c55e; }
 .legend-dot.dot-late { background: #f59e0b; }
 .legend-dot.dot-halfday { background: #ec4899; }
-.legend-dot.dot-leave { background: #3b82f6; }
+.legend-dot.dot-leave { background: var(--color-info, #3B82F6); }
 .legend-dot.dot-halfday-leave { background: #8b5cf6; }
 .legend-dot.dot-absent { background: #ef4444; }
 .legend-dot.dot-working { background: #06b6d4; animation: pulse-dot 1.8s infinite; }
@@ -556,7 +556,7 @@
 .analytics-stat-card-compact {
   background: var(--card-bg, #ffffff);
   border: 1px solid var(--card-border, rgba(220, 235, 228, 0.9));
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   padding: 0.75rem 1rem;
   display: flex;
   align-items: center;
@@ -618,7 +618,7 @@
 .monthly-breakdown-card {
   background: var(--card-bg, #ffffff);
   border: 1px solid var(--card-border, rgba(220, 235, 228, 0.9));
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   padding: 0.65rem 1rem;
   box-shadow: 0 1px 4px rgba(0, 40, 20, 0.03);
 }
@@ -664,7 +664,7 @@
   gap: 0.35rem;
   padding: 0.12rem 0.5rem;
   background: #f8faf9;
-  border-radius: 6px;
+  border-radius: var(--radius-xs, 6px);
   border: 1px solid #e8f0ec;
 }
 
@@ -679,7 +679,7 @@
 .att-table-card {
   background: var(--card-bg, #ffffff);
   border: 1px solid var(--card-border, rgba(220, 235, 228, 0.9));
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   padding: 0.9rem 1.1rem;
   box-shadow: 0 1px 6px rgba(0, 40, 20, 0.03);
 }
@@ -697,12 +697,12 @@
   height: 33px !important;
   font-size: 0.82rem !important;
   border-color: #dce5e0 !important;
-  border-radius: 8px !important;
+  border-radius: var(--radius-sm, 8px) !important;
   color: var(--text-primary, #1a2e2a) !important;
 }
 
 .att-filter-input:focus {
-  border-color: var(--primary, #2DC58A) !important;
+  border-color: var(--color-primary, #C49A55) !important;
   box-shadow: 0 0 0 2px rgba(45, 197, 138, 0.15) !important;
 }
 
@@ -710,7 +710,7 @@
   height: 33px !important;
   font-size: 0.8rem !important;
   font-weight: 600 !important;
-  border-radius: 8px !important;
+  border-radius: var(--radius-sm, 8px) !important;
   border-color: #dce5e0 !important;
   color: var(--text-secondary, #4a6560) !important;
   display: flex !important;
@@ -816,17 +816,17 @@
 .att-pagination .page-link {
   padding: 0.18rem 0.5rem;
   font-size: 0.76rem;
-  border-radius: 6px !important;
+  border-radius: var(--radius-xs, 6px) !important;
   color: #4a6560;
   border: 1px solid #e0e8e4;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   margin: 0 1px;
 }
 
 .att-pagination .page-item.active .page-link {
   background-color: #2DC58A;
   border-color: #2DC58A;
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   font-weight: 700;
 }
 
@@ -873,7 +873,7 @@
 
 .analytics-icon-chart {
   background: #F5EFE3;
-  color: #C49A55;
+  color: var(--color-primary, #C49A55);
 }
 
 /* ── Monthly Stats Progress Bar Segments (Brand Chart Palette) ── */

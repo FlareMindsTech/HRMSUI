@@ -12,9 +12,9 @@
 /* ── Access Level Cards ── */
 .access-level-card {
   border: 1.5px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   padding: 1rem;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -47,7 +47,7 @@
   height: 18px;
   border-radius: 50%;
   border: 2px solid #cbd5e1;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -84,9 +84,9 @@
 }
 
 .branch-select-ctrl {
-  background-color: #ffffff;
+  background-color: var(--color-surface, #FFFFFF);
   border-color: #cbd5e1;
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 8px);
   font-weight: 500;
 }
 
@@ -115,7 +115,7 @@
   border: 1.5px solid #e2e8f0;
   border-radius: 10px;
   padding: 0.65rem 0.85rem;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   cursor: pointer;
   transition: all 0.15s ease;
   user-select: none;
@@ -128,7 +128,7 @@
 
 .branch-check-item.checked {
   border-color: #10b981;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
 }
 
 .branch-check-item.primary-item {

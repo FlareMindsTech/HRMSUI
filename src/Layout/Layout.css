@@ -20,7 +20,7 @@
   left: 12px;
   z-index: 1250;
   background: var(--primary-gradient, linear-gradient(135deg, #C79D58 0%, #C49A55 100%));
-  color: #ffffff;
+  color: var(--color-text, #1C1D1D);
   border: none;
   border-radius: 10px;
   width: 38px;
@@ -129,7 +129,7 @@
   padding: 20px 24px;
   background: var(--color-background, #F7F5F0);
   overflow-y: auto;
-  overflow-x: hidden !important;
+  overflow-x: auto;
   max-width: 100%;
   width: 100%;
   transition: padding 0.2s ease;
@@ -155,8 +155,8 @@
   height: 30px;
 }
 
-/* ── Responsive Queries for Viewport Fallback ── */
-@media (max-width: 767px) {
+/* ── Responsive Queries for Viewport Fallback (aligned with JS isMobile < 768px) ── */
+@media (max-width: 767.98px) {
   .app-layout-header-wrapper {
     height: 56px;
   }
