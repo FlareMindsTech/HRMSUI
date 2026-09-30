@@ -5,7 +5,7 @@
 
 .edit-org-page {
   padding: 0;
-  color: #1c1d1d;
+  color: var(--color-text, #1C1D1D);
   animation: fadeInEditOrg 0.22s ease-in-out;
 }
 
@@ -25,9 +25,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid #e8e2d5;
-  border-radius: 16px;
+  border-radius: var(--radius-lg, 16px);
   padding: 1rem 1.4rem;
   margin-bottom: 1.5rem;
   box-shadow: 0 4px 18px rgba(196, 154, 85, 0.08);
@@ -64,7 +64,7 @@
 .edit-org-title-group h2 {
   font-size: 1.35rem;
   font-weight: 800;
-  color: #1c1d1d;
+  color: var(--color-text, #1C1D1D);
   margin: 0;
   display: flex;
   align-items: center;
@@ -73,7 +73,7 @@
 
 .edit-org-title-group p {
   font-size: 0.82rem;
-  color: #77736b;
+  color: var(--color-secondary-text, #77736B);
   margin: 0.15rem 0 0 0;
 }
 
@@ -84,7 +84,7 @@
 }
 
 .edit-org-btn-discard {
-  background: #ffffff !important;
+  background: var(--color-surface, #FFFFFF) !important;
   color: #55524c !important;
   border: 1px solid #dcd7cc !important;
   font-weight: 600 !important;
@@ -95,14 +95,14 @@
 }
 
 .edit-org-btn-discard:hover {
-  background: var(--color-background, #f7f5f0) !important;
-  color: var(--color-text, #1c1d1d) !important;
-  border-color: var(--color-primary, #c49a55) !important;
+  background: var(--color-background, #F7F5F0) !important;
+  color: var(--color-text, #1C1D1D) !important;
+  border-color: var(--color-primary, #C49A55) !important;
 }
 
 .edit-org-btn-save {
   background: var(--primary-gradient, linear-gradient(135deg, #c79d58 0%, #c49a55 100%)) !important;
-  color: #ffffff !important;
+  color: var(--color-text, #1C1D1D) !important;
   border: none !important;
   font-weight: 700 !important;
   font-size: 0.88rem !important;
@@ -143,9 +143,9 @@
 
 /* ── Left Navigation Sidebar ── */
 .edit-org-nav-card {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid #e8e2d5;
-  border-radius: 16px;
+  border-radius: var(--radius-lg, 16px);
   padding: 1.1rem;
   box-shadow: 0 4px 16px rgba(28, 29, 29, 0.03);
   position: sticky;
@@ -186,7 +186,7 @@
 .edit-org-nav-item:hover {
   background: #fdfbf7;
   border-color: #f0e9dc;
-  color: #1c1d1d;
+  color: var(--color-text, #1C1D1D);
 }
 
 .edit-org-nav-item.active {
@@ -200,7 +200,7 @@
 .edit-org-nav-icon {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -210,8 +210,8 @@
 }
 
 .edit-org-nav-item.active .edit-org-nav-icon {
-  background: #c49a55 !important;
-  color: #ffffff !important;
+  background: var(--color-primary, #C49A55) !important;
+  color: var(--color-text, #1C1D1D) !important;
 }
 
 .edit-org-nav-text {
@@ -235,7 +235,7 @@
   margin-top: 1.25rem;
   background: #faf8f5;
   border: 1px dashed #dcd7cc;
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   padding: 1rem;
 }
 
@@ -257,7 +257,7 @@
   font-size: 0.68rem;
   font-weight: 700;
   padding: 0.15rem 0.45rem;
-  border-radius: 6px;
+  border-radius: var(--radius-xs, 6px);
 }
 
 .edit-org-preview-logo-name {
@@ -271,10 +271,10 @@
   min-width: 44px;
   max-width: 72px;
   height: 40px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 8px);
   object-fit: contain;
   object-position: center;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid #e8e2d5;
   padding: 3px 6px;
 }
@@ -282,9 +282,9 @@
 .edit-org-preview-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 8px;
-  background: #c49a55;
-  color: #ffffff;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--color-primary, #C49A55);
+  color: var(--color-text, #1C1D1D);
   font-weight: 800;
   display: flex;
   align-items: center;
@@ -295,14 +295,14 @@
 .edit-org-preview-name {
   font-size: 0.88rem;
   font-weight: 700;
-  color: #1c1d1d;
+  color: var(--color-text, #1C1D1D);
   line-height: 1.2;
 }
 
 .edit-org-preview-code {
   font-size: 0.72rem;
   font-family: monospace;
-  color: #77736b;
+  color: var(--color-secondary-text, #77736B);
 }
 
 .edit-org-preview-meta {
@@ -317,9 +317,9 @@
 
 /* ── Form Section Panels ── */
 .edit-org-content-card {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid #e8e2d5;
-  border-radius: 16px;
+  border-radius: var(--radius-lg, 16px);
   padding: 1.75rem;
   box-shadow: 0 4px 18px rgba(28, 29, 29, 0.03);
   margin-bottom: 1.5rem;
@@ -352,7 +352,7 @@
 
 .edit-org-section-icon-badge.gold {
   background: #f5efe3;
-  color: #c49a55;
+  color: var(--color-primary, #C49A55);
 }
 
 .edit-org-section-icon-badge.purple {
@@ -362,7 +362,7 @@
 
 .edit-org-section-icon-badge.blue {
   background: #eff6ff;
-  color: #3b82f6;
+  color: var(--color-info, #3B82F6);
 }
 
 .edit-org-section-icon-badge.orange {
@@ -378,13 +378,13 @@
 .edit-org-section-title {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #1c1d1d;
+  color: var(--color-text, #1C1D1D);
   margin: 0;
 }
 
 .edit-org-section-subtitle {
   font-size: 0.8rem;
-  color: #77736b;
+  color: var(--color-secondary-text, #77736B);
   margin: 0.1rem 0 0 0;
 }
 
@@ -412,8 +412,8 @@
 .edit-org-select {
   border-radius: 10px !important;
   border: 1px solid #dcd7cc !important;
-  background-color: #ffffff !important;
-  color: #1c1d1d !important;
+  background-color: var(--color-surface, #FFFFFF) !important;
+  color: var(--color-text, #1C1D1D) !important;
   font-size: 0.875rem !important;
   padding: 0.55rem 0.85rem !important;
   transition: all 0.18s ease !important;
@@ -422,8 +422,8 @@
 
 .edit-org-input:focus,
 .edit-org-select:focus {
-  border-color: #c49a55 !important;
-  background-color: #ffffff !important;
+  border-color: var(--color-primary, #C49A55) !important;
+  background-color: var(--color-surface, #FFFFFF) !important;
   box-shadow: 0 0 0 3px rgba(196, 154, 85, 0.18) !important;
 }
 
@@ -448,9 +448,9 @@
 }
 
 .edit-org-chip-btn {
-  background: #f7f5f0;
+  background: var(--color-background, #F7F5F0);
   border: 1px solid #e8e2d5;
-  border-radius: 20px;
+  border-radius: var(--radius-xl, 20px);
   padding: 0.2rem 0.65rem;
   font-size: 0.74rem;
   font-weight: 600;
@@ -462,7 +462,7 @@
 .edit-org-chip-btn:hover {
   background: #f5efe3;
   color: #9b7229;
-  border-color: #c49a55;
+  border-color: var(--color-primary, #C49A55);
 }
 
 /* ── Logo Uploader Container ── */
@@ -472,13 +472,13 @@
   gap: 1.25rem;
   background: #faf8f5;
   border: 1.5px dashed #dcd7cc;
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   padding: 1.15rem;
   transition: all 0.2s ease;
 }
 
 .edit-org-logo-zone:hover {
-  border-color: #c49a55;
+  border-color: var(--color-primary, #C49A55);
   background: #fdfbf7;
 }
 
@@ -486,8 +486,8 @@
   min-width: 96px;
   max-width: 140px;
   height: 76px;
-  border-radius: 12px;
-  background: #ffffff;
+  border-radius: var(--radius-md, 12px);
+  background: var(--color-surface, #FFFFFF);
   border: 1.5px solid #e8e2d5;
   display: flex;
   align-items: center;
@@ -509,7 +509,7 @@
 }
 
 .edit-org-logo-placeholder {
-  color: #c49a55;
+  color: var(--color-primary, #C49A55);
   font-size: 1.75rem;
 }
 
@@ -528,13 +528,13 @@
 }
 
 .edit-org-upload-btn {
-  background: #ffffff !important;
-  color: #1c1d1d !important;
+  background: var(--color-surface, #FFFFFF) !important;
+  color: var(--color-text, #1C1D1D) !important;
   border: 1px solid #dcd7cc !important;
   font-weight: 600 !important;
   font-size: 0.8rem !important;
   padding: 0.4rem 0.9rem !important;
-  border-radius: 8px !important;
+  border-radius: var(--radius-sm, 8px) !important;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -545,7 +545,7 @@
 .edit-org-upload-btn:hover {
   background: #f5efe3 !important;
   color: #9b7229 !important;
-  border-color: #c49a55 !important;
+  border-color: var(--color-primary, #C49A55) !important;
 }
 
 .edit-org-remove-btn {
@@ -555,7 +555,7 @@
   font-weight: 600 !important;
   font-size: 0.8rem !important;
   padding: 0.4rem 0.8rem !important;
-  border-radius: 8px !important;
+  border-radius: var(--radius-sm, 8px) !important;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -570,9 +570,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid #e8e2d5;
-  border-radius: 16px;
+  border-radius: var(--radius-lg, 16px);
   padding: 1rem 1.5rem;
   box-shadow: 0 -4px 18px rgba(196, 154, 85, 0.06);
   margin-top: 1rem;

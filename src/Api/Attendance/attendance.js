@@ -5,7 +5,7 @@
  * Reuses central apiFetch and authorization header configuration.
  */
 
-import { apiFetch } from "../../config/api";
+import { apiFetch, apiError } from "../../config/api";
 
 /**
  * Fetch today's attendance record for the authenticated user.
@@ -13,7 +13,7 @@ import { apiFetch } from "../../config/api";
 export const fetchTodayAttendance = async () => {
   const result = await apiFetch("/attendance/today", { method: "GET" });
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to load today's attendance record.");
+    throw apiError(result, "Failed to load today's attendance record.");
   }
   return result.data;
 };
@@ -35,10 +35,7 @@ export const punchInUser = async (coords = {}) => {
   });
 
   if (!result.ok) {
-    const error = new Error(result.data?.message || "Punch In request failed.");
-    error.status = result.status;
-    error.data = result.data;
-    throw error;
+    throw apiError(result, "Punch In request failed.");
   }
   return result.data;
 };
@@ -54,10 +51,7 @@ export const punchOutUser = async (coords = {}) => {
   });
 
   if (!result.ok) {
-    const error = new Error(result.data?.message || "Punch Out request failed.");
-    error.status = result.status;
-    error.data = result.data;
-    throw error;
+    throw apiError(result, "Punch Out request failed.");
   }
   return result.data;
 };
@@ -100,7 +94,7 @@ export const sendGeofencePing = async ({ latitude, longitude, accuracy = 0 }) =>
   });
 
   if (!result.ok) {
-    throw new Error(result.data?.message || "Geofence ping request failed.");
+    throw apiError(result, "Geofence ping request failed.");
   }
   return result.data;
 };
@@ -112,7 +106,7 @@ export const sendGeofencePing = async ({ latitude, longitude, accuracy = 0 }) =>
 export const fetchMyAttendance = async () => {
   const result = await apiFetch("/attendance/my", { method: "GET" });
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to fetch attendance history.");
+    throw apiError(result, "Failed to fetch attendance history.");
   }
   return result.data;
 };
@@ -124,7 +118,7 @@ export const fetchAttendanceByMonth = async (month, year, targetUserId = "") => 
   const query = targetUserId ? `?userId=${targetUserId}` : "";
   const result = await apiFetch(`/attendance/month/${month}/${year}${query}`, { method: "GET" });
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to fetch monthly attendance.");
+    throw apiError(result, "Failed to fetch monthly attendance.");
   }
   return result.data;
 };
@@ -297,7 +291,7 @@ export const fetchAttendanceAuditLog = async (params = {}) => {
   const result = await apiFetch(`/attendance/audit-log${qs}`, { method: "GET" });
 
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to load attendance audit log.");
+    throw apiError(result, "Failed to load attendance audit log.");
   }
   return result.data;
 };
@@ -315,7 +309,7 @@ export const fetchRegularizationRequests = async (params = {}) => {
   const result = await apiFetch(`/attendance/regularization${qs}`, { method: "GET" });
 
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to load regularization requests.");
+    throw apiError(result, "Failed to load regularization requests.");
   }
   return result.data;
 };
@@ -330,7 +324,7 @@ export const submitRegularizationRequest = async (payload) => {
   });
 
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to submit regularization request.");
+    throw apiError(result, "Failed to submit regularization request.");
   }
   return result.data;
 };
@@ -345,7 +339,7 @@ export const reviewRegularizationRequest = async (id, { status, rejectionReason 
   });
 
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to review regularization request.");
+    throw apiError(result, "Failed to review regularization request.");
   }
   return result.data;
 };
@@ -356,7 +350,7 @@ export const reviewRegularizationRequest = async (id, { status, rejectionReason 
 export const fetchMyTeamAttendance = async () => {
   const result = await apiFetch("/attendance/my-team", { method: "GET" });
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to load my team attendance.");
+    throw apiError(result, "Failed to load my team attendance.");
   }
   return result.data;
 };
@@ -368,7 +362,7 @@ export const fetchAttendanceSettings = async (organizationId = "") => {
   const query = organizationId ? `?organizationId=${organizationId}` : "";
   const result = await apiFetch(`/attendance/settings${query}`, { method: "GET" });
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to load attendance settings.");
+    throw apiError(result, "Failed to load attendance settings.");
   }
   return result.data;
 };
@@ -383,7 +377,7 @@ export const updateAttendanceSettings = async (payload) => {
   });
 
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to update attendance settings.");
+    throw apiError(result, "Failed to update attendance settings.");
   }
   return result.data;
 };
@@ -400,7 +394,7 @@ export const updateAttendanceCorrection = async (id, updateData) => {
   });
 
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to correct attendance record.");
+    throw apiError(result, "Failed to correct attendance record.");
   }
   return result.data;
 };
@@ -417,7 +411,7 @@ export const postManualAttendanceOverride = async (overrideData) => {
   });
 
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to submit manual attendance override.");
+    throw apiError(result, "Failed to submit manual attendance override.");
   }
   return result.data;
 };
@@ -433,7 +427,7 @@ export const postBulkHoliday = async (holidayData) => {
   });
 
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to apply company holiday / bulk leave.");
+    throw apiError(result, "Failed to apply company holiday / bulk leave.");
   }
   return result.data;
 };
@@ -454,7 +448,7 @@ export const fetchHolidayPreview = async (params) => {
   const result = await apiFetch(`/attendance/holidays/preview${qs}`, { method: "GET" });
 
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to load holiday preview.");
+    throw apiError(result, "Failed to load holiday preview.");
   }
   return result.data;
 };
@@ -473,7 +467,7 @@ export const fetchDeclaredHolidays = async (params = {}) => {
   const result = await apiFetch(`/attendance/holidays${qs}`, { method: "GET" });
 
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to fetch declared holidays.");
+    throw apiError(result, "Failed to fetch declared holidays.");
   }
   return result.data;
 };
@@ -486,7 +480,7 @@ export const deleteDeclaredHoliday = async (id) => {
   const result = await apiFetch(`/attendance/holidays/${id}`, { method: "DELETE" });
 
   if (!result.ok) {
-    throw new Error(result.data?.message || "Failed to cancel holiday.");
+    throw apiError(result, "Failed to cancel holiday.");
   }
   return result.data;
 };

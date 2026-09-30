@@ -11,8 +11,6 @@ import {
   Badge,
   Table,
   Modal,
-  Alert,
-  Spinner,
   InputGroup,
   Image,
   Dropdown,
@@ -20,6 +18,7 @@ import {
   ToastContainer,
 } from "react-bootstrap";
 import LoadingSpinner from "../../Components/Common/LoadingSpinner";
+import FeedbackAlert from "../../Components/Common/FeedbackAlert";
 import EmptyState from "../../Components/Common/EmptyState";
 import SearchInput from "../../Components/Common/SearchInput";
 import PaginationBar from "../../Components/Common/PaginationBar";
@@ -160,11 +159,6 @@ import {
   disableLogin,
 } from "../../Api/Hr/hr";
 import {
-  fetchAllUsers,
-  fetchAssignableRoles,
-  fetchAllRoles,
-  fetchPermissionCatalog,
-  fetchAllMenus,
   fetchRoleAccessConfig,
   createCustomRole,
   provisionUserAccount,
@@ -178,10 +172,29 @@ import {
   fetchDepartments,
   fetchDesignations,
 } from "../../services/organizationService";
-import { getAssets, createAsset, assignAsset, returnAsset } from "../../services/assetService";
+import { createAsset } from "../../services/assetService";
+import {
+  fetchInventory,
+  selectAllAssets,
+} from "../../redux/slices/assetsSlice";
 import { useSelector, useDispatch } from 'react-redux';
 import { selectAuthUser, useHasPermission, selectIsSystemAdmin, fetchAuth } from '../../redux/slices/authSlice';
+import {
+  fetchPipeline,
+  selectPipelineList,
+} from '../../redux/slices/onboardingSlice';
+import {
+  fetchAccessMasters,
+  selectAssignableRoles,
+  selectPermissionCatalog,
+  selectAllMenus,
+} from '../../redux/slices/accessSlice';
+import {
+  fetchDirectory,
+  selectAllEmployees,
+} from '../../redux/slices/directorySlice';
 import { useBranch } from "../../context/BranchContext";
+import { API_BASE_URL } from "../../config/api";
 import BranchAccessSelector from "../../Components/Common/BranchAccessSelector";
 import "./HrOnboarding.css";
 
@@ -774,7 +787,9 @@ function HrOnboarding() {
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const hasPermission = useHasPermission();
   const dispatch = useDispatch();
-  const refreshAuthContext = () => dispatch(fetchAuth());
+  // Post-mutation refresh must bypass the fetchAuth TTL so role/permission
+  // changes revalidate immediately.
+  const refreshAuthContext = () => dispatch(fetchAuth({ force: true }));
   const { organization, branches: contextBranches } = useBranch();
 
   // ── Top Level View: "pipeline" | "onboard" | "directory" (Restored from session) ──
@@ -787,7 +802,10 @@ function HrOnboarding() {
   });
 
   // ── Onboarding Records Pipeline State ──
-  const [onboardings, setOnboardings] = useState([]);
+  // The pipeline list lives in the onboarding slice (single guarded fetch
+  // with request-identity protection); search/filter/page UI state stays
+  // local. Declared here (before first use) to preserve hook order.
+  const onboardings = useSelector(selectPipelineList);
   const [loadingPipeline, setLoadingPipeline] = useState(false);
   const [pipelineSearch, setPipelineSearch] = useState("");
   const [pipelineStatusFilter, setPipelineStatusFilter] = useState("ALL");
@@ -844,10 +862,14 @@ function HrOnboarding() {
   };
 
   // ── Directory & Roles State ──
-  const [employees, setEmployees] = useState([]);
-  const [assignableRoles, setAssignableRoles] = useState([]);
-  const [permissionCatalog, setPermissionCatalog] = useState({});
-  const [allMenus, setAllMenus] = useState([]);
+  // Shared user roster lives in the directory slice (single guarded fetch);
+  // search/filter/pagination/selection stay local.
+  const employees = useSelector(selectAllEmployees);
+  // Shared RBAC masters live in the access slice (single guarded fetch);
+  // role forms, permission editing, search/filter/pagination and modals stay local.
+  const assignableRoles = useSelector(selectAssignableRoles);
+  const permissionCatalog = useSelector(selectPermissionCatalog);
+  const allMenus = useSelector(selectAllMenus);
   const [showCreateRoleModal, setShowCreateRoleModal] = useState(false);
   const [creatingCustomRole, setCreatingCustomRole] = useState(false);
   const [newRoleForm, setNewRoleForm] = useState({
@@ -860,7 +882,6 @@ function HrOnboarding() {
   });
   const [isCustomizingPermissions, setIsCustomizingPermissions] = useState(false);
   const [loadingRoleConfig, setLoadingRoleConfig] = useState(false);
-  const [availableAssets, setAvailableAssets] = useState([]);
   const [loadingDirectory, setLoadingDirectory] = useState(false);
 
   // ── Employee Directory Pagination & Filtering (6 records per page) ──
@@ -977,7 +998,16 @@ function HrOnboarding() {
 
   useEffect(() => {
     try {
-      const { profilePicFile, ...serializable } = formData;
+      // Persist only serializable draft fields. File/Blob objects serialize
+      // to "{}" (a truthy husk that breaks `if (field)` checks on restore),
+      // and blob: preview URLs are dead after reload — both are dropped so a
+      // restored draft falls back to the clean initial values instead.
+      const serializable = {};
+      for (const [key, value] of Object.entries(formData)) {
+        if (value instanceof File || value instanceof Blob) continue;
+        if (typeof value === "string" && value.startsWith("blob:")) continue;
+        serializable[key] = value;
+      }
       sessionStorage.setItem("hrms_onboarding_formData", JSON.stringify(serializable));
     } catch (e) {}
   }, [formData]);
@@ -1057,6 +1087,14 @@ function HrOnboarding() {
 
   const handleEduFileChange = (fieldKey, file) => {
     if (!file) return;
+    // Revoke the previous blob preview for this field so replacing a file
+    // does not leak the old object URL.
+    const prevUrl = formData[`${fieldKey}Url`];
+    if (prevUrl && typeof prevUrl === "string" && prevUrl.startsWith("blob:")) {
+      try {
+        URL.revokeObjectURL(prevUrl);
+      } catch (e) {}
+    }
     const fileUrl = URL.createObjectURL(file);
     if (fieldKey === "sslcDocument") {
       setFormData((prev) => ({
@@ -1111,6 +1149,13 @@ function HrOnboarding() {
   };
 
   const handleEduFileRemove = (fieldKey) => {
+    // Revoke the blob preview before dropping the reference.
+    const prevUrl = formData[`${fieldKey}Url`];
+    if (prevUrl && typeof prevUrl === "string" && prevUrl.startsWith("blob:")) {
+      try {
+        URL.revokeObjectURL(prevUrl);
+      } catch (e) {}
+    }
     if (fieldKey === "sslcDocument") {
       setFormData((prev) => ({ ...prev, sslcDocumentFile: null, sslcDocumentName: "", sslcDocumentUrl: "" }));
     } else if (fieldKey === "hscDocument") {
@@ -1137,6 +1182,15 @@ function HrOnboarding() {
   const [selectedOnboarding, setSelectedOnboarding] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [detailActiveTab, setDetailActiveTab] = useState("profile");
+  // Monotonic id for the open workspace request. Rapidly switching candidates
+  // (or closing the modal) supersedes in-flight fetches: stale responses bail
+  // out at checkpoints instead of painting the wrong candidate's data.
+  const workspaceRequestRef = useRef(0);
+
+  const handleCloseWorkspace = useCallback(() => {
+    workspaceRequestRef.current = (workspaceRequestRef.current || 0) + 1;
+    setShowDetailModal(false);
+  }, []);
 
   // Detailed sub-entities for inspected candidate (guaranteed arrays)
   const [detailDocs, setDetailDocs] = useState([]);
@@ -1185,7 +1239,7 @@ function HrOnboarding() {
       let u = urlOrFile.trim().replace(/\\/g, "/");
       if (u) {
         if (!u.startsWith("http://") && !u.startsWith("https://") && !u.startsWith("blob:") && !u.startsWith("data:")) {
-          const backendBase = (process.env.REACT_APP_API_BASE_URL || "https://3.6.122.34/api").replace(/\/api\/?$/, "");
+          const backendBase = API_BASE_URL.replace(/\/api\/?$/, "");
           u = `${backendBase}/${u.replace(/^\/+/, "")}`;
         }
         // Remove invalid fl_inline from Cloudinary raw/upload paths if present
@@ -1219,11 +1273,20 @@ function HrOnboarding() {
           const contentType = isImg ? (blobData.type && blobData.type !== "application/octet-stream" ? blobData.type : "image/jpeg") : "application/pdf";
           const inlineBlob = new Blob([blobData], { type: contentType });
           const inlineBlobUrl = URL.createObjectURL(inlineBlob);
-          setDocPreview((prev) => ({
-            ...prev,
-            url: inlineBlobUrl,
-            loading: false,
-          }));
+          setDocPreview((prev) => {
+            // The inline copy replaces the earlier preview URL — revoke the
+            // old blob URL so each preview swap does not leak one.
+            if (prev?.url && prev.url.startsWith("blob:") && prev.url !== inlineBlobUrl) {
+              try {
+                URL.revokeObjectURL(prev.url);
+              } catch (e) {}
+            }
+            return {
+              ...prev,
+              url: inlineBlobUrl,
+              loading: false,
+            };
+          });
         } else {
           setDocPreview((prev) => ({ ...prev, loading: false }));
         }
@@ -1304,6 +1367,22 @@ function HrOnboarding() {
   // ── Education Document Helpers ──
   const [uploadingEduIndex, setUploadingEduIndex] = useState(null);
 
+  // Object URLs keyed by File identity. getEducationDoc/getProfessionalDoc
+  // run during render (several times per item per render); minting a fresh
+  // URL on every call leaks blob URLs and churns <img>/<iframe> sources.
+  // The WeakMap releases entries automatically once the File is dropped.
+  const docObjectUrlCache = useRef(new WeakMap());
+
+  const getCachedDocUrl = (fileObj) => {
+    if (!(fileObj instanceof File || fileObj instanceof Blob)) return "";
+    let url = docObjectUrlCache.current.get(fileObj);
+    if (!url) {
+      url = URL.createObjectURL(fileObj);
+      docObjectUrlCache.current.set(fileObj, url);
+    }
+    return url;
+  };
+
   const getEducationDoc = (eduItem) => {
     if (!eduItem) return null;
 
@@ -1311,7 +1390,7 @@ function HrOnboarding() {
     if (eduItem.certificateFile instanceof File || eduItem.file instanceof File) {
       const fileObj = eduItem.certificateFile instanceof File ? eduItem.certificateFile : eduItem.file;
       return {
-        url: eduItem.certificateUrl || URL.createObjectURL(fileObj),
+        url: eduItem.certificateUrl || getCachedDocUrl(fileObj),
         title: eduItem.certificateDocName || fileObj.name || `${eduItem.degree || "Education"} Certificate`,
         file: fileObj,
       };
@@ -1412,7 +1491,7 @@ function HrOnboarding() {
     if (profItem.documentFile instanceof File || profItem.file instanceof File) {
       const fileObj = profItem.documentFile instanceof File ? profItem.documentFile : profItem.file;
       return {
-        url: profItem.documentUrl || URL.createObjectURL(fileObj),
+        url: profItem.documentUrl || getCachedDocUrl(fileObj),
         title: profItem.documentName || fileObj.name || `${profItem.companyName || "Company"} Document`,
         file: fileObj,
       };
@@ -2009,7 +2088,10 @@ function HrOnboarding() {
   const [savingProfile, setSavingProfile] = useState(false);
 
   // ── Asset Inventory & Sub-Tab State in Candidate Workspace ──
-  const [assetInventory, setAssetInventory] = useState([]);
+  // The shared inventory lives in the assets slice (single guarded fetch);
+  // assetCounts/filteredAssetsList below stay derived memos, and sub-tabs,
+  // search/filter, forms, modals and loading flags stay local.
+  const assetInventory = useSelector(selectAllAssets);
   const [assetLoading, setAssetLoading] = useState(false);
   const [assetSubTab, setAssetSubTab] = useState("all"); // "all" | "assigned" | "available"
   const [assetSearchQuery, setAssetSearchQuery] = useState("");
@@ -2116,30 +2198,57 @@ function HrOnboarding() {
       : "Employee";
 
   // ── Load Pipeline Onboardings ──
-  const loadPipelineData = useCallback(async () => {
+  // Debounced search: typing filters instantly on the client via the effect
+  // below, while the server fetch waits 350ms so a fast keystroke burst
+  // issues one request instead of one per character. The list itself lives
+  // in the onboarding slice (single guarded fetch); the request sequence
+  // guard below plus the slice's request-identity check together drop stale
+  // responses (a slow earlier response must not overwrite newer results)
+  // without changing the loaded data contract. `force: true` bypasses the
+  // slice TTL after pipeline-changing mutations.
+  const pipelineRequestRef = useRef(0);
+  const [debouncedPipelineSearch, setDebouncedPipelineSearch] = useState(pipelineSearch);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedPipelineSearch(pipelineSearch), 350);
+    return () => clearTimeout(t);
+  }, [pipelineSearch]);
+
+  const loadPipelineData = useCallback(async (options = {}) => {
+    const reqId = (pipelineRequestRef.current = (pipelineRequestRef.current || 0) + 1);
     setLoadingPipeline(true);
     try {
-      const res = await fetchOnboardings({
-        status: pipelineStatusFilter === "ALL" ? "" : pipelineStatusFilter,
-        search: pipelineSearch,
-      });
-      setOnboardings(toArray(res));
+      await dispatch(
+        fetchPipeline({
+          status: pipelineStatusFilter === "ALL" ? "" : pipelineStatusFilter,
+          search: debouncedPipelineSearch,
+          ...(options.force ? { force: true } : {}),
+        })
+      ).catch(() => null);
     } catch (err) {
+      if (pipelineRequestRef.current !== reqId) return;
       console.warn("Failed to load onboarding pipeline:", err.message);
-      setOnboardings([]);
     } finally {
-      setLoadingPipeline(false);
+      if (pipelineRequestRef.current === reqId) setLoadingPipeline(false);
     }
-  }, [pipelineStatusFilter, pipelineSearch]);
+  }, [dispatch, pipelineStatusFilter, debouncedPipelineSearch]);
 
   // ── Load Directory & Master Data ──
-  const loadMasterData = useCallback(async () => {
+  // The user roster comes from the guarded directory slice; `forceDirectory`
+  // bypasses its TTL cache after mutations that change directory membership
+  // (onboarding initiation, activation, provisioning, access changes).
+  const loadMasterData = useCallback(async (options = {}) => {
     setLoadingDirectory(true);
     try {
-      const [usersData, rolesData, assetsRes, deptsRes, desigsRes, catalogRes, menusRes] = await Promise.all([
-        fetchAllUsers().catch(() => []),
-        fetchAssignableRoles().catch(() => []),
-        getAssets({ limit: 100 }).catch(() => ({ data: [] })),
+      const [, , , deptsRes, desigsRes] = await Promise.all([
+        dispatch(
+          fetchDirectory(options.forceDirectory ? { force: true } : undefined)
+        ).catch(() => null),
+        // Shared RBAC masters (roles, permission catalog, menus) come from
+        // the guarded access slice — one cached fetch, not one per page.
+        dispatch(fetchAccessMasters()).catch(() => null),
+        // Shared asset inventory comes from the guarded assets slice.
+        dispatch(fetchInventory()).catch(() => null),
         fetchDepartmentsDropdown().catch(async () => {
           const d = await fetchDepartments({ limit: 100 }).catch(() => []);
           return d?.data || d || [];
@@ -2148,17 +2257,7 @@ function HrOnboarding() {
           const dg = await fetchDesignations({ limit: 100 }).catch(() => []);
           return dg?.data || dg || [];
         }),
-        fetchPermissionCatalog().catch(() => ({})),
-        fetchAllMenus().catch(() => []),
       ]);
-      setEmployees(toArray(usersData));
-      setAssignableRoles(toArray(rolesData));
-      setPermissionCatalog(catalogRes || {});
-      setAllMenus(toArray(menusRes));
-      const assetList = toArray(assetsRes?.data || assetsRes);
-      setAssetInventory(assetList);
-      setAvailableAssets(assetList.filter((a) => a.status === "AVAILABLE"));
-
       const deptList = toArray(deptsRes?.data || deptsRes);
       setOrgDepartments(deptList);
 
@@ -2169,21 +2268,20 @@ function HrOnboarding() {
     } finally {
       setLoadingDirectory(false);
     }
-  }, []);
+  }, [dispatch]);
 
-  const loadAssetInventory = useCallback(async () => {
+  const loadAssetInventory = useCallback(async (options = {}) => {
     setAssetLoading(true);
     try {
-      const res = await getAssets({ limit: 100 });
-      const list = toArray(res?.data || res);
-      setAssetInventory(list);
-      setAvailableAssets(list.filter((a) => a.status === "AVAILABLE"));
+      await dispatch(
+        fetchInventory(options.force ? { force: true } : undefined)
+      ).catch(() => null);
     } catch (err) {
       console.warn("Failed to reload asset inventory:", err.message);
     } finally {
       setAssetLoading(false);
     }
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     loadPipelineData();
@@ -2280,8 +2378,9 @@ function HrOnboarding() {
         permissionCodes: newRoleForm.selectedPermissionCodes || [],
       });
       const createdRole = res?.data || res;
-      const rolesRes = await fetchAssignableRoles().catch(() => []);
-      setAssignableRoles(toArray(rolesRes));
+      // The new role must appear in pickers immediately: force a masters
+      // refresh (bypasses the TTL cache) instead of a local-only patch.
+      await dispatch(fetchAccessMasters({ force: true })).catch(() => null);
       if (createdRole?._id) {
         setFormData((prev) => ({
           ...prev,
@@ -2301,6 +2400,8 @@ function HrOnboarding() {
 
   // ── Open Candidate Inspection Workspace ──
   const handleOpenCandidateWorkspace = async (onboardingId) => {
+    const reqId = (workspaceRequestRef.current = (workspaceRequestRef.current || 0) + 1);
+    const isLatest = () => workspaceRequestRef.current === reqId;
     setShowDetailModal(true);
     setLoadingDetails(true);
     setValidationReport(null);
@@ -2308,6 +2409,7 @@ function HrOnboarding() {
     setIsEditingCandidateProfile(false);
     try {
       const res = await fetchOnboardingById(onboardingId);
+      if (!isLatest()) return;
       const data = res?.data?.data || res?.data || res || {};
       setSelectedOnboarding(data);
       setDetailDocs(toArray(data.documents));
@@ -2333,6 +2435,7 @@ function HrOnboarding() {
       } catch (domainErr) {
         console.warn("fetchEmployeeInfo notice:", domainErr.message);
       }
+      if (!isLatest()) return;
 
       let emp = data.employeeId || data.employee || data.user || {};
       const userId = emp._id || data.employeeId?._id || data.employeeId || data.userId;
@@ -2362,6 +2465,7 @@ function HrOnboarding() {
         } catch (fbErr) {
           console.warn("Fallback domain fetch:", fbErr.message);
         }
+        if (!isLatest()) return;
       }
 
       // 1. Professional & Company History
@@ -2711,16 +2815,19 @@ function HrOnboarding() {
         );
       }
     } catch (err) {
+      if (!isLatest()) return;
       setErrorMsg(`Failed to load candidate details: ${err.message}`);
       setShowDetailModal(false);
     } finally {
-      setLoadingDetails(false);
+      if (isLatest()) setLoadingDetails(false);
     }
   };
 
   // ── Reload Sub-entities Silently for Workspace ──
   const reloadCandidateDetails = async (onboardingId) => {
     if (!onboardingId) return;
+    const reqToken = workspaceRequestRef.current;
+    const isCurrent = () => workspaceRequestRef.current === reqToken;
     try {
       const [dataRes, docsRes, tasksRes, accessRes, trainRes, agreeRes] = await Promise.all([
         fetchOnboardingById(onboardingId).catch(() => null),
@@ -2730,6 +2837,7 @@ function HrOnboarding() {
         fetchOnboardingTraining(onboardingId).catch(() => null),
         fetchOnboardingAgreements(onboardingId).catch(() => null),
       ]);
+      if (!isCurrent()) return;
       const data = dataRes?.data?.data || dataRes?.data || dataRes;
       if (data && typeof data === "object") setSelectedOnboarding(data);
       if (docsRes) setDetailDocs(toArray(docsRes));
@@ -3047,8 +3155,8 @@ function HrOnboarding() {
       }
       setSuccessMsg(res?.message || "Onboarding marked COMPLETED and Employee ACTIVATED successfully!");
       await reloadCandidateDetails(selectedOnboarding._id);
-      await loadPipelineData();
-      await loadMasterData();
+      await loadPipelineData({ force: true });
+      await loadMasterData({ forceDirectory: true });
     } catch (err) {
       setErrorMsg(err.message || "Failed to complete onboarding");
       const missingList =
@@ -3111,8 +3219,8 @@ function HrOnboarding() {
       setSuccessMsg(res?.message || "All pending checklist items fulfilled! Onboarding COMPLETED and Employee ACTIVATED.");
       setShowValidationModal(false);
       await reloadCandidateDetails(oid);
-      await loadPipelineData();
-      await loadMasterData();
+      await loadPipelineData({ force: true });
+      await loadMasterData({ forceDirectory: true });
     } catch (err) {
       setErrorMsg(err.message || "Failed to complete onboarding.");
       const missingList =
@@ -3150,8 +3258,8 @@ function HrOnboarding() {
       const res = await activateEmployee(selectedOnboarding._id);
       setSuccessMsg(res?.message || "Employee successfully ACTIVATED in organization!");
       await reloadCandidateDetails(selectedOnboarding._id);
-      await loadPipelineData();
-      await loadMasterData();
+      await loadPipelineData({ force: true });
+      await loadMasterData({ forceDirectory: true });
     } catch (err) {
       setErrorMsg(err.message || "Failed to activate employee");
     } finally {
@@ -3393,7 +3501,7 @@ function HrOnboarding() {
       setSuccessMsg(`Asset "${asset.name}" (${asset.assetCode || asset.serialNumber || ""}) assigned successfully!`);
       const assetsRes = await fetchOnboardingAssets(selectedOnboarding._id);
       if (assetsRes) setDetailAssets(toArray(assetsRes));
-      await loadAssetInventory();
+      await loadAssetInventory({ force: true });
       await handleRunValidation(false);
       setShowAssignAssetModal(false);
       setSelectedAssetToAssign(null);
@@ -3412,7 +3520,7 @@ function HrOnboarding() {
       setSuccessMsg(`Asset "${assetName}" returned and restored to available inventory.`);
       const assetsRes = await fetchOnboardingAssets(selectedOnboarding._id);
       if (assetsRes) setDetailAssets(toArray(assetsRes));
-      await loadAssetInventory();
+      await loadAssetInventory({ force: true });
       await handleRunValidation(false);
     } catch (err) {
       setErrorMsg(err.message || "Failed to return asset");
@@ -3437,7 +3545,7 @@ function HrOnboarding() {
         purchaseDate: "",
         warrantyExpiryDate: "",
       });
-      await loadAssetInventory();
+      await loadAssetInventory({ force: true });
       await loadMasterData();
     } catch (err) {
       setErrorMsg(err.message || "Failed to create asset.");
@@ -3654,6 +3762,12 @@ function HrOnboarding() {
         setErrorMsg("Profile photo must be smaller than 5MB");
         return;
       }
+      const prevUrl = formData.profilePicPreview;
+      if (prevUrl && typeof prevUrl === "string" && prevUrl.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(prevUrl);
+        } catch (err) {}
+      }
       const previewUrl = URL.createObjectURL(file);
       setFormData((prev) => ({
         ...prev,
@@ -3664,6 +3778,12 @@ function HrOnboarding() {
   };
 
   const handleRemoveProfilePhoto = () => {
+    const prevUrl = formData.profilePicPreview;
+    if (prevUrl && typeof prevUrl === "string" && prevUrl.startsWith("blob:")) {
+      try {
+        URL.revokeObjectURL(prevUrl);
+      } catch (err) {}
+    }
     setFormData((prev) => ({
       ...prev,
       profilePicFile: null,
@@ -4137,8 +4257,8 @@ function HrOnboarding() {
         `Onboarding initiated for ${createdUser?.firstName || formData.firstName} ${createdUser?.lastName || formData.lastName} (${createdUser?.employeeCode || "New"})!`
       );
 
-      await loadPipelineData();
-      await loadMasterData();
+      await loadPipelineData({ force: true });
+      await loadMasterData({ forceDirectory: true });
 
       if (onboardingId) {
         try {
@@ -4250,8 +4370,8 @@ function HrOnboarding() {
       if (selectedOnboarding?._id) {
         await reloadCandidateDetails(selectedOnboarding._id);
       }
-      await loadPipelineData();
-      await loadMasterData();
+      await loadPipelineData({ force: true });
+      await loadMasterData({ forceDirectory: true });
     } catch (err) {
       setErrorMsg(err.message || "Failed to provision login account");
     } finally {
@@ -4271,8 +4391,8 @@ function HrOnboarding() {
         setSuccessMsg("Employee login access enabled.");
       }
       await reloadCandidateDetails(onboardingId);
-      await loadPipelineData();
-      await loadMasterData();
+      await loadPipelineData({ force: true });
+      await loadMasterData({ forceDirectory: true });
     } catch (err) {
       setErrorMsg(err.message || "Failed to toggle login access");
     }
@@ -4314,7 +4434,7 @@ function HrOnboarding() {
 
       setSuccessMsg(`Account updated for ${manageTarget.firstName} ${manageTarget.lastName}.`);
       setShowManageModal(false);
-      await loadMasterData();
+      await loadMasterData({ forceDirectory: true });
       await refreshAuthContext();
     } catch (err) {
       setErrorMsg(err.message || "Failed to update account");
@@ -5094,7 +5214,7 @@ function HrOnboarding() {
                       size="sm"
                       className="onboarding-icon-btn rounded-circle extra-small fw-semibold d-flex align-items-center justify-content-center shadow-xs p-0"
                       style={{ width: "32px", height: "32px" }}
-                      onClick={loadPipelineData}
+                      onClick={() => loadPipelineData({ force: true })}
                       disabled={loadingPipeline}
                       title="Refresh candidate table"
                     >
@@ -5107,7 +5227,7 @@ function HrOnboarding() {
                 <div className="table-responsive flex-grow-1 d-flex flex-column">
                   {loadingPipeline ? (
                     <div className="text-center py-5 my-auto">
-                      <Spinner animation="border" variant="success" size="sm" />
+                      <LoadingSpinner color="success" size="sm" />
                       <div className="extra-small text-muted mt-2">Loading candidates...</div>
                     </div>
                   ) : onboardings.length === 0 ? (
@@ -5128,7 +5248,7 @@ function HrOnboarding() {
                       </Button>
                     </div>
                   ) : (
-                    <Table hover align="middle" className="mb-0 modern-onboarding-table">
+                    <Table hover responsive align="middle" className="mb-0 modern-onboarding-table">
                       <thead>
                         <tr>
                           <th className="ps-3 ps-md-4">CANDIDATE</th>
@@ -5156,13 +5276,15 @@ function HrOnboarding() {
                               key={item._id}
                               className="cursor-pointer onboarding-candidate-row"
                               onClick={() => handleOpenCandidateWorkspace(item._id)}
+                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleOpenCandidateWorkspace(item._id); } }}
+                              tabIndex={0}
                               title={`Click to open ${fullName}'s profile`}
                               style={{ cursor: "pointer" }}
                             >
                               <td className="ps-3 ps-md-4">
                                 <div className="d-flex align-items-center" style={{ gap: "12px" }}>
                                   {emp.avatar ? (
-                                    <Image src={emp.avatar} roundedCircle width={36} height={36} className="flex-shrink-0 object-fit-cover" />
+                                    <Image src={emp.avatar} roundedCircle width={36} height={36} className="flex-shrink-0 object-fit-cover" alt={fullName} />
                                   ) : (
                                     <div className="candidate-avatar-circle" style={{ backgroundColor: avatarBg }}>
                                       {initial}
@@ -5429,6 +5551,7 @@ function HrOnboarding() {
                               roundedCircle
                               width={72}
                               height={72}
+                              alt="Candidate photo preview"
                               className="onboarding-profile-pic-ring shadow-sm object-fit-cover"
                               style={{ width: "72px", height: "72px", objectFit: "cover" }}
                             />
@@ -6999,7 +7122,7 @@ function HrOnboarding() {
                           {/* Granular Permission Catalog by Module */}
                           {loadingRoleConfig ? (
                             <div className="text-center py-4">
-                              <Spinner size="sm" animation="border" variant="success" className="me-2" />
+                              <LoadingSpinner size="sm" color="success" className="me-2" />
                               <span className="extra-small text-muted">Loading role permissions matrix...</span>
                             </div>
                           ) : Object.keys(permissionCatalog).length > 0 ? (
@@ -7424,6 +7547,7 @@ function HrOnboarding() {
                               roundedCircle
                               width={58}
                               height={58}
+                              alt="Candidate photo preview"
                               className="object-fit-cover shadow-xs border"
                               style={{ width: "58px", height: "58px" }}
                             />
@@ -8302,11 +8426,11 @@ function HrOnboarding() {
           <div className="table-responsive">
             {loadingDirectory ? (
               <div className="text-center py-5">
-                <Spinner animation="border" variant="success" size="sm" />
+                <LoadingSpinner color="success" size="sm" />
                 <div className="extra-small text-muted mt-2">Loading employee directory...</div>
               </div>
             ) : (
-              <Table hover align="middle" className="mb-0 small onboarding-directory-table">
+              <Table hover responsive align="middle" className="mb-0 small onboarding-directory-table">
                 <thead className="table-light extra-small text-uppercase text-muted border-bottom">
                   <tr>
                     <th className="ps-3 ps-md-4" style={{ width: "30%" }}>Employee</th>
@@ -8343,7 +8467,7 @@ function HrOnboarding() {
                           <td className="ps-3 ps-md-4">
                             <div className="d-flex align-items-center gap-2">
                               {emp.avatar ? (
-                                <Image src={emp.avatar} roundedCircle width={32} height={32} className="flex-shrink-0" />
+                                <Image src={emp.avatar} roundedCircle width={32} height={32} className="flex-shrink-0" alt={emp.firstName ? `${emp.firstName} ${emp.lastName || ""}`.trim() : "Employee"} />
                               ) : (
                                 <div className="onboarding-avatar-circle-32 shadow-xs">
                                   {emp.firstName ? emp.firstName[0].toUpperCase() : "U"}
@@ -8447,7 +8571,7 @@ function HrOnboarding() {
           ======================================================== */}
       <Modal
         show={showDetailModal}
-        onHide={() => setShowDetailModal(false)}
+          onHide={handleCloseWorkspace}
         size="xl"
         centered
         scrollable
@@ -8457,7 +8581,7 @@ function HrOnboarding() {
           <div className="d-flex flex-wrap justify-content-between align-items-center w-100 gap-3 pe-3">
             <div className="d-flex align-items-center gap-3">
               {candidateProfileData?.avatar ? (
-                <Image src={candidateProfileData.avatar} roundedCircle width={48} height={48} className="border border-success shadow-xs" />
+                <Image src={candidateProfileData.avatar} roundedCircle width={48} height={48} className="border border-success shadow-xs" alt={candidateName} />
               ) : (
                 <div className="onboarding-avatar-gradient-48 rounded-circle text-white d-flex align-items-center justify-content-center fw-bold fs-5 shadow-xs flex-shrink-0">
                   {candidateName[0]}
@@ -8504,7 +8628,7 @@ function HrOnboarding() {
         <Modal.Body className="p-3 p-md-4 bg-light">
           {loadingDetails ? (
             <div className="text-center py-5">
-              <Spinner animation="border" variant="success" size="sm" />
+              <LoadingSpinner color="success" size="sm" />
               <div className="extra-small text-muted mt-2">Loading candidate workspace...</div>
             </div>
           ) : (
@@ -8904,7 +9028,7 @@ function HrOnboarding() {
                                 <div className="extra-small text-uppercase fw-bold text-muted mb-2 d-flex align-items-center gap-1.5 pb-2 border-bottom">
                                   <FaUser className="text-success" /> Personal Information
                                 </div>
-                                <Table borderless size="sm" className="mb-0 align-middle">
+                                <Table borderless responsive size="sm" className="mb-0 align-middle">
                                   <tbody>
                                     <tr>
                                       <td className="text-muted extra-small py-2 text-uppercase fw-semibold review-table-label-col">Full Name</td>
@@ -8953,7 +9077,7 @@ function HrOnboarding() {
                                 <div className="extra-small text-uppercase fw-bold text-muted mb-2 d-flex align-items-center gap-1.5 pb-2 border-bottom">
                                   <FaBriefcase className="text-primary" /> Employment & Organization Parameters
                                 </div>
-                                <Table borderless size="sm" className="mb-0 align-middle">
+                                <Table borderless responsive size="sm" className="mb-0 align-middle">
                                   <tbody>
                                     <tr>
                                       <td className="text-muted extra-small py-2 text-uppercase fw-semibold review-table-label-col">Designation</td>
@@ -10511,7 +10635,7 @@ function HrOnboarding() {
                                         </label>
                                       </div>
                                     </div>
-                                    <Table borderless size="sm" className="mb-0 align-middle">
+                                    <Table borderless responsive size="sm" className="mb-0 align-middle">
                                       <tbody>
                                         <tr>
                                           <td className="text-muted extra-small py-1.5 text-uppercase fw-semibold review-table-label-col">Bank Name</td>
@@ -10553,7 +10677,7 @@ function HrOnboarding() {
                                 <div className="extra-small text-uppercase fw-bold text-muted mb-2 d-flex align-items-center gap-1.5 pb-2 border-bottom">
                                   <FaFileContract style={{ color: "#C49A55" }} /> Statutory & Compliance Details
                                 </div>
-                                <Table borderless size="sm" className="mb-0 align-middle">
+                                <Table borderless responsive size="sm" className="mb-0 align-middle">
                                   <tbody>
                                     <tr>
                                       <td className="text-muted extra-small py-1.5 text-uppercase fw-semibold review-table-label-col">PAN Number</td>
@@ -10774,8 +10898,7 @@ function HrOnboarding() {
 
                       {/* Missing Requirements List */}
                       {toArray(validationReport.missingRequirements).length > 0 && (
-                        <Alert variant="warning" className="small rounded-3 mb-0">
-                          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                        <FeedbackAlert variant="warning" className="small rounded-3 mb-0" message={<><div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
                             <h6 className="fw-bold small mb-0 text-dark">
                               <FaExclamationTriangle className="me-1.5 text-warning" /> Missing Requirements to Fulfill:
                             </h6>
@@ -10793,8 +10916,7 @@ function HrOnboarding() {
                             {toArray(validationReport.missingRequirements).map((req, idx) => (
                               <li key={idx} className="mb-1 fw-medium">{req}</li>
                             ))}
-                          </ul>
-                        </Alert>
+                          </ul></>} />
                       )}
                     </div>
                   ) : (
@@ -10837,7 +10959,7 @@ function HrOnboarding() {
                       </Button>
                     </div>
                   ) : (
-                    <Table hover size="sm" align="middle" className="mb-0">
+                    <Table hover responsive size="sm" align="middle" className="mb-0">
                       <thead className="table-light extra-small text-uppercase text-muted">
                         <tr>
                           <th>Document</th>
@@ -10960,7 +11082,7 @@ function HrOnboarding() {
                     </Row>
                   </Form>
 
-                  <Table hover size="sm" align="middle" className="mb-0">
+                  <Table hover responsive size="sm" align="middle" className="mb-0">
                     <thead className="table-light extra-small text-uppercase text-muted">
                       <tr>
                         <th>Done</th>
@@ -11217,7 +11339,7 @@ function HrOnboarding() {
                   <Card className="border shadow-xs rounded-3 overflow-hidden bg-white">
                     {assetLoading ? (
                       <div className="p-5 text-center text-muted">
-                        <Spinner animation="border" variant="success" size="sm" className="me-2" />
+                        <LoadingSpinner color="success" size="sm" className="me-2" />
                         <span className="small">Loading asset catalog...</span>
                       </div>
                     ) : filteredAssetsList.length === 0 ? (
@@ -11372,7 +11494,7 @@ function HrOnboarding() {
                     </Row>
                   </Form>
 
-                  <Table hover size="sm" align="middle" className="mb-0">
+                  <Table hover responsive size="sm" align="middle" className="mb-0">
                     <thead className="table-light extra-small text-uppercase text-muted">
                       <tr>
                         <th>System Name</th>
@@ -11452,7 +11574,7 @@ function HrOnboarding() {
                     </Row>
                   </Form>
 
-                  <Table hover size="sm" align="middle" className="mb-0">
+                  <Table hover responsive size="sm" align="middle" className="mb-0">
                     <thead className="table-light extra-small text-uppercase text-muted">
                       <tr>
                         <th>Title</th>
@@ -11521,7 +11643,7 @@ function HrOnboarding() {
                     </Row>
                   </Form>
 
-                  <Table hover size="sm" align="middle" className="mb-0">
+                  <Table hover responsive size="sm" align="middle" className="mb-0">
                     <thead className="table-light extra-small text-uppercase text-muted">
                       <tr>
                         <th>Training Name</th>
@@ -11566,7 +11688,7 @@ function HrOnboarding() {
         </Modal.Body>
 
         <Modal.Footer className="bg-white border-top py-2 px-4">
-          <Button variant="secondary" size="sm" className="rounded-pill px-4" onClick={() => setShowDetailModal(false)}>
+          <Button variant="secondary" size="sm" className="rounded-pill px-4" onClick={handleCloseWorkspace}>
             Close Workspace
           </Button>
         </Modal.Footer>

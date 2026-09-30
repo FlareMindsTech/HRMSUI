@@ -1,6 +1,7 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "TeamHub",
+  "name": "TeamHub HRMS",
+  "description": "TeamHub Human Resource Management System by FlareMindsTech",
   "icons": [
     {
       "src": "favicon.ico",
@@ -20,6 +21,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#C79D58",
+  "background_color": "#F7F5F0"
 }

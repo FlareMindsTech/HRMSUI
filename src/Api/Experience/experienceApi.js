@@ -1,30 +1,18 @@
-import { API_BASE_URL, authHeaders } from "../../config/api";
-
-// Helper to normalize response
-const handleResponse = async (res) => {
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const errorMsg = data?.message || data?.error || `Request failed with status ${res.status}`;
-    throw new Error(errorMsg);
-  }
-  return data;
-};
+import { apiFetch, apiError } from "../../config/api";
 
 // 1. Add / Create Experience (Multipart FormData or JSON)
 export const addExperienceApi = async (formDataOrObj) => {
-  const isFormData = formDataOrObj instanceof FormData;
-  const headers = authHeaders();
-  if (isFormData) {
-    delete headers["Content-Type"];
-  }
+  const isFormData =
+    typeof FormData !== "undefined" && formDataOrObj instanceof FormData;
 
-  const res = await fetch(`${API_BASE_URL}/experience/add`, {
+  const res = await apiFetch(`/experience/add`, {
     method: "POST",
-    headers,
     body: isFormData ? formDataOrObj : JSON.stringify(formDataOrObj),
   });
-
-  return handleResponse(res);
+  if (!res.ok) {
+    throw apiError(res, `Request failed with status ${res.status}`);
+  }
+  return res.data;
 };
 
 // 2. Get Experiences by User ID
@@ -32,15 +20,15 @@ export const getExperienceByUserId = async (userId) => {
   if (!userId) return [];
   try {
     const endpoints = [
-      `${API_BASE_URL}/experience/get/${userId}`,
-      `${API_BASE_URL}/experience/user/${userId}`,
-      `${API_BASE_URL}/experience/${userId}`,
+      `/experience/get/${userId}`,
+      `/experience/user/${userId}`,
+      `/experience/${userId}`,
     ];
-    for (const url of endpoints) {
+    for (const ep of endpoints) {
       try {
-        const res = await fetch(url, { method: "GET", headers: authHeaders() });
+        const res = await apiFetch(ep, { method: "GET" });
         if (res.ok) {
-          const data = await res.json().catch(() => ({}));
+          const data = res.data;
           const list = data?.data || data?.experiences || data?.experience || data || [];
           if (Array.isArray(list)) return list;
           if (list && typeof list === "object" && Object.keys(list).length > 0) return [list];
@@ -58,39 +46,35 @@ export const getExperienceByUserId = async (userId) => {
 // 3. Get Experience by ID
 export const getExperienceById = async (id) => {
   if (!id) return null;
-  const res = await fetch(`${API_BASE_URL}/experience/${id}`, {
-    method: "GET",
-    headers: authHeaders(),
-  });
-  const data = await handleResponse(res);
-  return data?.data || data;
+  const res = await apiFetch(`/experience/${id}`, { method: "GET" });
+  if (!res.ok) {
+    throw apiError(res, `Request failed with status ${res.status}`);
+  }
+  return res.data?.data || res.data;
 };
 
 // 4. Update Experience
 export const updateExperienceApi = async (id, formDataOrObj) => {
   if (!id) throw new Error("Experience ID is required for update");
-  const isFormData = formDataOrObj instanceof FormData;
-  const headers = authHeaders();
-  if (isFormData) {
-    delete headers["Content-Type"];
-  }
+  const isFormData =
+    typeof FormData !== "undefined" && formDataOrObj instanceof FormData;
 
-  const res = await fetch(`${API_BASE_URL}/experience/update/${id}`, {
+  const res = await apiFetch(`/experience/update/${id}`, {
     method: "PUT",
-    headers,
     body: isFormData ? formDataOrObj : JSON.stringify(formDataOrObj),
   });
-
-  return handleResponse(res);
+  if (!res.ok) {
+    throw apiError(res, `Request failed with status ${res.status}`);
+  }
+  return res.data;
 };
 
 // 5. Delete Experience
 export const deleteExperienceApi = async (id) => {
   if (!id) throw new Error("Experience ID is required for deletion");
-  const res = await fetch(`${API_BASE_URL}/experience/delete/${id}`, {
-    method: "DELETE",
-    headers: authHeaders(),
-  });
-
-  return handleResponse(res);
+  const res = await apiFetch(`/experience/delete/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    throw apiError(res, `Request failed with status ${res.status}`);
+  }
+  return res.data;
 };

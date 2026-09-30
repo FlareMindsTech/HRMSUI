@@ -7,7 +7,6 @@ import {
   Button,
   Modal,
   Form,
-  Spinner,
   Alert,
   InputGroup,
 } from "react-bootstrap";
@@ -30,7 +29,7 @@ import {
   FaUser,
 } from "react-icons/fa";
 import { MdDevices } from "react-icons/md";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useHasMenu, useHasPermission, selectAuthStatus } from '../../redux/slices/authSlice';
 import DataTable from '../../Components/Common/DataTable';
 import SearchInput from '../../Components/Common/SearchInput';
@@ -43,7 +42,8 @@ import {
   assignAsset,
   returnAsset,
 } from "../../services/assetService";
-import { fetchAllUsers } from "../../services/rbacService";
+import { fetchDirectory, selectAllEmployees } from "../../redux/slices/directorySlice";
+import { invalidateInventory } from "../../redux/slices/assetsSlice";
 import "./AssetManagement.css";
 
 // Helper for category badge icons
@@ -128,7 +128,10 @@ function AssetManagement() {
   const [paginationInfo, setPaginationInfo] = useState({ totalPages: 1, totalRecords: 0 });
 
   // ── Employee List State for Assign Modal ──
-  const [employees, setEmployees] = useState([]);
+  // The assign-modal roster comes from the shared directory slice (lazy,
+  // modal-open fetch as before); the modal loading flag stays local.
+  const dispatch = useDispatch();
+  const employees = useSelector(selectAllEmployees);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
 
   // ── Create Modal State ──
@@ -229,18 +232,13 @@ function AssetManagement() {
     if (employees.length > 0) return;
     setLoadingEmployees(true);
     try {
-      const usersData = await fetchAllUsers();
-      if (Array.isArray(usersData)) {
-        setEmployees(usersData);
-      } else if (usersData && Array.isArray(usersData.users)) {
-        setEmployees(usersData.users);
-      }
+      await dispatch(fetchDirectory()).catch(() => null);
     } catch (err) {
       console.warn("Could not load employee directory for assignment:", err.message);
     } finally {
       setLoadingEmployees(false);
     }
-  }, [employees.length]);
+  }, [dispatch, employees.length]);
 
   // ── Client-side Search Filtering ──
   const filteredAssets = useMemo(() => {
@@ -319,6 +317,9 @@ function AssetManagement() {
         `Asset '${res.data?.assetCode || createForm.name}' created successfully.`
       );
       loadAssets(currentPage);
+      // Inventory membership changed: invalidate the shared cache (no extra
+      // fetch here; the next guarded read refreshes it).
+      dispatch(invalidateInventory());
     } catch (err) {
       setCreateError(err.message || "Failed to create asset.");
     } finally {
@@ -361,6 +362,9 @@ function AssetManagement() {
         `Asset ${selectedAssetForAssign.assetCode} assigned successfully.`
       );
       loadAssets(currentPage);
+      // Availability changed: invalidate the shared cache (no extra fetch
+      // here; the next guarded read refreshes it).
+      dispatch(invalidateInventory());
     } catch (err) {
       setAssignError(err.message || "Failed to assign asset.");
     } finally {
@@ -396,6 +400,9 @@ function AssetManagement() {
         `Asset ${selectedAssetForReturn.assetCode} returned to inventory successfully.`
       );
       loadAssets(currentPage);
+      // Availability changed: invalidate the shared cache (no extra fetch
+      // here; the next guarded read refreshes it).
+      dispatch(invalidateInventory());
     } catch (err) {
       setReturnError(err.message || "Failed to return asset.");
     } finally {
@@ -407,7 +414,7 @@ function AssetManagement() {
   if (authLoading) {
     return (
       <Container className="py-5 text-center">
-        <Spinner animation="border" variant="success" />
+        <LoadingSpinner color="success" />
         <p className="mt-2 text-muted">Loading access context...</p>
       </Container>
     );
@@ -639,7 +646,7 @@ function AssetManagement() {
           </div>
         ) : loading ? (
           <div className="p-5 text-center">
-            <Spinner animation="border" variant="success" size="sm" className="me-2" />
+            <LoadingSpinner color="success" size="sm" className="me-2" />
             <span className="text-muted small">Loading company assets...</span>
           </div>
         ) : filteredAssets.length === 0 ? (

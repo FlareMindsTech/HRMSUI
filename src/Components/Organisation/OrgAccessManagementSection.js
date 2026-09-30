@@ -9,11 +9,11 @@ import {
   FaUsers,
   FaStar,
 } from "react-icons/fa";
-import { fetchAllUsers } from "../../services/rbacService";
 import { fetchBranchesDropdown } from "../../services/organizationService";
 import { updateUserAccess } from "../../services/accessService";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { selectAuthUser, useHasPermission, selectIsSystemAdmin } from "../../redux/slices/authSlice";
+import { fetchDirectory, selectDirectoryPayload } from "../../redux/slices/directorySlice";
 import { useBranch } from "../../context/BranchContext";
 import BranchAccessSelector from "../Common/BranchAccessSelector";
 import FeedbackAlert from "../Common/FeedbackAlert";
@@ -25,6 +25,11 @@ export default function OrgAccessManagementSection() {
   const hasPermission = useHasPermission();
   const currentUser = useSelector(selectAuthUser);
   const { organization, branches: contextBranches, refreshBranches } = useBranch();
+  const dispatch = useDispatch();
+  // The user list keeps its exact legacy unwrap (`payload?.data || []`) over
+  // the shared directory payload so observed values cannot change; the
+  // network request itself is TTL-guarded and shared.
+  const directoryPayload = useSelector(selectDirectoryPayload);
 
   const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -49,19 +54,21 @@ export default function OrgAccessManagementSection() {
     try {
       setLoading(true);
       setError("");
-      const [uRes, bRes] = await Promise.all([
-        fetchAllUsers({ limit: 200 }).catch(() => ({ data: [] })),
-        fetchBranchesDropdown().catch(() => []),
-      ]);
-
-      setUsers(uRes?.data || []);
+      await dispatch(fetchDirectory()).catch(() => null);
+      const bRes = await fetchBranchesDropdown().catch(() => []);
       setBranches(bRes.length > 0 ? bRes : contextBranches || []);
     } catch (err) {
       setError(err.message || "Failed to load user access list");
     } finally {
       setLoading(false);
     }
-  }, [contextBranches]);
+  }, [contextBranches, dispatch]);
+
+  // Mirror the legacy unwrap (`payload?.data || []`) over the shared
+  // directory payload so observed values cannot change.
+  useEffect(() => {
+    setUsers(directoryPayload?.data || []);
+  }, [directoryPayload]);
 
   useEffect(() => {
     loadData();

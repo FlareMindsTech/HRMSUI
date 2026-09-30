@@ -35,15 +35,19 @@ import {
   FaExternalLinkAlt,
 } from "react-icons/fa";
 import {
-  fetchMyOrganization,
   createOrganization,
   updateMyOrganization,
-  fetchOrganizationStructure,
-  fetchReportingTree,
   normalizeOrganization,
 } from "../../services/organizationService";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin, selectAuthUser } from '../../redux/slices/authSlice';
+import {
+  fetchOrgResource,
+  invalidateOrgResource,
+  selectOrgProfile,
+  selectOrgStructure,
+  selectOrgReportingTree,
+} from '../../redux/slices/organizationSlice';
 import FeedbackAlert from "../Common/FeedbackAlert";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { useBranch } from "../../context/BranchContext";
@@ -111,6 +115,12 @@ const getStr = (val, fallback = "") => {
 function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal, onEditModalHandled, onOrgUpdated }) {
   const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin); const user = useSelector(selectAuthUser);
   const { organization, refreshOrganization, refreshBranches } = useBranch();
+  const dispatch = useDispatch();
+  // Shared profile/structure/tree (single guarded fetches); the fallback
+  // priority below mirrors the previous direct-fetch resolution exactly.
+  const orgProfile = useSelector(selectOrgProfile);
+  const orgStructure = useSelector(selectOrgStructure);
+  const orgTree = useSelector(selectOrgReportingTree);
   const [orgData, setOrgData] = useState(initialOrgData || organization || null);
   const [structureData, setStructureData] = useState(null);
   const [, setReportingTree] = useState(null);
@@ -234,50 +244,56 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
     try {
       if (!organization && !initialOrgData) setLoading(true);
       setError("");
-      const [org, structure, tree] = await Promise.all([
-        fetchMyOrganization(true).catch((err) => {
-          console.warn("fetchMyOrganization error:", err);
-          return null;
-        }),
-        fetchOrganizationStructure().catch((err) => {
-          console.warn("fetchOrganizationStructure error:", err);
-          return null;
-        }),
-        fetchReportingTree().catch((err) => {
-          console.warn("fetchReportingTree error:", err);
-          return null;
-        }),
-      ]);
-
-      const rawFinal =
-        (org && (org.organizationName || org.name || org.organizationCode || org._id || org.id) ? org : null) ||
-        (structure?.organization && (structure.organization.organizationName || structure.organization.name || structure.organization.organizationCode || structure.organization._id || structure.organization.id) ? structure.organization : null) ||
-        (structure?.org && (structure.org.organizationName || structure.org.name || structure.org._id) ? structure.org : null) ||
-        (organization && (organization.organizationName || organization.name || organization.organizationCode || organization._id || organization.id) ? organization : null) ||
-        (initialOrgData ? initialOrgData : null);
-
-      const finalOrg = rawFinal ? normalizeOrganization(rawFinal) || rawFinal : null;
-
-      if (finalOrg) {
-        setOrgData(finalOrg);
-        populateFormWithOrg(finalOrg);
-      } else {
-        setOrgData(null);
-        setFormData(INITIAL_FORM_STATE);
-      }
-
-      if (structure) {
-        setStructureData(structure);
-      }
-      if (tree) {
-        setReportingTree(tree);
-      }
+      await dispatch(fetchOrgResource({ key: "profile" })).catch((err) => {
+        console.warn("fetchMyOrganization error:", err);
+        return null;
+      });
+      await dispatch(fetchOrgResource({ key: "structure" })).catch((err) => {
+        console.warn("fetchOrganizationStructure error:", err);
+        return null;
+      });
+      await dispatch(fetchOrgResource({ key: "reportingTree" })).catch((err) => {
+        console.warn("fetchReportingTree error:", err);
+        return null;
+      });
     } catch (err) {
       setError(err.message || "Failed to load organization profile");
     } finally {
       setLoading(false);
     }
-  }, [populateFormWithOrg]);
+  }, [dispatch, organization, initialOrgData]);
+
+  // Resolve local view state from shared resources, preserving the legacy
+  // priority: fetched profile → structure.organization → structure.org →
+  // branch context → prop.
+  useEffect(() => {
+    const org = orgProfile;
+    const structure = orgStructure;
+    const tree = orgTree;
+    const rawFinal =
+      (org && (org.organizationName || org.name || org.organizationCode || org._id || org.id) ? org : null) ||
+      (structure?.organization && (structure.organization.organizationName || structure.organization.name || structure.organization.organizationCode || structure.organization._id || structure.organization.id) ? structure.organization : null) ||
+      (structure?.org && (structure.org.organizationName || structure.org.name || structure.org._id) ? structure.org : null) ||
+      (organization && (organization.organizationName || organization.name || organization.organizationCode || organization._id || organization.id) ? organization : null) ||
+      (initialOrgData ? initialOrgData : null);
+
+    const finalOrg = rawFinal ? normalizeOrganization(rawFinal) || rawFinal : null;
+
+    if (finalOrg) {
+      setOrgData(finalOrg);
+      populateFormWithOrg(finalOrg);
+    } else {
+      setOrgData(null);
+      setFormData(INITIAL_FORM_STATE);
+    }
+
+    if (structure) {
+      setStructureData(structure);
+    }
+    if (tree) {
+      setReportingTree(tree);
+    }
+  }, [orgProfile, orgStructure, orgTree, organization, initialOrgData, populateFormWithOrg]);
 
   const initialOrgId = initialOrgData?._id || initialOrgData?.id;
   const branchOrgId = organization?._id || organization?.id;
@@ -390,6 +406,8 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
       }
 
       setShowModal(false);
+      // The saved profile changed shared data: invalidate so loadData refetches.
+      dispatch(invalidateOrgResource("profile"));
       await loadData();
       refreshOrganization();
       refreshBranches();
@@ -569,7 +587,7 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
           {/* ── 2. EXECUTIVE KPI METRIC CARDS ── */}
           <div className="org-kpi-row mb-4">
             {/* Branches */}
-            <div className="org-kpi-card" onClick={() => onNavigateTab("branches")} role="button" title="View all branches">
+            <div className="org-kpi-card" onClick={() => onNavigateTab("branches")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigateTab("branches"); } }} title="View all branches">
               <div className="org-kpi-top">
                 <div className="org-kpi-icon-wrap gold">
                   <FaRegBuilding />
@@ -587,7 +605,7 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
             </div>
 
             {/* Departments */}
-            <div className="org-kpi-card" onClick={() => onNavigateTab("departments")} role="button" title="View departments">
+            <div className="org-kpi-card" onClick={() => onNavigateTab("departments")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigateTab("departments"); } }} title="View departments">
               <div className="org-kpi-top">
                 <div className="org-kpi-icon-wrap blue">
                   <FaUsers />
@@ -605,7 +623,7 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
             </div>
 
             {/* Employees */}
-            <div className="org-kpi-card" onClick={() => onNavigateTab("reporting-hierarchy")} role="button" title="View reporting hierarchy">
+            <div className="org-kpi-card" onClick={() => onNavigateTab("reporting-hierarchy")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigateTab("reporting-hierarchy"); } }} title="View reporting hierarchy">
               <div className="org-kpi-top">
                 <div className="org-kpi-icon-wrap pink">
                   <FaUserFriends />
@@ -623,7 +641,7 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
             </div>
 
             {/* Teams */}
-            <div className="org-kpi-card" onClick={() => onNavigateTab("teams")} role="button" title="View teams">
+            <div className="org-kpi-card" onClick={() => onNavigateTab("teams")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigateTab("teams"); } }} title="View teams">
               <div className="org-kpi-top">
                 <div className="org-kpi-icon-wrap purple">
                   <FaUsers />
@@ -641,7 +659,7 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
             </div>
 
             {/* Locations */}
-            <div className="org-kpi-card" onClick={() => onNavigateTab("locations")} role="button" title="View locations">
+            <div className="org-kpi-card" onClick={() => onNavigateTab("locations")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigateTab("locations"); } }} title="View locations">
               <div className="org-kpi-top">
                 <div className="org-kpi-icon-wrap orange">
                   <FaMapMarkerAlt />
@@ -659,7 +677,7 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
             </div>
 
             {/* Active Shifts */}
-            <div className="org-kpi-card" onClick={() => onNavigateTab("shifts")} role="button" title="View shifts">
+            <div className="org-kpi-card" onClick={() => onNavigateTab("shifts")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigateTab("shifts"); } }} title="View shifts">
               <div className="org-kpi-top">
                 <div className="org-kpi-icon-wrap teal">
                   <FaClock />

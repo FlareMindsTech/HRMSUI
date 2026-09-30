@@ -26,7 +26,7 @@
 .dash-policy-icon {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 8px);
   background: var(--color-primary-light, #F1E8D6);
   color: var(--color-primary-dark, #A98245);
   display: flex;
@@ -50,7 +50,7 @@
 .dash-admin-banner-icon {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   background: var(--color-primary-light, #F1E8D6);
   color: var(--color-primary-dark, #A98245);
   display: flex;

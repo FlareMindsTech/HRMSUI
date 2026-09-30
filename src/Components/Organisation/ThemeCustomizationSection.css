@@ -7,8 +7,8 @@
 }
 
 .theme-preview-banner {
-  background: var(--color-surface, #ffffff);
-  border: 1px solid var(--color-border, #e5e0d7);
+  background: var(--color-surface, #FFFFFF);
+  border: 1px solid var(--color-border, #E5E0D7);
   border-radius: var(--radius-lg, 16px);
   padding: 16px 20px;
   margin-bottom: 24px;
@@ -30,7 +30,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  border: 2px solid #ffffff;
+  border: 2px solid var(--color-surface, #FFFFFF);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   transition: transform 0.2s ease;
 }
@@ -40,8 +40,8 @@
 }
 
 .theme-color-card {
-  background: var(--color-surface, #ffffff);
-  border: 1px solid var(--color-border, #e5e0d7);
+  background: var(--color-surface, #FFFFFF);
+  border: 1px solid var(--color-border, #E5E0D7);
   border-radius: var(--radius-md, 12px);
   padding: 16px;
   transition: all 0.2s ease;
@@ -86,8 +86,8 @@
   width: 44px;
   height: 38px;
   padding: 2px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border, #e5e0d7);
+  border-radius: var(--radius-sm, 8px);
+  border: 1px solid var(--color-border, #E5E0D7);
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -98,7 +98,7 @@
 
 .theme-color-picker::-webkit-color-swatch {
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-xs, 6px);
 }
 
 .theme-color-hex-input {
@@ -112,8 +112,8 @@
   position: sticky;
   bottom: 16px;
   z-index: 100;
-  background: var(--color-surface, #ffffff);
-  border: 1px solid var(--color-border, #e5e0d7);
+  background: var(--color-surface, #FFFFFF);
+  border: 1px solid var(--color-border, #E5E0D7);
   border-radius: var(--radius-lg, 16px);
   padding: 16px 24px;
   margin-top: 24px;
@@ -126,8 +126,8 @@
 }
 
 .theme-live-preview-box {
-  background: var(--color-background, #f7f5f0);
-  border: 1px dashed var(--color-border, #e5e0d7);
+  background: var(--color-background, #F7F5F0);
+  border: 1px dashed var(--color-border, #E5E0D7);
   border-radius: var(--radius-md, 12px);
   padding: 16px;
   margin-bottom: 24px;
@@ -135,8 +135,8 @@
 
 /* ── Theme Presets Section ── */
 .theme-preset-card {
-  background: var(--color-surface, #ffffff);
-  border: 2px solid var(--color-border, #e5e0d7);
+  background: var(--color-surface, #FFFFFF);
+  border: 2px solid var(--color-border, #E5E0D7);
   border-radius: var(--radius-md, 12px);
   padding: 14px 16px;
   cursor: pointer;
@@ -154,7 +154,7 @@
 .theme-preset-card.active {
   border-color: var(--color-primary, #C79D58);
   box-shadow: 0 0 0 3px rgba(199, 157, 88, 0.25);
-  background: var(--color-surface, #ffffff);
+  background: var(--color-surface, #FFFFFF);
 }
 
 .theme-preset-header {

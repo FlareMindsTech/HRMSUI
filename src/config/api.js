@@ -83,12 +83,57 @@ export const authHeaders = (path = "") => {
   return headers;
 };
 
+// ---- Centralized auth-recovery hooks (no store imports here — that would
+// create a module cycle. Owners with store access register handlers.) ----
+let unauthorizedHandler = null;
+let unauthorizedNotified = false;
+let branchMismatchHandler = null;
+
+// Runtime 401 recovery (registered once by App using the existing logout
+// flow).
+export const setUnauthorizedHandler = (fn) => {
+  unauthorizedHandler = typeof fn === 'function' ? fn : null;
+  if (!unauthorizedHandler) unauthorizedNotified = false;
+};
+
+// Branch-mismatch recovery sync (registered once by BranchContext, the owner
+// of branch selection). Lets the authoritative React state follow what
+// apiFetch just did to storage, instead of diverging until reload.
+export const setBranchMismatchHandler = (fn) => {
+  branchMismatchHandler = typeof fn === 'function' ? fn : null;
+};
+
+const AUTH_OWNED_PATHS = ['/auth/login', '/auth/me', '/user/logout'];
+
+// Called on an authenticated 401. Single-flight: concurrent 401s notify
+// once; the flag resets on the next successful response so a later,
+// unrelated expiry can still trigger recovery. Returns normally in all
+// cases so callers keep their existing local 401 handling.
+const notifyUnauthorized = (path) => {
+  if (!getAuthToken()) return;
+  if (AUTH_OWNED_PATHS.some((p) => path === p || path.endsWith(p))) return;
+  if (unauthorizedNotified) return;
+  if (!unauthorizedHandler) return;
+  unauthorizedNotified = true;
+  try {
+    unauthorizedHandler();
+  } catch {
+    // Recovery must never break the in-flight request handling.
+    unauthorizedNotified = false;
+  }
+};
+
 // Helper: fetch + safe JSON/text parse + auto auth header.
 // Usage: const data = await apiFetch("/project/getAllProjects");
 export const apiFetch = async (path, options = {}, isRetry = false) => {
   try {
+    const isFormData =
+      typeof FormData !== "undefined" && options.body instanceof FormData;
     const rawHeaders = {
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      // JSON bodies get a Content-Type; FormData must NOT (the browser sets
+      // the multipart boundary). Previously every FormData caller had to
+      // remember to strip this manually.
+      ...(options.body && !isFormData ? { "Content-Type": "application/json" } : {}),
       ...authHeaders(path),
       ...(options.headers || {}),
     };
@@ -139,6 +184,14 @@ export const apiFetch = async (path, options = {}, isRetry = false) => {
     if (!res.ok && !isRetry && (errMsg.includes("branch does not belong") || errMsg.includes("requested branch"))) {
       console.warn("apiFetch: Detected branch mismatch. Clearing selectedBranchId and retrying without x-branch-id...");
       localStorage.removeItem("selectedBranchId");
+      // Notify the branch owner (BranchContext) so its React state follows
+      // the storage change instead of diverging until reload. Ownership
+      // stays with the context — this is a notification, not a write.
+      try {
+        if (branchMismatchHandler) branchMismatchHandler();
+      } catch {
+        // Recovery notification must never break the retry below.
+      }
       const retryHeaders = { ...options.headers };
       delete retryHeaders["x-branch-id"];
       return apiFetch(path, { ...options, headers: retryHeaders }, true);
@@ -151,6 +204,19 @@ export const apiFetch = async (path, options = {}, isRetry = false) => {
       }
     }
 
+    // A successful response re-arms single-flight 401 notification so a
+    // later, unrelated expiry can still trigger recovery.
+    if (res.ok) {
+      unauthorizedNotified = false;
+      return { ok: res.ok, status: res.status, data };
+    }
+
+    // Centralized runtime 401 recovery (single-flight). The response still
+    // propagates normally so existing per-call 401 handling is preserved.
+    if (res.status === 401) {
+      notifyUnauthorized(cleanPath);
+    }
+
     return { ok: res.ok, status: res.status, data };
   } catch (netErr) {
     return {
@@ -159,4 +225,33 @@ export const apiFetch = async (path, options = {}, isRetry = false) => {
       data: { message: netErr.message || "Network request failed" },
     };
   }
+};
+
+/**
+ * Shared query-string builder (single copy — use everywhere instead of
+ * local clones). Skips undefined/null/"" values.
+ */
+export const buildQuery = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, val]) => {
+    if (val !== undefined && val !== null && val !== "") {
+      query.append(key, val);
+    }
+  });
+  const qStr = query.toString();
+  return qStr ? `?${qStr}` : "";
+};
+
+/**
+ * Consistent API error carrying HTTP status + response payload.
+ * Message contract is unchanged (server message first, then fallback), so
+ * existing UI code reading `err.message` behaves exactly as before, while
+ * new/updated callers can also branch on `err.status` (e.g. 404 handling).
+ */
+export const apiError = (res, fallbackMessage = "Request failed") => {
+  const message = res?.data?.message || res?.data?.error || fallbackMessage;
+  const err = new Error(message);
+  err.status = res?.status;
+  err.data = res?.data;
+  return err;
 };  

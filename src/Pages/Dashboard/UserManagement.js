@@ -9,7 +9,6 @@ import {
   Badge,
   Modal,
   Form,
-  Spinner,
   InputGroup,
   Nav,
 } from "react-bootstrap";
@@ -38,15 +37,10 @@ import {
   FaCodeBranch,
 } from "react-icons/fa";
 import {
-  fetchAllRoles,
-  fetchAssignableRoles,
-  fetchPermissionCatalog,
-  fetchAllMenus,
   createCustomRole,
   updateCustomRole,
   deleteCustomRole,
   fetchRoleAccessConfig,
-  fetchAllUsers,
   assignUserRole,
   provisionUserAccount,
   updateAccountStatus,
@@ -61,8 +55,20 @@ import {
 } from "../../Api/Hr/hr";
 import { useSelector, useDispatch } from 'react-redux';
 import { selectAuthUser, useHasPermission, selectIsSystemAdmin, fetchAuth } from '../../redux/slices/authSlice';
+import {
+  fetchAccessMasters,
+  selectRoles,
+  selectAssignableRoles,
+  selectPermissionCatalog,
+  selectAllMenus,
+} from '../../redux/slices/accessSlice';
+import {
+  fetchDirectory,
+  selectAllEmployees,
+} from '../../redux/slices/directorySlice';
 import { useBranch } from "../../context/BranchContext";
 import BranchAccessSelector from "../../Components/Common/BranchAccessSelector";
+import LoadingSpinner from "../../Components/Common/LoadingSpinner";
 import PaginationBar from "../../Components/Common/PaginationBar";
 import ConfirmModal from "../../Components/Common/ConfirmModal";
 import FeedbackAlert from "../../Components/Common/FeedbackAlert";
@@ -73,7 +79,9 @@ function UserManagement({ initialTab = "users" }) {
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const hasPermission = useHasPermission();
   const dispatch = useDispatch();
-  const refreshAuthContext = () => dispatch(fetchAuth());
+  // Post-mutation refresh must bypass the fetchAuth TTL so role/permission
+  // changes revalidate immediately.
+  const refreshAuthContext = () => dispatch(fetchAuth({ force: true }));
   const { organization, branches: contextBranches } = useBranch();
 
   // ── Tab State: Exclusive rendering ("users" or "roles") ──
@@ -86,11 +94,14 @@ function UserManagement({ initialTab = "users" }) {
   }, [initialTab]);
 
   // ── Roles & Catalog State ──
-  const [roles, setRoles] = useState([]);
-  const [assignableRoles, setAssignableRoles] = useState([]);
-  const [catalog, setCatalog] = useState({});
-  const [menus, setMenus] = useState([]);
-  const [users, setUsers] = useState([]);
+  // Shared RBAC masters live in the access slice (single guarded fetch) and
+  // the user roster lives in the directory slice (single guarded fetch);
+  // role filters, role forms, search/pagination and modals stay local.
+  const users = useSelector(selectAllEmployees);
+  const roles = useSelector(selectRoles);
+  const assignableRoles = useSelector(selectAssignableRoles);
+  const catalog = useSelector(selectPermissionCatalog);
+  const menus = useSelector(selectAllMenus);
 
   // ── Loading & Notification States ──
   const [loading, setLoading] = useState(true);
@@ -161,29 +172,30 @@ function UserManagement({ initialTab = "users" }) {
   const [rolePage, setRolePage] = useState(1);
 
   // ── Load All RBAC & User Data ──
-  const loadData = useCallback(async () => {
+  // Masters (roles, assignable roles, catalog, menus) come from the guarded
+  // access slice; `forceMasters` bypasses its TTL cache after role mutations
+  // so pickers show the new role immediately. Users come from the guarded
+  // directory slice; `forceDirectory` bypasses its TTL cache after mutations
+  // that change directory membership (provisioning, role/status changes).
+  // Search/filter/pagination/selection stay page-local.
+  const loadData = useCallback(async (options = {}) => {
     setLoading(true);
     setErrorMessage("");
     try {
-      const [rolesData, assignableData, catalogData, menusData, usersData] = await Promise.all([
-        fetchAllRoles().catch(() => []),
-        fetchAssignableRoles().catch(() => []),
-        fetchPermissionCatalog().catch(() => ({})),
-        fetchAllMenus().catch(() => []),
-        fetchAllUsers().catch(() => []),
+      await Promise.all([
+        dispatch(
+          fetchDirectory(options.forceDirectory ? { force: true } : undefined)
+        ).catch(() => null),
+        dispatch(
+          fetchAccessMasters(options.forceMasters ? { force: true } : undefined)
+        ).catch(() => null),
       ]);
-
-      setRoles(rolesData || []);
-      setAssignableRoles(assignableData || []);
-      setCatalog(catalogData || {});
-      setMenus(menusData || []);
-      setUsers(usersData || []);
     } catch (err) {
       setErrorMessage(err.message || "Failed to load RBAC data");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     loadData();
@@ -301,7 +313,7 @@ function UserManagement({ initialTab = "users" }) {
       }
 
       setShowRoleModal(false);
-      await loadData();
+      await loadData({ forceMasters: true });
       await refreshAuthContext();
     } catch (err) {
       setErrorMessage(err.message || "Failed to save role");
@@ -333,7 +345,7 @@ function UserManagement({ initialTab = "users" }) {
       setSuccessMessage(`Role '${deletingRole.roleName}' deleted successfully.`);
       setShowDeleteConfirm(false);
       setDeletingRole(null);
-      await loadData();
+      await loadData({ forceMasters: true });
     } catch (err) {
       setErrorMessage(err.message || "Failed to delete role");
     } finally {
@@ -394,7 +406,7 @@ function UserManagement({ initialTab = "users" }) {
               `Login account successfully provisioned for ${provisioningUser.firstName} ${provisioningUser.lastName}.`
             );
             setShowProvisionModal(false);
-            await loadData();
+            await loadData({ forceDirectory: true });
             return;
           }
         } catch (onbErr) {
@@ -413,7 +425,7 @@ function UserManagement({ initialTab = "users" }) {
         `Login account successfully provisioned for ${provisioningUser.firstName} ${provisioningUser.lastName}.`
       );
       setShowProvisionModal(false);
-      await loadData();
+      await loadData({ forceDirectory: true });
     } catch (err) {
       setErrorMessage(err.message || "Failed to provision login account");
     } finally {
@@ -520,7 +532,7 @@ function UserManagement({ initialTab = "users" }) {
         `Account and access settings updated for ${managingUser.firstName} ${managingUser.lastName}.`
       );
       setShowManageModal(false);
-      await loadData();
+      await loadData({ forceDirectory: true });
       await refreshAuthContext();
     } catch (err) {
       setErrorMessage(err.message || "Failed to update account");
@@ -908,7 +920,7 @@ function UserManagement({ initialTab = "users" }) {
           <div className="table-responsive">
             {loading ? (
               <div className="text-center py-5">
-                <Spinner animation="border" variant="success" size="sm" />
+                <LoadingSpinner color="success" size="sm" />
                 <div className="small text-muted mt-2">Loading employee directory...</div>
               </div>
             ) : filteredUsers.length === 0 ? (
@@ -1150,7 +1162,7 @@ function UserManagement({ initialTab = "users" }) {
           <div className="table-responsive">
             {loading ? (
               <div className="text-center py-5">
-                <Spinner animation="border" variant="success" size="sm" />
+                <LoadingSpinner color="success" size="sm" />
                 <div className="small text-muted mt-2">Loading organizational roles...</div>
               </div>
             ) : filteredRoles.length === 0 ? (
@@ -1508,7 +1520,7 @@ function UserManagement({ initialTab = "users" }) {
               <div>
                 {loadingAccess ? (
                   <div className="text-center py-4">
-                    <Spinner animation="border" variant="success" size="sm" />
+                    <LoadingSpinner color="success" size="sm" />
                     <div className="extra-small text-muted mt-2">Loading user branch access settings...</div>
                   </div>
                 ) : (
@@ -1559,7 +1571,7 @@ function UserManagement({ initialTab = "users" }) {
         <Modal.Body className="p-4">
           {modalLoading ? (
             <div className="text-center py-5">
-              <Spinner animation="border" variant="success" />
+              <LoadingSpinner color="success" />
               <div className="small text-muted mt-2">Loading role details...</div>
             </div>
           ) : (

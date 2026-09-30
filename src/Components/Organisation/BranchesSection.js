@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Card,
   Table,
@@ -56,13 +56,16 @@ import {
   fetchOnboardedEmployees,
   assignEmployeesToBranch,
   removeEmployeeFromBranch,
-  fetchShiftsDropdown,
-  fetchWorkCalendarsDropdown,
-  fetchHolidayCalendarsDropdown,
   fetchFinancialYearsDropdown,
 } from "../../services/organizationService";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import {
+  fetchOrgResource,
+  selectShiftsDropdown,
+  selectWorkCalendarsDropdown,
+  selectHolidayCalendarsDropdown,
+} from '../../redux/slices/organizationSlice';
 import SearchInput from "../Common/SearchInput";
 import PaginationBar from "../Common/PaginationBar";
 import FeedbackAlert from "../Common/FeedbackAlert";
@@ -97,6 +100,18 @@ const BRANCH_TYPES = [
 export default function BranchesSection({ onSelectBranch = null, onToggleFullView = null, onBackToOrg = null, isStandaloneView = false }) {
   const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const { organization, refreshBranches } = useBranch();
+  const dispatch = useDispatch();
+  // Shared shift/calendar dropdowns (single guarded fetches); branch-scoped
+  // employee lists and the financial-years picker stay local/direct.
+  const cachedShifts = useSelector(selectShiftsDropdown);
+  const cachedWorkCalendars = useSelector(selectWorkCalendarsDropdown);
+  const cachedHolidayCalendars = useSelector(selectHolidayCalendarsDropdown);
+  const auxCacheRef = useRef(null);
+  auxCacheRef.current = {
+    sh: cachedShifts,
+    wc: cachedWorkCalendars,
+    hol: cachedHolidayCalendars,
+  };
   const [branches, setBranches] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [onboardedStaff, setOnboardedStaff] = useState([]);
@@ -213,24 +228,24 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
   // Load Auxiliary Dropdowns
   const loadAuxData = useCallback(async () => {
     try {
-      const [dropdownList, fullStaff, shList, wcList, holList, fyList] = await Promise.all([
+      const [dropdownList, fullStaff, shRes, wcRes, holRes, fyList] = await Promise.all([
         fetchEmployeesDropdown().catch(() => []),
         fetchOnboardedEmployees().catch(() => []),
-        fetchShiftsDropdown().catch(() => []),
-        fetchWorkCalendarsDropdown().catch(() => []),
-        fetchHolidayCalendarsDropdown().catch(() => []),
+        dispatch(fetchOrgResource({ key: "shifts" })).catch(() => null),
+        dispatch(fetchOrgResource({ key: "workCalendars" })).catch(() => null),
+        dispatch(fetchOrgResource({ key: "holidayCalendars" })).catch(() => null),
         fetchFinancialYearsDropdown().catch(() => []),
       ]);
       setEmployees(dropdownList || []);
       setOnboardedStaff(fullStaff || []);
-      setShifts(shList || []);
-      setWorkCalendars(wcList || []);
-      setHolidayCalendars(holList || []);
+      setShifts(shRes?.payload?.data ?? auxCacheRef.current?.sh ?? []);
+      setWorkCalendars(wcRes?.payload?.data ?? auxCacheRef.current?.wc ?? []);
+      setHolidayCalendars(holRes?.payload?.data ?? auxCacheRef.current?.hol ?? []);
       setFinancialYears(fyList || []);
     } catch (e) {
       console.warn("Failed to load aux data for branches:", e);
     }
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     loadBranches();
@@ -1830,7 +1845,7 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
         <div>
           <div className="branches-breadcrumbs">
             {onBackToOrg ? (
-              <span className="branches-breadcrumb-link" onClick={onBackToOrg}>
+              <span className="branches-breadcrumb-link" onClick={onBackToOrg} role="link" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onBackToOrg(); } }}>
                 Organization Hub
               </span>
             ) : (

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Container, Row, Col, Card, Form, Button, Badge, Table, Modal,
-  Dropdown, Spinner, Alert, Nav, Tab
+  Dropdown, Nav, Tab
 } from 'react-bootstrap';
 import {
   FaProjectDiagram, FaPlus,
@@ -1011,10 +1011,7 @@ function ProjectManagement() {
       </Row>
 
       {currentView === 'projects' && projectsError && (
-        <Alert variant="danger" className="d-flex align-items-center justify-content-between py-2 shadow-sm mb-3">
-          <span className="small d-flex align-items-center gap-2"><FaExclamationTriangle /> {projectsError}</span>
-          <Button size="sm" variant="outline-danger" onClick={() => fetchProjects()}>Retry</Button>
-        </Alert>
+        <FeedbackAlert variant="danger" className="d-flex align-items-center justify-content-between py-2 shadow-sm mb-3" message={<><span className="small d-flex align-items-center gap-2"><FaExclamationTriangle /> {projectsError}</span><Button size="sm" variant="outline-danger" onClick={() => fetchProjects()}>Retry</Button></>} />
       )}
 
       {currentView === 'projects' ? (
@@ -1045,7 +1042,7 @@ function ProjectManagement() {
 
                 {projectsLoading && (
                   <div className="d-flex justify-content-center py-4">
-                    <Spinner animation="border" size="sm" className="pm-spinner" />
+                    <LoadingSpinner size="sm" className="pm-spinner" />
                   </div>
                 )}
 
@@ -1131,7 +1128,7 @@ function ProjectManagement() {
 
               {selectedProjectId && detailsLoading && !projectDetails && (
                 <div className="d-flex justify-content-center py-5">
-                  <Spinner animation="border" className="pm-spinner" />
+                  <LoadingSpinner className="pm-spinner" />
                 </div>
               )}
 
@@ -1330,7 +1327,7 @@ function ProjectManagement() {
 
                             {tasksLoading && (
                               <div className="d-flex justify-content-center py-3">
-                                <Spinner animation="border" size="sm" className="pm-spinner" />
+                                <LoadingSpinner size="sm" className="pm-spinner" />
                               </div>
                             )}
 
@@ -1476,7 +1473,7 @@ function ProjectManagement() {
 
                             {sprintsLoading && (
                               <div className="d-flex justify-content-center py-3">
-                                <Spinner animation="border" size="sm" className="pm-spinner" />
+                                <LoadingSpinner size="sm" className="pm-spinner" />
                               </div>
                             )}
 
@@ -1589,7 +1586,7 @@ function ProjectManagement() {
                           <div className="pm-chat-messages">
                             {reportsLoading && (
                               <div className="d-flex justify-content-center py-4">
-                                <Spinner animation="border" size="sm" className="pm-spinner" />
+                                <LoadingSpinner size="sm" className="pm-spinner" />
                               </div>
                             )}
 
@@ -1817,7 +1814,7 @@ function ProjectManagement() {
                 {/* Loading Spinner */}
                 {myTasksLoading && (
                   <div className="d-flex justify-content-center py-5">
-                    <Spinner animation="border" size="sm" className="pm-spinner" />
+                    <LoadingSpinner size="sm" className="pm-spinner" />
                   </div>
                 )}
 
@@ -2254,7 +2251,7 @@ function ProjectManagement() {
         <Modal.Body>
           {completionStatusLoading ? (
             <div className="text-center py-4">
-              <Spinner animation="border" size="sm" className="pm-spinner mb-2" />
+              <LoadingSpinner size="sm" className="pm-spinner mb-2" />
               <p className="text-muted small mb-0">Verifying pending tasks and deliverables...</p>
             </div>
           ) : completionStatus ? (
@@ -2267,8 +2264,7 @@ function ProjectManagement() {
               </div>
 
               {!completionStatus.canClose ? (
-                <Alert variant="warning" className="d-flex flex-column gap-2 mb-0">
-                  <div className="d-flex align-items-center gap-2 fw-bold">
+                <FeedbackAlert variant="warning" className="d-flex flex-column gap-2 mb-0" message={<><div className="d-flex align-items-center gap-2 fw-bold">
                     <FaExclamationTriangle /> Cannot Complete Project
                   </div>
                   <div className="small">
@@ -2283,8 +2279,7 @@ function ProjectManagement() {
                   )}
                   <div className="micro-text text-muted mt-1">
                     All project tasks must be marked as &quot;Completed&quot; before this project can be officially closed.
-                  </div>
-                </Alert>
+                  </div></>} />
               ) : (
                 <>
                   <FeedbackAlert variant="success" className="d-flex align-items-center gap-2 mb-3" message={<><FaCheckCircle /><span className="small">All deliverables and tasks are completed! You can now formally complete this project.</span></>} />

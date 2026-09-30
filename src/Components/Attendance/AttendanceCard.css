@@ -3,7 +3,7 @@
    ============================================================ */
 
 .attendance-card {
-  background: var(--color-surface, #ffffff);
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid var(--color-border, rgba(220, 235, 228, 0.9));
   border-radius: var(--radius-lg, 16px);
   box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 40, 20, 0.07));
@@ -28,7 +28,7 @@
 .btn-punch-in {
   background: var(--primary-gradient, linear-gradient(135deg, #C79D58 0%, #C49A55 100%));
   border: none;
-  color: #ffffff;
+  color: var(--color-text, #1C1D1D);
   font-weight: 700;
   padding: 0.75rem 2rem;
   border-radius: 99px;
@@ -44,7 +44,7 @@
 .btn-punch-in:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
 }
 
 .btn-punch-in:disabled {
@@ -56,7 +56,7 @@
 .btn-punch-out {
   background: linear-gradient(135deg, var(--color-danger, #D94A32) 0%, #B83A24 100%);
   border: none;
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   font-weight: 700;
   padding: 0.75rem 2rem;
   border-radius: 99px;
@@ -72,7 +72,7 @@
 .btn-punch-out:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(217, 74, 50, 0.45);
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
 }
 
 .btn-punch-out:disabled {

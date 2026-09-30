@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Container, Modal, Button } from "react-bootstrap";
 import { FaCheckCircle, FaExclamationTriangle, FaTrash } from "react-icons/fa";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { selectAuthUser, selectIsSystemAdmin, useHasMenu } from '../../redux/slices/authSlice';
+import { fetchDirectory, selectAllEmployees } from '../../redux/slices/directorySlice';
 import LoadingSpinner from '../../Components/Common/LoadingSpinner';
 import FeedbackAlert from '../../Components/Common/FeedbackAlert';
-import { fetchAllUsers } from "../../services/rbacService";
 import {
   getEducationByUserId,
   createEducation,
@@ -92,7 +92,10 @@ function EducationManagement() {
   const isHrOrAdmin = isSystemAdmin || (hasMenu && (hasMenu("USER_MANAGEMENT") || hasMenu("ROLE_MANAGEMENT")));
 
   // ── States ──
-  const [employees, setEmployees] = useState([]);
+  // The employee picker roster comes from the shared directory slice;
+  // selection, form, validation and loading states stay local.
+  const dispatch = useDispatch();
+  const employees = useSelector(selectAllEmployees);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [currentEmployee, setCurrentEmployee] = useState(null);
   const [formData, setFormData] = useState(initialEducationState);
@@ -134,21 +137,10 @@ function EducationManagement() {
 
   // ── 1. Load Employees list for HR / Admin ──
   useEffect(() => {
-    const loadEmployees = async () => {
-      if (isHrOrAdmin) {
-        try {
-          const res = await fetchAllUsers();
-          const list = res?.users || res?.data || res || [];
-          if (Array.isArray(list)) {
-            setEmployees(list);
-          }
-        } catch (e) {
-          console.warn("Employees load notice:", e.message);
-        }
-      }
-    };
-    loadEmployees();
-  }, [isHrOrAdmin]);
+    if (isHrOrAdmin) {
+      dispatch(fetchDirectory()).catch(() => null);
+    }
+  }, [isHrOrAdmin, dispatch]);
 
   // Set initial selected user
   useEffect(() => {

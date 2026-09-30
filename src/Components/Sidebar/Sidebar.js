@@ -108,10 +108,20 @@ function Sidebar({ isExpanded = false }) {
               navigate(item.path);
             }
           }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              if (hasChildren) {
+                setOpenSubMenus((prev) => ({ ...prev, [item.path]: !prev[item.path] }));
+              }
+              navigate(item.path);
+            }
+          }}
           onMouseEnter={() => setHovered(item.path)}
           onMouseLeave={() => setHovered(null)}
           role="button"
           tabIndex={0}
+          aria-expanded={hasChildren ? isOpen : undefined}
           title={item.name}
         >
           <span className="sidebar-icon-wrap">
@@ -125,6 +135,17 @@ function Sidebar({ isExpanded = false }) {
                 e.stopPropagation();
                 toggleSubMenu(item.path, e);
               }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleSubMenu(item.path, e);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-expanded={isOpen}
+              aria-label={isOpen ? `Collapse ${item.name} submenu` : `Expand ${item.name} submenu`}
               title={isOpen ? 'Collapse' : 'Expand'}
             >
               <MdChevronRight className={`sidebar-chevron ${isOpen ? 'open' : ''}`} />
@@ -150,7 +171,15 @@ function Sidebar({ isExpanded = false }) {
                       e.stopPropagation();
                       navigate(sub.path);
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigate(sub.path);
+                      }
+                    }}
                     role="button"
+                    tabIndex={0}
                     title={sub.name}
                   >
                     <span className="sidebar-submenu-icon-wrap">
@@ -231,10 +260,10 @@ function Sidebar({ isExpanded = false }) {
               Are you sure you want to end your current session and sign out?
             </p>
             <div className="sidebar-modal-buttons">
-              <button className="sidebar-cancel-btn" onClick={() => setShowModal(false)}>
+              <button type="button" className="sidebar-cancel-btn" onClick={() => setShowModal(false)}>
                 Cancel
               </button>
-              <button className="sidebar-confirm-btn" onClick={handleLogout}>
+              <button type="button" className="sidebar-confirm-btn" onClick={handleLogout}>
                 Yes, Sign Out
               </button>
             </div>

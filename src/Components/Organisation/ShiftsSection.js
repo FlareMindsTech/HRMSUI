@@ -24,7 +24,8 @@ import {
   deleteShift,
   fetchBranchesDropdown,
 } from "../../services/organizationService";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { invalidateOrgResource } from '../../redux/slices/organizationSlice';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import PaginationBar from "../Common/PaginationBar";
 import FeedbackAlert from "../Common/FeedbackAlert";
@@ -35,7 +36,7 @@ import ConfirmModal from "../Common/ConfirmModal";
 import CrudModal from "../Common/CrudModal";
 
 function ShiftsSection({ lockedBranchId }) {
-  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin); const dispatch = useDispatch();
   const [shifts, setShifts] = useState([]);
   const [branches, setBranches] = useState([]);
 
@@ -184,6 +185,7 @@ function ShiftsSection({ lockedBranchId }) {
         setSuccess(res.message || "Shift created successfully");
       }
       setShowModal(false);
+      dispatch(invalidateOrgResource("shifts"));
       loadShifts();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
@@ -199,6 +201,7 @@ function ShiftsSection({ lockedBranchId }) {
       const res = await deleteShift(deletingId);
       setSuccess(res.message || "Shift deleted successfully");
       setShowDeleteModal(false);
+      dispatch(invalidateOrgResource("shifts"));
       loadShifts();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {

@@ -15,7 +15,7 @@
 .leave-header-icon {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 8px);
   background: rgba(45, 197, 138, 0.12);
   color: #2DC58A;
   font-size: 1rem;
@@ -35,9 +35,9 @@
 
 /* ── Balance Summary Cards (Compact & Low-Profile) ── */
 .leave-balance-card {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid rgba(220, 235, 228, 0.8);
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   padding: 0.75rem 1rem;
   box-shadow: 0 1px 4px rgba(0, 40, 20, 0.02);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -63,7 +63,7 @@
 .leave-balance-tag {
   width: 30px;
   height: 30px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 8px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -147,7 +147,7 @@
 .leave-nav-btn {
   padding: 5px 14px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 8px);
   white-space: nowrap;
   font-weight: 600;
   font-size: 0.82rem;
@@ -165,7 +165,7 @@
 }
 
 .leave-nav-btn.active {
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   color: #1a2e2a;
   font-weight: 700;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
@@ -173,7 +173,7 @@
 
 .leave-nav-badge {
   background: #ef4444;
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   border-radius: 9999px;
   font-size: 0.68rem;
   font-weight: 700;
@@ -185,7 +185,7 @@
 .leave-main-card {
   border: 1px solid rgba(220, 235, 228, 0.8);
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   box-shadow: 0 2px 10px rgba(0, 40, 20, 0.02);
   margin-bottom: 1.5rem;
 }
@@ -200,7 +200,7 @@
   color: #4b5563;
   border: 1px solid #e2e8e5;
   padding: 2px 8px;
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   font-size: 0.72rem;
   font-weight: 700;
 }
@@ -217,13 +217,13 @@
 .leave-type-select {
   width: 125px;
   font-size: 0.8rem !important;
-  border-radius: 6px;
+  border-radius: var(--radius-xs, 6px);
 }
 
 .leave-reset-btn {
   font-size: 0.78rem;
   padding: 3px 9px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs, 6px);
   font-weight: 600;
   border-color: #cbd5e1;
   color: #64748b;
@@ -239,14 +239,14 @@
 .leave-apply-card {
   background: #f8faf9;
   border: 1px solid #e8f0ec;
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   padding: 1rem 1.15rem;
 }
 
 .leave-halfday-box {
   padding: 0.65rem 0.85rem;
-  background: #ffffff;
-  border-radius: 8px;
+  background: var(--color-surface, #FFFFFF);
+  border-radius: var(--radius-sm, 8px);
   border: 1px solid #e8f0ec;
 }
 
@@ -263,7 +263,7 @@
   gap: 0.45rem;
   background: linear-gradient(135deg, #2DC58A 0%, #20a673 100%);
   border: none;
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -428,7 +428,7 @@
 .leave-btn-approve {
   background: linear-gradient(135deg, #2DC58A 0%, #20a673 100%);
   border: none;
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   font-weight: 700;
   padding: 2px 10px;
   border-radius: 9999px;
@@ -438,7 +438,7 @@
 
 .leave-btn-approve:hover:not(:disabled) {
   background: linear-gradient(135deg, #28b880 0%, #1a9e6e 100%);
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
 }
 
 .leave-btn-reject {
@@ -450,7 +450,7 @@
 
 .leave-audit-btn {
   transition: all 0.15s ease;
-  border-radius: 6px;
+  border-radius: var(--radius-xs, 6px);
 }
 
 .leave-audit-btn:hover {
@@ -464,7 +464,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border-top: 1px solid #eef2f0;
   flex-wrap: wrap;
   gap: 8px;
@@ -489,7 +489,7 @@
 .leave-pagination .page-item.active .page-link {
   background-color: #2DC58A;
   border-color: #2DC58A;
-  color: #ffffff;
+  color: var(--color-surface, #FFFFFF);
   font-weight: 700;
 }
 
@@ -511,7 +511,7 @@
   border: 1px solid #e8f0ec;
   border-radius: 10px;
   padding: 0.75rem 0.9rem;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   box-shadow: 0 1px 3px rgba(0, 40, 20, 0.03);
 }
 

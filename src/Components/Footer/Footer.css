@@ -5,7 +5,7 @@
 
 .app-footer {
   font-size: 12px;
-  color: #77736B;
+  color: var(--color-secondary-text, #77736B);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -14,16 +14,16 @@
 }
 
 .app-footer-brand {
-  color: #C49A55;
+  color: var(--color-primary, #C49A55);
   font-weight: 700;
 }
 
 .app-footer-dot {
-  color: #C49A55;
+  color: var(--color-primary, #C49A55);
 }
 
 .app-footer-copy {
-  color: #77736B;
+  color: var(--color-secondary-text, #77736B);
   white-space: nowrap;
 }
 

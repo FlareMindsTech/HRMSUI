@@ -1,17 +1,4 @@
-import { apiFetch, API_BASE_URL, authHeaders } from "../../config/api";
-
-// Helper to normalize and handle response
-const handleResponse = async (res) => {
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const errorMsg = data?.message || data?.error || `Request failed with status ${res.status}`;
-    const err = new Error(errorMsg);
-    err.status = res.status;
-    err.data = data;
-    throw err;
-  }
-  return data;
-};
+import { apiFetch, apiError } from "../../config/api";
 
 /**
  * 1. Create Family / Emergency Contact Record
@@ -20,25 +7,23 @@ const handleResponse = async (res) => {
  */
 export const createFamilyApi = async (payload) => {
   const endpoints = [
-    `${API_BASE_URL}/family/create`,
-    `${API_BASE_URL}/family/createFamily`,
-    `${API_BASE_URL}/family/add`,
-    `${API_BASE_URL}/family`,
+    `/family/create`,
+    `/family/createFamily`,
+    `/family/add`,
+    `/family`,
   ];
 
   let lastError = null;
-  for (const url of endpoints) {
+  for (const ep of endpoints) {
     try {
-      const res = await fetch(url, {
+      const res = await apiFetch(ep, {
         method: "POST",
-        headers: authHeaders(),
         body: JSON.stringify(payload),
       });
-      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        return data.data || data.family || data;
+        return res.data.data || res.data.family || res.data;
       }
-      lastError = new Error(data?.message || `Failed with status ${res.status}`);
+      lastError = apiError(res, `Failed with status ${res.status}`);
     } catch (err) {
       lastError = err;
     }
@@ -106,24 +91,22 @@ export const getAllFamilies = async () => {
 export const updateFamilyApi = async (id, payload) => {
   if (!id) throw new Error("Family ID / User ID is required for update");
   const endpoints = [
-    `${API_BASE_URL}/family/update/${id}`,
-    `${API_BASE_URL}/family/updateFamily/${id}`,
-    `${API_BASE_URL}/family/${id}`,
+    `/family/update/${id}`,
+    `/family/updateFamily/${id}`,
+    `/family/${id}`,
   ];
 
   let lastError = null;
-  for (const url of endpoints) {
+  for (const ep of endpoints) {
     try {
-      const res = await fetch(url, {
+      const res = await apiFetch(ep, {
         method: "PUT",
-        headers: authHeaders(),
         body: JSON.stringify(payload),
       });
-      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        return data.data || data.family || data;
+        return res.data.data || res.data.family || res.data;
       }
-      lastError = new Error(data?.message || `Failed with status ${res.status}`);
+      lastError = apiError(res, `Failed with status ${res.status}`);
     } catch (err) {
       lastError = err;
     }
@@ -137,14 +120,16 @@ export const updateFamilyApi = async (id, payload) => {
  */
 export const deleteFamilyApi = async (id) => {
   if (!id) throw new Error("Family ID is required for deletion");
-  const res = await fetch(`${API_BASE_URL}/family/delete/${id}`, {
-    method: "DELETE",
-    headers: authHeaders(),
-  }).catch(() => null)
-    || await fetch(`${API_BASE_URL}/family/${id}`, {
-      method: "DELETE",
-      headers: authHeaders(),
-    });
-
-  return handleResponse(res);
+  const res = await apiFetch(`/family/delete/${id}`, { method: "DELETE" });
+  if (res.ok) return res.data;
+  // Mirror the previous transport: only a transport-level failure falls
+  // through to the alternate route; HTTP errors surface immediately.
+  if (res.status !== 0) {
+    throw apiError(res, `Request failed with status ${res.status}`);
+  }
+  const fallback = await apiFetch(`/family/${id}`, { method: "DELETE" });
+  if (!fallback.ok) {
+    throw apiError(fallback, `Request failed with status ${fallback.status}`);
+  }
+  return fallback.data;
 };

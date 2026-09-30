@@ -38,6 +38,7 @@ import {
 } from "../../services/organizationService";
 import { useDispatch } from "react-redux";
 import { authSynced } from "../../redux/slices/authSlice";
+import { invalidateOrgResource } from "../../redux/slices/organizationSlice";
 import FeedbackAlert from "../Common/FeedbackAlert";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { useBranch } from "../../context/BranchContext";
@@ -340,6 +341,8 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
           createdOrg = result?.data || result;
           orgId = createdOrg?._id || createdOrg?.id;
           setExistingOrg(createdOrg);
+          // A new organization exists: invalidate the shared profile cache.
+          dispatch(invalidateOrgResource("profile"));
         }
 
         if (!orgId) {
@@ -432,6 +435,8 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
         const createdOrg = result?.data || result;
         orgId = createdOrg?._id || createdOrg?.id;
         setExistingOrg(createdOrg);
+        // A new organization exists: invalidate the shared profile cache.
+        dispatch(invalidateOrgResource("profile"));
       }
 
       if (!orgId) {
@@ -482,7 +487,9 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
         setAuthToken(token);
         localStorage.setItem("tenantId", orgId);
         localStorage.setItem("organizationId", orgId);
-        localStorage.setItem("isAuthenticated", "true");
+        // The legacy isAuthenticated sentinel is no longer written (route
+        // gating comes from the Redux selector); cleanup lists still remove
+        // it for existing installs.
         if (userObj) {
           if (!userObj.organizationId) userObj.organizationId = orgId;
           if (!userObj.tenantId) userObj.tenantId = orgId;
@@ -498,6 +505,10 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
             role: userObj?.roleCode || userObj?.roleName || "OWNER",
             menus: [],
             permissions: [],
+            // Timestamp is supplied by the caller so the reducer performs no
+            // clock reads. tokenPresent is intentionally left for the auth
+            // thunks to resolve, preserving the existing gate behavior.
+            fetchedAt: Date.now(),
           })
         );
       }

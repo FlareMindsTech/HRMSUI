@@ -112,7 +112,7 @@ function EducationViewProfile({
               <Badge bg="success-subtle" className="text-success border border-success-subtle extra-small rounded-pill">10th</Badge>
             </div>
             <Card.Body className="p-3.5">
-              <Table borderless size="sm" className="mb-2 extra-small">
+              <Table borderless responsive size="sm" className="mb-2 extra-small">
                 <tbody>
                   <tr>
                     <td className="text-muted fw-semibold" style={{ width: "40%" }}>School Name</td>
@@ -176,7 +176,7 @@ function EducationViewProfile({
               <Badge bg="success-subtle" className="text-success border border-success-subtle extra-small rounded-pill">12th</Badge>
             </div>
             <Card.Body className="p-3.5">
-              <Table borderless size="sm" className="mb-2 extra-small">
+              <Table borderless responsive size="sm" className="mb-2 extra-small">
                 <tbody>
                   <tr>
                     <td className="text-muted fw-semibold" style={{ width: "40%" }}>School / College</td>
@@ -244,7 +244,7 @@ function EducationViewProfile({
             <Card.Body className="p-3.5">
               <Row className="g-3">
                 <Col md={6}>
-                  <Table borderless size="sm" className="mb-0 extra-small">
+                  <Table borderless responsive size="sm" className="mb-0 extra-small">
                     <tbody>
                       <tr>
                         <td className="text-muted fw-semibold" style={{ width: "40%" }}>Institute / College</td>
@@ -262,7 +262,7 @@ function EducationViewProfile({
                   </Table>
                 </Col>
                 <Col md={6}>
-                  <Table borderless size="sm" className="mb-0 extra-small">
+                  <Table borderless responsive size="sm" className="mb-0 extra-small">
                     <tbody>
                       <tr>
                         <td className="text-muted fw-semibold" style={{ width: "40%" }}>Department / Course</td>
@@ -325,7 +325,7 @@ function EducationViewProfile({
                 <Badge bg="info-subtle" className="text-info border border-info-subtle extra-small rounded-pill">Vocational</Badge>
               </div>
               <Card.Body className="p-3.5">
-                <Table borderless size="sm" className="mb-2 extra-small">
+                <Table borderless responsive size="sm" className="mb-2 extra-small">
                   <tbody>
                     <tr>
                       <td className="text-muted fw-semibold" style={{ width: "40%" }}>Institute</td>
@@ -384,7 +384,7 @@ function EducationViewProfile({
                 <Badge bg="secondary-subtle" className="text-secondary border border-secondary-subtle extra-small rounded-pill">Diploma</Badge>
               </div>
               <Card.Body className="p-3.5">
-                <Table borderless size="sm" className="mb-2 extra-small">
+                <Table borderless responsive size="sm" className="mb-2 extra-small">
                   <tbody>
                     <tr>
                       <td className="text-muted fw-semibold" style={{ width: "40%" }}>Institution</td>
@@ -445,7 +445,7 @@ function EducationViewProfile({
               <Card.Body className="p-3.5">
                 <Row className="g-3">
                   <Col md={6}>
-                    <Table borderless size="sm" className="mb-0 extra-small">
+                    <Table borderless responsive size="sm" className="mb-0 extra-small">
                       <tbody>
                         <tr>
                           <td className="text-muted fw-semibold" style={{ width: "40%" }}>Institute</td>
@@ -463,7 +463,7 @@ function EducationViewProfile({
                     </Table>
                   </Col>
                   <Col md={6}>
-                    <Table borderless size="sm" className="mb-0 extra-small">
+                    <Table borderless responsive size="sm" className="mb-0 extra-small">
                       <tbody>
                         <tr>
                           <td className="text-muted fw-semibold" style={{ width: "40%" }}>Course / Specialization</td>
@@ -518,7 +518,7 @@ function EducationViewProfile({
               <Card.Body className="p-3.5">
                 <Row className="g-3">
                   <Col md={6}>
-                    <Table borderless size="sm" className="mb-0 extra-small">
+                    <Table borderless responsive size="sm" className="mb-0 extra-small">
                       <tbody>
                         <tr>
                           <td className="text-muted fw-semibold" style={{ width: "40%" }}>Institute</td>
@@ -532,7 +532,7 @@ function EducationViewProfile({
                     </Table>
                   </Col>
                   <Col md={6}>
-                    <Table borderless size="sm" className="mb-0 extra-small">
+                    <Table borderless responsive size="sm" className="mb-0 extra-small">
                       <tbody>
                         <tr>
                           <td className="text-muted fw-semibold" style={{ width: "40%" }}>Research Area</td>

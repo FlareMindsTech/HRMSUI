@@ -33,7 +33,8 @@ import {
   fetchCostCentersDropdown,
   fetchEmployeesDropdown,
 } from "../../services/organizationService";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { invalidateOrgResource } from '../../redux/slices/organizationSlice';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import FeedbackAlert from "../Common/FeedbackAlert";
 import EmptyState from "../Common/EmptyState";
@@ -157,7 +158,7 @@ function DeptTreeNode({ node, level = 0, onEdit, onDelete, canUpdate, canDelete 
 }
 
 function DepartmentsSection({ lockedBranchId }) {
-  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin); const dispatch = useDispatch();
   const [viewMode, setViewMode] = useState("table"); // "table" | "tree"
   const [departments, setDepartments] = useState([]);
   const [parentDepts, setParentDepts] = useState([]);
@@ -312,6 +313,7 @@ function DepartmentsSection({ lockedBranchId }) {
         setSuccess(res.message || "Department created successfully");
       }
       setShowModal(false);
+      dispatch(invalidateOrgResource("departments"));
       loadDepartments();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
@@ -327,6 +329,7 @@ function DepartmentsSection({ lockedBranchId }) {
       const res = await deleteDepartment(deletingId);
       setSuccess(res.message || "Department deleted successfully");
       setShowDeleteModal(false);
+      dispatch(invalidateOrgResource("departments"));
       loadDepartments();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {

@@ -68,7 +68,7 @@ function Mis() {
       <div className="placeholder-header">
         <div>
           <div className="placeholder-breadcrumb">
-            <span className="clickable" onClick={() => navigate('/dashboard')}>
+            <span className="clickable" onClick={() => navigate('/dashboard')} role="link" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate('/dashboard'); } }}>
               Dashboard
             </span>
             <MdChevronRight />

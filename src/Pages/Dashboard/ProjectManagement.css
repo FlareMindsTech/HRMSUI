@@ -4,7 +4,7 @@
    ============================================================ */
 
 :root {
-  --pm-primary: var(--primary-color, #2dc58a);
+  --pm-primary: var(--color-primary, #C49A55);
   --pm-secondary: #f8f9fa;
   --pm-border: #e5e7eb;
   --pm-border-light: #f0f3f2;
@@ -82,7 +82,7 @@
   padding: 12px 14px;
   border-radius: 10px;
   border: 1.5px solid var(--pm-border-light);
-  background: #fff;
+  background: var(--color-surface, #FFFFFF);
   transition: var(--pm-transition);
   position: relative;
   overflow: hidden;
@@ -143,7 +143,7 @@
   justify-content: center;
   color: #6c757d;
   transition: var(--pm-transition);
-  border-radius: 6px;
+  border-radius: var(--radius-xs, 6px);
 }
 
 .pm-icon-btn:hover {
@@ -162,11 +162,11 @@
 .pm-wrapper .form-select,
 .pm-wrapper .form-control {
   border: 1px solid var(--pm-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 8px);
   padding: 8px 12px;
   font-size: 0.9rem;
   transition: var(--pm-transition);
-  background-color: #fff;
+  background-color: var(--color-surface, #FFFFFF);
 }
 
 .pm-wrapper .form-select:focus,
@@ -256,7 +256,7 @@
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  border-radius: 20px;
+  border-radius: var(--radius-xl, 20px);
   background: linear-gradient(135deg, rgba(45, 197, 138, 0.08) 0%, rgba(45, 197, 138, 0.04) 100%);
   border: 1.5px solid rgba(45, 197, 138, 0.15);
   transition: var(--pm-transition);
@@ -276,7 +276,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--color-surface, #FFFFFF);
   font-weight: 700;
   font-size: 0.75rem;
   background: linear-gradient(135deg, var(--pm-primary) 0%, #25b878 100%);
@@ -338,7 +338,7 @@
   font-weight: 600;
   font-size: 0.75rem;
   padding: 5px 10px;
-  border-radius: 20px;
+  border-radius: var(--radius-xl, 20px);
   letter-spacing: 0.3px;
   text-transform: uppercase;
 }
@@ -357,12 +357,12 @@
 
 .badge.bg-warning {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
-  color: #fff !important;
+  color: var(--color-surface, #FFFFFF) !important;
 }
 
 .badge.bg-info {
   background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
-  color: #fff !important;
+  color: var(--color-surface, #FFFFFF) !important;
 }
 
 .badge.bg-secondary {
@@ -378,7 +378,7 @@
    ============================================================ */
 .pm-wrapper .table {
   font-size: 0.9rem;
-  background: #fff;
+  background: var(--color-surface, #FFFFFF);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -421,14 +421,14 @@
    ============================================================ */
 .pm-wrapper .modal-content {
   border: 1px solid var(--pm-border-light);
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   box-shadow: 0 20px 25px rgba(0, 0, 0, 0.1);
 }
 
 .pm-wrapper .modal-header {
   background: linear-gradient(135deg, #f8fafb 0%, #f0f3f2 100%);
   border-bottom: 1px solid var(--pm-border);
-  border-radius: 12px 12px 0 0;
+  border-radius: var(--radius-md, 12px) var(--radius-md, 12px) 0 0;
   padding: 18px 20px;
 }
 
@@ -516,7 +516,7 @@
   color: var(--pm-text-muted);
   font-weight: 600;
   font-size: 0.85rem;
-  border-radius: 20px;
+  border-radius: var(--radius-xl, 20px);
   padding: 8px 16px;
   transition: var(--pm-transition);
   background-color: transparent;
@@ -529,7 +529,7 @@
 
 .pm-wrapper .nav-pills .nav-link.active {
   background: linear-gradient(135deg, var(--pm-primary) 0%, #25b878 100%);
-  color: #fff;
+  color: var(--color-surface, #FFFFFF);
   box-shadow: 0 4px 12px rgba(45, 197, 138, 0.3);
 }
 
@@ -613,8 +613,8 @@
   flex-direction: column;
   height: calc(100vh - 240px);
   min-height: 480px;
-  background: #ffffff;
-  border-radius: 12px;
+  background: var(--color-surface, #FFFFFF);
+  border-radius: var(--radius-md, 12px);
   border: 1px solid var(--pm-border);
   overflow: hidden;
 }
@@ -645,7 +645,7 @@
 
 .pm-chat-bubble-other {
   align-self: flex-start;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border: 1px solid var(--pm-border);
   border-bottom-left-radius: 4px;
 }
@@ -659,7 +659,7 @@
 
 .pm-chat-input-bar {
   padding: 12px 14px;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border-top: 1px solid var(--pm-border);
 }
 
@@ -679,7 +679,7 @@
 
 .pm-search-input-group .form-control {
   padding-left: 34px;
-  border-radius: 20px;
+  border-radius: var(--radius-xl, 20px);
   font-size: 0.85rem;
   background-color: #f8fafb;
 }
@@ -699,7 +699,7 @@
   position: sticky;
   top: 0;
   z-index: 90;
-  background: #ffffff;
+  background: var(--color-surface, #FFFFFF);
   border-radius: 10px;
   border: 1px solid var(--pm-border);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
@@ -726,7 +726,7 @@
   align-items: center;
   gap: 6px;
   padding: 6px 18px !important;
-  border-radius: 20px !important;
+  border-radius: var(--radius-xl, 20px) !important;
   font-size: 0.85rem !important;
   font-weight: 600 !important;
   color: #4b5563 !important;
@@ -745,7 +745,7 @@
 
 .pm-nav-link.active {
   background: linear-gradient(135deg, var(--pm-primary) 0%, #25b878 100%) !important;
-  color: #ffffff !important;
+  color: var(--color-surface, #FFFFFF) !important;
   border-color: transparent !important;
   box-shadow: 0 2px 8px rgba(45, 197, 138, 0.3) !important;
 }
@@ -787,7 +787,7 @@
 }
 
 .pm-status-select {
-  border-radius: 6px;
+  border-radius: var(--radius-xs, 6px);
   font-weight: 500;
   transition: var(--pm-transition);
 }

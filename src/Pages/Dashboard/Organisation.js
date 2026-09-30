@@ -27,10 +27,15 @@ import {
   FaUserShield,
   FaSlidersH,
 } from "react-icons/fa";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { selectAuthUser, useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import {
+  fetchOrgResource,
+  invalidateOrgResource,
+  selectOrgProfile,
+} from '../../redux/slices/organizationSlice';
 import { useBranch } from "../../context/BranchContext";
-import { fetchMyOrganization, normalizeOrganization } from "../../services/organizationService";
+import { normalizeOrganization } from "../../services/organizationService";
 import OrgOverview from "../../Components/Organisation/OrgOverview";
 import OrganizationProfileView from "../../Components/Organisation/OrganizationProfileView";
 import BranchesSection from "../../Components/Organisation/BranchesSection";
@@ -128,6 +133,9 @@ function Organisation() {
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const hasPermission = useHasPermission();
   const { organization, refreshOrganization, refreshBranches } = useBranch();
+  const dispatch = useDispatch();
+  // Shared organization profile (single guarded fetch); banner/tab UI stays local.
+  const orgProfile = useSelector(selectOrgProfile);
 
   const [orgData, setOrgData] = useState(organization || null);
   const [loadingOrg, setLoadingOrg] = useState(!organization);
@@ -146,31 +154,35 @@ function Organisation() {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch organization profile for the header banner
+  // Fetch organization profile for the header banner (shared slice).
   const loadOrg = useCallback(async () => {
     try {
-      const data = await fetchMyOrganization(true);
-      if (data) {
-        setOrgData(normalizeOrganization(data) || data);
-      } else if (organization) {
-        setOrgData(normalizeOrganization(organization) || organization);
-      } else {
-        try {
-          const cached = localStorage.getItem("cached_org_profile");
-          if (cached) {
-            setOrgData(normalizeOrganization(JSON.parse(cached)));
-          }
-        } catch (e) {}
-      }
+      await dispatch(fetchOrgResource({ key: "profile" })).catch(() => null);
     } catch (err) {
       console.warn("Could not load organization in parent header:", err);
-      if (organization) {
-        setOrgData(normalizeOrganization(organization) || organization);
-      }
     } finally {
       setLoadingOrg(false);
     }
-  }, [organization]);
+  }, [dispatch]);
+
+  // Resolve banner data, preserving the legacy priority: shared profile →
+  // branch context → cached profile.
+  useEffect(() => {
+    if (orgProfile) {
+      setOrgData(normalizeOrganization(orgProfile) || orgProfile);
+      setLoadingOrg(false);
+    } else if (organization) {
+      setOrgData(normalizeOrganization(organization) || organization);
+      setLoadingOrg(false);
+    } else {
+      try {
+        const cached = localStorage.getItem("cached_org_profile");
+        if (cached) {
+          setOrgData(normalizeOrganization(JSON.parse(cached)));
+        }
+      } catch (e) {}
+    }
+  }, [orgProfile, organization]);
 
   const handleOrgUpdated = useCallback((updated) => {
     if (updated) {
@@ -216,6 +228,9 @@ function Organisation() {
 
   const handleOrgCreated = async (newOrg) => {
     setOrgData(newOrg);
+    // A new organization exists: invalidate the shared profile so the
+    // banner reload below fetches fresh (mirrors the previous forced fetch).
+    dispatch(invalidateOrgResource("profile"));
     if (refreshOrganization) await refreshOrganization();
     if (refreshBranches) await refreshBranches();
     setActiveTab("overview");
@@ -550,6 +565,8 @@ function Organisation() {
                       className="org-hero-chip code"
                       onClick={() => copyToClipboard(getStr(orgData.organizationCode), "code")}
                       role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); copyToClipboard(getStr(orgData.organizationCode), "code"); } }}
                       title="Click to copy Organization Code"
                     >
                       <span className="org-chip-icon-wrap"><FaBuilding /></span>
