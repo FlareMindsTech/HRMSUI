@@ -1,18 +1,21 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Container, Row, Col, Card, Form, Button, Badge, Table, Modal, Spinner, Alert, InputGroup, Nav
+  Container, Row, Col, Card, Form, Button, Badge, Table, Modal, Spinner, InputGroup, Nav, Alert
 } from 'react-bootstrap';
 import {
   FaClock, FaCalendarAlt, FaCheckCircle, FaExclamationTriangle,
   FaSearch, FaEdit, FaHistory, FaUser, FaChevronLeft, FaChevronRight,
   FaUsers, FaChartLine, FaMapMarkerAlt, FaExclamationCircle, FaArrowLeft, FaPlus,
   FaCalendarPlus, FaShieldAlt, FaInfoCircle, FaBuilding, FaSitemap, FaFileAlt,
-  FaFileContract, FaCheck, FaTimes, FaFilter, FaDownload, FaCrosshairs, FaCheckDouble
+  FaFileContract, FaCheck, FaTimes, FaFilter, FaDownload, FaCrosshairs, FaCheckDouble, FaCog
 } from 'react-icons/fa';
 import { useSelector } from 'react-redux';
 import { selectAuthUser } from '../../redux/slices/authSlice';
 import EmptyState from '../../Components/Common/EmptyState';
 import PaginationBar from '../../Components/Common/PaginationBar';
+import StatusBadge from '../../Components/Common/StatusBadge';
+import LoadingSpinner from '../../Components/Common/LoadingSpinner';
+import FeedbackAlert from '../../Components/Common/FeedbackAlert';
 import {
   fetchTodayAttendance,
   punchInUser,
@@ -35,9 +38,10 @@ import {
   reviewRegularizationRequest,
   fetchMyTeamAttendance,
   fetchAttendanceSettings,
+  updateAttendanceSettings,
   formatAttendanceError
 } from '../../Api/Attendance/attendance';
-import { fetchBranchesDropdown, fetchDepartmentsDropdown } from '../../services/organizationService';
+import { fetchBranchesDropdown, fetchDepartmentsDropdown, fetchMyOrganizationsList } from '../../services/organizationService';
 import { formatTime, formatFullDate } from '../../utils/dateFormatter';
 import './Attendance.css';
 
@@ -256,19 +260,30 @@ function LocationModal({ show, onHide, record }) {
   );
 }
 
-// Static status badge
+// Static status badge — same map, classes and N/A fallback as before,
+// rendered through the shared StatusBadge (shared pill shape appended).
+const ATTENDANCE_STATUS_MAP = {
+  Present: { bg: 'success-subtle', className: 'text-success border-success-subtle' },
+  Working: { bg: 'info-subtle', className: 'text-info border-info-subtle' },
+  Late: { bg: 'warning-subtle', className: 'text-warning border-warning-subtle' },
+  'Half Day': { bg: 'secondary-subtle', className: 'text-secondary border-secondary-subtle' },
+  Absent: { bg: 'danger-subtle', className: 'text-danger border-danger-subtle' },
+  Weekend: { bg: 'light', className: 'text-muted' },
+  Leave: { bg: 'primary-subtle', className: 'text-primary border-primary-subtle' },
+};
+const ATTENDANCE_STATUS_DEFAULT = { bg: 'light', className: 'text-dark' };
+const ATTENDANCE_BADGE_CLASS = 'border px-2.5 py-0.5 rounded-pill fw-semibold att-badge-status-compact';
+
 function renderStatusBadgeStatic(status) {
-  const map = {
-    'Present': { bg: 'success-subtle', cls: 'text-success border-success-subtle' },
-    'Working': { bg: 'info-subtle', cls: 'text-info border-info-subtle' },
-    'Late': { bg: 'warning-subtle', cls: 'text-warning border-warning-subtle' },
-    'Half Day': { bg: 'secondary-subtle', cls: 'text-secondary border-secondary-subtle' },
-    'Absent': { bg: 'danger-subtle', cls: 'text-danger border-danger-subtle' },
-    'Weekend': { bg: 'light', cls: 'text-muted' },
-    'Leave': { bg: 'primary-subtle', cls: 'text-primary border-primary-subtle' },
-  };
-  const s = map[status] || { bg: 'light', cls: 'text-dark' };
-  return <Badge bg={s.bg} className={`${s.cls} border px-2.5 py-0.5 rounded-pill fw-semibold att-badge-status-compact`}>{status || 'N/A'}</Badge>;
+  return (
+    <StatusBadge
+      status={status}
+      map={ATTENDANCE_STATUS_MAP}
+      defaultEntry={ATTENDANCE_STATUS_DEFAULT}
+      className={ATTENDANCE_BADGE_CLASS}
+      fallbackLabel="N/A"
+    />
+  );
 }
 
 // ======================================================
@@ -332,6 +347,89 @@ function Attendance() {
   const [regularizationList, setRegularizationList] = useState([]);
   const [regularizationLoading, setRegularizationLoading] = useState(false);
   const [attendancePolicy, setAttendancePolicy] = useState(null);
+
+  // ── Multi-Organization Policy States (Phase 4A) ──
+  const [organizationsList, setOrganizationsList] = useState([]);
+  const [selectedOrgId, setSelectedOrgId] = useState('');
+  const [settingsForm, setSettingsForm] = useState({
+    timeZone: 'Asia/Kolkata',
+    standardWorkingMinutes: 510,
+    halfDayMinutes: 270,
+    lateCutoff: '09:15 AM',
+    gracePeriodMinutes: 15,
+    overtimeEnabled: true,
+    overtimeStartAfterMinutes: 510,
+    minimumOvertimeMinutes: 30,
+    maximumOvertimeMinutes: 240,
+    autoCloseEnabled: true,
+    autoCloseCutoffHours: 12,
+    attendanceMode: 'GEOFENCE',
+    weekStartDay: 'Monday',
+  });
+  const [settingsSubmitting, setSettingsSubmitting] = useState(false);
+  const [settingsSuccessMsg, setSettingsSuccessMsg] = useState('');
+  const [settingsErrMsg, setSettingsErrMsg] = useState('');
+
+  // Fetch Organizations List for Owner
+  useEffect(() => {
+    if (isOwner) {
+      fetchMyOrganizationsList()
+        .then((list) => {
+          setOrganizationsList(list || []);
+          if (list && list.length > 0 && !selectedOrgId) {
+            setSelectedOrgId(list[0]._id);
+          }
+        })
+        .catch((err) => console.warn('Failed to load organizations list:', err.message));
+    }
+  }, [isOwner, selectedOrgId]);
+
+  const loadPolicySettings = useCallback(async (orgId) => {
+    const targetId = orgId || selectedOrgId || '';
+    try {
+      const res = await fetchAttendanceSettings(targetId);
+      if (res?.success && res.data) {
+        setAttendancePolicy(res.data);
+        setSettingsForm({
+          timeZone: res.data.timeZone || 'Asia/Kolkata',
+          standardWorkingMinutes: res.data.standardWorkingMinutes ?? 510,
+          halfDayMinutes: res.data.halfDayMinutes ?? 270,
+          lateCutoff: res.data.lateCutoff || '09:15 AM',
+          gracePeriodMinutes: res.data.gracePeriodMinutes ?? 15,
+          overtimeEnabled: res.data.overtimeEnabled ?? true,
+          overtimeStartAfterMinutes: res.data.overtimeStartAfterMinutes ?? 510,
+          minimumOvertimeMinutes: res.data.minimumOvertimeMinutes ?? 30,
+          maximumOvertimeMinutes: res.data.maximumOvertimeMinutes ?? 240,
+          autoCloseEnabled: res.data.autoCloseEnabled ?? true,
+          autoCloseCutoffHours: res.data.autoCloseCutoffHours ?? 12,
+          attendanceMode: res.data.attendanceMode || 'GEOFENCE',
+          weekStartDay: res.data.weekStartDay || 'Monday',
+        });
+      }
+    } catch (err) { console.warn("Settings load error:", err.message); }
+  }, [selectedOrgId]);
+
+  const handleSavePolicySettings = async (e) => {
+    e.preventDefault();
+    setSettingsSubmitting(true);
+    setSettingsSuccessMsg('');
+    setSettingsErrMsg('');
+    try {
+      const payload = {
+        ...(isOwner && selectedOrgId ? { organizationId: selectedOrgId } : {}),
+        ...settingsForm,
+      };
+      const res = await updateAttendanceSettings(payload);
+      if (res?.success) {
+        setSettingsSuccessMsg(res.message || 'Attendance policy updated successfully.');
+        if (res.data) setAttendancePolicy(res.data);
+      }
+    } catch (err) {
+      setSettingsErrMsg(err.message || 'Failed to update attendance policy.');
+    } finally {
+      setSettingsSubmitting(false);
+    }
+  };
 
   // Load organization attendance policy for punch action context
   useEffect(() => {
@@ -639,14 +737,13 @@ function Attendance() {
 
       {/* Feedback Toast Alert */}
       {feedbackMessage.text && (
-        <Alert
+        <FeedbackAlert
           variant={feedbackMessage.type}
           dismissible
           onClose={() => setFeedbackMessage({ type: '', text: '' })}
           className="shadow-sm border-0 rounded-3 mb-3 py-2 px-3 small"
-        >
-          {feedbackMessage.text}
-        </Alert>
+          message={feedbackMessage.text}
+        />
       )}
 
       {/* ── 1. OWNER NAVIGATION TABS ── */}
@@ -1348,6 +1445,206 @@ function Attendance() {
         </Card>
       )}
 
+      {/* ── TAB CONTENT 8: SETTINGS & POLICIES (OWNER / ADMIN / HR) ── */}
+      {activeTab === 'settings' && (isOwner || isAdmin || isHR) && (
+        <div>
+          {/* Organization Switcher (Owner Only) */}
+          {isOwner && organizationsList.length > 0 && (
+            <Card className="border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+              <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div>
+                  <div className="fw-bold text-dark d-flex align-items-center gap-2">
+                    <FaBuilding className="text-primary" /> Target Organization Selection
+                  </div>
+                  <div className="extra-small text-muted">
+                    Select company organization to configure independent Attendance Policy parameters.
+                  </div>
+                </div>
+                <Form.Select
+                  size="sm"
+                  className="w-auto fw-bold text-primary border-primary rounded-3"
+                  value={selectedOrgId}
+                  onChange={(e) => {
+                    const newOrgId = e.target.value;
+                    setSelectedOrgId(newOrgId);
+                    setSettingsSuccessMsg('');
+                    setSettingsErrMsg('');
+                    loadPolicySettings(newOrgId);
+                  }}
+                >
+                  {organizationsList.map((org) => (
+                    <option key={org._id} value={org._id}>
+                      🏢 {org.organizationName} ({org.organizationCode})
+                    </option>
+                  ))}
+                </Form.Select>
+              </div>
+            </Card>
+          )}
+
+          <Card className="border-0 shadow-sm rounded-4 p-4 bg-white mb-3">
+            <h6 className="fw-bold mb-3 d-flex align-items-center gap-2 text-dark">
+              <FaCog className="text-primary" /> Attendance Policy & Operational Configuration
+            </h6>
+
+            {settingsSuccessMsg && (
+              <Alert variant="success" dismissible onClose={() => setSettingsSuccessMsg('')} className="py-2 small">
+                <FaCheckCircle className="me-2" /> {settingsSuccessMsg}
+              </Alert>
+            )}
+
+            {settingsErrMsg && (
+              <Alert variant="danger" dismissible onClose={() => setSettingsErrMsg('')} className="py-2 small">
+                <FaExclamationTriangle className="me-2" /> {settingsErrMsg}
+              </Alert>
+            )}
+
+            <Form onSubmit={handleSavePolicySettings}>
+              <Row className="g-3 mb-4">
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-dark">Timezone</Form.Label>
+                    <Form.Select
+                      size="sm"
+                      value={settingsForm.timeZone}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, timeZone: e.target.value })}
+                    >
+                      <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
+                      <option value="UTC">UTC</option>
+                      <option value="America/New_York">America/New_York (EST)</option>
+                      <option value="Europe/London">Europe/London (GMT)</option>
+                      <option value="Asia/Dubai">Asia/Dubai (GST)</option>
+                      <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-dark">Standard Working Minutes</Form.Label>
+                    <Form.Control
+                      type="number"
+                      size="sm"
+                      value={settingsForm.standardWorkingMinutes}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, standardWorkingMinutes: Number(e.target.value) })}
+                    />
+                    <Form.Text className="extra-small text-muted">
+                      Full-day target (e.g. 510 mins = 8.5 hours).
+                    </Form.Text>
+                  </Form.Group>
+                </Col>
+
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-dark">Half-Day Threshold Minutes</Form.Label>
+                    <Form.Control
+                      type="number"
+                      size="sm"
+                      value={settingsForm.halfDayMinutes}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, halfDayMinutes: Number(e.target.value) })}
+                    />
+                    <Form.Text className="extra-small text-muted">
+                      Minimum threshold for half-day (e.g. 270 mins = 4.5 hours).
+                    </Form.Text>
+                  </Form.Group>
+                </Col>
+
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-dark">Late Cutoff Time</Form.Label>
+                    <Form.Control
+                      type="text"
+                      size="sm"
+                      value={settingsForm.lateCutoff}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, lateCutoff: e.target.value })}
+                      placeholder="e.g. 09:15 AM"
+                    />
+                  </Form.Group>
+                </Col>
+
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-dark">Grace Period (Minutes)</Form.Label>
+                    <Form.Control
+                      type="number"
+                      size="sm"
+                      value={settingsForm.gracePeriodMinutes}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, gracePeriodMinutes: Number(e.target.value) })}
+                    />
+                  </Form.Group>
+                </Col>
+
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-dark">Attendance Verification Mode</Form.Label>
+                    <Form.Select
+                      size="sm"
+                      value={settingsForm.attendanceMode}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, attendanceMode: e.target.value })}
+                    >
+                      <option value="GEOFENCE">GEOFENCE (Location Radius)</option>
+                      <option value="GPS">GPS (Coordinates Only)</option>
+                      <option value="MANUAL">MANUAL Override Only</option>
+                      <option value="BIOMETRIC">BIOMETRIC Machine Integration</option>
+                      <option value="ANY">ANY (Unrestricted)</option>
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-dark">Auto-Close Cutoff (Hours)</Form.Label>
+                    <Form.Control
+                      type="number"
+                      size="sm"
+                      value={settingsForm.autoCloseCutoffHours}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, autoCloseCutoffHours: Number(e.target.value) })}
+                    />
+                    <Form.Text className="extra-small text-muted">
+                      Unclosed session sweep threshold (default: 12h).
+                    </Form.Text>
+                  </Form.Group>
+                </Col>
+
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-dark">Overtime Policy Enabled</Form.Label>
+                    <Form.Check
+                      type="switch"
+                      id="ot-switch"
+                      label={settingsForm.overtimeEnabled ? 'Enabled' : 'Disabled'}
+                      checked={settingsForm.overtimeEnabled}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, overtimeEnabled: e.target.checked })}
+                      className="mt-1 fw-semibold"
+                    />
+                  </Form.Group>
+                </Col>
+
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-bold text-dark">Auto-Close Policy Enabled</Form.Label>
+                    <Form.Check
+                      type="switch"
+                      id="autoclose-switch"
+                      label={settingsForm.autoCloseEnabled ? 'Enabled' : 'Disabled'}
+                      checked={settingsForm.autoCloseEnabled}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, autoCloseEnabled: e.target.checked })}
+                      className="mt-1 fw-semibold"
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+
+              <div className="d-flex justify-content-end">
+                <Button type="submit" variant="primary" size="sm" disabled={settingsSubmitting} className="rounded-3 px-4 fw-bold">
+                  {settingsSubmitting ? <Spinner size="sm" animation="border" /> : <><FaCheck className="me-1" /> Save Attendance Policy</>}
+                </Button>
+              </div>
+            </Form>
+          </Card>
+        </div>
+      )}
+
       {/* ── TAB CONTENT 9: MY TODAY / MY CALENDAR (EMPLOYEE & INTERN / PM) ── */}
       {(activeTab === 'my-today' || activeTab === 'my-calendar') && (
         <Row className="g-3 mb-3">
@@ -1373,7 +1670,7 @@ function Attendance() {
                   onClick={handlePunchAction}
                   disabled={punchLoading}
                 >
-                  {punchLoading ? <Spinner animation="border" size="sm" /> : (
+                  {punchLoading ? <LoadingSpinner variant="button" size="sm" /> : (
                     <div>
                       <FaClock size={24} className="mb-1 d-block mx-auto" />
                       {todayRecord?.loginTime && !todayRecord?.logoutTime ? 'PUNCH OUT' : 'PUNCH IN'}

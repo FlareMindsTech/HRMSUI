@@ -23,6 +23,7 @@ import LoadingSpinner from "../../Components/Common/LoadingSpinner";
 import EmptyState from "../../Components/Common/EmptyState";
 import SearchInput from "../../Components/Common/SearchInput";
 import PaginationBar from "../../Components/Common/PaginationBar";
+import StatusBadge from "../../Components/Common/StatusBadge";
 import {
   FaUser,
   FaBriefcase,
@@ -3275,42 +3276,26 @@ function HrOnboarding() {
     }
   };
 
-  const getAssetStatusBadge = (status) => {
-    switch (status) {
-      case "AVAILABLE":
-        return (
-          <Badge bg="success" className="onboarding-badge status-active">
-            ● Available
-          </Badge>
-        );
-      case "ASSIGNED":
-        return (
-          <Badge bg="primary" className="onboarding-badge status-initiated">
-            ● Assigned
-          </Badge>
-        );
-      case "DAMAGED":
-        return (
-          <Badge bg="danger" className="onboarding-badge status-rejected">
-            ● Damaged
-          </Badge>
-        );
-      case "UNDER_REPAIR":
-        return (
-          <Badge bg="warning" className="onboarding-badge status-doc-verification">
-            ● Under Repair
-          </Badge>
-        );
-      case "RETIRED":
-        return (
-          <Badge bg="secondary" className="onboarding-badge status-default">
-            ● Retired
-          </Badge>
-        );
-      default:
-        return <Badge bg="secondary" className="rounded-pill">{status || "Unknown"}</Badge>;
-    }
+  // Asset status vocabulary — same map, classes, labels and
+  // Unknown fallback as the previous switch, rendered through
+  // the shared StatusBadge (custom <span> pills elsewhere stay untouched).
+  const ASSET_STATUS_MAP = {
+    AVAILABLE: { bg: "success", className: "onboarding-badge status-active", label: "● Available" },
+    ASSIGNED: { bg: "primary", className: "onboarding-badge status-initiated", label: "● Assigned" },
+    DAMAGED: { bg: "danger", className: "onboarding-badge status-rejected", label: "● Damaged" },
+    UNDER_REPAIR: { bg: "warning", className: "onboarding-badge status-doc-verification", label: "● Under Repair" },
+    RETIRED: { bg: "secondary", className: "onboarding-badge status-default", label: "● Retired" },
   };
+  const ASSET_STATUS_DEFAULT = { bg: "secondary", className: "rounded-pill" };
+
+  const getAssetStatusBadge = (status) => (
+    <StatusBadge
+      status={status}
+      map={ASSET_STATUS_MAP}
+      defaultEntry={ASSET_STATUS_DEFAULT}
+      fallbackLabel="Unknown"
+    />
+  );
 
   const assetCounts = useMemo(() => {
     const candidateUserId = String(targetEmp._id || selectedOnboarding?.employeeId?._id || selectedOnboarding?.userId || selectedOnboarding?.employeeId || "");
@@ -5077,17 +5062,17 @@ function HrOnboarding() {
 
                   {/* Filters & Search Controls */}
                   <div className="d-flex flex-wrap align-items-center gap-2">
-                    <InputGroup size="sm" className="onboarding-search-control" style={{ width: "200px" }}>
-                      <InputGroup.Text className="bg-light border-0 text-muted ps-3">
-                        <FaSearch size={11} />
-                      </InputGroup.Text>
-                      <Form.Control
-                        placeholder="Search candidate..."
-                        value={pipelineSearch}
-                        onChange={(e) => handlePipelineSearchChange(e.target.value)}
-                        className="border-0 bg-light shadow-none extra-small"
-                      />
-                    </InputGroup>
+                    <SearchInput
+                      size="sm"
+                      iconSize={11}
+                      inputGroupClassName="onboarding-search-control"
+                      inputGroupStyle={{ width: "200px" }}
+                      inputGroupTextClassName="bg-light border-0 text-muted ps-3"
+                      inputClassName="border-0 bg-light shadow-none extra-small"
+                      placeholder="Search candidate..."
+                      value={pipelineSearch}
+                      onChange={(e) => handlePipelineSearchChange(e.target.value)}
+                    />
 
                     <Form.Select
                       size="sm"
@@ -8143,7 +8128,7 @@ function HrOnboarding() {
                         onClick={handleOnboardSubmit}
                         disabled={submittingForm}
                       >
-                        {submittingForm ? <Spinner size="sm" animation="border" /> : <FaUserCheck size={13} />}
+                        {submittingForm ? <LoadingSpinner variant="button" size="sm" /> : <FaUserCheck size={13} />}
                         Initialize Onboarding
                       </Button>
                     </div>
@@ -8176,7 +8161,7 @@ function HrOnboarding() {
                       onClick={handleOnboardSubmit}
                       disabled={submittingForm}
                     >
-                      {submittingForm ? <Spinner size="sm" animation="border" /> : <FaUserCheck size={13} />} Initialize Candidate Onboarding
+                      {submittingForm ? <LoadingSpinner variant="button" size="sm" /> : <FaUserCheck size={13} />} Initialize Candidate Onboarding
                     </button>
                   )}
                 </div>
@@ -8334,13 +8319,19 @@ function HrOnboarding() {
                 </thead>
                 <tbody>
                   {filteredEmployees.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="text-center py-5 text-muted">
-                        <FaUsers size={32} className="text-secondary opacity-50 mb-2" />
-                        <div className="fw-semibold text-dark">No employees found</div>
-                        <p className="extra-small text-muted mb-0">No employee records match your search or filter criteria.</p>
-                      </td>
-                    </tr>
+                    <EmptyState
+                      variant="table"
+                      colSpan={6}
+                      className="text-center py-5 text-muted"
+                      icon={FaUsers}
+                      iconSize={32}
+                      iconClassName="text-secondary opacity-50 mb-2"
+                      titleAs="div"
+                      titleClassName="fw-semibold text-dark"
+                      title="No employees found"
+                      description="No employee records match your search or filter criteria."
+                      descriptionClassName="extra-small text-muted mb-0"
+                    />
                   ) : (
                     paginatedEmployees.map((emp) => {
                       const hasAccount = emp?.hasLoginAccess === true;
@@ -8640,7 +8631,7 @@ function HrOnboarding() {
                             Cancel
                           </Button>
                           <Button variant="success" size="sm" className="rounded-pill px-3 extra-small fw-bold" onClick={handleSaveCandidateProfile} disabled={savingProfile}>
-                            {savingProfile ? <Spinner size="sm" animation="border" /> : <FaSave className="me-1" />} Save Profile
+                            {savingProfile ? <LoadingSpinner variant="button" size="sm" /> : <FaSave className="me-1" />} Save Profile
                           </Button>
                         </div>
                       ) : (
@@ -9521,7 +9512,7 @@ function HrOnboarding() {
                                                 <label className={`onboarding-doc-upload-btn mb-0 ${isUploadingThis ? "opacity-75 cursor-not-allowed" : ""}`}>
                                                   <span className="onboarding-doc-upload-icon-wrap">
                                                     {isUploadingThis ? (
-                                                      <Spinner animation="border" size="sm" />
+                                                      <LoadingSpinner variant="button" size="sm" />
                                                     ) : (
                                                       <FaUpload size={10} />
                                                     )}
@@ -9846,7 +9837,7 @@ function HrOnboarding() {
                                           >
                                             {isUploading ? (
                                               <>
-                                                <Spinner animation="border" size="sm" className="me-1 spinner-mini" /> Uploading...
+                                                <LoadingSpinner variant="inline" size="sm" className="me-1 spinner-mini" /> Uploading...
                                               </>
                                             ) : (
                                               <>
@@ -10503,7 +10494,7 @@ function HrOnboarding() {
                                         >
                                           {uploadingBankDoc ? (
                                             <>
-                                              <Spinner animation="border" size="sm" className="me-1 spinner-mini" /> Uploading...
+                                              <LoadingSpinner variant="inline" size="sm" className="me-1 spinner-mini" /> Uploading...
                                             </>
                                           ) : (
                                             <>
@@ -11157,18 +11148,15 @@ function HrOnboarding() {
 
                     <Row className="g-2 align-items-center">
                       <Col xs={12} md={5}>
-                        <InputGroup size="sm">
-                          <InputGroup.Text className="bg-light border-end-0 text-muted">
-                            <FaSearch />
-                          </InputGroup.Text>
-                          <Form.Control
-                            type="text"
-                            placeholder="Search by code, name, serial, assignee..."
-                            value={assetSearchQuery}
-                            onChange={(e) => setAssetSearchQuery(e.target.value)}
-                            className="border-start-0 shadow-none bg-light"
-                          />
-                        </InputGroup>
+                        <SearchInput
+                          size="sm"
+                          inputGroupTextClassName="bg-light border-end-0 text-muted"
+                          inputClassName="border-start-0 shadow-none bg-light"
+                          type="text"
+                          placeholder="Search by code, name, serial, assignee..."
+                          value={assetSearchQuery}
+                          onChange={(e) => setAssetSearchQuery(e.target.value)}
+                        />
                       </Col>
 
                       <Col xs={6} md={3}>
@@ -11994,7 +11982,7 @@ function HrOnboarding() {
           {docPreview.loading && (
             <div className="doc-preview-loading-overlay">
               <div className="d-flex flex-column align-items-center gap-2">
-                <Spinner animation="border" variant="primary" size="sm" />
+                <LoadingSpinner variant="inline" size="sm" color="primary" />
                 <span className="extra-small text-muted fw-semibold">Loading document preview...</span>
               </div>
             </div>
@@ -12182,7 +12170,7 @@ function HrOnboarding() {
             disabled={!uploadDocForm.file || uploadingDoc}
             onClick={handleUploadNewCandidateDoc}
           >
-            {uploadingDoc ? <Spinner size="sm" animation="border" /> : <FaFileUpload className="me-1" />} Upload Document
+            {uploadingDoc ? <LoadingSpinner variant="button" size="sm" /> : <FaFileUpload className="me-1" />} Upload Document
           </Button>
         </Modal.Footer>
       </Modal>
@@ -12291,7 +12279,7 @@ function HrOnboarding() {
               className="rounded-pill extra-small px-3 fw-bold text-white onboarding-btn-mint"
               disabled={createAssetSubmitting || !createAssetForm.name.trim()}
             >
-              {createAssetSubmitting ? <Spinner size="sm" animation="border" /> : <FaPlus className="me-1" />} Save & Register Asset
+              {createAssetSubmitting ? <LoadingSpinner variant="button" size="sm" /> : <FaPlus className="me-1" />} Save & Register Asset
             </Button>
           </Modal.Footer>
         </Form>
@@ -12361,7 +12349,7 @@ function HrOnboarding() {
             disabled={assigningAssetLoading}
             onClick={() => handleAssignAssetToCandidate(selectedAssetToAssign, assignAssetDetailForm.condition, assignAssetDetailForm.remarks)}
           >
-            {assigningAssetLoading ? <Spinner size="sm" animation="border" /> : <FaPlus className="me-1" />} Confirm Assignment
+            {assigningAssetLoading ? <LoadingSpinner variant="button" size="sm" /> : <FaPlus className="me-1" />} Confirm Assignment
           </Button>
         </Modal.Footer>
       </Modal>
@@ -12573,7 +12561,7 @@ function HrOnboarding() {
               className="rounded-pill px-4 fw-bold shadow-sm"
               disabled={creatingCustomRole || !newRoleForm.roleName.trim()}
             >
-              {creatingCustomRole ? <Spinner size="sm" animation="border" className="me-1" /> : <FaPlus className="me-1" />}
+              {creatingCustomRole ? <LoadingSpinner variant="button" size="sm" className="me-1" /> : <FaPlus className="me-1" />}
               Create & Assign Role
             </Button>
           </Modal.Footer>

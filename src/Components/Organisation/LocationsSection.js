@@ -1,23 +1,18 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
-  Table,
   Button,
   Badge,
-  Modal,
   Form,
   Row,
   Col,
   Spinner,
-  Alert,
-  InputGroup,
 } from "react-bootstrap";
 import {
   FaMapMarkerAlt,
   FaPlus,
   FaEdit,
   FaTrash,
-  FaSearch,
   FaCrosshairs,
   FaCodeBranch,
 } from "react-icons/fa";
@@ -31,6 +26,12 @@ import {
 import { useSelector } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import PaginationBar from "../Common/PaginationBar";
+import FeedbackAlert from "../Common/FeedbackAlert";
+import EmptyState from "../Common/EmptyState";
+import DataTable from "../Common/DataTable";
+import SearchInput from "../Common/SearchInput";
+import ConfirmModal from "../Common/ConfirmModal";
+import CrudModal from "../Common/CrudModal";
 
 function LocationsSection({ lockedBranchId }) {
   const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
@@ -261,22 +262,23 @@ function LocationsSection({ lockedBranchId }) {
         )}
       </div>
 
-      {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
-      {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
+      <FeedbackAlert variant="danger" dismissible onClose={() => setError("")} message={error} />
+      <FeedbackAlert variant="success" dismissible onClose={() => setSuccess("")} message={success} />
 
       {/* ── Filters & Search ── */}
       <Card className="org-filter-card mb-3">
         <Card.Body className="py-2">
           <Row className="g-2 align-items-center">
             <Col md={4}>
-              <InputGroup size="sm">
-                <InputGroup.Text><FaSearch className="text-muted" /></InputGroup.Text>
-                <Form.Control
-                  placeholder="Search location name, code, or city..."
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                />
-              </InputGroup>
+              <SearchInput
+                size="sm"
+                inputGroupTextClassName=""
+                inputClassName=""
+                iconClassName="text-muted"
+                placeholder="Search location name, code, or city..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              />
             </Col>
             <Col md={3}>
               <Form.Select
@@ -326,111 +328,139 @@ function LocationsSection({ lockedBranchId }) {
 
       {/* ── Table ── */}
       <Card className="org-table-card">
-        <Table responsive hover className="org-table mb-0 align-middle">
-          <thead>
+        <DataTable
+          responsive
+          hover
+          className="org-table mb-0 align-middle"
+          rows={locations}
+          loading={loading}
+          loadingComponent={
             <tr>
-              <th>Location Code & Name</th>
-              <th>Type</th>
-              <th>Branch</th>
-              <th>City / Address</th>
-              <th>GPS & Geofence Radius</th>
-              <th>Status</th>
-              <th className="text-end">Actions</th>
+              <td colSpan={7} className="text-center py-5 text-muted">
+                <Spinner animation="border" size="sm" variant="success" className="me-2" />
+                Loading locations...
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={7} className="text-center py-5 text-muted">
-                  <Spinner animation="border" size="sm" variant="success" className="me-2" />
-                  Loading locations...
-                </td>
-              </tr>
-            ) : locations.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-center py-5 text-muted">
-                  No geofenced locations found.
-                </td>
-              </tr>
-            ) : (
-              locations.map((loc) => (
-                <tr key={loc._id}>
-                  <td>
-                    <div className="fw-semibold text-dark">{loc.locationName}</div>
-                    <div className="small font-monospace text-muted">{loc.locationCode}</div>
-                  </td>
-                  <td>
-                    <Badge bg="light" className="text-dark border">
-                      {loc.locationType ? loc.locationType.replace("_", " ") : "OFFICE"}
-                    </Badge>
-                  </td>
-                  <td>
-                    {loc.branchId ? (
-                      <div className="small">
-                        <FaCodeBranch className="text-secondary me-1" />
-                        {loc.branchId.branchName}
-                      </div>
-                    ) : (
-                      <span className="text-muted small">Unassigned</span>
-                    )}
-                  </td>
-                  <td>
-                    <div className="small">
-                      {typeof loc.city === 'string' ? loc.city : (loc.address?.city || "")}
-                      {(loc.city || loc.address?.city) ? ", " : ""}
-                      {typeof loc.state === 'string' ? loc.state : (typeof loc.country === 'string' ? loc.country : (loc.address?.country || loc.address?.state || ""))}
-                    </div>
-                    <div className="text-muted text-truncate small" style={{ maxWidth: "200px" }}>
-                      {typeof loc.address === 'string' ? loc.address : (loc.address?.street || "-")}
-                    </div>
-                  </td>
-                  <td>
-                    <div className="d-flex align-items-center gap-1 font-monospace small">
-                      <FaMapMarkerAlt className="text-danger" />
-                      <span>{loc.latitude?.toFixed(4)}, {loc.longitude?.toFixed(4)}</span>
-                    </div>
-                    <Badge bg="info" className="text-dark border mt-1 font-monospace" style={{ fontSize: "0.7rem" }}>
-                      Radius: {loc.radiusMeters || 200}m
-                    </Badge>
-                  </td>
-                  <td>
-                    <Badge bg={loc.status === "ACTIVE" ? "success" : "secondary"}>
-                      {loc.status}
-                    </Badge>
-                  </td>
-                  <td className="text-end">
-                    {canUpdate && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="text-primary p-1"
-                        title="Edit Location"
-                        onClick={() => handleOpenEdit(loc)}
-                      >
-                        <FaEdit />
-                      </Button>
-                    )}
-                    {canDelete && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="text-danger p-1"
-                        title="Delete Location"
-                        onClick={() => {
-                          setDeletingId(loc._id);
-                          setDeletingName(loc.locationName);
-                          setShowDeleteModal(true);
-                        }}
-                      >
-                        <FaTrash />
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </Table>
+          }
+          emptyComponent={
+            <EmptyState
+              variant="table"
+              colSpan={7}
+              className="text-center py-5 text-muted"
+              title="No geofenced locations found."
+            />
+          }
+          columns={[
+            {
+              key: "location",
+              header: "Location Code & Name",
+              render: (loc) => (
+                <>
+                  <div className="fw-semibold text-dark">{loc.locationName}</div>
+                  <div className="small font-monospace text-muted">{loc.locationCode}</div>
+                </>
+              ),
+            },
+            {
+              key: "type",
+              header: "Type",
+              render: (loc) => (
+                <Badge bg="light" className="text-dark border">
+                  {loc.locationType ? loc.locationType.replace("_", " ") : "OFFICE"}
+                </Badge>
+              ),
+            },
+            {
+              key: "branch",
+              header: "Branch",
+              render: (loc) =>
+                loc.branchId ? (
+                  <div className="small">
+                    <FaCodeBranch className="text-secondary me-1" />
+                    {loc.branchId.branchName}
+                  </div>
+                ) : (
+                  <span className="text-muted small">Unassigned</span>
+                ),
+            },
+            {
+              key: "city",
+              header: "City / Address",
+              render: (loc) => (
+                <>
+                  <div className="small">
+                    {typeof loc.city === 'string' ? loc.city : (loc.address?.city || "")}
+                    {(loc.city || loc.address?.city) ? ", " : ""}
+                    {typeof loc.state === 'string' ? loc.state : (typeof loc.country === 'string' ? loc.country : (loc.address?.country || loc.address?.state || ""))}
+                  </div>
+                  <div className="text-muted text-truncate small" style={{ maxWidth: "200px" }}>
+                    {typeof loc.address === 'string' ? loc.address : (loc.address?.street || "-")}
+                  </div>
+                </>
+              ),
+            },
+            {
+              key: "gps",
+              header: "GPS & Geofence Radius",
+              render: (loc) => (
+                <>
+                  <div className="d-flex align-items-center gap-1 font-monospace small">
+                    <FaMapMarkerAlt className="text-danger" />
+                    <span>{loc.latitude?.toFixed(4)}, {loc.longitude?.toFixed(4)}</span>
+                  </div>
+                  <Badge bg="info" className="text-dark border mt-1 font-monospace" style={{ fontSize: "0.7rem" }}>
+                    Radius: {loc.radiusMeters || 200}m
+                  </Badge>
+                </>
+              ),
+            },
+            {
+              key: "status",
+              header: "Status",
+              render: (loc) => (
+                <Badge bg={loc.status === "ACTIVE" ? "success" : "secondary"}>
+                  {loc.status}
+                </Badge>
+              ),
+            },
+            {
+              key: "actions",
+              header: "Actions",
+              headerClassName: "text-end",
+              cellClassName: "text-end",
+              render: (loc) => (
+                <>
+                  {canUpdate && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-primary p-1"
+                      title="Edit Location"
+                      onClick={() => handleOpenEdit(loc)}
+                    >
+                      <FaEdit />
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-danger p-1"
+                      title="Delete Location"
+                      onClick={() => {
+                        setDeletingId(loc._id);
+                        setDeletingName(loc.locationName);
+                        setShowDeleteModal(true);
+                      }}
+                    >
+                      <FaTrash />
+                    </Button>
+                  )}
+                </>
+              ),
+            },
+          ]}
+        />
 
         {/* Pagination */}
         {totalPages > 1 && (
@@ -446,18 +476,16 @@ function LocationsSection({ lockedBranchId }) {
       </Card>
 
       {/* ── Create / Edit Modal ── */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered backdrop="static">
-        <Form onSubmit={handleSubmit}>
-          <Modal.Header closeButton>
-            <Modal.Title className="d-flex align-items-center gap-2">
-              <FaMapMarkerAlt className="text-danger" />
-              {editingLocation ? "Edit Geofenced Location" : "Add Geofenced Location"}
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            {modalError && <Alert variant="danger">{modalError}</Alert>}
-
-            <Row className="g-3">
+      <CrudModal
+        show={showModal}
+        onClose={() => setShowModal(false)}
+        title={<><FaMapMarkerAlt className="text-danger" />{editingLocation ? "Edit Geofenced Location" : "Add Geofenced Location"}</>}
+        onSubmit={handleSubmit}
+        saving={modalLoading}
+        saveLabel="Save Location"
+        modalError={modalError}
+      >
+        <Row className="g-3">
               <Col md={6}>
                 <Form.Group>
                   <Form.Label>Location Name <span className="text-danger">*</span></Form.Label>
@@ -643,37 +671,17 @@ function LocationsSection({ lockedBranchId }) {
                 </Form.Group>
               </Col>
             </Row>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowModal(false)} disabled={modalLoading}>
-              Cancel
-            </Button>
-            <Button variant="success" type="submit" disabled={modalLoading}>
-              {modalLoading ? <Spinner size="sm" animation="border" /> : "Save Location"}
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
+      </CrudModal>
 
       {/* ── Delete Confirmation Modal ── */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="text-danger d-flex align-items-center gap-2">
-            <FaTrash /> Delete Location
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to delete geofenced location <strong>{deletingName}</strong>?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={modalLoading}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={handleDelete} disabled={modalLoading}>
-            {modalLoading ? <Spinner size="sm" animation="border" /> : "Yes, Delete"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ConfirmModal
+        show={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title={<><FaTrash /> Delete Location</>}
+        message={<>Are you sure you want to delete geofenced location <strong>{deletingName}</strong>?</>}
+        onConfirm={handleDelete}
+        loading={modalLoading}
+      />
     </div>
   );
 }

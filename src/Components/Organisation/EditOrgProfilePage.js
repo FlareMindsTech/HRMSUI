@@ -4,7 +4,6 @@ import {
   Col,
   Form,
   Button,
-  Alert,
   Spinner,
   Badge,
 } from "react-bootstrap";
@@ -36,6 +35,8 @@ import {
 } from "../../services/organizationService";
 import { useSelector } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin, selectAuthUser } from '../../redux/slices/authSlice';
+import FeedbackAlert from "../Common/FeedbackAlert";
+import LoadingSpinner from "../Common/LoadingSpinner";
 import { useBranch } from "../../context/BranchContext";
 import "./EditOrgProfilePage.css";
 
@@ -405,7 +406,7 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
           >
             {saving ? (
               <>
-                <Spinner animation="border" size="sm" />
+                <LoadingSpinner variant="inline" size="sm" />
                 <span>Saving Changes...</span>
               </>
             ) : (
@@ -419,15 +420,23 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
       </div>
 
       {error && (
-        <Alert variant="danger" dismissible onClose={() => setError("")} className="mb-4 shadow-sm border-0">
-          <FaInfoCircle className="me-2" /> {error}
-        </Alert>
+        <FeedbackAlert
+          variant="danger"
+          dismissible
+          onClose={() => setError("")}
+          className="mb-4 shadow-sm border-0"
+          message={<><FaInfoCircle className="me-2" /> {error}</>}
+        />
       )}
 
       {success && (
-        <Alert variant="success" dismissible onClose={() => setSuccess("")} className="mb-4 shadow-sm border-0">
-          <FaCheckCircle className="me-2" /> {success}
-        </Alert>
+        <FeedbackAlert
+          variant="success"
+          dismissible
+          onClose={() => setSuccess("")}
+          className="mb-4 shadow-sm border-0"
+          message={<><FaCheckCircle className="me-2" /> {success}</>}
+        />
       )}
 
       {loading ? (
@@ -1264,7 +1273,7 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
                   >
                     {saving ? (
                       <>
-                        <Spinner animation="border" size="sm" />
+                        <LoadingSpinner variant="inline" size="sm" />
                         <span>Saving Changes...</span>
                       </>
                     ) : (

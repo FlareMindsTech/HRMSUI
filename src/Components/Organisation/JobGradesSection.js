@@ -3,20 +3,16 @@ import {
   Card,
   Button,
   Badge,
-  Modal,
   Form,
   Row,
   Col,
   Spinner,
-  Alert,
-  InputGroup,
 } from "react-bootstrap";
 import {
   FaLayerGroup,
   FaPlus,
   FaEdit,
   FaTrash,
-  FaSearch,
   FaMoneyBillWave,
   FaBriefcase,
   FaCodeBranch,
@@ -32,6 +28,11 @@ import { useSelector } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import DataTable from "../Common/DataTable";
 import PaginationBar from "../Common/PaginationBar";
+import FeedbackAlert from "../Common/FeedbackAlert";
+import EmptyState from "../Common/EmptyState";
+import SearchInput from "../Common/SearchInput";
+import ConfirmModal from "../Common/ConfirmModal";
+import CrudModal from "../Common/CrudModal";
 
 function JobGradesSection({ lockedBranchId }) {
   const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
@@ -218,22 +219,23 @@ function JobGradesSection({ lockedBranchId }) {
         )}
       </div>
 
-      {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
-      {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
+      <FeedbackAlert variant="danger" dismissible onClose={() => setError("")} message={error} />
+      <FeedbackAlert variant="success" dismissible onClose={() => setSuccess("")} message={success} />
 
       {/* ── Filters & Search ── */}
       <Card className="border-0 shadow-sm mb-3">
         <Card.Body className="p-2">
           <Row className="g-2 align-items-center">
             <Col md={lockedBranchId ? 6 : 4}>
-              <InputGroup size="sm">
-                <InputGroup.Text><FaSearch className="text-muted" /></InputGroup.Text>
-                <Form.Control
-                  placeholder="Search grade title or code..."
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                />
-              </InputGroup>
+              <SearchInput
+                size="sm"
+                inputGroupTextClassName=""
+                inputClassName=""
+                iconClassName="text-muted"
+                placeholder="Search grade title or code..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              />
             </Col>
             {!lockedBranchId && (
               <Col md={3}>
@@ -395,18 +397,19 @@ function JobGradesSection({ lockedBranchId }) {
             </tr>
           }
           emptyComponent={
-            <tr>
-              <td colSpan={8} className="text-center py-5 text-muted">
-                <div className="p-3">
-                  <p className="mb-2">No job grades found.</p>
-                  {canCreate && (
-                    <Button variant="outline-success" size="sm" onClick={handleOpenCreate}>
-                      <FaPlus className="me-1" /> Add First Job Grade
-                    </Button>
-                  )}
-                </div>
-              </td>
-            </tr>
+            <EmptyState
+              variant="table"
+              colSpan={8}
+              className="text-center py-5 text-muted"
+              bodyClassName="p-3"
+              title="No job grades found."
+              titleAs="p"
+              titleClassName="mb-2"
+              actionLabel={canCreate ? "Add First Job Grade" : undefined}
+              onAction={handleOpenCreate}
+              actionVariant="outline-success"
+              actionIcon={<FaPlus className="me-1" />}
+            />
           }
         />
 
@@ -424,18 +427,16 @@ function JobGradesSection({ lockedBranchId }) {
       </Card>
 
       {/* ── Create / Edit Modal ── */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered backdrop="static">
-        <Form onSubmit={handleSubmit}>
-          <Modal.Header closeButton>
-            <Modal.Title className="d-flex align-items-center gap-2">
-              <FaLayerGroup className="text-success" />
-              {editingGrade ? "Edit Job Grade" : "Add Job Grade"}
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            {modalError && <Alert variant="danger">{modalError}</Alert>}
-
-            <Row className="g-3">
+      <CrudModal
+        show={showModal}
+        onClose={() => setShowModal(false)}
+        title={<><FaLayerGroup className="text-success" />{editingGrade ? "Edit Job Grade" : "Add Job Grade"}</>}
+        onSubmit={handleSubmit}
+        saving={modalLoading}
+        saveLabel="Save Grade"
+        modalError={modalError}
+      >
+        <Row className="g-3">
               <Col md={6}>
                 <Form.Group>
                   <Form.Label>Grade Name <span className="text-danger">*</span></Form.Label>
@@ -561,37 +562,17 @@ function JobGradesSection({ lockedBranchId }) {
                 </Form.Group>
               </Col>
             </Row>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowModal(false)} disabled={modalLoading}>
-              Cancel
-            </Button>
-            <Button variant="success" type="submit" disabled={modalLoading}>
-              {modalLoading ? <Spinner size="sm" animation="border" /> : "Save Grade"}
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
+      </CrudModal>
 
       {/* ── Delete Confirmation Modal ── */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="text-danger d-flex align-items-center gap-2">
-            <FaTrash /> Delete Job Grade
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to delete job grade <strong>{deletingName}</strong>?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={modalLoading}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={handleDelete} disabled={modalLoading}>
-            {modalLoading ? <Spinner size="sm" animation="border" /> : "Yes, Delete"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ConfirmModal
+        show={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title={<><FaTrash /> Delete Job Grade</>}
+        message={<>Are you sure you want to delete job grade <strong>{deletingName}</strong>?</>}
+        onConfirm={handleDelete}
+        loading={modalLoading}
+      />
     </div>
   );
 }

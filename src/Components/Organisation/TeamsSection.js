@@ -3,12 +3,10 @@ import {
   Card,
   Button,
   Badge,
-  Modal,
   Form,
   Row,
   Col,
   Spinner,
-  Alert,
   InputGroup,
 } from "react-bootstrap";
 import {
@@ -36,6 +34,9 @@ import DataTable from "../Common/DataTable";
 import EmptyState from "../Common/EmptyState";
 import SearchInput from "../Common/SearchInput";
 import PaginationBar from "../Common/PaginationBar";
+import FeedbackAlert from "../Common/FeedbackAlert";
+import ConfirmModal from "../Common/ConfirmModal";
+import CrudModal from "../Common/CrudModal";
 
 function TeamsSection({ lockedBranchId }) {
   const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
@@ -259,16 +260,8 @@ function TeamsSection({ lockedBranchId }) {
       </div>
 
       {/* ── Alerts ── */}
-      {error && (
-        <Alert variant="danger" dismissible onClose={() => setError("")}>
-          {error}
-        </Alert>
-      )}
-      {success && (
-        <Alert variant="success" dismissible onClose={() => setSuccess("")}>
-          {success}
-        </Alert>
-      )}
+      <FeedbackAlert variant="danger" dismissible onClose={() => setError("")} message={error} />
+      <FeedbackAlert variant="success" dismissible onClose={() => setSuccess("")} message={success} />
 
       {/* ── Filters Toolbar ── */}
       <Card className="border-0 shadow-sm mb-3">
@@ -497,18 +490,16 @@ function TeamsSection({ lockedBranchId }) {
       </Card>
 
       {/* ── Create / Edit Modal ── */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered backdrop="static">
-        <Form onSubmit={handleSubmit}>
-          <Modal.Header closeButton>
-            <Modal.Title className="d-flex align-items-center gap-2">
-              <FaUsers className="text-success" />
-              {editingTeam ? "Edit Team" : "Add New Team"}
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            {modalError && <Alert variant="danger">{modalError}</Alert>}
-
-            <Row className="g-3">
+      <CrudModal
+        show={showModal}
+        onClose={() => setShowModal(false)}
+        title={<><FaUsers className="text-success" />{editingTeam ? "Edit Team" : "Add New Team"}</>}
+        onSubmit={handleSubmit}
+        saving={modalLoading}
+        saveLabel="Save Team"
+        modalError={modalError}
+      >
+        <Row className="g-3">
               <Col md={6}>
                 <Form.Group>
                   <Form.Label>Team Name <span className="text-danger">*</span></Form.Label>
@@ -629,40 +620,17 @@ function TeamsSection({ lockedBranchId }) {
                 </Form.Group>
               </Col>
             </Row>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowModal(false)} disabled={modalLoading}>
-              Cancel
-            </Button>
-            <Button variant="success" type="submit" disabled={modalLoading}>
-              {modalLoading ? <Spinner size="sm" animation="border" /> : "Save Team"}
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
+      </CrudModal>
 
       {/* ── Delete Confirmation Modal ── */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="text-danger d-flex align-items-center gap-2">
-            <FaTrash /> Delete Team
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to delete team <strong>{deletingName}</strong>?
-          <p className="text-muted small mt-2">
-            Team assignments for members will be cleared.
-          </p>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={modalLoading}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={handleDelete} disabled={modalLoading}>
-            {modalLoading ? <Spinner size="sm" animation="border" /> : "Yes, Delete"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ConfirmModal
+        show={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title={<><FaTrash /> Delete Team</>}
+        message={<>Are you sure you want to delete team <strong>{deletingName}</strong>?<p className="text-muted small mt-2">Team assignments for members will be cleared.</p></>}
+        onConfirm={handleDelete}
+        loading={modalLoading}
+      />
     </div>
   );
 }

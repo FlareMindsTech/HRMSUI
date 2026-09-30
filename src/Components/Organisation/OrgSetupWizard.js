@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Row, Col, Form, Button, Alert, Spinner, InputGroup, Card } from "react-bootstrap";
+import { Row, Col, Form, Button, InputGroup, Card, Alert, Spinner } from "react-bootstrap";
 import {
   FaBuilding,
   FaShieldAlt,
@@ -38,6 +38,8 @@ import {
 } from "../../services/organizationService";
 import { useDispatch } from "react-redux";
 import { authSynced } from "../../redux/slices/authSlice";
+import FeedbackAlert from "../Common/FeedbackAlert";
+import LoadingSpinner from "../Common/LoadingSpinner";
 import { useBranch } from "../../context/BranchContext";
 import { API_BASE_URL, setAuthToken } from "../../config/api";
 import "../../Pages/Dashboard/HrOnboarding.css";
@@ -737,25 +739,25 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
           </span>
         </div>
 
-        {/* Error Alert */}
-        {error && (
-          <Alert variant="danger" dismissible onClose={() => setError("")} className="mb-4 shadow-sm">
-            <div className="d-flex align-items-center gap-2">
-              <FaExclamationTriangle className="text-danger flex-shrink-0" />
-              <span><strong>Action Required:</strong> {error}</span>
-            </div>
-          </Alert>
-        )}
+            {/* Error Alert */}
+            {error && (
+              <Alert variant="danger" dismissible onClose={() => setError("")} className="mb-4 shadow-sm">
+                <div className="d-flex align-items-center gap-2">
+                  <FaExclamationTriangle className="text-danger flex-shrink-0" />
+                  <span><strong>Action Required:</strong> {error}</span>
+                </div>
+              </Alert>
+            )}
 
-        {/* Success Alert */}
-        {successMessage && (
-          <Alert variant="success" className="mb-4 shadow-sm">
-            <div className="d-flex align-items-center gap-2">
-              <FaCheckCircle className="text-success flex-shrink-0" />
-              <span>{successMessage}</span>
-            </div>
-          </Alert>
-        )}
+            {/* Success Alert */}
+            {successMessage && (
+              <Alert variant="success" className="mb-4 shadow-sm">
+                <div className="d-flex align-items-center gap-2">
+                  <FaCheckCircle className="text-success flex-shrink-0" />
+                  <span>{successMessage}</span>
+                </div>
+              </Alert>
+            )}
 
         {/* ── STEP 1: ENTITY & IDENTITY ── */}
         {currentStep === 1 && (
@@ -1555,54 +1557,35 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
             </Button>
           </div>
 
-          <div>
-            {currentStep < 3 ? (
-              <Button
-                type="button"
-                className="onboarding-nav-btn onboarding-next-btn"
-                onClick={handleNext}
-                disabled={loading}
-              >
-                Continue <FaChevronRight size={10} className="ms-1" />
-              </Button>
-            ) : currentStep === 3 ? (
-              <Button
-                type="button"
-                className="onboarding-nav-btn onboarding-next-btn"
-                onClick={handleNext}
-                disabled={loading}
-                style={{ minWidth: 230 }}
-              >
-                {loading ? (
-                  <>
-                    <Spinner animation="border" size="sm" className="me-2" /> Creating Organization...
-                  </>
+              <div>
+                {currentStep < 4 ? (
+                  <Button
+                    type="button"
+                    className="onboarding-nav-btn onboarding-next-btn"
+                    onClick={handleNext}
+                  >
+                    Continue <FaChevronRight size={10} className="ms-1" />
+                  </Button>
                 ) : (
-                  <>
-                    <FaCheckCircle className="me-2" /> Finish & Register Owner <FaChevronRight size={10} className="ms-1" />
-                  </>
+                  <Button
+                    type="submit"
+                    className="onboarding-nav-btn onboarding-submit-btn"
+                    disabled={loading}
+                    onClick={handleSubmit}
+                  >
+                    {loading ? (
+                      <>
+                        <Spinner animation="border" size="sm" className="me-2" /> Initializing Organization & Owner...
+                      </>
+                    ) : (
+                      <>
+                        <FaRocket className="me-2" /> Complete Setup & Register Owner
+                      </>
+                    )}
+                  </Button>
                 )}
-              </Button>
-            ) : (
-              <Button
-                type="submit"
-                className="onboarding-nav-btn onboarding-submit-btn"
-                disabled={loading}
-                onClick={handleSubmit}
-              >
-                {loading ? (
-                  <>
-                    <Spinner animation="border" size="sm" className="me-2" /> Registering Owner & Opening Dashboard...
-                  </>
-                ) : (
-                  <>
-                    <FaRocket className="me-2" /> Complete Setup & Open Dashboard
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-        </div>
+              </div>
+            </div>
       </Card>
     </div>
   );

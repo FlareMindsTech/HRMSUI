@@ -1,17 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Card,
-  Table,
   Button,
   Badge,
-  Modal,
   Form,
   Row,
   Col,
   Spinner,
-  Alert,
-  InputGroup,
-  Pagination,
   ButtonGroup,
 } from "react-bootstrap";
 import {
@@ -19,7 +14,6 @@ import {
   FaPlus,
   FaEdit,
   FaTrash,
-  FaSearch,
   FaUserTie,
   FaCodeBranch,
   FaMoneyCheckAlt,
@@ -41,6 +35,13 @@ import {
 } from "../../services/organizationService";
 import { useSelector } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import FeedbackAlert from "../Common/FeedbackAlert";
+import EmptyState from "../Common/EmptyState";
+import DataTable from "../Common/DataTable";
+import SearchInput from "../Common/SearchInput";
+import ConfirmModal from "../Common/ConfirmModal";
+import PaginationBar from "../Common/PaginationBar";
+import CrudModal from "../Common/CrudModal";
 
 // Recursive Department Tree Node Component
 function DeptTreeNode({ node, level = 0, onEdit, onDelete, canUpdate, canDelete }) {
@@ -393,22 +394,23 @@ function DepartmentsSection({ lockedBranchId }) {
         </div>
       </div>
 
-      {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
-      {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
+      <FeedbackAlert variant="danger" dismissible onClose={() => setError("")} message={error} />
+      <FeedbackAlert variant="success" dismissible onClose={() => setSuccess("")} message={success} />
 
       {/* ── Filters & Search ── */}
       <Card className="org-filter-card mb-3">
         <Card.Body className="py-2">
           <Row className="g-2 align-items-center">
             <Col md={5}>
-              <InputGroup size="sm">
-                <InputGroup.Text><FaSearch className="text-muted" /></InputGroup.Text>
-                <Form.Control
-                  placeholder="Search by department name or code..."
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                />
-              </InputGroup>
+              <SearchInput
+                size="sm"
+                inputGroupTextClassName=""
+                inputClassName=""
+                iconClassName="text-muted"
+                placeholder="Search by department name or code..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              />
             </Col>
             <Col md={3}>
               <Form.Select
@@ -483,85 +485,107 @@ function DepartmentsSection({ lockedBranchId }) {
         </Card>
       ) : (
         <Card className="org-table-card">
-          <Table responsive hover className="org-table mb-0 align-middle">
-            <thead>
-            <tr>
-              <th>Department Code & Name</th>
-              <th>Parent Department</th>
-              <th>Department Head</th>
-              <th>Branch</th>
-              <th>Cost Center</th>
-              <th>Status</th>
-              <th className="text-end">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
+          <DataTable
+            responsive
+            hover
+            className="org-table mb-0 align-middle"
+            rows={departments}
+            loading={loading}
+            loadingComponent={
               <tr>
                 <td colSpan={7} className="text-center py-5 text-muted">
                   <Spinner animation="border" size="sm" variant="success" className="me-2" />
                   Loading departments...
                 </td>
               </tr>
-            ) : departments.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-center py-5 text-muted">
-                  No departments found.
-                </td>
-              </tr>
-            ) : (
-              departments.map((d) => (
-                <tr key={d._id}>
-                  <td>
+            }
+            emptyComponent={
+              <EmptyState
+                variant="table"
+                colSpan={7}
+                className="text-center py-5 text-muted"
+                title="No departments found."
+              />
+            }
+            columns={[
+              {
+                key: "department",
+                header: "Department Code & Name",
+                render: (d) => (
+                  <>
                     <div className="fw-semibold text-dark">{d.departmentName}</div>
                     <div className="small font-monospace text-muted">{d.departmentCode}</div>
-                  </td>
-                  <td>
-                    {d.parentDepartmentId ? (
-                      <Badge bg="light" className="text-secondary border">
-                        <FaSitemap className="me-1" />
-                        {d.parentDepartmentId.departmentName}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted small">Top Level</span>
-                    )}
-                  </td>
-                  <td>
-                    {d.departmentHeadId ? (
-                      <div className="d-flex align-items-center gap-1">
-                        <FaUserTie className="text-primary small" />
-                        <span className="small">{d.departmentHeadId.firstName} {d.departmentHeadId.lastName}</span>
-                      </div>
-                    ) : (
-                      <span className="text-muted small">Unassigned</span>
-                    )}
-                  </td>
-                  <td>
-                    {d.branchId ? (
-                      <div className="small">
-                        <FaCodeBranch className="text-secondary me-1" />
-                        {d.branchId.branchName}
-                      </div>
-                    ) : (
-                      <span className="text-muted small">All Branches</span>
-                    )}
-                  </td>
-                  <td>
-                    {d.costCenterId ? (
-                      <Badge bg="light" className="text-dark border">
-                        <FaMoneyCheckAlt className="me-1 text-success" />
-                        {d.costCenterId.costCenterCode || d.costCenterId.costCenterName}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted small">-</span>
-                    )}
-                  </td>
-                  <td>
-                    <Badge bg={d.status === "ACTIVE" ? "success" : "secondary"}>
-                      {d.status}
+                  </>
+                ),
+              },
+              {
+                key: "parent",
+                header: "Parent Department",
+                render: (d) =>
+                  d.parentDepartmentId ? (
+                    <Badge bg="light" className="text-secondary border">
+                      <FaSitemap className="me-1" />
+                      {d.parentDepartmentId.departmentName}
                     </Badge>
-                  </td>
-                  <td className="text-end">
+                  ) : (
+                    <span className="text-muted small">Top Level</span>
+                  ),
+              },
+              {
+                key: "head",
+                header: "Department Head",
+                render: (d) =>
+                  d.departmentHeadId ? (
+                    <div className="d-flex align-items-center gap-1">
+                      <FaUserTie className="text-primary small" />
+                      <span className="small">{d.departmentHeadId.firstName} {d.departmentHeadId.lastName}</span>
+                    </div>
+                  ) : (
+                    <span className="text-muted small">Unassigned</span>
+                  ),
+              },
+              {
+                key: "branch",
+                header: "Branch",
+                render: (d) =>
+                  d.branchId ? (
+                    <div className="small">
+                      <FaCodeBranch className="text-secondary me-1" />
+                      {d.branchId.branchName}
+                    </div>
+                  ) : (
+                    <span className="text-muted small">All Branches</span>
+                  ),
+              },
+              {
+                key: "costCenter",
+                header: "Cost Center",
+                render: (d) =>
+                  d.costCenterId ? (
+                    <Badge bg="light" className="text-dark border">
+                      <FaMoneyCheckAlt className="me-1 text-success" />
+                      {d.costCenterId.costCenterCode || d.costCenterId.costCenterName}
+                    </Badge>
+                  ) : (
+                    <span className="text-muted small">-</span>
+                  ),
+              },
+              {
+                key: "status",
+                header: "Status",
+                render: (d) => (
+                  <Badge bg={d.status === "ACTIVE" ? "success" : "secondary"}>
+                    {d.status}
+                  </Badge>
+                ),
+              },
+              {
+                key: "actions",
+                header: "Actions",
+                headerClassName: "text-end",
+                cellClassName: "text-end",
+                render: (d) => (
+                  <>
                     {canUpdate && (
                       <Button
                         variant="link"
@@ -588,43 +612,37 @@ function DepartmentsSection({ lockedBranchId }) {
                         <FaTrash />
                       </Button>
                     )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </Table>
+                  </>
+                ),
+              },
+            ]}
+          />
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="d-flex justify-content-end p-3 border-top">
-            <Pagination size="sm" className="mb-0">
-              <Pagination.Prev disabled={page <= 1} onClick={() => setPage((p) => Math.max(p - 1, 1))} />
-              {[...Array(totalPages).keys()].map((n) => (
-                <Pagination.Item key={n + 1} active={n + 1 === page} onClick={() => setPage(n + 1)}>
-                  {n + 1}
-                </Pagination.Item>
-              ))}
-              <Pagination.Next disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(p + 1, totalPages))} />
-            </Pagination>
-          </div>
+          <PaginationBar
+            size="sm"
+            page={page}
+            totalPages={totalPages}
+            onPageChange={(pg) => setPage(pg)}
+            wrapperClassName="d-flex justify-content-end p-3 border-top"
+            paginationClassName="mb-0"
+          />
         )}
       </Card>
       )}
 
       {/* ── Create / Edit Modal ── */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered backdrop="static">
-        <Form onSubmit={handleSubmit}>
-          <Modal.Header closeButton>
-            <Modal.Title className="d-flex align-items-center gap-2">
-              <FaSitemap className="text-success" />
-              {editingDept ? "Edit Department" : "Add New Department"}
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            {modalError && <Alert variant="danger">{modalError}</Alert>}
-
-            <Row className="g-3">
+      <CrudModal
+        show={showModal}
+        onClose={() => setShowModal(false)}
+        title={<><FaSitemap className="text-success" />{editingDept ? "Edit Department" : "Add New Department"}</>}
+        onSubmit={handleSubmit}
+        saving={modalLoading}
+        saveLabel="Save Department"
+        modalError={modalError}
+      >
+        <Row className="g-3">
               <Col md={6}>
                 <Form.Group>
                   <Form.Label>Department Name <span className="text-danger">*</span></Form.Label>
@@ -745,40 +763,17 @@ function DepartmentsSection({ lockedBranchId }) {
                 </Form.Group>
               </Col>
             </Row>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowModal(false)} disabled={modalLoading}>
-              Cancel
-            </Button>
-            <Button variant="success" type="submit" disabled={modalLoading}>
-              {modalLoading ? <Spinner size="sm" animation="border" /> : "Save Department"}
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
+      </CrudModal>
 
       {/* ── Delete Confirmation Modal ── */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="text-danger d-flex align-items-center gap-2">
-            <FaTrash /> Delete Department
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to delete department <strong>{deletingName}</strong>?
-          <p className="text-muted small mt-2">
-            Warning: Sub-departments and designations assigned to this department should be re-mapped first.
-          </p>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={modalLoading}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={handleDelete} disabled={modalLoading}>
-            {modalLoading ? <Spinner size="sm" animation="border" /> : "Yes, Delete"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ConfirmModal
+        show={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title={<><FaTrash /> Delete Department</>}
+        message={<>Are you sure you want to delete department <strong>{deletingName}</strong>?<p className="text-muted small mt-2">Warning: Sub-departments and designations assigned to this department should be re-mapped first.</p></>}
+        onConfirm={handleDelete}
+        loading={modalLoading}
+      />
     </div>
   );
 }

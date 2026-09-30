@@ -1,5 +1,6 @@
 import React from "react";
-import { Button, Spinner } from "react-bootstrap";
+import { Button } from "react-bootstrap";
+import LoadingSpinner from "../Common/LoadingSpinner";
 import { FaSave, FaTimes, FaTrashAlt } from "react-icons/fa";
 
 function EducationActions({
@@ -47,7 +48,7 @@ function EducationActions({
         >
           {saving ? (
             <>
-              <Spinner size="sm" animation="border" className="me-1.5" />
+              <LoadingSpinner variant="button" size="sm" className="me-1.5" />
               {isExisting ? "Updating..." : "Saving..."}
             </>
           ) : (

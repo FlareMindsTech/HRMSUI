@@ -40,6 +40,10 @@ import {
 } from '../../Api/Project/project';
 import { useSelector } from 'react-redux';
 import { selectAuthUser, selectAuthPermissions, useHasPermission } from '../../redux/slices/authSlice';
+import StatusBadge from '../../Components/Common/StatusBadge';
+import LoadingSpinner from '../../Components/Common/LoadingSpinner';
+import DataTable from '../../Components/Common/DataTable';
+import FeedbackAlert from '../../Components/Common/FeedbackAlert';
 import './ProjectManagement.css';
 
 // ============================================================
@@ -905,21 +909,31 @@ function ProjectManagement() {
     }
   };
 
-  const getStatusBadge = (status) => {
-    switch ((status || '').toLowerCase()) {
-      case 'completed': return <Badge bg="success" className="rounded-pill px-3">Completed</Badge>;
-      case 'in progress':
-      case 'active':
-        return <Badge bg="primary" className="rounded-pill px-3">{status}</Badge>;
-      case 'testing': return <Badge bg="info" text="dark" className="rounded-pill px-3">Testing</Badge>;
-      case 'planned':
-      case 'pending':
-      case 'to do':
-        return <Badge bg="warning" className="rounded-pill px-3 text-dark">{status}</Badge>;
-      case 'on hold': return <Badge bg="secondary" className="rounded-pill px-3">On Hold</Badge>;
-      default: return <Badge bg="secondary" className="rounded-pill px-3">{status || 'Unknown'}</Badge>;
-    }
+  // Project-status → pill map. Same lowercase matching, colors, classes,
+  // text formatting and Unknown fallback as the previous inline switch.
+  // (getPriorityBadge below is a separate vocabulary — intentionally untouched.)
+  const PROJECT_STATUS_MAP = {
+    completed: { bg: "success", label: "Completed" },
+    'in progress': { bg: "primary" },
+    active: { bg: "primary" },
+    testing: { bg: "info", text: "dark", label: "Testing" },
+    planned: { bg: "warning", className: "text-dark" },
+    pending: { bg: "warning", className: "text-dark" },
+    'to do': { bg: "warning", className: "text-dark" },
+    'on hold': { bg: "secondary", label: "On Hold" },
   };
+  const PROJECT_STATUS_DEFAULT = { bg: "secondary" };
+
+  const getStatusBadge = (status) => (
+    <StatusBadge
+      status={status}
+      map={PROJECT_STATUS_MAP}
+      normalize="lower"
+      defaultEntry={PROJECT_STATUS_DEFAULT}
+      className="rounded-pill px-3"
+      fallbackLabel="Unknown"
+    />
+  );
 
   const selectProject = (project) => setSelectedProjectId(project._id);
   const backToList = () => setMobileView('list');
@@ -931,15 +945,13 @@ function ProjectManagement() {
     <Container fluid className="p-3 no-scrollbar pm-wrapper">
 
       {feedback && (
-        <Alert
+        <FeedbackAlert
           variant={feedback.type}
           onClose={() => setFeedback(null)}
           dismissible
           className="d-flex align-items-center gap-2 py-2 shadow-sm mb-3"
-        >
-          {feedback.type === 'success' ? <FaCheckCircle /> : <FaExclamationTriangle />}
-          <span className="small">{feedback.message}</span>
-        </Alert>
+          message={<>{feedback.type === 'success' ? <FaCheckCircle /> : <FaExclamationTriangle />}<span className="small">{feedback.message}</span></>}
+        />
       )}
 
       {/* Header */}
@@ -1328,63 +1340,72 @@ function ProjectManagement() {
 
                             {!tasksLoading && filteredTasks.length > 0 && (
                               <div className="table-responsive">
-                                <Table hover className="align-middle mb-0">
-                                  <thead>
-                                    <tr className="text-muted small text-uppercase">
-                                      <th>Task</th>
-                                      <th>Assignee</th>
-                                      <th>Status</th>
-                                      <th>Actions</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {filteredTasks.map(task => {
-                                      const isMyTask = task.assignedTo && getId(task.assignedTo) === user?.id;
-                                      const canEditTaskDetails = canManageTasks;
-                                      const canChangeStatus = isMyTask || canEditTaskDetails;
-
-                                      return (
-                                        <tr key={task._id}>
-                                          <td>
-                                            <div className="fw-bold small">{task.taskName}</div>
-                                            <div className="d-flex align-items-center gap-2 mt-1">
-                                              <span className="text-muted micro-text">{getSprintName(task.sprintId) || 'Backlog'}</span>
-                                              {getPriorityBadge(task.priority)}
-                                            </div>
-                                          </td>
-                                          <td className="small">{task.assignedTo ? getDisplayName(task.assignedTo) : <span className="text-muted">Unassigned</span>}</td>
-                                          <td>
-                                            {canChangeStatus ? (
-                                              <Form.Select
-                                                size="sm" className="shadow-none pm-status-select"
-                                                value={task.status}
-                                                onChange={e => quickStatusChange(task, e.target.value)}
-                                              >
-                                                {TASK_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                                              </Form.Select>
-                                            ) : (
-                                              getStatusBadge(task.status)
-                                            )}
-                                          </td>
-                                          <td>
-                                            <div className="d-flex gap-1">
-                                              {canEditTaskDetails && (
-                                                <>
-                                                  <Button size="sm" variant="light" className="pm-icon-btn p-1" onClick={() => openEditTask(task)} title="Edit task">
-                                                    <FaEdit size={12} />
-                                                  </Button>
-                                                  <Button size="sm" variant="light" className="pm-icon-btn pm-danger p-1 text-danger" onClick={() => deleteTask(task)} title="Delete task">
-                                                    <FaTrash size={12} />
-                                                  </Button>
-                                                </>
-                                              )}
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </Table>
+                                <DataTable
+                                  hover
+                                  className="align-middle mb-0"
+                                  headerRowClassName="text-muted small text-uppercase"
+                                  rows={filteredTasks}
+                                  columns={[
+                                    {
+                                      key: "task",
+                                      header: "Task",
+                                      render: (task) => (
+                                        <>
+                                          <div className="fw-bold small">{task.taskName}</div>
+                                          <div className="d-flex align-items-center gap-2 mt-1">
+                                            <span className="text-muted micro-text">{getSprintName(task.sprintId) || 'Backlog'}</span>
+                                            {getPriorityBadge(task.priority)}
+                                          </div>
+                                        </>
+                                      ),
+                                    },
+                                    {
+                                      key: "assignee",
+                                      header: "Assignee",
+                                      cellClassName: "small",
+                                      render: (task) => (
+                                        task.assignedTo ? getDisplayName(task.assignedTo) : <span className="text-muted">Unassigned</span>
+                                      ),
+                                    },
+                                    {
+                                      key: "status",
+                                      header: "Status",
+                                      render: (task) => {
+                                        const isMyTask = task.assignedTo && getId(task.assignedTo) === user?.id;
+                                        const canChangeStatus = isMyTask || canManageTasks;
+                                        return canChangeStatus ? (
+                                          <Form.Select
+                                            size="sm" className="shadow-none pm-status-select"
+                                            value={task.status}
+                                            onChange={e => quickStatusChange(task, e.target.value)}
+                                          >
+                                            {TASK_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                                          </Form.Select>
+                                        ) : (
+                                          getStatusBadge(task.status)
+                                        );
+                                      },
+                                    },
+                                    {
+                                      key: "actions",
+                                      header: "Actions",
+                                      render: (task) => (
+                                        <div className="d-flex gap-1">
+                                          {canManageTasks && (
+                                            <>
+                                              <Button size="sm" variant="light" className="pm-icon-btn p-1" onClick={() => openEditTask(task)} title="Edit task">
+                                                <FaEdit size={12} />
+                                              </Button>
+                                              <Button size="sm" variant="light" className="pm-icon-btn pm-danger p-1 text-danger" onClick={() => deleteTask(task)} title="Delete task">
+                                                <FaTrash size={12} />
+                                              </Button>
+                                            </>
+                                          )}
+                                        </div>
+                                      ),
+                                    },
+                                  ]}
+                                />
                               </div>
                             )}
                           </Card.Body>
@@ -1657,7 +1678,7 @@ function ProjectManagement() {
                                         onClick={() => handleAddComment(reportId)}
                                         disabled={submittingCommentMap[reportId] || !(commentTextMap[reportId] || '').trim()}
                                       >
-                                        {submittingCommentMap[reportId] ? <Spinner animation="border" size="sm" /> : 'Reply'}
+                                        {submittingCommentMap[reportId] ? <LoadingSpinner variant="button" size="sm" /> : 'Reply'}
                                       </Button>
                                     </div>
                                   </div>
@@ -1689,7 +1710,7 @@ function ProjectManagement() {
                                   required
                                 />
                                 <Button type="submit" variant="primary" size="sm" className="pm-primary-btn d-flex align-items-center justify-content-center px-3" disabled={submittingReport}>
-                                  {submittingReport ? <Spinner animation="border" size="sm" /> : <FaPaperPlane />}
+                                  {submittingReport ? <LoadingSpinner variant="button" size="sm" /> : <FaPaperPlane />}
                                 </Button>
                               </div>
                             </Form>
@@ -1802,9 +1823,7 @@ function ProjectManagement() {
 
                 {/* Error */}
                 {myTasksError && (
-                  <Alert variant="danger" className="py-2 small">
-                    {myTasksError}
-                  </Alert>
+                  <FeedbackAlert variant="danger" className="py-2 small" message={myTasksError} />
                 )}
 
                 {/* Empty State */}
@@ -2002,7 +2021,7 @@ function ProjectManagement() {
         <Modal.Footer className="border-0 pt-0">
           <Button variant="light" onClick={() => setShowProjectModal(false)} disabled={savingProject}>Cancel</Button>
           <Button variant="primary" onClick={saveProject} disabled={savingProject} className="pm-primary-btn">
-            {savingProject ? <Spinner animation="border" size="sm" /> : (editingProjectId ? 'Save Changes' : 'Save Project')}
+            {savingProject ? <LoadingSpinner variant="button" size="sm" /> : (editingProjectId ? 'Save Changes' : 'Save Project')}
           </Button>
         </Modal.Footer>
       </Modal>
@@ -2043,7 +2062,7 @@ function ProjectManagement() {
         <Modal.Footer className="border-0 pt-0">
           <Button variant="light" onClick={() => setShowSprintModal(false)} disabled={savingSprint}>Cancel</Button>
           <Button variant="primary" onClick={saveSprint} disabled={savingSprint} className="pm-primary-btn">
-            {savingSprint ? <Spinner animation="border" size="sm" /> : (editingSprintId ? 'Save Changes' : 'Create Sprint')}
+            {savingSprint ? <LoadingSpinner variant="button" size="sm" /> : (editingSprintId ? 'Save Changes' : 'Create Sprint')}
           </Button>
         </Modal.Footer>
       </Modal>
@@ -2114,7 +2133,7 @@ function ProjectManagement() {
         <Modal.Footer className="border-0 pt-0">
           <Button variant="light" onClick={() => setShowTaskModal(false)} disabled={savingTask}>Cancel</Button>
           <Button variant="primary" onClick={saveTask} disabled={savingTask} className="pm-primary-btn">
-            {savingTask ? <Spinner animation="border" size="sm" /> : (editingTaskId ? 'Save Changes' : 'Create Task')}
+            {savingTask ? <LoadingSpinner variant="button" size="sm" /> : (editingTaskId ? 'Save Changes' : 'Create Task')}
           </Button>
         </Modal.Footer>
       </Modal>
@@ -2145,7 +2164,7 @@ function ProjectManagement() {
         <Modal.Footer className="border-0 pt-0">
           <Button variant="light" onClick={() => setShowCompletionModal(false)} disabled={savingCompletion}>Cancel</Button>
           <Button variant="success" onClick={submitTaskCompletion} disabled={savingCompletion} className="rounded-pill px-4">
-            {savingCompletion ? <Spinner animation="border" size="sm" /> : 'Mark Completed'}
+            {savingCompletion ? <LoadingSpinner variant="button" size="sm" /> : 'Mark Completed'}
           </Button>
         </Modal.Footer>
       </Modal>
@@ -2159,7 +2178,7 @@ function ProjectManagement() {
           <Form>
             {companyUsersLoading ? (
               <div className="d-flex align-items-center gap-2 text-muted small py-3">
-                <Spinner animation="border" size="sm" /> Loading company users...
+                <LoadingSpinner variant="inline" size="sm" /> Loading company users...
               </div>
             ) : (
               <>
@@ -2220,7 +2239,7 @@ function ProjectManagement() {
         <Modal.Footer className="border-0 pt-0">
           <Button variant="light" onClick={() => setShowMemberModal(false)} disabled={savingMember}>Cancel</Button>
           <Button variant="primary" onClick={addMember} disabled={savingMember || companyUsersLoading || !memberForm.newMemberId} className="pm-primary-btn">
-            {savingMember ? <Spinner animation="border" size="sm" /> : 'Add Member'}
+            {savingMember ? <LoadingSpinner variant="button" size="sm" /> : 'Add Member'}
           </Button>
         </Modal.Footer>
       </Modal>
@@ -2268,12 +2287,7 @@ function ProjectManagement() {
                 </Alert>
               ) : (
                 <>
-                  <Alert variant="success" className="d-flex align-items-center gap-2 mb-3">
-                    <FaCheckCircle />
-                    <span className="small">
-                      All deliverables and tasks are completed! You can now formally complete this project.
-                    </span>
-                  </Alert>
+                  <FeedbackAlert variant="success" className="d-flex align-items-center gap-2 mb-3" message={<><FaCheckCircle /><span className="small">All deliverables and tasks are completed! You can now formally complete this project.</span></>} />
 
                   <Form.Group className="mb-2">
                     <Form.Label className="small fw-bold">Completion Notes / Sign-off Summary</Form.Label>
@@ -2316,7 +2330,7 @@ function ProjectManagement() {
               disabled={completingProject}
               className="d-flex align-items-center gap-2"
             >
-              {completingProject ? <Spinner animation="border" size="sm" /> : <FaCheckCircle />} Confirm & Complete Project
+              {completingProject ? <LoadingSpinner variant="button" size="sm" /> : <FaCheckCircle />} Confirm & Complete Project
             </Button>
           )}
         </Modal.Footer>

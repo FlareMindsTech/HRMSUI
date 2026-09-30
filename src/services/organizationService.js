@@ -1122,26 +1122,12 @@ export const removeEmployeeFromBranch = async (branchId, userId) => {
  * Returns: { setupRequired: boolean, organizationExists: boolean, ownerExists: boolean, organization, subscription }
  */
 export const fetchSystemSetupStatus = async () => {
-  const candidateEndpoints = [
-    "/system/setup-status",
-    "/api/system/setup-status",
-    "/organization/setup-status",
-  ];
-
-  for (const ep of candidateEndpoints) {
-    try {
-      const res = await apiFetch(ep, { method: "GET" });
-      if (res.ok && res.data && typeof res.data === "object") {
-        console.log("[setup-status] response:", res.data);
-        return res.data;
-      }
-    } catch (e) {
-      // Continue to next candidate endpoint
-    }
+  const res = await apiFetch("/system/setup-status", { method: "GET" });
+  if (!res.ok) {
+    throw new Error(res.data?.message || "Failed to fetch system setup status");
   }
-
-  // If no endpoint is found or registered yet
-  return null;
+  console.log("[setup-status] response:", res.data);
+  return res.data;
 };
 
 /**

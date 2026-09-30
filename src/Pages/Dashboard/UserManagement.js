@@ -10,7 +10,6 @@ import {
   Modal,
   Form,
   Spinner,
-  Alert,
   InputGroup,
   Nav,
 } from "react-bootstrap";
@@ -65,6 +64,8 @@ import { selectAuthUser, useHasPermission, selectIsSystemAdmin, fetchAuth } from
 import { useBranch } from "../../context/BranchContext";
 import BranchAccessSelector from "../../Components/Common/BranchAccessSelector";
 import PaginationBar from "../../Components/Common/PaginationBar";
+import ConfirmModal from "../../Components/Common/ConfirmModal";
+import FeedbackAlert from "../../Components/Common/FeedbackAlert";
 import "./UserManagement.css";
 
 function UserManagement({ initialTab = "users" }) {
@@ -96,6 +97,11 @@ function UserManagement({ initialTab = "users" }) {
   const [modalLoading, setModalLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+
+  // ── Delete Role Confirm Modal State ──
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingRole, setDeletingRole] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // ── Create / Edit Custom Role Modal State ──
   const [showRoleModal, setShowRoleModal] = useState(false);
@@ -305,17 +311,33 @@ function UserManagement({ initialTab = "users" }) {
   };
 
   // ── Delete Role ──
-  const handleDeleteRole = async (role) => {
-    if (!window.confirm(`Are you sure you want to delete role '${role.roleName}'?`)) {
-      return;
-    }
+  // Opens the shared ConfirmModal; the actual delete runs in
+  // handleConfirmDeleteRole so accept/cancel semantics stay identical
+  // to the previous window.confirm flow.
+  const handleDeleteRole = (role) => {
+    setDeletingRole(role);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleCloseDeleteConfirm = () => {
+    setShowDeleteConfirm(false);
+    setDeletingRole(null);
+  };
+
+  const handleConfirmDeleteRole = async () => {
+    if (!deletingRole) return;
 
     try {
-      await deleteCustomRole(role._id);
-      setSuccessMessage(`Role '${role.roleName}' deleted successfully.`);
+      setDeleteLoading(true);
+      await deleteCustomRole(deletingRole._id);
+      setSuccessMessage(`Role '${deletingRole.roleName}' deleted successfully.`);
+      setShowDeleteConfirm(false);
+      setDeletingRole(null);
       await loadData();
     } catch (err) {
       setErrorMessage(err.message || "Failed to delete role");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -756,16 +778,10 @@ function UserManagement({ initialTab = "users" }) {
 
       {/* ── Alerts ── */}
       {errorMessage && (
-        <Alert variant="danger" dismissible onClose={() => setErrorMessage("")} className="small py-2 mb-3">
-          <FaExclamationTriangle className="me-2" />
-          {errorMessage}
-        </Alert>
+        <FeedbackAlert variant="danger" dismissible onClose={() => setErrorMessage("")} className="small py-2 mb-3" message={<><FaExclamationTriangle className="me-2" />{errorMessage}</>} />
       )}
       {successMessage && (
-        <Alert variant="success" dismissible onClose={() => setSuccessMessage("")} className="small py-2 mb-3">
-          <FaCheckCircle className="me-2" />
-          {successMessage}
-        </Alert>
+        <FeedbackAlert variant="success" dismissible onClose={() => setSuccessMessage("")} className="small py-2 mb-3" message={<><FaCheckCircle className="me-2" />{successMessage}</>} />
       )}
 
       {/* ── Section Navigation Tabs (Exclusive Section View) ── */}
@@ -1725,6 +1741,17 @@ function UserManagement({ initialTab = "users" }) {
           )}
         </Modal.Body>
       </Modal>
+
+      {/* ── Delete Role Confirmation ── */}
+      <ConfirmModal
+        show={showDeleteConfirm}
+        onClose={handleCloseDeleteConfirm}
+        onConfirm={handleConfirmDeleteRole}
+        loading={deleteLoading}
+        title={<><FaTrash /> Delete Role</>}
+        message={deletingRole ? (<>Are you sure you want to delete role <strong>{deletingRole.roleName}</strong>?</>) : null}
+        confirmLabel="Yes, Delete"
+      />
     </Container>
   );
 }

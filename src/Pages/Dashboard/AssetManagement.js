@@ -35,6 +35,8 @@ import { useHasMenu, useHasPermission, selectAuthStatus } from '../../redux/slic
 import DataTable from '../../Components/Common/DataTable';
 import SearchInput from '../../Components/Common/SearchInput';
 import PaginationBar from '../../Components/Common/PaginationBar';
+import LoadingSpinner from '../../Components/Common/LoadingSpinner';
+import FeedbackAlert from '../../Components/Common/FeedbackAlert';
 import {
   getAssets,
   createAsset,
@@ -483,15 +485,13 @@ function AssetManagement() {
       )}
 
       {error && (
-        <Alert
+        <FeedbackAlert
           variant="danger"
           dismissible
           onClose={() => setError(null)}
           className="d-flex align-items-center gap-2 shadow-xs border-0 rounded-3 mb-3 py-2 px-3 small"
-        >
-          <FaExclamationTriangle className="flex-shrink-0" />
-          <div>{error}</div>
-        </Alert>
+          message={<><FaExclamationTriangle className="flex-shrink-0" /><div>{error}</div></>}
+        />
       )}
 
       {/* ── 2. Summary KPI Cards ── */}
@@ -861,10 +861,7 @@ function AssetManagement() {
         <Form onSubmit={handleCreateSubmit}>
           <Modal.Body className="pt-3">
             {createError && (
-              <Alert variant="danger" className="py-2 px-3 small rounded-3 mb-3">
-                <FaExclamationTriangle className="me-2" />
-                {createError}
-              </Alert>
+              <FeedbackAlert variant="danger" className="py-2 px-3 small rounded-3 mb-3" message={<><FaExclamationTriangle className="me-2" />{createError}</>} />
             )}
 
             <Row className="g-3">
@@ -995,7 +992,7 @@ function AssetManagement() {
             >
               {createSubmitting ? (
                 <>
-                  <Spinner size="sm" animation="border" className="me-1" />
+                  <LoadingSpinner variant="button" size="sm" className="me-1" />
                   Creating...
                 </>
               ) : (
@@ -1023,10 +1020,7 @@ function AssetManagement() {
         <Form onSubmit={handleAssignSubmit}>
           <Modal.Body className="pt-3">
             {assignError && (
-              <Alert variant="danger" className="py-2 px-3 small rounded-3 mb-3">
-                <FaExclamationTriangle className="me-2" />
-                {assignError}
-              </Alert>
+              <FeedbackAlert variant="danger" className="py-2 px-3 small rounded-3 mb-3" message={<><FaExclamationTriangle className="me-2" />{assignError}</>} />
             )}
 
             {selectedAssetForAssign && (
@@ -1049,7 +1043,7 @@ function AssetManagement() {
               </Form.Label>
               {loadingEmployees ? (
                 <div className="py-2 text-muted small">
-                  <Spinner size="sm" animation="border" className="me-2" /> Loading employee directory...
+                  <LoadingSpinner variant="inline" size="sm" className="me-2" /> Loading employee directory...
                 </div>
               ) : (
                 <Form.Select
@@ -1112,7 +1106,7 @@ function AssetManagement() {
             >
               {assignSubmitting ? (
                 <>
-                  <Spinner size="sm" animation="border" className="me-1" />
+                  <LoadingSpinner variant="button" size="sm" className="me-1" />
                   Assigning...
                 </>
               ) : (
@@ -1140,10 +1134,7 @@ function AssetManagement() {
         <Form onSubmit={handleReturnSubmit}>
           <Modal.Body className="pt-3">
             {returnError && (
-              <Alert variant="danger" className="py-2 px-3 small rounded-3 mb-3">
-                <FaExclamationTriangle className="me-2" />
-                {returnError}
-              </Alert>
+              <FeedbackAlert variant="danger" className="py-2 px-3 small rounded-3 mb-3" message={<><FaExclamationTriangle className="me-2" />{returnError}</>} />
             )}
 
             {selectedAssetForReturn && (
@@ -1211,7 +1202,7 @@ function AssetManagement() {
             >
               {returnSubmitting ? (
                 <>
-                  <Spinner size="sm" animation="border" className="me-1" />
+                  <LoadingSpinner variant="button" size="sm" className="me-1" />
                   Returning...
                 </>
               ) : (
