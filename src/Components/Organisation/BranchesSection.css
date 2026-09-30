@@ -67,7 +67,7 @@
   font-size: 11px;
   font-weight: 700;
   background: linear-gradient(135deg, rgba(196, 154, 85, 0.15) 0%, rgba(196, 154, 85, 0.05) 100%);
-  color: #9B7229;
+  color: var(--color-primary-dark, #9B7229);
   border: 1px solid rgba(196, 154, 85, 0.35);
   padding: 3px 10px;
   border-radius: var(--radius-xl, 20px);
@@ -176,7 +176,7 @@
 
 .branches-kpi-icon-box.gold {
   background: linear-gradient(135deg, rgba(196, 154, 85, 0.18) 0%, rgba(196, 154, 85, 0.06) 100%);
-  color: #9B7229;
+  color: var(--color-primary-dark, #9B7229);
   border: 1px solid rgba(196, 154, 85, 0.25);
 }
 
@@ -373,8 +373,8 @@
   width: 44px;
   height: 44px;
   border-radius: var(--radius-md, 12px);
-  background: linear-gradient(135deg, #1C1D1D 0%, #2A2B2C 100%);
-  color: #E2C278;
+  background: linear-gradient(135deg, var(--color-sidebar, #1C1D1D) 0%, #2A2B2C 100%);
+  color: var(--color-primary-light, #E2C278);
   border: 1px solid rgba(196, 154, 85, 0.35);
   display: flex;
   align-items: center;
@@ -426,7 +426,7 @@
 .branch-type-pill {
   font-size: 10.5px;
   font-weight: 600;
-  color: #9B7229;
+  color: var(--color-primary-dark, #9B7229);
   background: rgba(196, 154, 85, 0.12);
   padding: 2px 8px;
   border-radius: var(--radius-xs, 6px);
@@ -585,7 +585,7 @@
 }
 
 .branch-btn-hub:hover {
-  color: #9B7229;
+  color: var(--color-primary-dark, #9B7229);
   transform: translateX(2px);
 }
 
@@ -740,8 +740,8 @@
   width: 60px;
   height: 60px;
   border-radius: var(--radius-lg, 16px);
-  background: linear-gradient(135deg, #1C1D1D 0%, #2A2B2C 100%);
-  color: #E2C278;
+  background: linear-gradient(135deg, var(--color-sidebar, #1C1D1D) 0%, #2A2B2C 100%);
+  color: var(--color-primary-light, #E2C278);
   border: 1px solid rgba(196, 154, 85, 0.35);
   display: flex;
   align-items: center;
@@ -859,7 +859,7 @@
 }
 
 .branch-category-segment-btn.active .branch-category-icon {
-  color: #c49a55;
+  color: var(--color-primary, #c49a55);
   opacity: 1;
 }
 
@@ -874,7 +874,7 @@
 
 .branch-category-segment-btn.active .branch-category-count-pill {
   background: rgba(196, 154, 85, 0.25);
-  color: #fdfbf7;
+  color: var(--color-background, #fdfbf7);
   border: 1px solid rgba(196, 154, 85, 0.4);
 }
 
@@ -898,12 +898,12 @@
   font-weight: 600;
   color: #1f2937;
   border: 1px solid rgba(196, 154, 85, 0.35);
-  background-color: #fdfbf7;
+  background-color: var(--color-background, #fdfbf7);
   min-width: 170px;
 }
 
 .branch-quick-jump-select:focus {
-  border-color: #c49a55;
+  border-color: var(--color-primary, #c49a55);
   box-shadow: 0 0 0 3px rgba(196, 154, 85, 0.15);
 }
 
@@ -994,7 +994,7 @@
 }
 
 .branch-pill-tab.active {
-  background: linear-gradient(135deg, #1C1D1D 0%, #2A2B2C 100%);
+  background: linear-gradient(135deg, var(--color-sidebar, #1C1D1D) 0%, #2A2B2C 100%);
   color: #F3DEAC;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
   font-weight: 700;
@@ -1141,7 +1141,7 @@
 
 /* ── Geofence Radar Widget ── */
 .branch-radar-hero-box {
-  background: linear-gradient(135deg, #1C1D1D 0%, #2A2B2C 100%);
+  background: linear-gradient(135deg, var(--color-sidebar, #1C1D1D) 0%, #2A2B2C 100%);
   border-radius: var(--radius-lg, 16px);
   padding: 20px;
   color: var(--color-surface, #FFFFFF);
@@ -1179,7 +1179,7 @@
 
 .branch-radar-center-beacon {
   font-size: 16px;
-  color: #E2C278;
+  color: var(--color-primary-light, #E2C278);
 }
 
 .branch-radar-info {
@@ -1288,8 +1288,8 @@
 
 .branch-contact-chip:hover {
   border-color: var(--color-primary, #C49A55);
-  color: #9B7229;
-  background: #fdfbf7;
+  color: var(--color-primary-dark, #9B7229);
+  background: var(--color-background, #fdfbf7);
   transform: translateY(-1px);
 }
 

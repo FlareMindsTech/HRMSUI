@@ -5411,7 +5411,7 @@ function HrOnboarding() {
                   {/* Circular Donut Graphic */}
                   <div className="position-relative d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: "125px", height: "125px" }}>
                     <svg viewBox="0 0 36 36" className="donut-chart-svg" style={{ width: "100%", height: "100%", transform: "rotate(-90deg)" }}>
-                      <circle cx="18" cy="18" r="14" fill="transparent" stroke="#F1E8D6" strokeWidth="4.5" />
+                      <circle cx="18" cy="18" r="14" fill="transparent" stroke="var(--color-primary-light, #F1E8D6)" strokeWidth="4.5" />
                       {totalPipelineCount > 0 && completedPct > 0 && (
                         <circle cx="18" cy="18" r="14" fill="transparent" stroke="#10B981" strokeWidth="4.5" strokeDasharray={`${completedPct} ${100 - completedPct}`} strokeDashoffset="0" />
                       )}
@@ -5561,12 +5561,12 @@ function HrOnboarding() {
                               style={{
                                 width: "72px",
                                 height: "72px",
-                                background: "linear-gradient(135deg, #FAF7F0 0%, #F1E9D9 100%)",
-                                border: "2.5px solid #C49A55",
+                                background: "linear-gradient(135deg, var(--color-background, #FAF7F0) 0%, var(--color-background, #F1E9D9) 100%)",
+                                border: "2.5px solid var(--color-primary, #C49A55)",
                                 boxShadow: "0 4px 14px rgba(196, 154, 85, 0.18)",
                               }}
                             >
-                              <FaUser size={32} style={{ color: "#C49A55" }} />
+                              <FaUser size={32} style={{ color: "var(--color-primary, #C49A55)" }} />
                             </div>
                           )}
                           <span
@@ -5581,7 +5581,7 @@ function HrOnboarding() {
                         <div>
                           <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
                             <h5 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2" style={{ fontSize: "16px" }}>
-                              <FaUser size={14} style={{ color: "#C49A55" }} /> Personal & Basic Details
+                              <FaUser size={14} style={{ color: "var(--color-primary, #C49A55)" }} /> Personal & Basic Details
                             </h5>
                           
                           </div>
@@ -6985,7 +6985,7 @@ function HrOnboarding() {
                       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
                         <div className="d-flex align-items-center gap-2.5">
                           <div className="onboarding-section-icon-badge">
-                            <FaKey style={{ color: "#C49A55" }} />
+                            <FaKey style={{ color: "var(--color-primary, #C49A55)" }} />
                           </div>
                           <div>
                             <h5 className="fw-bold mb-0 text-dark" style={{ fontSize: "16px" }}>
@@ -7279,7 +7279,7 @@ function HrOnboarding() {
                                 width: 38,
                                 height: 38,
                                 background: "linear-gradient(135deg, rgba(226, 194, 120, 0.25) 0%, rgba(196, 154, 85, 0.18) 100%)",
-                                color: "#C49A55",
+                                color: "var(--color-primary, #C49A55)",
                                 fontSize: 18,
                                 border: "1px solid rgba(196, 154, 85, 0.3)",
                               }}
@@ -7495,9 +7495,9 @@ function HrOnboarding() {
                           style={{
                             width: "54px",
                             height: "54px",
-                            background: "linear-gradient(135deg, #FAF7F0 0%, #F1E9D9 100%)",
-                            border: "2px solid #C49A55",
-                            color: "#C49A55",
+                            background: "linear-gradient(135deg, var(--color-background, #FAF7F0) 0%, var(--color-background, #F1E9D9) 100%)",
+                            border: "2px solid var(--color-primary, #C49A55)",
+                            color: "var(--color-primary, #C49A55)",
                           }}
                         >
                           <FaClipboardCheck size={24} />
@@ -7527,7 +7527,7 @@ function HrOnboarding() {
                     <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
                       <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center gap-2">
-                          <FaUser style={{ color: "#C49A55" }} />
+                          <FaUser style={{ color: "var(--color-primary, #C49A55)" }} />
                           <span className="fw-bold small text-dark">1. Personal & Basic Details</span>
                         </div>
                         <Button
@@ -7557,7 +7557,7 @@ function HrOnboarding() {
                               style={{
                                 width: "58px",
                                 height: "58px",
-                                background: "linear-gradient(135deg, #E2C278 0%, #C49A55 100%)",
+                                background: "linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 100%)",
                                 fontSize: "20px",
                               }}
                             >
@@ -7618,7 +7618,7 @@ function HrOnboarding() {
                     <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
                       <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center gap-2">
-                          <FaBuilding style={{ color: "#C49A55" }} />
+                          <FaBuilding style={{ color: "var(--color-primary, #C49A55)" }} />
                           <span className="fw-bold small text-dark">2. Professional & Organization Details</span>
                         </div>
                         <Button
@@ -7706,7 +7706,7 @@ function HrOnboarding() {
                     <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
                       <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center gap-2">
-                          <FaGraduationCap style={{ color: "#C49A55" }} />
+                          <FaGraduationCap style={{ color: "var(--color-primary, #C49A55)" }} />
                           <span className="fw-bold small text-dark">3. Educational Qualifications & Certificates</span>
                         </div>
                         <Button
@@ -7911,7 +7911,7 @@ function HrOnboarding() {
                       <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
                         <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                           <div className="d-flex align-items-center gap-2">
-                            <FaBriefcase style={{ color: "#C49A55" }} />
+                            <FaBriefcase style={{ color: "var(--color-primary, #C49A55)" }} />
                             <span className="fw-bold small text-dark">4. Previous Work Experience & Tenure</span>
                           </div>
                           <Button
@@ -7949,7 +7949,7 @@ function HrOnboarding() {
                     <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
                       <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center gap-2">
-                          <FaHome style={{ color: "#C49A55" }} />
+                          <FaHome style={{ color: "var(--color-primary, #C49A55)" }} />
                           <span className="fw-bold small text-dark">5. Residential Address Details</span>
                         </div>
                         <Button
@@ -7991,7 +7991,7 @@ function HrOnboarding() {
                     <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
                       <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center gap-2">
-                          <FaCodeBranch style={{ color: "#C49A55" }} />
+                          <FaCodeBranch style={{ color: "var(--color-primary, #C49A55)" }} />
                           <span className="fw-bold small text-dark">6. Access & Branch Permissions</span>
                         </div>
                         <Button
@@ -8047,7 +8047,7 @@ function HrOnboarding() {
                     <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
                       <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center gap-2">
-                          <FaMoneyBillWave style={{ color: "#C49A55" }} />
+                          <FaMoneyBillWave style={{ color: "var(--color-primary, #C49A55)" }} />
                           <span className="fw-bold small text-dark">7. Compensation & Remuneration Structure</span>
                         </div>
                         <Button
@@ -8108,7 +8108,7 @@ function HrOnboarding() {
                     <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
                       <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center gap-2">
-                          <FaMoneyCheckAlt style={{ color: "#C49A55" }} />
+                          <FaMoneyCheckAlt style={{ color: "var(--color-primary, #C49A55)" }} />
                           <span className="fw-bold small text-dark">8. Bank & Statutory Compliance</span>
                         </div>
                         <Button
@@ -8186,7 +8186,7 @@ function HrOnboarding() {
                     <Card className="border shadow-xs rounded-3 mb-4 bg-white overflow-hidden">
                       <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center gap-2">
-                          <FaUsers style={{ color: "#C49A55" }} />
+                          <FaUsers style={{ color: "var(--color-primary, #C49A55)" }} />
                           <span className="fw-bold small text-dark">9. Family Members & Emergency Contacts</span>
                         </div>
                         <Button
@@ -8223,8 +8223,8 @@ function HrOnboarding() {
                     <div
                       className="p-3.5 rounded-3 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 border shadow-xs"
                       style={{
-                        background: "linear-gradient(135deg, #FAF7F0 0%, #F5EEDD 100%)",
-                        borderColor: "#E2C278",
+                        background: "linear-gradient(135deg, var(--color-background, #FAF7F0) 0%, #F5EEDD 100%)",
+                        borderColor: "var(--color-primary-light, #E2C278)",
                       }}
                     >
                       <div className="d-flex align-items-center gap-3">
@@ -8233,7 +8233,7 @@ function HrOnboarding() {
                           style={{
                             width: "44px",
                             height: "44px",
-                            background: "linear-gradient(135deg, #E2C278 0%, #C49A55 100%)",
+                            background: "linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 100%)",
                           }}
                         >
                           <FaRocket size={18} />
@@ -8248,7 +8248,7 @@ function HrOnboarding() {
                       <Button
                         variant="dark"
                         className="rounded-pill px-4 py-2 extra-small fw-bold text-white d-flex align-items-center gap-2 shadow-sm text-nowrap flex-shrink-0"
-                        style={{ background: "#1C1D1D", border: "none" }}
+                        style={{ background: "var(--color-sidebar, #1C1D1D)", border: "none" }}
                         onClick={handleOnboardSubmit}
                         disabled={submittingForm}
                       >
@@ -8344,7 +8344,7 @@ function HrOnboarding() {
                 {/* Document Attachments Summary */}
                 <div className="p-2 border rounded-3 bg-white mb-2 d-flex justify-content-between align-items-center">
                   <span className="extra-small text-muted fw-semibold d-flex align-items-center gap-1">
-                    <FaFileUpload style={{ color: "#C49A55" }} /> Attached Files:
+                    <FaFileUpload style={{ color: "var(--color-primary, #C49A55)" }} /> Attached Files:
                   </span>
                   <span className="onboarding-attached-badge">
                     {attachedDocsCount} Document{attachedDocsCount !== 1 ? "s" : ""} Attached
@@ -10321,7 +10321,7 @@ function HrOnboarding() {
                       <Card className="p-3 bg-light border-0 rounded-3 mb-3">
                         <div className="d-flex justify-content-between align-items-center mb-2.5">
                           <span className="fw-bold small text-dark d-flex align-items-center gap-1.5">
-                            <FaCreditCard style={{ color: "#C49A55" }} /> Bank & Statutory Details
+                            <FaCreditCard style={{ color: "var(--color-primary, #C49A55)" }} /> Bank & Statutory Details
                           </span>
                           <Button
                             variant={isEditingCandidateProfile ? "outline-secondary" : "outline-warning"}
@@ -10346,7 +10346,7 @@ function HrOnboarding() {
                             <div className="d-flex flex-column gap-3">
                               {isCandUnpaid && (
                                 <div className="p-2.5 border rounded-3 d-flex align-items-center gap-2 extra-small" style={{ background: "rgba(196, 154, 85, 0.08)", borderColor: "rgba(196, 154, 85, 0.25)", color: "#8E651F" }}>
-                                  <FaCheckCircle className="flex-shrink-0" style={{ color: "#C49A55" }} />
+                                  <FaCheckCircle className="flex-shrink-0" style={{ color: "var(--color-primary, #C49A55)" }} />
                                   <span>
                                     <strong>Unpaid Engagement:</strong> Bank account verification and salary processing details are exempted for this candidate.
                                   </span>
@@ -10355,7 +10355,7 @@ function HrOnboarding() {
                               {/* Sub-Section 1: Statutory & Compliance Form */}
                               <div className="p-2.5 bg-white border rounded-3">
                                 <div className="extra-small text-uppercase fw-bold text-muted mb-2 d-flex align-items-center gap-1.5 pb-1.5 border-bottom">
-                                  <FaFileContract style={{ color: "#C49A55" }} /> Statutory & Compliance Information
+                                  <FaFileContract style={{ color: "var(--color-primary, #C49A55)" }} /> Statutory & Compliance Information
                                 </div>
                                 <Row className="g-2">
                                   <Col md={4} sm={6}>
@@ -10444,7 +10444,7 @@ function HrOnboarding() {
                               {/* Sub-Section 2: Bank Details Form */}
                               <div className="p-2.5 bg-white border rounded-3">
                                 <div className="extra-small text-uppercase fw-bold text-muted mb-2 d-flex align-items-center gap-1.5 pb-1.5 border-bottom">
-                                  <FaUniversity style={{ color: "#C49A55" }} /> Bank Account Information
+                                  <FaUniversity style={{ color: "var(--color-primary, #C49A55)" }} /> Bank Account Information
                                 </div>
                                 <Row className="g-2">
                                   <Col md={4} sm={6}>
@@ -10598,7 +10598,7 @@ function HrOnboarding() {
                                   <div className="h-100 p-3 bg-white rounded-3 border d-flex flex-column">
                                     <div className="extra-small text-uppercase fw-bold text-muted mb-2 d-flex align-items-center justify-content-between pb-2 border-bottom">
                                       <span className="d-flex align-items-center gap-1.5">
-                                        <FaUniversity style={{ color: "#C49A55" }} /> Bank Account Details
+                                        <FaUniversity style={{ color: "var(--color-primary, #C49A55)" }} /> Bank Account Details
                                       </span>
                                       <div className="d-flex align-items-center gap-1.5">
                                         {getBankPassbookDoc()?.url && (
@@ -10675,7 +10675,7 @@ function HrOnboarding() {
                             <Col lg={6}>
                               <div className="h-100 p-3 bg-white rounded-3 border d-flex flex-column">
                                 <div className="extra-small text-uppercase fw-bold text-muted mb-2 d-flex align-items-center gap-1.5 pb-2 border-bottom">
-                                  <FaFileContract style={{ color: "#C49A55" }} /> Statutory & Compliance Details
+                                  <FaFileContract style={{ color: "var(--color-primary, #C49A55)" }} /> Statutory & Compliance Details
                                 </div>
                                 <Table borderless responsive size="sm" className="mb-0 align-middle">
                                   <tbody>

@@ -51,7 +51,7 @@
 }
 
 .user-mgmt-kpi-icon.icon-employees {
-  background: #F5EFE3;
+  background: var(--color-background, #F5EFE3);
   color: var(--color-primary, #C49A55);
 }
 
@@ -292,14 +292,14 @@
 }
 
 .user-mgmt-pagination .page-link:hover:not(.active) {
-  background-color: #F5EFE3;
+  background-color: var(--color-background, #F5EFE3);
   color: var(--color-primary, #C49A55);
   border-color: var(--color-primary, #C49A55);
 }
 
 .user-mgmt-pagination .page-item.disabled .page-link {
   color: #BDB9B2;
-  background-color: #FAF7F0;
+  background-color: var(--color-background, #FAF7F0);
   border-color: #E8E2D5;
 }
 

@@ -60,7 +60,7 @@ const BankDetailsCard = ({
               width: 38,
               height: 38,
               background: "linear-gradient(135deg, rgba(226, 194, 120, 0.25) 0%, rgba(196, 154, 85, 0.18) 100%)",
-              color: "#C49A55",
+              color: "var(--color-primary, #C49A55)",
               fontSize: 18,
               border: "1px solid rgba(196, 154, 85, 0.3)",
             }}
@@ -92,7 +92,7 @@ const BankDetailsCard = ({
       <Card.Body className="p-4">
         {isUnpaid && (
           <div className="p-2.5 mb-3 rounded-3 border extra-small d-flex align-items-center gap-2" style={{ background: "rgba(196, 154, 85, 0.08)", borderColor: "rgba(196, 154, 85, 0.25)", color: "#8E651F" }}>
-            <span className="badge text-white" style={{ background: "linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%)" }}>UNPAID</span>
+            <span className="badge text-white" style={{ background: "linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%)" }}>UNPAID</span>
             <span>Bank details are exempted for Unpaid engagements. (Optional: you may still enter bank details below if needed).</span>
           </div>
         )}
@@ -186,7 +186,7 @@ const BankDetailsCard = ({
               <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <div>
                   <span className="extra-small fw-bold text-dark d-flex align-items-center gap-1.5 mb-0.5">
-                    <FaFileAlt style={{ color: "#C49A55" }} /> Bank Passbook / Cancelled Cheque (Optional)
+                    <FaFileAlt style={{ color: "var(--color-primary, #C49A55)" }} /> Bank Passbook / Cancelled Cheque (Optional)
                   </span>
                   <span className="extra-small text-muted">Upload scan of bank passbook or cancelled cheque leaf</span>
                 </div>
@@ -231,7 +231,7 @@ const BankDetailsCard = ({
                 <Button
                   size="sm"
                   className="rounded-pill px-4 extra-small d-flex align-items-center gap-1.5 shadow-xs text-white"
-                  style={{ background: "linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%)", border: "none" }}
+                  style={{ background: "linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%)", border: "none" }}
                   onClick={handleSaveClick}
                   disabled={saving}
                 >

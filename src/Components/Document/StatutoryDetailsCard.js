@@ -51,7 +51,7 @@ const StatutoryDetailsCard = ({
               width: 38,
               height: 38,
               background: "linear-gradient(135deg, rgba(226, 194, 120, 0.25) 0%, rgba(196, 154, 85, 0.18) 100%)",
-              color: "#C49A55",
+              color: "var(--color-primary, #C49A55)",
               fontSize: 18,
               border: "1px solid rgba(196, 154, 85, 0.3)",
             }}
@@ -164,7 +164,7 @@ const StatutoryDetailsCard = ({
                 <Button
                   size="sm"
                   className="rounded-pill px-4 extra-small d-flex align-items-center gap-1.5 shadow-xs text-white"
-                  style={{ background: "linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%)", border: "none" }}
+                  style={{ background: "linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%)", border: "none" }}
                   onClick={handleSaveClick}
                   disabled={saving}
                 >

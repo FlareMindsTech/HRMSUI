@@ -174,7 +174,7 @@
 .app-layout-fullscreen-onboarding {
   min-height: 100vh;
   width: 100vw;
-  background: linear-gradient(135deg, #F7F5F0 0%, #FDFBF7 50%, #F5EFE3 100%);
+  background: linear-gradient(135deg, var(--color-background, #F7F5F0) 0%, var(--color-background, #FDFBF7) 50%, var(--color-background, #F5EFE3) 100%);
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;

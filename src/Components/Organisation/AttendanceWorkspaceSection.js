@@ -615,7 +615,7 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
           {/* Context banner */}
           <div
             style={{
-              background: "#FDFBF7",
+              background: "var(--color-background, #FDFBF7)",
               border: "1px solid #EAE0D0",
               borderRadius: "10px",
               padding: "14px 18px",
@@ -720,7 +720,7 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <FaFingerprint style={{ color: orgAttendanceMode === "BIOMETRIC" ? "#C49A55" : "#6B7280", fontSize: "16px" }} />
+                      <FaFingerprint style={{ color: orgAttendanceMode === "BIOMETRIC" ? "var(--color-primary, #C49A55)" : "#6B7280", fontSize: "16px" }} />
                       <div>
                         <span style={{ fontWeight: "700", fontSize: "0.82rem", color: orgAttendanceMode === "BIOMETRIC" ? "#92400E" : "#374151" }}>
                           Biometric Integration
@@ -734,7 +734,7 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                       <span style={{ fontSize: "0.68rem", fontWeight: "700", background: "#E5E7EB", color: "#4B5563", padding: "2px 7px", borderRadius: "4px" }}>
                         Hardware Machine
                       </span>
-                      {orgAttendanceMode === "BIOMETRIC" && <FaCheckCircle style={{ color: "#C49A55" }} />}
+                      {orgAttendanceMode === "BIOMETRIC" && <FaCheckCircle style={{ color: "var(--color-primary, #C49A55)" }} />}
                     </div>
                   </div>
                 )}
@@ -757,7 +757,7 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                 <div style={{ marginTop: "14px", paddingTop: "12px", borderTop: "1px solid #F3F4F6", display: "grid", gridTemplateColumns: orgAttendanceMode === "STATIC_IP" || orgAttendanceMode === "BOTH" ? "repeat(auto-fit, minmax(280px, 1fr))" : "1fr", gap: "14px" }}>
                   <div className="attendance-field" style={{ maxWidth: orgAttendanceMode === "STATIC_IP" || orgAttendanceMode === "BOTH" ? "none" : "420px" }}>
                     <label className="attendance-form-label">
-                      <FaGlobe className="me-1" style={{ color: "#C49A55" }} /> Organization Timezone
+                      <FaGlobe className="me-1" style={{ color: "var(--color-primary, #C49A55)" }} /> Organization Timezone
                     </label>
                     <select
                       className="attendance-form-control"
@@ -780,7 +780,7 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                   {(orgAttendanceMode === "STATIC_IP" || orgAttendanceMode === "BOTH") && (
                     <div className="attendance-field">
                       <label className="attendance-form-label">
-                        <FaWifi className="me-1" style={{ color: "#C49A55" }} /> Organization Network IP Allowlist
+                        <FaWifi className="me-1" style={{ color: "var(--color-primary, #C49A55)" }} /> Organization Network IP Allowlist
                       </label>
                       <input
                         type="text"
@@ -1105,7 +1105,7 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                     type="submit"
                     className="org-btn org-btn-primary"
                     disabled={orgSaving || !orgDirty}
-                    style={{ background: "#C49A55", color: "#FFFFFF", borderColor: "#C49A55" }}
+                    style={{ background: "var(--color-primary, #C49A55)", color: "#FFFFFF", borderColor: "var(--color-primary, #C49A55)" }}
                   >
                     {orgSaving ? (
                       <>
@@ -1139,7 +1139,7 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
           {/* Branch Context Banner */}
           <div
             style={{
-              background: "#FDFBF7",
+              background: "var(--color-background, #FDFBF7)",
               border: "1px solid #EAE0D0",
               borderRadius: "10px",
               padding: "12px 18px",
@@ -1249,7 +1249,7 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <FaFingerprint style={{ color: branchAttendanceMode === "BIOMETRIC" ? "#C49A55" : "#6B7280", fontSize: "16px" }} />
+                      <FaFingerprint style={{ color: branchAttendanceMode === "BIOMETRIC" ? "var(--color-primary, #C49A55)" : "#6B7280", fontSize: "16px" }} />
                       <div>
                         <span style={{ fontWeight: "700", fontSize: "0.82rem", color: branchAttendanceMode === "BIOMETRIC" ? "#92400E" : "#374151" }}>
                           Biometric Integration
@@ -1263,7 +1263,7 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                       <span style={{ fontSize: "0.68rem", fontWeight: "700", background: "#E5E7EB", color: "#4B5563", padding: "2px 7px", borderRadius: "4px" }}>
                         Hardware Machine
                       </span>
-                      {branchAttendanceMode === "BIOMETRIC" && <FaCheckCircle style={{ color: "#C49A55" }} />}
+                      {branchAttendanceMode === "BIOMETRIC" && <FaCheckCircle style={{ color: "var(--color-primary, #C49A55)" }} />}
                     </div>
                   </div>
                 )}
@@ -1653,7 +1653,7 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                     type="submit"
                     className="org-btn org-btn-primary"
                     disabled={branchSaving || !branchDirty}
-                    style={{ background: "#C49A55", color: "#FFFFFF", borderColor: "#C49A55" }}
+                    style={{ background: "var(--color-primary, #C49A55)", color: "#FFFFFF", borderColor: "var(--color-primary, #C49A55)" }}
                   >
                     {branchSaving ? (
                       <>

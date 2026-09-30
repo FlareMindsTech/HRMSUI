@@ -1338,7 +1338,7 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                               height: 32,
                               borderRadius: "8px",
                               background: isActive ? "#1C1D1D" : isCompleted ? "rgba(16, 185, 129, 0.12)" : "#F4EFE6",
-                              color: isActive ? "#E2C278" : isCompleted ? "#059669" : "#8E8A82",
+                              color: isActive ? "var(--color-primary-light, #E2C278)" : isCompleted ? "#059669" : "#8E8A82",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
@@ -2177,7 +2177,7 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
       {/* ── 4. Main Branches List / Cards ── */}
       {loading ? (
         <div className="text-center py-5 bg-white rounded-4 border shadow-sm my-3">
-          <Spinner animation="border" style={{ color: "#C49A55" }} />
+          <Spinner animation="border" style={{ color: "var(--color-primary, #C49A55)" }} />
           <p className="mt-3 text-muted fw-semibold">Loading enterprise branch directory...</p>
         </div>
       ) : branches.length === 0 ? (
@@ -2393,8 +2393,8 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                             width: 32,
                             height: 32,
                             borderRadius: 8,
-                            background: "linear-gradient(135deg, #1C1D1D 0%, #2A2B2C 100%)",
-                            color: "#E2C278",
+                            background: "linear-gradient(135deg, var(--color-sidebar, #1C1D1D) 0%, #2A2B2C 100%)",
+                            color: "var(--color-primary-light, #E2C278)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",

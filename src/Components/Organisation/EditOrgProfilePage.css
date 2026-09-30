@@ -42,8 +42,8 @@
 }
 
 .edit-org-back-btn {
-  background: #f5efe3 !important;
-  color: #9b7229 !important;
+  background: var(--color-background, #f5efe3) !important;
+  color: var(--color-primary-dark, #9b7229) !important;
   border: 1px solid rgba(196, 154, 85, 0.25) !important;
   font-weight: 600 !important;
   font-size: 0.85rem !important;
@@ -116,7 +116,7 @@
 }
 
 .edit-org-btn-save:hover {
-  background: linear-gradient(135deg, #b38845 0%, #9b7229 100%) !important;
+  background: linear-gradient(135deg, var(--color-primary-dark, #b38845) 0%, var(--color-primary-dark, #9b7229) 100%) !important;
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(196, 154, 85, 0.38) !important;
 }
@@ -157,7 +157,7 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #9b7229;
+  color: var(--color-primary-dark, #9b7229);
   margin-bottom: 0.75rem;
   padding-left: 0.4rem;
 }
@@ -184,15 +184,15 @@
 }
 
 .edit-org-nav-item:hover {
-  background: #fdfbf7;
+  background: var(--color-background, #fdfbf7);
   border-color: #f0e9dc;
   color: var(--color-text, #1C1D1D);
 }
 
 .edit-org-nav-item.active {
-  background: #f5efe3;
+  background: var(--color-background, #f5efe3);
   border-color: rgba(196, 154, 85, 0.4);
-  color: #9b7229;
+  color: var(--color-primary-dark, #9b7229);
   font-weight: 700;
   box-shadow: 0 2px 8px rgba(196, 154, 85, 0.1);
 }
@@ -243,7 +243,7 @@
   font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
-  color: #9b7229;
+  color: var(--color-primary-dark, #9b7229);
   letter-spacing: 0.05em;
   margin-bottom: 0.6rem;
   display: flex;
@@ -351,7 +351,7 @@
 }
 
 .edit-org-section-icon-badge.gold {
-  background: #f5efe3;
+  background: var(--color-background, #f5efe3);
   color: var(--color-primary, #C49A55);
 }
 
@@ -460,8 +460,8 @@
 }
 
 .edit-org-chip-btn:hover {
-  background: #f5efe3;
-  color: #9b7229;
+  background: var(--color-background, #f5efe3);
+  color: var(--color-primary-dark, #9b7229);
   border-color: var(--color-primary, #C49A55);
 }
 
@@ -479,7 +479,7 @@
 
 .edit-org-logo-zone:hover {
   border-color: var(--color-primary, #C49A55);
-  background: #fdfbf7;
+  background: var(--color-background, #fdfbf7);
 }
 
 .edit-org-logo-preview-box {
@@ -543,8 +543,8 @@
 }
 
 .edit-org-upload-btn:hover {
-  background: #f5efe3 !important;
-  color: #9b7229 !important;
+  background: var(--color-background, #f5efe3) !important;
+  color: var(--color-primary-dark, #9b7229) !important;
   border-color: var(--color-primary, #C49A55) !important;
 }
 

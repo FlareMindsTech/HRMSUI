@@ -112,6 +112,32 @@ export const applyThemeToCssVariables = (themeObj = {}) => {
   root.style.setProperty("--color-info", theme.infoColor || DEFAULT_THEME.infoColor);
 };
 
+// Persisted saved-theme cache so a refresh paints the last saved theme
+// instantly (before the server revalidation lands) instead of flashing the
+// default. Preview (unsaved) state is intentionally never persisted —
+// refreshing after preview-without-save correctly restores the saved theme.
+const THEME_STORAGE_KEY = "hrms_org_theme";
+
+const readCachedTheme = () => {
+  try {
+    const raw = localStorage.getItem(THEME_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.primaryColor === "string") return parsed;
+  } catch {
+    // Corrupt cache: fall through to defaults below.
+  }
+  return null;
+};
+
+const persistTheme = (themeObj) => {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(themeObj));
+  } catch {
+    // ignore storage errors — server remains the source of truth
+  }
+};
+
 // Async thunk to fetch organization theme settings
 export const fetchTheme = createAsyncThunk(
   "theme/fetchTheme",
@@ -120,9 +146,13 @@ export const fetchTheme = createAsyncThunk(
       const settings = await fetchOrganizationSettings();
       const themeData = settings?.theme || DEFAULT_THEME;
       applyThemeToCssVariables(themeData);
+      // Only persist when the server actually returned a theme: a response
+      // without one must not wipe a previously saved cache.
+      if (settings?.theme) persistTheme(themeData);
       return themeData;
     } catch (err) {
-      applyThemeToCssVariables(DEFAULT_THEME);
+      // Keep whatever is currently applied (boot cache or live preview):
+      // a transient failure must not clobber the theme back to default.
       return rejectWithValue(err.message || "Failed to load theme");
     }
   },
@@ -142,6 +172,7 @@ export const saveTheme = createAsyncThunk(
       const response = await updateOrgSettingsApi({ theme: themePayload });
       const updatedTheme = response?.data?.theme || themePayload;
       applyThemeToCssVariables(updatedTheme);
+      persistTheme(updatedTheme);
       return updatedTheme;
     } catch (err) {
       return rejectWithValue(err.message || "Failed to save theme settings");
@@ -153,9 +184,19 @@ export const saveTheme = createAsyncThunk(
   }
 );
 
+const cachedTheme = readCachedTheme();
+const initialSavedTheme = cachedTheme
+  ? { ...DEFAULT_THEME, ...cachedTheme }
+  : { ...DEFAULT_THEME };
+
+// Apply the cached saved theme synchronously at module load (before first
+// paint) so refresh never flashes the default. Mirrors the auth module's
+// storage hydration; no reducer is involved.
+applyThemeToCssVariables(initialSavedTheme);
+
 const initialState = {
-  theme: { ...DEFAULT_THEME },
-  previewTheme: { ...DEFAULT_THEME },
+  theme: { ...initialSavedTheme },
+  previewTheme: { ...initialSavedTheme },
   loading: false,
   saving: false,
   error: null,
@@ -205,8 +246,8 @@ export const themeSlice = createSlice({
       .addCase(fetchTheme.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-        state.theme = { ...DEFAULT_THEME };
-        state.previewTheme = { ...DEFAULT_THEME };
+        // Preserve the current (cached/live) theme on failure — resetting to
+        // defaults here is what used to flash gold after a transient error.
       })
       // Save Theme
       .addCase(saveTheme.pending, (state) => {

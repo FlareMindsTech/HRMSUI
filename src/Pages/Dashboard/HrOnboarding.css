@@ -66,7 +66,7 @@
 }
 
 .onboarding-view-pill-btn {
-  background: linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%) !important;
+  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%) !important;
   border-color: var(--color-primary, #C49A55) !important;
   color: var(--color-text, #1C1D1D) !important;
 }
@@ -77,7 +77,7 @@
 }
 
 .onboarding-hero-banner {
-  background: linear-gradient(135deg, #ffffff 0%, #FAF7F0 100%);
+  background: linear-gradient(135deg, #ffffff 0%, var(--color-background, #FAF7F0) 100%);
   border: 1px solid rgba(196, 154, 85, 0.25);
   border-radius: var(--radius-lg, 16px);
   padding: 10px 18px;
@@ -120,7 +120,7 @@
 }
 
 .metric-purple {
-  background: linear-gradient(135deg, #FAF7F0 0%, #F5EEDD 100%);
+  background: linear-gradient(135deg, var(--color-background, #FAF7F0) 0%, #F5EEDD 100%);
   border: 1px solid rgba(196, 154, 85, 0.3);
 }
 
@@ -151,7 +151,7 @@
 }
 
 .icon-purple {
-  background: linear-gradient(135deg, #E2C278 0%, #C49A55 100%);
+  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 100%);
   color: var(--color-text, #1C1D1D);
 }
 
@@ -221,7 +221,7 @@
 
 /* ── Prominent Start Onboarding Primary Action Button ── */
 .onboarding-start-btn {
-  background: linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%) !important;
+  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%) !important;
   border: 1px solid rgba(255, 255, 255, 0.25) !important;
   padding: 8px 22px 8px 12px !important;
   font-size: 0.9rem !important;
@@ -254,7 +254,7 @@
 }
 
 .onboarding-start-btn:hover {
-  background: linear-gradient(135deg, #EAD08D 0%, #C49A55 55%, #8E651F 100%) !important;
+  background: linear-gradient(135deg, var(--color-primary-light, #EAD08D) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #8E651F) 100%) !important;
   transform: translateY(-2px) scale(1.02);
   box-shadow: 0 8px 24px rgba(196, 154, 85, 0.52) !important;
 }
@@ -287,7 +287,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50% !important;
-  background: linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%) !important;
+  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%) !important;
   border: 1px solid rgba(255, 255, 255, 0.3) !important;
   color: var(--color-text, #1C1D1D) !important;
   display: flex !important;
@@ -301,7 +301,7 @@
 }
 
 .onboarding-back-btn:hover {
-  background: linear-gradient(135deg, #EAD08D 0%, #C49A55 55%, #8E651F 100%) !important;
+  background: linear-gradient(135deg, var(--color-primary-light, #EAD08D) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #8E651F) 100%) !important;
   transform: translateY(-1px) scale(1.08);
   box-shadow: 0 6px 18px rgba(196, 154, 85, 0.55) !important;
   color: var(--color-text, #1C1D1D) !important;
@@ -313,7 +313,7 @@
 
 .onboarding-primary-action-btn,
 .onboarding-btn-mint {
-  background: linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%) !important;
+  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%) !important;
   border-color: transparent !important;
   color: var(--color-text, #1C1D1D) !important;
   box-shadow: 0 4px 14px rgba(196, 154, 85, 0.35) !important;
@@ -322,7 +322,7 @@
 
 .onboarding-primary-action-btn:hover,
 .onboarding-btn-mint:hover {
-  background: linear-gradient(135deg, #EAD08D 0%, #C49A55 55%, #8E651F 100%) !important;
+  background: linear-gradient(135deg, var(--color-primary-light, #EAD08D) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #8E651F) 100%) !important;
   box-shadow: 0 6px 18px rgba(196, 154, 85, 0.45) !important;
   transform: translateY(-1px);
 }
@@ -350,7 +350,7 @@
 }
 
 .onboarding-section-tab-btn.active {
-  background: linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%) !important;
+  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%) !important;
   color: var(--color-text, #1C1D1D) !important;
   box-shadow: 0 2px 8px rgba(196, 154, 85, 0.35) !important;
 }
@@ -605,7 +605,7 @@
 }
 
 .onboarding-candidate-row:hover {
-  background-color: #FAF7F0 !important;
+  background-color: var(--color-background, #FAF7F0) !important;
 }
 
 .onboarding-candidate-row:active {
@@ -743,7 +743,7 @@
 
 /* ── Bottom Promo Card ── */
 .onboarding-promo-card {
-  background: linear-gradient(135deg, #1C1D1D 0%, #292929 60%, #181919 100%);
+  background: linear-gradient(135deg, var(--color-sidebar, #1C1D1D) 0%, #292929 60%, #181919 100%);
   border: 1px solid rgba(196, 154, 85, 0.3);
   border-radius: 18px;
   position: relative;
@@ -797,13 +797,13 @@
 }
 
 .nav-pills .nav-link:hover:not(.active) {
-  background: #FAF7F0 !important;
+  background: var(--color-background, #FAF7F0) !important;
   color: var(--color-text, #1C1D1D) !important;
 }
 
 .nav-pills .nav-link.active,
 .nav-pills .show > .nav-link {
-  background: linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%) !important;
+  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%) !important;
   color: var(--color-text, #1C1D1D) !important;
   box-shadow: 0 4px 14px rgba(196, 154, 85, 0.35) !important;
   font-weight: 700 !important;
@@ -876,7 +876,7 @@
 .onboarding-container .input-group:focus-within > .input-group-text {
   border-color: var(--color-primary, #C79D58) !important;
   background-color: #FAF5E9 !important;
-  color: #9B7229 !important;
+  color: var(--color-primary-dark, #9B7229) !important;
 }
 
 .onboarding-container .input-group:focus-within > .form-control,
@@ -899,7 +899,7 @@
 /* ── Primary & Success Themed Action Buttons ── */
 .onboarding-container .btn-success,
 .onboarding-container .btn-primary {
-  background: linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%) !important;
+  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%) !important;
   border: 1px solid rgba(255, 255, 255, 0.25) !important;
   color: var(--color-text, #1C1D1D) !important;
   font-weight: 700 !important;
@@ -909,7 +909,7 @@
 
 .onboarding-container .btn-success:hover,
 .onboarding-container .btn-primary:hover {
-  background: linear-gradient(135deg, #EAD08D 0%, #C49A55 55%, #8E651F 100%) !important;
+  background: linear-gradient(135deg, var(--color-primary-light, #EAD08D) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #8E651F) 100%) !important;
   box-shadow: 0 6px 20px rgba(196, 154, 85, 0.48) !important;
   transform: translateY(-1px);
 }
@@ -930,7 +930,7 @@
 
 .onboarding-container .btn-outline-success:hover,
 .onboarding-container .btn-outline-primary:hover {
-  background: linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%) !important;
+  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%) !important;
   color: var(--color-text, #1C1D1D) !important;
   border-color: transparent !important;
   box-shadow: 0 4px 14px rgba(196, 154, 85, 0.35) !important;
@@ -945,7 +945,7 @@
 }
 
 .onboarding-container .btn-outline-secondary:hover {
-  background: #FAF7F0 !important;
+  background: var(--color-background, #FAF7F0) !important;
   border-color: #D1C7B7 !important;
   color: var(--color-text, #1C1D1D) !important;
 }
@@ -967,7 +967,7 @@
 
 .onboarding-opt-badge {
   background: rgba(196, 154, 85, 0.12) !important;
-  color: #9B7229 !important;
+  color: var(--color-primary-dark, #9B7229) !important;
   border: 1px solid rgba(196, 154, 85, 0.28) !important;
   font-size: 10px !important;
   font-weight: 700 !important;
@@ -980,7 +980,7 @@
 .onboarding-upload-photo-btn {
   background: var(--color-surface, #FFFFFF) !important;
   border: 1.5px solid var(--color-primary, #C49A55) !important;
-  color: #9B7229 !important;
+  color: var(--color-primary-dark, #9B7229) !important;
   font-weight: 700 !important;
   font-size: 12px !important;
   padding: 6px 16px !important;
@@ -997,7 +997,7 @@
 
 .onboarding-step-badge {
   background: var(--color-sidebar, #1C1D1D) !important;
-  color: #E2C278 !important;
+  color: var(--color-primary-light, #E2C278) !important;
   border: 1px solid rgba(196, 154, 85, 0.4) !important;
   font-size: 11px !important;
   font-weight: 700 !important;
@@ -1011,7 +1011,7 @@
 
 .onboarding-employer-badge {
   background: var(--color-sidebar, #1C1D1D) !important;
-  color: #E2C278 !important;
+  color: var(--color-primary-light, #E2C278) !important;
   border: 1px solid rgba(196, 154, 85, 0.5) !important;
   font-size: 10.5px !important;
   font-weight: 700 !important;
@@ -1038,7 +1038,7 @@
 }
 
 .onboarding-camera-badge:hover {
-  background: #9B7229 !important;
+  background: var(--color-primary-dark, #9B7229) !important;
   transform: translate(8%, 8%) scale(1.15) !important;
 }
 
@@ -1076,7 +1076,7 @@
 }
 
 .modern-onboarding-table tbody tr:hover {
-  background-color: #FAF7F0 !important;
+  background-color: var(--color-background, #FAF7F0) !important;
 }
 
 /* ── Alert Pill Accents ── */
@@ -1194,7 +1194,7 @@
 
 .onboarding-prev-btn {
   background: var(--color-sidebar, #1C1D1D) !important;
-  color: #E2C278 !important;
+  color: var(--color-primary-light, #E2C278) !important;
   border: 1px solid rgba(196, 154, 85, 0.45) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18) !important;
 }
@@ -1218,7 +1218,7 @@
 
 .onboarding-next-btn {
   background: var(--color-sidebar, #1C1D1D) !important;
-  color: #E2C278 !important;
+  color: var(--color-primary-light, #E2C278) !important;
   border: 1px solid rgba(196, 154, 85, 0.55) !important;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22), 0 0 8px rgba(196, 154, 85, 0.15) !important;
 }
@@ -1232,8 +1232,8 @@
 }
 
 .onboarding-submit-btn {
-  background: linear-gradient(135deg, #1C1D1D 0%, #2E261D 100%) !important;
-  color: #E2C278 !important;
+  background: linear-gradient(135deg, var(--color-sidebar, #1C1D1D) 0%, #2E261D 100%) !important;
+  color: var(--color-primary-light, #E2C278) !important;
   border: 1.5px solid var(--color-primary, #C49A55) !important;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), 0 0 12px rgba(196, 154, 85, 0.25) !important;
 }
@@ -1301,7 +1301,7 @@
 }
 
 .onboarding-progress-bar-6 .progress-bar {
-  background: linear-gradient(90deg, #1C1D1D 0%, #C49A55 100%) !important;
+  background: linear-gradient(90deg, var(--color-sidebar, #1C1D1D) 0%, var(--color-primary, #C49A55) 100%) !important;
   transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
   border-radius: 9999px !important;
 }
@@ -1324,7 +1324,7 @@
 
 .onboarding-checklist-badge.filled {
   background: var(--color-sidebar, #1C1D1D) !important;
-  color: #E2C278 !important;
+  color: var(--color-primary-light, #E2C278) !important;
   border: 1px solid rgba(196, 154, 85, 0.5) !important;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12) !important;
 }
@@ -1343,7 +1343,7 @@
   padding: 3.5px 10px !important;
   border-radius: 9999px !important;
   background: var(--color-sidebar, #1C1D1D) !important;
-  color: #E2C278 !important;
+  color: var(--color-primary-light, #E2C278) !important;
   border: 1px solid rgba(196, 154, 85, 0.45) !important;
   display: inline-flex !important;
   align-items: center !important;
@@ -1368,7 +1368,7 @@
 
 .onboarding-step-nav-link.active {
   background: var(--color-sidebar, #1C1D1D) !important;
-  color: #E2C278 !important;
+  color: var(--color-primary-light, #E2C278) !important;
   border: 1px solid rgba(196, 154, 85, 0.5) !important;
   font-weight: 700 !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
@@ -1435,7 +1435,7 @@
 }
 
 .fresher-toggle-container.active {
-  background: linear-gradient(135deg, #FAF7F0 0%, #F5EFE3 100%) !important;
+  background: linear-gradient(135deg, var(--color-background, #FAF7F0) 0%, var(--color-background, #F5EFE3) 100%) !important;
   border-color: var(--color-primary, #C49A55) !important;
   box-shadow: 0 2px 10px rgba(196, 154, 85, 0.2) !important;
 }
@@ -1482,12 +1482,12 @@
 }
 
 .fresher-toggle-switch input:checked + .fresher-toggle-slider {
-  background: linear-gradient(135deg, #1C1D1D 0%, #2D251D 100%) !important;
+  background: linear-gradient(135deg, var(--color-sidebar, #1C1D1D) 0%, #2D251D 100%) !important;
 }
 
 .fresher-toggle-switch input:checked + .fresher-toggle-slider:before {
   transform: translateX(16px) !important;
-  background-color: #E2C278 !important;
+  background-color: var(--color-primary-light, #E2C278) !important;
   box-shadow: 0 0 6px rgba(226, 194, 120, 0.6) !important;
 }
 
@@ -1524,7 +1524,7 @@
 }
 
 .onboarding-doc-upload-btn:hover {
-  background: #FAF7F0 !important;
+  background: var(--color-background, #FAF7F0) !important;
   border-color: var(--color-primary, #C49A55) !important;
   color: #8C6A2E !important;
   box-shadow: 0 3px 10px rgba(196, 154, 85, 0.18) !important;
@@ -1574,7 +1574,7 @@
 
 /* ── Remove Profile Photo Gold Pill Button ── */
 .onboarding-remove-photo-btn {
-  background: linear-gradient(135deg, #E2C278 0%, #C49A55 50%, #B8860B 100%) !important;
+  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 50%, var(--color-primary-dark, #B8860B) 100%) !important;
   color: var(--color-text, #1C1D1D) !important;
   border: 1px solid rgba(255, 255, 255, 0.25) !important;
   border-radius: 9999px !important;
@@ -1592,7 +1592,7 @@
 }
 
 .onboarding-remove-photo-btn:hover {
-  background: linear-gradient(135deg, #eccd89 0%, #cf9c45 50%, #a87920 100%) !important;
+  background: linear-gradient(135deg, var(--color-primary-light, #eccd89) 0%, var(--color-primary, #cf9c45) 50%, var(--color-primary-dark, #a87920) 100%) !important;
   box-shadow: 0 6px 16px rgba(196, 154, 85, 0.5) !important;
   transform: translateY(-1px) !important;
   color: var(--color-text, #1C1D1D) !important;
@@ -1619,7 +1619,7 @@
 }
 
 .onboarding-fresher-mode-box {
-  background: #FAF7F0 !important;
+  background: var(--color-background, #FAF7F0) !important;
   border: 1px solid rgba(196, 154, 85, 0.28) !important;
   border-radius: var(--radius-md, 12px) !important;
 }
@@ -1795,7 +1795,7 @@
 .org-standalone-setup-page {
   min-height: 100vh;
   width: 100%;
-  background: radial-gradient(130% 130% at 50% 0%, #FFFFFF 0%, #FAF7F0 45%, #F4ECE0 100%);
+  background: radial-gradient(130% 130% at 50% 0%, #FFFFFF 0%, var(--color-background, #FAF7F0) 45%, var(--color-background, #F4ECE0) 100%);
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
@@ -1858,7 +1858,7 @@
   width: 54px;
   height: 54px;
   border-radius: var(--radius-lg, 16px);
-  background: linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%);
+  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%);
   color: var(--color-text, #1C1D1D);
   display: flex;
   align-items: center;
@@ -1902,7 +1902,7 @@
 }
 
 .org-welcome-cta-btn {
-  background: linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%) !important;
+  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%) !important;
   border: none !important;
   color: var(--color-text, #1C1D1D) !important;
   font-weight: 800 !important;
@@ -1967,7 +1967,7 @@
 }
 
 .org-wizard-step-item.active .org-wizard-step-circle {
-  background: linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%);
+  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%);
   color: var(--color-text, #1C1D1D);
   box-shadow: 0 4px 12px rgba(196, 154, 85, 0.4);
 }

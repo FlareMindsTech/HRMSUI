@@ -146,7 +146,7 @@ const Login = ({ onLogin }) => {
                 type="button"
                 className="btn btn-sm text-white fw-bold d-flex align-items-center justify-content-center gap-2 mt-1"
                 style={{
-                  background: 'linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%)',
+                  background: 'linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%)',
                   border: 'none',
                   borderRadius: '8px',
                   padding: '6px 14px',

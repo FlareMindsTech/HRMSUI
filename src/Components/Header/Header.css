@@ -237,7 +237,7 @@
 }
 
 .header-org-chip:hover {
-  background: #FAF7F0;
+  background: var(--color-background, #FAF7F0);
   border-color: var(--color-primary, #C49A55);
 }
 
@@ -290,7 +290,7 @@
 }
 
 .header-branch-chip:hover {
-  background: #FAF7F0;
+  background: var(--color-background, #FAF7F0);
   border-color: #10B981;
 }
 
@@ -532,13 +532,13 @@
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #2DC58A 0%, #1f9d6c 100%);
+  background: linear-gradient(135deg, var(--color-primary, #C79D58) 0%, var(--color-primary-dark, #A98245) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
   font-weight: 700;
-  color: var(--color-surface, #FFFFFF);
+  color: var(--color-text, #1C1D1D);
   flex-shrink: 0;
 }
 

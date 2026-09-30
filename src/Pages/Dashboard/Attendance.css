@@ -872,7 +872,7 @@
 }
 
 .analytics-icon-chart {
-  background: #F5EFE3;
+  background: var(--color-background, #F5EFE3);
   color: var(--color-primary, #C49A55);
 }
 

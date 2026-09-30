@@ -106,7 +106,7 @@
 
 .sidebar-brand-sub {
   font-size: 10px;
-  color: #E2C278;
+  color: var(--color-primary-light, #E2C278);
   margin-top: 1.5px;
   letter-spacing: 0.04em;
   font-weight: 600;
@@ -325,7 +325,7 @@
 
 .sidebar-chevron-btn:hover {
   background: rgba(255, 255, 255, 0.12);
-  color: #E2C278;
+  color: var(--color-primary-light, #E2C278);
 }
 
 .sidebar:hover .sidebar-chevron-btn,
@@ -346,14 +346,14 @@
 
 .sidebar-chevron.open {
   transform: rotate(90deg);
-  color: #E2C278;
+  color: var(--color-primary-light, #E2C278);
   filter: drop-shadow(0 0 6px rgba(226, 194, 120, 0.5));
 }
 
 .sidebar-chevron.active-indicator {
   opacity: 0;
   transform: scale(0.5);
-  color: #E2C278;
+  color: var(--color-primary-light, #E2C278);
 }
 
 .sidebar:hover .sidebar-chevron.active-indicator,
@@ -426,7 +426,7 @@
 }
 
 .sidebar-submenu-item:hover .sidebar-submenu-icon-wrap {
-  color: #E2C278;
+  color: var(--color-primary-light, #E2C278);
 }
 
 .sidebar-submenu-item.active {
@@ -448,7 +448,7 @@
 }
 
 .sidebar-submenu-item.active .sidebar-submenu-icon-wrap {
-  color: #E2C278;
+  color: var(--color-primary-light, #E2C278);
 }
 
 .sidebar-submenu-label {
@@ -464,7 +464,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #E2C278;
+  background: var(--color-primary-light, #E2C278);
   box-shadow: 0 0 8px rgba(226, 194, 120, 0.85);
   flex-shrink: 0;
   margin-left: auto;
@@ -487,7 +487,7 @@
   width: 48px;
   height: 48px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%);
+  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%);
   display: flex;
   align-items: center;
   justify-content: center;

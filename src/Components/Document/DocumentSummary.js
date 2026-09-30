@@ -31,7 +31,7 @@ const DocumentSummary = ({ docData }) => {
       <div
         style={{
           height: 4,
-          background: "linear-gradient(90deg, #E2C278 0%, #C49A55 50%, #9B7229 100%)",
+          background: "linear-gradient(90deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 50%, var(--color-primary-dark, #9B7229) 100%)",
         }}
       />
       <Card.Body className="p-3.5">
@@ -39,7 +39,7 @@ const DocumentSummary = ({ docData }) => {
           <div className="d-flex align-items-center gap-2">
             <div
               className="rounded-2 p-1.5 d-flex align-items-center justify-content-center text-white"
-              style={{ background: "linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%)" }}
+              style={{ background: "linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%)" }}
             >
               <FaAward size={14} />
             </div>
@@ -64,7 +64,7 @@ const DocumentSummary = ({ docData }) => {
                       : hasBank
                       ? "rgba(196, 154, 85, 0.15)"
                       : "rgba(245, 158, 11, 0.15)",
-                    color: isUnpaid ? "#C49A55" : hasBank ? "#C49A55" : "#D97706",
+                    color: isUnpaid ? "var(--color-primary, #C49A55)" : hasBank ? "var(--color-primary, #C49A55)" : "#D97706",
                   }}
                 >
                   <FaUniversity size={14} />
@@ -107,7 +107,7 @@ const DocumentSummary = ({ docData }) => {
                   className="rounded-circle p-1.5 d-flex align-items-center justify-content-center"
                   style={{
                     background: hasIdentity ? "rgba(196, 154, 85, 0.15)" : "rgba(239, 68, 68, 0.12)",
-                    color: hasIdentity ? "#C49A55" : "#EF4444",
+                    color: hasIdentity ? "var(--color-primary, #C49A55)" : "#EF4444",
                   }}
                 >
                   <FaIdCard size={14} />
@@ -146,7 +146,7 @@ const DocumentSummary = ({ docData }) => {
                   className="rounded-circle p-1.5 d-flex align-items-center justify-content-center"
                   style={{
                     background: hasStatutory ? "rgba(196, 154, 85, 0.15)" : "rgba(107, 114, 128, 0.12)",
-                    color: hasStatutory ? "#C49A55" : "#6B7280",
+                    color: hasStatutory ? "var(--color-primary, #C49A55)" : "#6B7280",
                   }}
                 >
                   <FaFileContract size={14} />
@@ -185,7 +185,7 @@ const DocumentSummary = ({ docData }) => {
                   className="rounded-circle p-1.5 d-flex align-items-center justify-content-center"
                   style={{
                     background: attachedCount > 0 ? "rgba(196, 154, 85, 0.15)" : "rgba(107, 114, 128, 0.12)",
-                    color: attachedCount > 0 ? "#C49A55" : "#6B7280",
+                    color: attachedCount > 0 ? "var(--color-primary, #C49A55)" : "#6B7280",
                   }}
                 >
                   <FaPaperclip size={14} />

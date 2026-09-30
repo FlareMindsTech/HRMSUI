@@ -106,7 +106,7 @@ export default function SubscriptionSection() {
                         width: 60,
                         height: 60,
                         borderRadius: 14,
-                        background: "linear-gradient(135deg, #C79D58 0%, #C49A55 100%)",
+                        background: "linear-gradient(135deg, var(--color-primary, #C79D58) 0%, var(--color-primary, #C49A55) 100%)",
                         color: "#fff",
                         display: "flex",
                         alignItems: "center",

@@ -27,7 +27,7 @@ function EducationHeader({
             <div
               className="rounded-3 p-3 d-flex align-items-center justify-content-center text-white flex-shrink-0 shadow-sm"
               style={{
-                background: "linear-gradient(135deg, #E2C278 0%, #C49A55 50%, #B8860B 100%)",
+                background: "linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 50%, var(--color-primary-dark, #B8860B) 100%)",
                 width: 52,
                 height: 52,
                 boxShadow: "0 4px 12px rgba(196, 154, 85, 0.25)",
@@ -78,7 +78,7 @@ function EducationHeader({
                 className={`rounded-pill py-1 px-3 extra-small fw-semibold border-0 ${
                   viewMode === "form" ? "text-white shadow-xs" : "text-muted"
                 }`}
-                style={viewMode === "form" ? { background: "linear-gradient(135deg, #C49A55 0%, #B8860B 100%)", color: "#1C1D1D" } : {}}
+                style={viewMode === "form" ? { background: "linear-gradient(135deg, var(--color-primary, #C49A55) 0%, var(--color-primary-dark, #B8860B) 100%)", color: "var(--color-sidebar, #1C1D1D)" } : {}}
                 onClick={() => onToggleViewMode("form")}
               >
                 <FaEdit className="me-1" /> Edit Form
@@ -89,7 +89,7 @@ function EducationHeader({
                 className={`rounded-pill py-1 px-3 extra-small fw-semibold border-0 ${
                   viewMode === "profile" ? "text-white shadow-xs" : "text-muted"
                 }`}
-                style={viewMode === "profile" ? { background: "linear-gradient(135deg, #C49A55 0%, #B8860B 100%)", color: "#1C1D1D" } : {}}
+                style={viewMode === "profile" ? { background: "linear-gradient(135deg, var(--color-primary, #C49A55) 0%, var(--color-primary-dark, #B8860B) 100%)", color: "var(--color-sidebar, #1C1D1D)" } : {}}
                 onClick={() => onToggleViewMode("profile")}
               >
                 <FaEye className="me-1" /> View Profile

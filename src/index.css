@@ -484,7 +484,7 @@ code {
 
 /* ── Hero Welcome Card ── */
 .app-hero-card {
-  background: linear-gradient(135deg, #1C1D1D 0%, #2A2A2A 50%, #161717 100%);
+  background: linear-gradient(135deg, var(--color-sidebar, #1C1D1D) 0%, #2A2A2A 50%, #161717 100%);
   border-radius: var(--radius-lg);
   padding: 1.75rem 2rem;
   color: var(--color-surface, #FFFFFF);
@@ -560,7 +560,7 @@ code {
   justify-content: center;
   font-size: 1.25rem;
   flex-shrink: 0;
-  background: #F5EFE3;
+  background: var(--color-background, #F5EFE3);
   color: var(--primary);
   transition: all 0.2s ease;
 }
@@ -583,7 +583,7 @@ code {
 }
 
 .app-pill-success {
-  background: #F5EFE3;
+  background: var(--color-background, #F5EFE3);
   color: var(--color-primary, #C49A55);
   border: 1px solid rgba(196, 154, 85, 0.3);
 }

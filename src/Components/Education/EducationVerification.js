@@ -22,7 +22,7 @@ function EducationVerification({
         <div className="d-flex align-items-center gap-2">
           <div
             className="rounded-circle p-2 d-flex align-items-center justify-content-center text-white"
-            style={{ background: isVerified ? "linear-gradient(135deg, #E2C278 0%, #C49A55 50%, #B8860B 100%)" : "#f59e0b", color: isVerified ? "#ffffff" : "#fff" }}
+            style={{ background: isVerified ? "linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 50%, var(--color-primary-dark, #B8860B) 100%)" : "#f59e0b", color: isVerified ? "#ffffff" : "#fff" }}
           >
             <FaUserShield size={15} />
           </div>
@@ -52,7 +52,7 @@ function EducationVerification({
             className="rounded-pill px-3 py-1 extra-small fw-semibold shadow-xs"
             onClick={onToggleVerification}
             disabled={savingVerification}
-            style={!isVerified ? { background: "linear-gradient(135deg, #C49A55 0%, #B8860B 100%)", borderColor: "#C49A55", color: "#1C1D1D" } : {}}
+            style={!isVerified ? { background: "linear-gradient(135deg, var(--color-primary, #C49A55) 0%, var(--color-primary-dark, #B8860B) 100%)", borderColor: "var(--color-primary, #C49A55)", color: "var(--color-sidebar, #1C1D1D)" } : {}}
           >
             {isVerified ? (
               <>

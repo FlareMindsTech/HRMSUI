@@ -6,7 +6,7 @@
 
 .login-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #F1E8D6 0%, #FAF6EE 50%, #EADEC7 100%);
+  background: linear-gradient(135deg, var(--color-primary-light, #F1E8D6) 0%, #FAF6EE 50%, #EADEC7 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -58,7 +58,7 @@
 .login-left-panel {
   width: 320px;
   flex-shrink: 0;
-  background: linear-gradient(160deg, #1C1D1D 0%, #2A2B2C 60%, #141515 100%);
+  background: linear-gradient(160deg, var(--color-sidebar, #1C1D1D) 0%, #2A2B2C 60%, #141515 100%);
   padding: 2.25rem 1.75rem;
   display: flex;
   flex-direction: column;
@@ -257,7 +257,7 @@
   padding-right: 14px;
   border: 1.5px solid #E6D8C3;
   border-radius: 11px;
-  background: #FAF7F0;
+  background: var(--color-background, #FAF7F0);
   font-size: 0.9rem;
   color: var(--color-text, #1C1D1D);
   outline: none;
@@ -327,7 +327,7 @@
 }
 
 .login-forgot-btn:hover {
-  color: #9B7229;
+  color: var(--color-primary-dark, #9B7229);
   text-decoration: underline;
 }
 
@@ -339,7 +339,7 @@
 /* ── Submit Button ── */
 .login-submit-btn {
   height: 46px;
-  background: linear-gradient(135deg, #C49A55 0%, #9B7229 100%);
+  background: linear-gradient(135deg, var(--color-primary, #C49A55) 0%, var(--color-primary-dark, #9B7229) 100%);
   border: none;
   border-radius: 11px;
   color: var(--color-text, #1C1D1D);

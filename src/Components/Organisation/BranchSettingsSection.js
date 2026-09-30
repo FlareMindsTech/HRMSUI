@@ -287,7 +287,7 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
 
                   <div
                     style={{
-                      background: "#FDFBF7",
+                      background: "var(--color-background, #FDFBF7)",
                       border: "1px solid #EAE0D0",
                       borderRadius: "12px",
                       padding: "32px 24px",
@@ -328,8 +328,8 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
                           }
                         }}
                         style={{
-                          background: "#C49A55",
-                          borderColor: "#C49A55",
+                          background: "var(--color-primary, #C49A55)",
+                          borderColor: "var(--color-primary, #C49A55)",
                           color: "#FFFFFF",
                           fontWeight: "600",
                           padding: "10px 24px",
