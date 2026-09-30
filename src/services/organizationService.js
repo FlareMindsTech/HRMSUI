@@ -122,6 +122,8 @@ export const normalizeOrganization = (raw) => {
 // In-memory cache
 let cachedOrganization = null;
 
+export const getCachedOrganization = () => cachedOrganization;
+
 export const clearOrganizationCache = () => {
   cachedOrganization = null;
   try {
@@ -130,136 +132,75 @@ export const clearOrganizationCache = () => {
 };
 
 export const fetchMyOrganization = async (forceRefresh = false) => {
-  const storedOrgId = localStorage.getItem("organizationId") || localStorage.getItem("tenantId");
-
-  const fastEndpoints = [
-    "/organization/me",
-    "/api/organization/me",
-    "/organization",
-    "/api/organization",
-    "/organizations",
-    "/api/organizations",
-    "/organization/structure",
-    "/api/organization/structure",
-    "/system/setup-status",
-    "/api/system/setup-status",
-    "/organization/list",
-    "/api/organization/list",
-    "/organization/get",
-    "/api/organization/get",
-  ];
-
-  if (storedOrgId) {
-    fastEndpoints.unshift(`/api/organization/${storedOrgId}`);
-    fastEndpoints.unshift(`/organization/${storedOrgId}`);
-    fastEndpoints.unshift(`/api/organization/get/${storedOrgId}`);
-    fastEndpoints.unshift(`/organization/get/${storedOrgId}`);
-  }
-
   let foundOrg = null;
-  let apiSuccess = false;
 
   try {
-    // Run candidate endpoints against live database backend
-    const results = await Promise.allSettled(
-      fastEndpoints.map((ep) => apiFetch(ep, { method: "GET" }))
-    );
-
-    for (const resObj of results) {
-      if (resObj.status === "fulfilled" && resObj.value?.ok && resObj.value?.data) {
-        apiSuccess = true;
-        const rawData = resObj.value.data.data !== undefined ? resObj.value.data.data : resObj.value.data;
-        let org =
-          rawData?.organization ||
-          rawData?.org ||
-          rawData?.organizations?.[0] ||
-          rawData?.orgs?.[0] ||
-          rawData?.result ||
-          rawData?.results?.[0] ||
-          rawData;
-        if (Array.isArray(org)) org = org[0];
-        if (org?.organization) org = org.organization;
-        if (org && (org.organizationName || org.name || org.orgName || org.companyName || org.legalName || org.displayName || org._id || org.id)) {
-          const norm = normalizeOrganization(org);
-          if (!foundOrg || (norm.logo && !foundOrg.logo) || (norm.city && !foundOrg.city)) {
-            foundOrg = norm;
-          }
-        }
+    // 1. Primary canonical endpoint: GET /api/organization/me
+    const res = await apiFetch("/organization/me", { method: "GET" });
+    if (res.ok && res.data) {
+      const rawData = res.data.data !== undefined ? res.data.data : res.data;
+      let org =
+        rawData?.organization ||
+        rawData?.org ||
+        rawData?.result ||
+        rawData;
+      if (Array.isArray(org)) org = org[0];
+      if (org?.organization) org = org.organization;
+      if (org && (org.organizationName || org.name || org.orgName || org.companyName || org.legalName || org.displayName || org._id || org.id)) {
+        foundOrg = normalizeOrganization(org);
       }
     }
   } catch (e) {
-    console.warn("Fast parallel org fetch failed:", e);
+    console.warn("fetchMyOrganization notice:", e.message);
   }
 
-  // If live server responded successfully but no org was found in database:
-  // Clear any old stale cached profile so dummy/old data is not displayed!
-  if (apiSuccess && !foundOrg) {
+  // 2. Secondary fallback: GET /api/organization/list (for owner or multi-tenant context)
+  if (!foundOrg) {
+    try {
+      const resList = await apiFetch("/organization/list", { method: "GET" });
+      if (resList.ok && resList.data) {
+        const rawData = resList.data.data !== undefined ? resList.data.data : resList.data;
+        const list = Array.isArray(rawData) ? rawData : rawData?.organizations || rawData?.orgs || [];
+        if (list.length > 0) {
+          const storedOrgId = localStorage.getItem("organizationId") || localStorage.getItem("tenantId");
+          const target = (storedOrgId && list.find((o) => (o._id || o.id) === storedOrgId)) || list[0];
+          if (target) {
+            foundOrg = normalizeOrganization(target);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("fetchMyOrganization /organization/list notice:", e.message);
+    }
+  }
+
+  // If live server responded but no organization exists in database:
+  if (!foundOrg) {
     clearOrganizationCache();
     return null;
   }
 
-  // If network succeeded and found real organization in database
-  if (foundOrg) {
-    cachedOrganization = foundOrg;
-    try {
-      localStorage.setItem("cached_org_profile", JSON.stringify(foundOrg));
-    } catch (e) { }
-    const orgId = foundOrg._id || foundOrg.id;
-    if (orgId) {
-      localStorage.setItem("organizationId", orgId);
-      localStorage.setItem("tenantId", orgId);
-    }
-    return foundOrg;
-  }
-
-  // Fallback to cache ONLY if offline / network failure occurred
+  // If found real organization in database
+  cachedOrganization = foundOrg;
   try {
-    const saved = localStorage.getItem("cached_org_profile");
-    if (saved) {
-      cachedOrganization = JSON.parse(saved);
-      return cachedOrganization;
-    }
+    localStorage.setItem("cached_org_profile", JSON.stringify(foundOrg));
   } catch (e) { }
-
-  return cachedOrganization || null;
+  const orgId = foundOrg._id || foundOrg.id;
+  if (orgId) {
+    localStorage.setItem("organizationId", orgId);
+    localStorage.setItem("tenantId", orgId);
+  }
+  return foundOrg;
 };
 
 export const createOrganization = async (payload) => {
-  const candidateEndpoints = [
-    "/organization",
-    "/api/organization",
-    "/organization/create",
-    "/api/organization/create",
-    "/organizations",
-    "/api/organizations",
-  ];
+  const res = await apiFetch("/organization/", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 
-  let res = null;
-  let lastErrorMessage = "";
-
-  for (const ep of candidateEndpoints) {
-    try {
-      res = await apiFetch(ep, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-      if (res.ok && res.data && typeof res.data === "object") {
-        break;
-      }
-      if (res.status !== 404 && res.data?.message) {
-        lastErrorMessage = res.data.message;
-      }
-    } catch (e) {
-      lastErrorMessage = e.message;
-    }
-  }
-
-  if (!res || !res.ok) {
-    let cleanMsg = res?.data?.message || lastErrorMessage || "Failed to create organization";
-    if (typeof cleanMsg === "string" && (cleanMsg.includes("<!DOCTYPE") || cleanMsg.includes("<html") || cleanMsg.includes("Cannot POST"))) {
-      cleanMsg = "Organization creation route not found on server (404). Ensure app.use('/organization', ...) or app.use('/api/organization', ...) is registered in backend index.js.";
-    }
-    throw new Error(cleanMsg);
+  if (!res.ok) {
+    throw new Error(res?.data?.message || "Failed to create organization");
   }
 
   const resultData = res.data?.data || res.data;
@@ -288,59 +229,13 @@ export const createOrganization = async (payload) => {
 };
 
 export const updateMyOrganization = async (payload, orgIdOverride = null) => {
-  const storedOrgId =
-    orgIdOverride ||
-    localStorage.getItem("organizationId") ||
-    localStorage.getItem("tenantId") ||
-    cachedOrganization?._id ||
-    cachedOrganization?.id;
+  const res = await apiFetch("/organization/me", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
 
-  const candidateEndpoints = [
-    { path: "/organization/structure", method: "PUT" },
-    { path: "/api/organization/structure", method: "PUT" },
-    { path: "/organization/me", method: "PUT" },
-    { path: "/api/organization/me", method: "PUT" },
-    { path: "/organization", method: "PUT" },
-    { path: "/api/organization", method: "PUT" },
-    { path: "/organization/update", method: "PUT" },
-    { path: "/api/organization/update", method: "PUT" },
-    { path: "/organization/update", method: "POST" },
-    { path: "/api/organization/update", method: "POST" },
-    { path: "/organization/edit", method: "PUT" },
-    { path: "/api/organization/edit", method: "PUT" },
-    { path: "/organization/edit", method: "POST" },
-    { path: "/api/organization/edit", method: "POST" },
-  ];
-
-  if (storedOrgId) {
-    candidateEndpoints.unshift({ path: `/api/organization/${storedOrgId}`, method: "PUT" });
-    candidateEndpoints.unshift({ path: `/organization/${storedOrgId}`, method: "PUT" });
-    candidateEndpoints.unshift({ path: `/api/organization/update/${storedOrgId}`, method: "PUT" });
-    candidateEndpoints.unshift({ path: `/organization/update/${storedOrgId}`, method: "PUT" });
-    candidateEndpoints.unshift({ path: `/api/organization/update/${storedOrgId}`, method: "POST" });
-    candidateEndpoints.unshift({ path: `/organization/update/${storedOrgId}`, method: "POST" });
-  }
-
-  let res = null;
-  let lastErrorMsg = "";
-
-  for (const ep of candidateEndpoints) {
-    try {
-      res = await apiFetch(ep.path, {
-        method: ep.method,
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) break;
-      if (res.data?.message) {
-        lastErrorMsg = res.data.message;
-      }
-    } catch (e) {
-      lastErrorMsg = e.message || lastErrorMsg;
-    }
-  }
-
-  if (!res || !res.ok) {
-    throw new Error(lastErrorMsg || res?.data?.message || "Failed to update organization profile");
+  if (!res.ok) {
+    throw new Error(res?.data?.message || "Failed to update organization profile");
   }
 
   const rawData = res.data?.data !== undefined ? res.data?.data : res.data;
@@ -1136,39 +1031,13 @@ export const fetchSystemSetupStatus = async () => {
  */
 export const registerSystemOwner = async (payload) => {
   console.log("[register-owner] request payload:", { ...payload, password: "***" });
-  const candidateEndpoints = [
-    "/auth/register-owner",
-    "/api/auth/register-owner",
-    "/auth/register",
-    "/api/auth/register",
-  ];
+  const res = await apiFetch("/auth/register-owner", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 
-  let res = null;
-  let lastErrorMessage = "";
-
-  for (const ep of candidateEndpoints) {
-    try {
-      res = await apiFetch(ep, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-      if (res.ok && res.data && typeof res.data === "object") {
-        break;
-      }
-      if (res.status !== 404 && res.data?.message) {
-        lastErrorMessage = res.data.message;
-      }
-    } catch (e) {
-      lastErrorMessage = e.message;
-    }
-  }
-
-  if (!res || !res.ok) {
-    let cleanMsg = res?.data?.message || lastErrorMessage || "Failed to register owner account";
-    if (typeof cleanMsg === "string" && (cleanMsg.includes("<!DOCTYPE") || cleanMsg.includes("<html") || cleanMsg.includes("Cannot POST"))) {
-      cleanMsg = "Owner registration route not found on server (404). Ensure app.use('/auth', ...) or app.use('/api/auth', ...) is registered in backend index.js.";
-    }
-    throw new Error(cleanMsg);
+  if (!res.ok) {
+    throw new Error(res?.data?.message || "Failed to register organization owner");
   }
 
   console.log("[register-owner] response:", res.data);

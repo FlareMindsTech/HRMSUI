@@ -7,11 +7,13 @@
 const isLocalhost =
   typeof window !== "undefined"
     ? window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1" ||
-    window.location.hostname.startsWith("192.168.")
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname.startsWith("192.168.")
     : process.env.NODE_ENV !== "production";
+
 export const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL;
+  process.env.REACT_APP_API_BASE_URL ||
+  (isLocalhost ? "http://localhost:7800/api" : "https://api.hrms.flareminds.com/api");
 
 // Token is stored under this key in localStorage after a real login.
 const TOKEN_KEY = "token";
@@ -99,7 +101,16 @@ export const apiFetch = async (path, options = {}, isRetry = false) => {
       }
     });
 
-    const res = await fetch(`${API_BASE_URL}${path}`, {
+    const cleanBase = (API_BASE_URL || "").replace(/\/+$/, "");
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    const finalPath = (cleanBase.endsWith("/api") && cleanPath.startsWith("/api/"))
+      ? cleanPath.substring(4)
+      : (cleanBase.endsWith("/api") && cleanPath === "/api")
+      ? ""
+      : cleanPath;
+    const url = `${cleanBase}${finalPath}`;
+
+    const res = await fetch(url, {
       ...options,
       headers: finalHeaders,
     });
@@ -133,12 +144,10 @@ export const apiFetch = async (path, options = {}, isRetry = false) => {
       return apiFetch(path, { ...options, headers: retryHeaders }, true);
     }
 
-    // Auto-recovery for 404 route prefix mismatch: automatically try with /api prefix
+    // Auto-recovery for 404 route prefix mismatch: try with /api prefix if base doesn't have it
     if (!res.ok && res.status === 404 && !isRetry) {
-      if (!path.startsWith("/api") && !API_BASE_URL.endsWith("/api")) {
-        return apiFetch(`/api${path}`, options, true);
-      } else if (path.startsWith("/api")) {
-        return apiFetch(path.replace(/^\/api/, ""), options, true);
+      if (!cleanBase.endsWith("/api") && !cleanPath.startsWith("/api")) {
+        return apiFetch(`/api${cleanPath}`, options, true);
       }
     }
 
