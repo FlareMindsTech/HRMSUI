@@ -7,8 +7,13 @@ import {
   FaProjectDiagram, FaPlus,
   FaEllipsisV, FaEdit, FaTrash, FaArrowLeft, FaTimes, FaExclamationTriangle,
   FaCheckCircle, FaUserPlus, FaInbox, FaPaperPlane,
-  FaSyncAlt, FaComments, FaSearch
+  FaSyncAlt, FaComments, FaSearch, FaClock
 } from 'react-icons/fa';
+import {
+  logTime,
+  getTimeLogsByTask,
+  updateTimeLog
+} from '../../services/timeTrackingService';
 import {
   getAllProjectsApi,
   getMyProjectsApi,
@@ -178,6 +183,21 @@ function ProjectManagement() {
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showSprintModal, setShowSprintModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
+
+  // Time Tracking / Timesheets state
+  const [timeLogs, setTimeLogs] = useState([]);
+  const [timeLogsLoading, setTimeLogsLoading] = useState(false);
+  const [showTimeLogModal, setShowTimeLogModal] = useState(false);
+  const [editingTimeLogId, setEditingTimeLogId] = useState(null);
+  const [timeLogForm, setTimeLogForm] = useState({
+    taskId: '',
+    date: new Date().toISOString().slice(0, 10),
+    startTime: '09:00',
+    endTime: '11:00',
+    durationMinutes: 120,
+    description: '',
+  });
+  const [submittingTimeLog, setSubmittingTimeLog] = useState(false);
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [memberRoleFilter, setMemberRoleFilter] = useState('all');
 
@@ -356,6 +376,86 @@ function ProjectManagement() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const fetchTimeLogsForProject = useCallback(async (projectTaskList) => {
+    if (!projectTaskList || projectTaskList.length === 0) {
+      setTimeLogs([]);
+      return;
+    }
+    setTimeLogsLoading(true);
+    try {
+      const results = await Promise.allSettled(
+        projectTaskList.slice(0, 20).map(t => getTimeLogsByTask(t._id))
+      );
+      const allLogs = [];
+      results.forEach((res, idx) => {
+        if (res.status === 'fulfilled' && res.value?.data) {
+          const list = Array.isArray(res.value.data) ? res.value.data : [];
+          list.forEach(l => {
+            allLogs.push({ ...l, task: projectTaskList[idx] });
+          });
+        }
+      });
+      allLogs.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+      setTimeLogs(allLogs);
+    } catch {
+      // Non-blocking
+    } finally {
+      setTimeLogsLoading(false);
+    }
+  }, []);
+
+  const openLogTimeModal = (task = null, existingLog = null) => {
+    if (existingLog) {
+      setEditingTimeLogId(existingLog._id);
+      setTimeLogForm({
+        taskId: getId(existingLog.taskId) || getId(task) || '',
+        date: toDateInput(existingLog.date) || new Date().toISOString().slice(0, 10),
+        startTime: existingLog.startTime || '09:00',
+        endTime: existingLog.endTime || '11:00',
+        durationMinutes: existingLog.durationMinutes || 60,
+        description: existingLog.description || '',
+      });
+    } else {
+      setEditingTimeLogId(null);
+      setTimeLogForm({
+        taskId: getId(task) || (tasks.length > 0 ? getId(tasks[0]) : ''),
+        date: new Date().toISOString().slice(0, 10),
+        startTime: '09:00',
+        endTime: '11:00',
+        durationMinutes: 120,
+        description: '',
+      });
+    }
+    setShowTimeLogModal(true);
+  };
+
+  const handleSaveTimeLog = async (e) => {
+    e.preventDefault();
+    if (!timeLogForm.taskId) {
+      showFeedback('warning', 'Please select a task.');
+      return;
+    }
+    setSubmittingTimeLog(true);
+    try {
+      if (editingTimeLogId) {
+        await updateTimeLog(editingTimeLogId, timeLogForm);
+        showFeedback('success', 'Time log updated successfully.');
+      } else {
+        await logTime(timeLogForm);
+        showFeedback('success', 'Time log saved successfully.');
+      }
+      setShowTimeLogModal(false);
+      setEditingTimeLogId(null);
+      if (tasks.length > 0) {
+        fetchTimeLogsForProject(tasks);
+      }
+    } catch (err) {
+      showFeedback('danger', err.message || 'Failed to save time log.');
+    } finally {
+      setSubmittingTimeLog(false);
+    }
+  };
+
   useEffect(() => {
     if (selectedProjectId) {
       fetchProjectDetails(selectedProjectId);
@@ -372,8 +472,15 @@ function ProjectManagement() {
       setSprints([]);
       setTasks([]);
       setProjectReports([]);
+      setTimeLogs([]);
     }
   }, [selectedProjectId, fetchProjectDetails, fetchSprints, fetchTasks, fetchProjectReports, isMobile]);
+
+  useEffect(() => {
+    if (activeTab === 'timetracking' && tasks.length > 0) {
+      fetchTimeLogsForProject(tasks);
+    }
+  }, [activeTab, tasks, fetchTimeLogsForProject]);
 
   // ============================================================
   // Project Handlers
@@ -1164,6 +1271,11 @@ function ProjectManagement() {
                             Reports
                           </Nav.Link>
                         </Nav.Item>
+                        <Nav.Item>
+                          <Nav.Link eventKey="timetracking" className="pm-nav-link">
+                            Timesheets
+                          </Nav.Link>
+                        </Nav.Item>
                       </Nav>
                     </div>
 
@@ -1388,6 +1500,9 @@ function ProjectManagement() {
                                       header: "Actions",
                                       render: (task) => (
                                         <div className="d-flex gap-1">
+                                          <Button size="sm" variant="light" className="pm-icon-btn p-1 text-primary" onClick={() => openLogTimeModal(task)} title="Log Time on Task">
+                                            <FaClock size={11} />
+                                          </Button>
                                           {canManageTasks && (
                                             <>
                                               <Button size="sm" variant="light" className="pm-icon-btn p-1" onClick={() => openEditTask(task)} title="Edit task">
@@ -1714,6 +1829,102 @@ function ProjectManagement() {
                           </div>
                         </div>
                       </Tab.Pane>
+
+                      {/* 5. TIMESHEETS / TIME TRACKING TAB */}
+                      <Tab.Pane eventKey="timetracking">
+                        <Card className="border-0 shadow-sm mb-3">
+                          <Card.Body className="p-3">
+                            <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                              <h6 className="fw-bold mb-0 text-uppercase small text-muted">Task Timesheets & Time Tracking</h6>
+                              <Button
+                                size="sm"
+                                variant="outline-primary"
+                                className="pm-outline-btn d-flex align-items-center gap-1 rounded-pill"
+                                onClick={() => openLogTimeModal()}
+                              >
+                                <FaPlus size={12} /> Log Time
+                              </Button>
+                            </div>
+
+                            {timeLogsLoading && (
+                              <div className="d-flex justify-content-center py-3">
+                                <LoadingSpinner size="sm" className="pm-spinner" />
+                              </div>
+                            )}
+
+                            {!timeLogsLoading && timeLogs.length === 0 && (
+                              <p className="text-muted small mb-0">No time logs recorded for tasks in this project yet. Click &quot;Log Time&quot; to record hours.</p>
+                            )}
+
+                            {!timeLogsLoading && timeLogs.length > 0 && (
+                              <div className="table-responsive">
+                                <DataTable
+                                  hover
+                                  className="align-middle mb-0"
+                                  headerRowClassName="text-muted small text-uppercase"
+                                  rows={timeLogs}
+                                  columns={[
+                                    {
+                                      key: "task",
+                                      header: "Task",
+                                      render: (log) => (
+                                        <div>
+                                          <div className="fw-bold small">{log.task?.taskName || log.taskId?.taskName || 'Project Task'}</div>
+                                          <small className="text-muted">{log.description || 'No description'}</small>
+                                        </div>
+                                      ),
+                                    },
+                                    {
+                                      key: "user",
+                                      header: "Logged By",
+                                      cellClassName: "small",
+                                      render: (log) => (
+                                        log.userId ? getDisplayName(log.userId) : (user ? getDisplayName(user) : 'Employee')
+                                      ),
+                                    },
+                                    {
+                                      key: "date",
+                                      header: "Date",
+                                      cellClassName: "small",
+                                      render: (log) => formatDate(log.date),
+                                    },
+                                    {
+                                      key: "time",
+                                      header: "Time / Duration",
+                                      cellClassName: "small",
+                                      render: (log) => (
+                                        <div>
+                                          <Badge bg="info" className="text-dark">
+                                            {log.durationMinutes ? `${Math.floor(log.durationMinutes / 60)}h ${log.durationMinutes % 60}m` : '—'}
+                                          </Badge>
+                                          {log.startTime && log.endTime && (
+                                            <span className="ms-2 text-muted micro-text">{log.startTime} - {log.endTime}</span>
+                                          )}
+                                        </div>
+                                      ),
+                                    },
+                                    {
+                                      key: "actions",
+                                      header: "Actions",
+                                      render: (log) => (
+                                        <Button
+                                          size="sm"
+                                          variant="light"
+                                          className="pm-icon-btn p-1"
+                                          onClick={() => openLogTimeModal(log.task || log.taskId, log)}
+                                          title="Edit Time Log"
+                                        >
+                                          <FaEdit size={12} />
+                                        </Button>
+                                      ),
+                                    },
+                                  ]}
+                                />
+                              </div>
+                            )}
+                          </Card.Body>
+                        </Card>
+                      </Tab.Pane>
                     </Tab.Content>
                   </Tab.Container>
                 </>
@@ -1904,22 +2115,33 @@ function ProjectManagement() {
                                 </Form.Select>
                               </td>
                               <td>
-                                {task.status !== 'Completed' ? (
+                                <div className="d-flex align-items-center gap-1">
                                   <Button
                                     size="sm"
-                                    variant="outline-success"
-                                    className="rounded-pill py-0 px-2 micro-text fw-bold d-flex align-items-center gap-1"
-                                    onClick={() => {
-                                      setTaskToComplete(task);
-                                      setCompletionNote('');
-                                      setShowCompletionModal(true);
-                                    }}
+                                    variant="light"
+                                    className="pm-icon-btn p-1 text-primary"
+                                    onClick={() => openLogTimeModal(task)}
+                                    title="Log Time on Task"
                                   >
-                                    <FaCheckCircle size={10} /> Complete
+                                    <FaClock size={11} />
                                   </Button>
-                                ) : (
-                                  <Badge bg="success" className="rounded-pill micro-text">Done</Badge>
-                                )}
+                                  {task.status !== 'Completed' ? (
+                                    <Button
+                                      size="sm"
+                                      variant="outline-success"
+                                      className="rounded-pill py-0 px-2 micro-text fw-bold d-flex align-items-center gap-1"
+                                      onClick={() => {
+                                        setTaskToComplete(task);
+                                        setCompletionNote('');
+                                        setShowCompletionModal(true);
+                                      }}
+                                    >
+                                      <FaCheckCircle size={10} /> Complete
+                                    </Button>
+                                  ) : (
+                                    <Badge bg="success" className="rounded-pill micro-text">Done</Badge>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           );
@@ -2329,6 +2551,98 @@ function ProjectManagement() {
             </Button>
           )}
         </Modal.Footer>
+      </Modal>
+
+      {/* Time Log Modal */}
+      <Modal show={showTimeLogModal} onHide={() => setShowTimeLogModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>{editingTimeLogId ? 'Edit Time Log' : 'Log Time on Task'}</Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleSaveTimeLog}>
+          <Modal.Body>
+            <Form.Group className="mb-3">
+              <Form.Label>Task <span className="text-danger">*</span></Form.Label>
+              <Form.Select
+                required
+                value={timeLogForm.taskId}
+                onChange={(e) => setTimeLogForm({ ...timeLogForm, taskId: e.target.value })}
+              >
+                <option value="">Select a task...</option>
+                {tasks.map((t) => (
+                  <option key={t._id} value={t._id}>{t.taskName}</option>
+                ))}
+                {myTasks.filter(mt => !tasks.some(t => t._id === mt._id)).map((mt) => (
+                  <option key={mt._id} value={mt._id}>{mt.taskName} ({mt.projectId?.projectName || 'Project'})</option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Date <span className="text-danger">*</span></Form.Label>
+                  <Form.Control
+                    type="date"
+                    required
+                    value={timeLogForm.date}
+                    onChange={(e) => setTimeLogForm({ ...timeLogForm, date: e.target.value })}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Duration (Minutes)</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="1"
+                    value={timeLogForm.durationMinutes}
+                    onChange={(e) => setTimeLogForm({ ...timeLogForm, durationMinutes: Number(e.target.value) })}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Start Time</Form.Label>
+                  <Form.Control
+                    type="time"
+                    value={timeLogForm.startTime}
+                    onChange={(e) => setTimeLogForm({ ...timeLogForm, startTime: e.target.value })}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>End Time</Form.Label>
+                  <Form.Control
+                    type="time"
+                    value={timeLogForm.endTime}
+                    onChange={(e) => setTimeLogForm({ ...timeLogForm, endTime: e.target.value })}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            <Form.Group className="mb-3">
+              <Form.Label>Work Description <span className="text-danger">*</span></Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                required
+                placeholder="What did you work on during this time?"
+                value={timeLogForm.description}
+                onChange={(e) => setTimeLogForm({ ...timeLogForm, description: e.target.value })}
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="outline-secondary" onClick={() => setShowTimeLogModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" disabled={submittingTimeLog}>
+              {submittingTimeLog ? 'Saving...' : (editingTimeLogId ? 'Update Log' : 'Save Time Log')}
+            </Button>
+          </Modal.Footer>
+        </Form>
       </Modal>
 
     </Container>

@@ -1,0 +1,51 @@
+/* Reimbursement Management CSS */
+.reimbursement-page {
+  padding: 1.5rem;
+  background-color: var(--color-background, #F7F5F0);
+  min-height: calc(100vh - 70px);
+}
+
+.reimbursement-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.reimbursement-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text, #1C1D1D);
+  margin: 0;
+}
+
+.reimbursement-subtitle {
+  font-size: 0.875rem;
+  color: var(--color-secondary-text, #77736B);
+  margin-top: 0.25rem;
+}
+
+.reimbursement-card {
+  background: var(--color-surface, #FFFFFF);
+  border: 1px solid var(--color-border, #E5E0D7);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.reimbursement-amount {
+  font-weight: 700;
+  color: var(--color-text, #1C1D1D);
+}
+
+.reimbursement-category-badge {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(199, 157, 88, 0.12);
+  color: var(--color-primary-dark, #A98245);
+  font-weight: 600;
+}

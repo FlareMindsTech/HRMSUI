@@ -16,6 +16,11 @@ import {
   MdDevices,
   MdChevronRight,
   MdCorporateFare,
+  MdPayments,
+  MdAccountTree,
+  MdSecurity,
+  MdHistoryEdu,
+  MdDns,
 } from 'react-icons/md';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectAuthUser, selectIsSystemAdmin, useHasMenu, logout } from '../../redux/slices/authSlice';
@@ -36,12 +41,17 @@ const menuItems = [
     ],
   },
   { name: 'Leave Request', path: '/leave', menuCode: 'LEAVE_MGMT', icon: MdEventNote, section: 'main' },
+  { name: 'Reimbursements', path: '/reimbursement', menuCode: 'LEAVE_MGMT', icon: MdPayments, section: 'main' },
   { name: 'HR Onboarding', path: '/onboarding', menuCode: 'USER_MANAGEMENT', icon: MdPersonAdd, section: 'manage' },
+  { name: 'Lifecycle & Separation', path: '/lifecycle', menuCode: 'USER_MANAGEMENT', icon: MdHistoryEdu, section: 'manage' },
   { name: 'Role Management', path: '/roles', menuCode: 'ROLE_MANAGEMENT', icon: MdAdminPanelSettings, section: 'manage' },
+  { name: 'Approval Workflows', path: '/approval-workflows', menuCode: 'ROLE_MANAGEMENT', icon: MdAccountTree, section: 'manage' },
   { name: 'Assets', path: '/assets', menuCode: 'ASSETS', icon: MdDevices, section: 'manage' },
+  { name: 'Audit Logs', path: '/audit-logs', menuCode: 'ROLE_MANAGEMENT', icon: MdSecurity, section: 'manage' },
   { name: 'Payslip', path: '/payslip', menuCode: 'PAYSLIP', icon: MdReceipt, section: 'manage' },
   { name: 'EPFO', path: '/epfo', menuCode: 'EPFO', icon: MdAccountBalance, section: 'manage' },
   { name: 'MIS', path: '/mis', menuCode: 'MIS', icon: MdAssessment, section: 'manage' },
+  { name: 'Platform Admin', path: '/platform', menuCode: 'PLATFORM_DASHBOARD', icon: MdDns, section: 'manage', isPlatformOnly: true },
 ];
 
 function Sidebar({ isExpanded = false }) {
@@ -61,6 +71,10 @@ function Sidebar({ isExpanded = false }) {
   };
 
   const isVisible = (item) => {
+    if (item.isPlatformOnly) {
+      const roleCode = (user?.roleCode || user?.role?.roleCode || '').toUpperCase();
+      return roleCode === 'SAAS_SUPER_ADMIN' || (user?.scope === 'PLATFORM' && !user?.organizationId);
+    }
     if (item.menuCode === 'DASHBOARD') return true;
     if (isSystemAdmin) return true;
     return hasMenu(item.menuCode);

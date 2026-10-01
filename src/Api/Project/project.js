@@ -188,8 +188,30 @@ export const addDailyReportCommentApi = async (reportId, commentText) => {
   });
 };
 
+// Time Tracking / Timesheet
+export const logTaskTimeApi = async (payload) => {
+  return await apiFetch('/time-tracking/log', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const getTaskTimeLogsApi = async (taskId) => {
+  return await apiFetch(`/time-tracking/task/${taskId}`);
+};
+
+export const getUserTimeLogsApi = async (userId, params = {}) => {
+  return await apiFetch(`/time-tracking/user/${userId}`);
+};
+
+export const updateTimeLogApi = async (id, payload) => {
+  return await apiFetch(`/time-tracking/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+};
+
 const projectApi = {
-  //project CRUD
   getAllProjects: getAllProjectsApi,
   getMyProjects: getMyProjectsApi,
   getEligiblePMs: getEligiblePMsApi,
@@ -228,6 +250,11 @@ const projectApi = {
   getProjectDailyReports: getProjectDailyReportsApi,
   submitDailyReport: submitDailyReportApi,
   addDailyReportComment: addDailyReportCommentApi,
+  //time tracking
+  logTaskTime: logTaskTimeApi,
+  getTaskTimeLogs: getTaskTimeLogsApi,
+  getUserTimeLogs: getUserTimeLogsApi,
+  updateTimeLog: updateTimeLogApi,
 };
 
 export default projectApi;

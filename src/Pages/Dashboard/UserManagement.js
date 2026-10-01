@@ -46,6 +46,13 @@ import {
   updateAccountStatus,
   resetAccountCredentials,
 } from "../../services/rbacService";
+import {
+  getAllPasswordResetRules,
+  createOrUpdatePasswordResetRule,
+  deletePasswordResetRule,
+  getPendingPasswordResetApprovals,
+  approveOrRejectPasswordReset,
+} from "../../services/passwordResetService";
 import { fetchUserAccess, updateUserAccess } from "../../services/accessService";
 import {
   fetchOnboardings,
@@ -125,6 +132,108 @@ function UserManagement({ initialTab = "users" }) {
     selectedMenuIds: [],
     selectedPermissionCodes: [],
   });
+
+  // ── Password Reset Rules & Approvals State ──
+  const [resetRules, setResetRules] = useState([]);
+  const [resetApprovals, setResetApprovals] = useState([]);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [showRuleModal, setShowRuleModal] = useState(false);
+  const [editingRule, setEditingRule] = useState(null);
+  const [ruleForm, setRuleForm] = useState({
+    requesterRole: '',
+    approverRole: '',
+    approvalRequired: true,
+    isActive: true,
+  });
+  const [ruleSubmitting, setRuleSubmitting] = useState(false);
+  const [approvedTokenInfo, setApprovedTokenInfo] = useState(null);
+  const [showTokenModal, setShowTokenModal] = useState(false);
+
+  const loadPasswordResetData = useCallback(async () => {
+    if (!isSystemAdmin) return;
+    setResetLoading(true);
+    try {
+      const [rulesRes, approvalsRes] = await Promise.allSettled([
+        getAllPasswordResetRules(),
+        getPendingPasswordResetApprovals(),
+      ]);
+      if (rulesRes.status === 'fulfilled') {
+        const rList = Array.isArray(rulesRes.value?.data) ? rulesRes.value.data : (Array.isArray(rulesRes.value) ? rulesRes.value : []);
+        setResetRules(rList);
+      }
+      if (approvalsRes.status === 'fulfilled') {
+        const aList = Array.isArray(approvalsRes.value?.data) ? approvalsRes.value.data : (Array.isArray(approvalsRes.value) ? approvalsRes.value : []);
+        setResetApprovals(aList);
+      }
+    } catch {
+      // Non-blocking
+    } finally {
+      setResetLoading(false);
+    }
+  }, [isSystemAdmin]);
+
+  useEffect(() => {
+    if (activeTab === "security") {
+      loadPasswordResetData();
+    }
+  }, [activeTab, loadPasswordResetData]);
+
+  const handleApproveReset = async (requestId) => {
+    try {
+      const res = await approveOrRejectPasswordReset(requestId, 'approve');
+      setSuccessMessage("Password reset request approved successfully.");
+      if (res?.resetToken) {
+        setApprovedTokenInfo({ token: res.resetToken, requestId });
+        setShowTokenModal(true);
+      }
+      loadPasswordResetData();
+    } catch (err) {
+      setErrorMessage(err.message || "Failed to approve password reset request.");
+    }
+  };
+
+  const handleRejectReset = async (requestId) => {
+    const reason = window.prompt("Enter rejection reason (optional):");
+    if (reason === null) return;
+    try {
+      await approveOrRejectPasswordReset(requestId, 'reject', reason);
+      setSuccessMessage("Password reset request rejected.");
+      loadPasswordResetData();
+    } catch (err) {
+      setErrorMessage(err.message || "Failed to reject password reset request.");
+    }
+  };
+
+  const handleSaveRule = async (e) => {
+    e.preventDefault();
+    if (!ruleForm.requesterRole) {
+      setErrorMessage("Requester role is required.");
+      return;
+    }
+    setRuleSubmitting(true);
+    try {
+      await createOrUpdatePasswordResetRule(ruleForm);
+      setSuccessMessage("Password reset rule configured successfully.");
+      setShowRuleModal(false);
+      setEditingRule(null);
+      loadPasswordResetData();
+    } catch (err) {
+      setErrorMessage(err.message || "Failed to save password reset rule.");
+    } finally {
+      setRuleSubmitting(false);
+    }
+  };
+
+  const handleDeleteRule = async (ruleId) => {
+    if (!window.confirm("Are you sure you want to delete this password reset rule?")) return;
+    try {
+      await deletePasswordResetRule(ruleId);
+      setSuccessMessage("Password reset rule deleted successfully.");
+      loadPasswordResetData();
+    } catch (err) {
+      setErrorMessage(err.message || "Failed to delete password reset rule.");
+    }
+  };
 
   // ── Account Provisioning Modal State ──
   const [showProvisionModal, setShowProvisionModal] = useState(false);
@@ -809,14 +918,26 @@ function UserManagement({ initialTab = "users" }) {
           </button>
 
           {isSystemAdmin && (
-            <button
-              type="button"
-              className={`user-mgmt-nav-tab ${activeTab === "roles" ? "active" : ""}`}
-              onClick={() => setActiveTab("roles")}
-            >
-              <FaShieldAlt className="me-1.5" /> Roles & Permissions Architecture
-              <span className="user-mgmt-tab-count ms-2">({roles.length})</span>
-            </button>
+            <>
+              <button
+                type="button"
+                className={`user-mgmt-nav-tab ${activeTab === "roles" ? "active" : ""}`}
+                onClick={() => setActiveTab("roles")}
+              >
+                <FaShieldAlt className="me-1.5" /> Roles & Permissions Architecture
+                <span className="user-mgmt-tab-count ms-2">({roles.length})</span>
+              </button>
+              <button
+                type="button"
+                className={`user-mgmt-nav-tab ${activeTab === "security" ? "active" : ""}`}
+                onClick={() => setActiveTab("security")}
+              >
+                <FaKey className="me-1.5" /> Password Reset Governance
+                {resetApprovals.length > 0 && (
+                  <span className="badge bg-warning text-dark ms-2">{resetApprovals.length}</span>
+                )}
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -1281,6 +1402,224 @@ function UserManagement({ initialTab = "users" }) {
           {/* Pagination */}
           {!loading && filteredRoles.length > 0 && renderRolePagination()}
         </Card>
+      )}
+
+      {/* ── Section 3: Password Reset Rules & Approvals (Admin Only) ── */}
+      {isSystemAdmin && activeTab === "security" && (
+        <>
+          {/* Card 1: Pending Password Reset Approval Requests */}
+          <Card className="user-mgmt-table-card border-0 shadow-sm overflow-hidden mb-4">
+            <div className="user-mgmt-filter-header d-flex justify-content-between align-items-center">
+              <div>
+                <h6 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                  <FaKey className="text-warning" /> Pending Password Reset Approvals
+                </h6>
+                <span className="extra-small text-muted">
+                  Authorize password reset tokens requested by employees based on role hierarchy
+                </span>
+              </div>
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                className="rounded-pill d-flex align-items-center gap-1.5"
+                onClick={loadPasswordResetData}
+                disabled={resetLoading}
+              >
+                Refresh
+              </Button>
+            </div>
+
+            <div className="table-responsive">
+              {resetLoading ? (
+                <div className="py-4 text-center">
+                  <LoadingSpinner variant="table" />
+                </div>
+              ) : resetApprovals.length === 0 ? (
+                <div className="text-center py-4 text-muted small">
+                  No pending password reset requests at this time.
+                </div>
+              ) : (
+                <Table hover className="user-mgmt-table align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th className="ps-3 ps-md-4">Requester Employee</th>
+                      <th>Requester Role</th>
+                      <th>Configured Approver Role</th>
+                      <th>Requested Date</th>
+                      <th>Status</th>
+                      <th className="text-end pe-3 pe-md-4">Decision</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resetApprovals.map((req) => (
+                      <tr key={req._id}>
+                        <td className="ps-3 ps-md-4">
+                          <div className="fw-bold text-dark">
+                            {req.userId?.firstName} {req.userId?.lastName}
+                          </div>
+                          <div className="extra-small text-muted">{req.userId?.email}</div>
+                        </td>
+                        <td>
+                          <Badge bg="light" text="dark" className="border">
+                            {req.requesterRole?.roleName || 'Employee'}
+                          </Badge>
+                        </td>
+                        <td>
+                          <span className="small text-muted">
+                            {req.approverRole?.roleName || 'Direct Admin'}
+                          </span>
+                        </td>
+                        <td className="small text-muted">
+                          {req.createdAt ? new Date(req.createdAt).toLocaleString() : '—'}
+                        </td>
+                        <td>
+                          <Badge bg="warning" text="dark">
+                            {req.status}
+                          </Badge>
+                        </td>
+                        <td className="text-end pe-3 pe-md-4">
+                          <div className="d-inline-flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="success"
+                              className="rounded-pill px-2.5 py-1 micro-text"
+                              onClick={() => handleApproveReset(req._id)}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline-danger"
+                              className="rounded-pill px-2.5 py-1 micro-text"
+                              onClick={() => handleRejectReset(req._id)}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              )}
+            </div>
+          </Card>
+
+          {/* Card 2: Password Reset Rules Configuration */}
+          <Card className="user-mgmt-table-card border-0 shadow-sm overflow-hidden mb-4">
+            <div className="user-mgmt-filter-header d-flex justify-content-between align-items-center">
+              <div>
+                <h6 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                  <FaShieldAlt className="text-primary" /> Role-Based Password Reset Rules
+                </h6>
+                <span className="extra-small text-muted">
+                  Define which higher authority role must approve password reset requests for each role tier
+                </span>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                className="rounded-pill d-flex align-items-center gap-1.5"
+                onClick={() => {
+                  setEditingRule(null);
+                  setRuleForm({
+                    requesterRole: '',
+                    approverRole: '',
+                    approvalRequired: true,
+                    isActive: true,
+                  });
+                  setShowRuleModal(true);
+                }}
+              >
+                <FaPlus size={11} /> Configure Rule
+              </Button>
+            </div>
+
+            <div className="table-responsive">
+              {resetLoading ? (
+                <div className="py-4 text-center">
+                  <LoadingSpinner variant="table" />
+                </div>
+              ) : resetRules.length === 0 ? (
+                <div className="text-center py-4 text-muted small">
+                  No custom reset rules configured. Click &quot;Configure Rule&quot; to define role hierarchy.
+                </div>
+              ) : (
+                <Table hover className="user-mgmt-table align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th className="ps-3 ps-md-4">Requester Role</th>
+                      <th>Requires Approval</th>
+                      <th>Designated Approver Role</th>
+                      <th>Status</th>
+                      <th className="text-end pe-3 pe-md-4">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resetRules.map((rule) => (
+                      <tr key={rule._id}>
+                        <td className="ps-3 ps-md-4">
+                          <div className="fw-bold text-dark">{rule.requesterRole?.roleName}</div>
+                          <span className="extra-small text-muted">Priority Level {rule.requesterRole?.priority}</span>
+                        </td>
+                        <td>
+                          <Badge bg={rule.approvalRequired ? "info" : "secondary"}>
+                            {rule.approvalRequired ? "Approval Required" : "Direct Reset"}
+                          </Badge>
+                        </td>
+                        <td>
+                          {rule.approvalRequired ? (
+                            <div>
+                              <span className="fw-semibold text-dark">{rule.approverRole?.roleName}</span>
+                              <span className="extra-small text-muted d-block">Level {rule.approverRole?.priority} (Higher Authority)</span>
+                            </div>
+                          ) : (
+                            <span className="text-muted small">None (Self-Service)</span>
+                          )}
+                        </td>
+                        <td>
+                          <Badge bg={rule.isActive ? "success" : "secondary"}>
+                            {rule.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </td>
+                        <td className="text-end pe-3 pe-md-4">
+                          <div className="d-inline-flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline-primary"
+                              className="rounded-pill px-2.5 py-1 micro-text"
+                              onClick={() => {
+                                setEditingRule(rule);
+                                setRuleForm({
+                                  requesterRole: rule.requesterRole?._id || rule.requesterRole,
+                                  approverRole: rule.approverRole?._id || rule.approverRole || '',
+                                  approvalRequired: rule.approvalRequired !== undefined ? rule.approvalRequired : true,
+                                  isActive: rule.isActive !== undefined ? rule.isActive : true,
+                                });
+                                setShowRuleModal(true);
+                              }}
+                            >
+                              <FaEdit size={11} /> Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline-danger"
+                              className="rounded-pill p-1.5"
+                              onClick={() => handleDeleteRule(rule._id)}
+                              title="Delete Rule"
+                            >
+                              <FaTrash size={11} />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              )}
+            </div>
+          </Card>
+        </>
       )}
 
       {/* ========================================================
@@ -1752,6 +2091,129 @@ function UserManagement({ initialTab = "users" }) {
             </Form>
           )}
         </Modal.Body>
+      </Modal>
+
+      {/* ── Configure Password Reset Rule Modal ── */}
+      <Modal show={showRuleModal} onHide={() => setShowRuleModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title className="h6 fw-bold">
+            {editingRule ? "Edit Password Reset Rule" : "Configure Password Reset Rule"}
+          </Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleSaveRule}>
+          <Modal.Body className="p-4">
+            <Form.Group className="mb-3">
+              <Form.Label className="small fw-bold">Requester Role <span className="text-danger">*</span></Form.Label>
+              <Form.Select
+                required
+                value={ruleForm.requesterRole}
+                onChange={(e) => setRuleForm({ ...ruleForm, requesterRole: e.target.value })}
+              >
+                <option value="">-- Select Target Role --</option>
+                {roles.map((r) => (
+                  <option key={r._id} value={r._id}>
+                    {r.roleName} (Level {r.priority})
+                  </option>
+                ))}
+              </Form.Select>
+              <Form.Text className="extra-small text-muted">
+                The role of users submitting password reset requests.
+              </Form.Text>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Check
+                type="checkbox"
+                id="ruleApprovalRequired"
+                label="Require Higher Authority Approval Before Reset"
+                checked={ruleForm.approvalRequired}
+                onChange={(e) => setRuleForm({ ...ruleForm, approvalRequired: e.target.checked })}
+              />
+            </Form.Group>
+
+            {ruleForm.approvalRequired && (
+              <Form.Group className="mb-3">
+                <Form.Label className="small fw-bold">Designated Approver Role <span className="text-danger">*</span></Form.Label>
+                <Form.Select
+                  required={ruleForm.approvalRequired}
+                  value={ruleForm.approverRole}
+                  onChange={(e) => setRuleForm({ ...ruleForm, approverRole: e.target.value })}
+                >
+                  <option value="">-- Select Approver Role --</option>
+                  {roles
+                    .filter((r) => {
+                      if (!ruleForm.requesterRole) return true;
+                      const reqRoleObj = roles.find((x) => x._id === ruleForm.requesterRole);
+                      return reqRoleObj ? r.priority < reqRoleObj.priority : true;
+                    })
+                    .map((r) => (
+                      <option key={r._id} value={r._id}>
+                        {r.roleName} (Level {r.priority} - Higher Authority)
+                      </option>
+                    ))}
+                </Form.Select>
+                <Form.Text className="extra-small text-muted">
+                  Must have higher authority (lower priority number) than the requester role.
+                </Form.Text>
+              </Form.Group>
+            )}
+
+            <Form.Group className="mb-2">
+              <Form.Check
+                type="checkbox"
+                id="ruleActiveCheck"
+                label="Rule Active"
+                checked={ruleForm.isActive}
+                onChange={(e) => setRuleForm({ ...ruleForm, isActive: e.target.checked })}
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="light" onClick={() => setShowRuleModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" disabled={ruleSubmitting}>
+              {ruleSubmitting ? "Saving..." : "Save Rule"}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* ── Approved Reset Token Display Modal ── */}
+      <Modal show={showTokenModal} onHide={() => setShowTokenModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title className="h6 fw-bold text-success d-flex align-items-center gap-2">
+            <FaCheckCircle /> Password Reset Approved
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4">
+          <p className="small text-muted mb-2">
+            The password reset request has been approved. Provide the one-time authorization reset token below to the employee:
+          </p>
+          <div className="bg-light p-3 rounded border text-break font-monospace small mb-3 select-all">
+            {approvedTokenInfo?.token}
+          </div>
+          <p className="extra-small text-muted mb-0">
+            This token will expire in 15 minutes. The employee can use this token to set a new password.
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="outline-primary"
+            size="sm"
+            onClick={() => {
+              if (approvedTokenInfo?.token) {
+                navigator.clipboard.writeText(approvedTokenInfo.token);
+                setSuccessMessage("Token copied to clipboard!");
+              }
+            }}
+          >
+            Copy Token
+          </Button>
+          <Button variant="success" size="sm" onClick={() => setShowTokenModal(false)}>
+            Done
+          </Button>
+        </Modal.Footer>
       </Modal>
 
       {/* ── Delete Role Confirmation ── */}

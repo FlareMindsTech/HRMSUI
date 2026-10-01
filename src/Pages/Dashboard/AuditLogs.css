@@ -1,0 +1,47 @@
+/* Audit Logs CSS */
+.audit-logs-page {
+  padding: 1.5rem;
+  background-color: var(--color-background, #F7F5F0);
+  min-height: calc(100vh - 70px);
+}
+
+.audit-logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.audit-logs-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text, #1C1D1D);
+  margin: 0;
+}
+
+.audit-logs-subtitle {
+  font-size: 0.875rem;
+  color: var(--color-secondary-text, #77736B);
+  margin-top: 0.25rem;
+}
+
+.audit-logs-card {
+  background: var(--color-surface, #FFFFFF);
+  border: 1px solid var(--color-border, #E5E0D7);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.audit-diff-pre {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 1rem;
+  border-radius: 8px;
+  max-height: 280px;
+  overflow: auto;
+  font-size: 0.8rem;
+}

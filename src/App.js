@@ -24,6 +24,11 @@ import Login from './view/Login';
 import ProjectManagement from './Pages/Dashboard/ProjectManagement';
 import AssetManagement from './Pages/Dashboard/AssetManagement';
 import InitialSetupPage from './Pages/Dashboard/InitialSetupPage';
+import LifecycleManagement from './Pages/Dashboard/LifecycleManagement';
+import ReimbursementManagement from './Pages/Dashboard/ReimbursementManagement';
+import ApprovalWorkflows from './Pages/Dashboard/ApprovalWorkflows';
+import AuditLogs from './Pages/Dashboard/AuditLogs';
+import PlatformAdmin from './Pages/Dashboard/PlatformAdmin';
 import { fetchSystemSetupStatus } from './services/organizationService';
 
 const isAuthError = (msg) =>
@@ -174,6 +179,17 @@ function App() {
               <Route path="/attendance" element={<Attendance />} />
               <Route path="/projects" element={<ProjectManagement />} />
               <Route path="/epfo" element={<Epfo />} />
+              <Route path="/lifecycle" element={<LifecycleManagement />} />
+              <Route path="/resignation" element={<LifecycleManagement />} />
+              <Route path="/offboarding" element={<LifecycleManagement />} />
+              <Route path="/reimbursement" element={<ReimbursementManagement />} />
+              <Route path="/reimbursements" element={<ReimbursementManagement />} />
+              <Route path="/approval-workflows" element={<ApprovalWorkflows />} />
+              <Route path="/approvals" element={<ApprovalWorkflows />} />
+              <Route path="/audit-logs" element={<AuditLogs />} />
+              <Route path="/audit" element={<AuditLogs />} />
+              <Route path="/platform" element={<PlatformAdmin />} />
+              <Route path="/platform/*" element={<PlatformAdmin />} />
             </Route>
           ) : (
             <Route

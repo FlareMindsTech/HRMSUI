@@ -7,13 +7,12 @@
 const isLocalhost =
   typeof window !== "undefined"
     ? window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1" ||
-      window.location.hostname.startsWith("192.168.")
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname.startsWith("192.168.")
     : process.env.NODE_ENV !== "production";
 
 export const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL ||
-  (isLocalhost ? "http://localhost:7800/api" : "https://api.hrms.flareminds.com/api");
+  process.env.REACT_APP_API_BASE_URL;
 
 // Token is stored under this key in localStorage after a real login.
 const TOKEN_KEY = "token";
@@ -151,8 +150,8 @@ export const apiFetch = async (path, options = {}, isRetry = false) => {
     const finalPath = (cleanBase.endsWith("/api") && cleanPath.startsWith("/api/"))
       ? cleanPath.substring(4)
       : (cleanBase.endsWith("/api") && cleanPath === "/api")
-      ? ""
-      : cleanPath;
+        ? ""
+        : cleanPath;
     const url = `${cleanBase}${finalPath}`;
 
     const res = await fetch(url, {

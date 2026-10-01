@@ -165,13 +165,10 @@ export const createCurrentCompanyApi = async (payload) => {
   let body = payload;
 
   if (payload instanceof FormData) {
-    // Mirror the previous transport: alternate routes are probed only when
-    // the request never reaches the server; an HTTP response surfaces
-    // immediately instead of probing the remaining routes.
     const endpoints = [
+      `/currentcompany/create`,
+      `/currentcompany`,
       `/current-company/create`,
-      `/currentCompany/create`,
-      `/current-company`,
     ];
     let lastError = null;
     for (const ep of endpoints) {
@@ -187,13 +184,13 @@ export const createCurrentCompanyApi = async (payload) => {
     throw lastError || new Error("Failed to create current company.");
   }
 
-  const res = await apiFetch("/current-company/create", {
+  const res = await apiFetch("/currentcompany/create", {
     method: "POST",
     body: JSON.stringify(payload),
-  }).catch(() => null) || await apiFetch("/currentCompany/create", {
+  }).catch(() => null) || await apiFetch("/currentcompany", {
     method: "POST",
     body: JSON.stringify(payload),
-  }).catch(() => null) || await apiFetch("/current-company", {
+  }).catch(() => null) || await apiFetch("/current-company/create", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -211,7 +208,8 @@ export const createCurrentCompanyApi = async (payload) => {
 export const fetchCurrentCompanyByUserId = async (userId) => {
   if (!userId) return null;
   try {
-    const res = await apiFetch(`/current-company/get/${userId}`, { method: "GET" }).catch(() => null);
+    const res = await apiFetch(`/currentcompany/user/${userId}`, { method: "GET" })
+      .catch(() => null) || await apiFetch(`/currentcompany/${userId}`, { method: "GET" }).catch(() => null);
     if (res && res.ok) {
       return res.data?.data || res.data?.currentCompany || res.data || null;
     }
@@ -510,8 +508,9 @@ export const updateCandidateCompensation = async (id, payload) => {
  */
 export const fetchCompensationByEmployeeId = async (employeeId) => {
   try {
-    const res = await apiFetch(`/compensation/employee/${employeeId}`, { method: "GET" });
-    if (res.ok) return res.data;
+    const res = await apiFetch(`/compensation/user/${employeeId}`, { method: "GET" })
+      .catch(() => null) || await apiFetch(`/compensation/get/${employeeId}`, { method: "GET" });
+    if (res && res.ok) return res.data;
   } catch (e) {
     console.warn("fetchCompensationByEmployeeId notice:", e.message);
   }
@@ -846,8 +845,8 @@ export const assignOnboardingAsset = async (id, assetData) => {
  * @param {string} [remarks] - Condition or return notes
  */
 export const unassignOnboardingAsset = async (id, assetId, remarks = "") => {
-  const res = await apiFetch(`/onboarding/${id}/assets/${assetId}/unassign`, {
-    method: "PUT",
+  const res = await apiFetch(`/onboarding/${id}/assets/${assetId}`, {
+    method: "DELETE",
     body: JSON.stringify({ remarks }),
   });
   if (!res.ok) {
