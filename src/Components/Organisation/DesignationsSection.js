@@ -74,7 +74,6 @@ function DesignationsSection({ lockedBranchId }) {
     branchId: lockedBranchId || "",
     departmentId: "",
     jobGradeId: "",
-    jobLevel: "",
     description: "",
     status: "ACTIVE",
   };
@@ -180,7 +179,6 @@ function DesignationsSection({ lockedBranchId }) {
       branchId: bId,
       departmentId: desig.departmentId?._id || desig.departmentId || "",
       jobGradeId: desig.jobGradeId?._id || desig.jobGradeId || "",
-      jobLevel: desig.jobLevel || "",
       description: desig.description || "",
       status: desig.status || "ACTIVE",
     });
@@ -201,7 +199,6 @@ function DesignationsSection({ lockedBranchId }) {
         branchId: formData.branchId || null,
         departmentId: formData.departmentId || null,
         jobGradeId: formData.jobGradeId || null,
-        jobLevel: formData.jobLevel ? formData.jobLevel.trim() : null,
         description: formData.description ? formData.description.trim() : "",
         status: formData.status,
       };
@@ -410,18 +407,6 @@ function DesignationsSection({ lockedBranchId }) {
                 ),
             },
             {
-              key: "level",
-              header: "Job Level",
-              render: (desig) =>
-                desig.jobLevel ? (
-                  <span className="badge bg-secondary-subtle text-secondary border">
-                    {desig.jobLevel}
-                  </span>
-                ) : (
-                  <span className="text-muted small">-</span>
-                ),
-            },
-            {
               key: "description",
               header: "Description",
               render: (desig) => (
@@ -481,7 +466,7 @@ function DesignationsSection({ lockedBranchId }) {
           loading={loading}
           loadingComponent={
             <tr>
-              <td colSpan={8} className="text-center py-5 text-muted">
+              <td colSpan={7} className="text-center py-5 text-muted">
                 <Spinner animation="border" size="sm" variant="success" className="me-2" />
                 Loading designations...
               </td>
@@ -490,7 +475,7 @@ function DesignationsSection({ lockedBranchId }) {
           emptyComponent={
             <EmptyState
               variant="table"
-              colSpan={8}
+              colSpan={7}
               className="text-center py-5 text-muted"
               bodyClassName="p-3"
               title="No designations found."
@@ -606,17 +591,6 @@ function DesignationsSection({ lockedBranchId }) {
                       </option>
                     ))}
                   </Form.Select>
-                </Form.Group>
-              </Col>
-
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Job Level / Rank</Form.Label>
-                  <Form.Control
-                    placeholder="e.g. L3, Senior, Principal"
-                    value={formData.jobLevel}
-                    onChange={(e) => setFormData({ ...formData, jobLevel: e.target.value })}
-                  />
                 </Form.Group>
               </Col>
 

@@ -10,9 +10,12 @@ const BankDetailsCard = ({
   saving,
   onPassbookChange,
   onPassbookPreview,
+  errors: externalErrors = {},
 }) => {
   const [showAccountNo, setShowAccountNo] = useState(false);
   const [errors, setErrors] = useState({});
+
+  const displayErrors = { ...errors, ...externalErrors };
 
   const validate = () => {
     const errs = {};
@@ -138,7 +141,7 @@ const BankDetailsCard = ({
                     placeholder="e.g. 50100234567890 (9 to 18 digits)"
                     maxLength={18}
                     value={data?.accountNo || ""}
-                    isInvalid={Boolean(errors.accountNo)}
+                    isInvalid={Boolean(displayErrors.accountNo)}
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, "");
                       onChange("accountNo", val);
@@ -146,7 +149,7 @@ const BankDetailsCard = ({
                     }}
                   />
                   <Form.Control.Feedback type="invalid" className="extra-small">
-                    {errors.accountNo}
+                    {displayErrors.accountNo}
                   </Form.Control.Feedback>
                   <Form.Text className="extra-small text-muted">
                     Digits only (9-18 characters)
@@ -164,7 +167,7 @@ const BankDetailsCard = ({
                     placeholder="e.g. HDFC0001234 (11 characters)"
                     maxLength={11}
                     value={data?.ifsc || ""}
-                    isInvalid={Boolean(errors.ifsc)}
+                    isInvalid={Boolean(displayErrors.ifsc)}
                     onChange={(e) => {
                       const val = e.target.value.toUpperCase();
                       onChange("ifsc", val);
@@ -172,7 +175,7 @@ const BankDetailsCard = ({
                     }}
                   />
                   <Form.Control.Feedback type="invalid" className="extra-small">
-                    {errors.ifsc}
+                    {displayErrors.ifsc}
                   </Form.Control.Feedback>
                   <Form.Text className="extra-small text-muted">
                     11 characters uppercase (e.g. HDFC0000123)

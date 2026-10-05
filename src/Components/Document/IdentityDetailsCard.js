@@ -8,11 +8,14 @@ const IdentityDetailsCard = ({
   onChange,
   onSave,
   saving,
+  errors: externalErrors = {},
 }) => {
   const [showAadhaar, setShowAadhaar] = useState(false);
   const [showPan, setShowPan] = useState(false);
   const [showPassport, setShowPassport] = useState(false);
   const [errors, setErrors] = useState({});
+
+  const displayErrors = { ...errors, ...externalErrors };
 
   const validate = () => {
     const errs = {};
@@ -120,7 +123,7 @@ const IdentityDetailsCard = ({
                     placeholder="e.g. 5432 1234 6789 (12 digits)"
                     maxLength={12}
                     value={data?.aadhaarNo || ""}
-                    isInvalid={Boolean(errors.aadhaarNo)}
+                    isInvalid={Boolean(displayErrors.aadhaarNo)}
                     onChange={(e) => {
                       const val = formatAadhaarInput(e.target.value);
                       onChange("aadhaarNo", val);
@@ -128,7 +131,7 @@ const IdentityDetailsCard = ({
                     }}
                   />
                   <Form.Control.Feedback type="invalid" className="extra-small">
-                    {errors.aadhaarNo}
+                    {displayErrors.aadhaarNo}
                   </Form.Control.Feedback>
                   <Form.Text className="extra-small text-muted">
                     Exact 12 digits (unique)
@@ -146,7 +149,7 @@ const IdentityDetailsCard = ({
                     placeholder="e.g. ABCDE1234F (10 characters)"
                     maxLength={10}
                     value={data?.panNo || ""}
-                    isInvalid={Boolean(errors.panNo)}
+                    isInvalid={Boolean(displayErrors.panNo)}
                     onChange={(e) => {
                       const val = e.target.value.toUpperCase();
                       onChange("panNo", val);
@@ -154,7 +157,7 @@ const IdentityDetailsCard = ({
                     }}
                   />
                   <Form.Control.Feedback type="invalid" className="extra-small">
-                    {errors.panNo}
+                    {displayErrors.panNo}
                   </Form.Control.Feedback>
                   <Form.Text className="extra-small text-muted">
                     5 Letters + 4 Digits + 1 Letter
@@ -172,7 +175,7 @@ const IdentityDetailsCard = ({
                     placeholder="e.g. A1234567 (8 characters)"
                     maxLength={8}
                     value={data?.passportNo || ""}
-                    isInvalid={Boolean(errors.passportNo)}
+                    isInvalid={Boolean(displayErrors.passportNo)}
                     onChange={(e) => {
                       const val = e.target.value.toUpperCase();
                       onChange("passportNo", val);
@@ -180,7 +183,7 @@ const IdentityDetailsCard = ({
                     }}
                   />
                   <Form.Control.Feedback type="invalid" className="extra-small">
-                    {errors.passportNo}
+                    {displayErrors.passportNo}
                   </Form.Control.Feedback>
                   <Form.Text className="extra-small text-muted">
                     1 Letter + 7 Digits

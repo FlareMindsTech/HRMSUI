@@ -878,6 +878,8 @@ export const fetchOnboardedEmployees = async (params = {}) => {
   // Normalize employee list
   return list.map((u) => {
     const primaryB = u.primaryBranchId?._id || u.primaryBranchId || u.branchId?._id || u.branchId || null;
+    const primaryBName = u.primaryBranchId?.branchName || u.branchId?.branchName || u.branch?.branchName || (typeof u.primaryBranchId === "string" ? "" : "") || "";
+    const primaryBCode = u.primaryBranchId?.branchCode || u.branchId?.branchCode || u.branch?.branchCode || "";
     const bIds = Array.isArray(u.branchIds)
       ? u.branchIds.map((b) => (typeof b === "object" && b !== null ? b._id || b.id : b)).filter(Boolean)
       : (primaryB ? [primaryB] : []);
@@ -893,10 +895,13 @@ export const fetchOnboardedEmployees = async (params = {}) => {
       fullName: name,
       email: u.email || "",
       phone: u.phone || u.phoneNumber || "",
-      employeeId: u.employeeId || u.empId || u.code || "",
+      employeeId: u.employeeCode || u.employeeId || u.empId || u.code || "",
+      employeeCode: u.employeeCode || u.employeeId || u.empId || u.code || "",
       designation: typeof u.designation === "object" && u.designation !== null ? u.designation.name || u.designation.title : (u.designation || u.jobTitle || "Staff"),
       department: typeof u.department === "object" && u.department !== null ? u.department.name || u.department.departmentName : (u.department || "General"),
       primaryBranchId: primaryB,
+      primaryBranchName: primaryBName,
+      primaryBranchCode: primaryBCode,
       branchIds: bIds,
       onboardingStatus: status,
       isOnboarded: status === "COMPLETED" || status === "APPROVED" || status === "ACTIVE" || u.isOnboarded === true || u.hasCompletedOnboarding === true,
@@ -918,14 +923,15 @@ export const assignEmployeesToBranch = async (branchId, userIds = [], makePrimar
 
   const results = await Promise.allSettled(
     userIds.map(async (uid) => {
-      // 1. Try dedicated access update endpoint
       const payload = {
         organizationId: orgId || undefined,
         accessLevel: "BRANCH",
-        primaryBranchId: makePrimary ? branchId : undefined,
+        primaryBranchId: branchId,
+        branchId: branchId,
         branchIds: [branchId],
       };
 
+      // 1. Try dedicated access update endpoint
       let res = await apiFetch(`/users/${uid}/access`, {
         method: "PUT",
         body: JSON.stringify(payload),
@@ -938,15 +944,14 @@ export const assignEmployeesToBranch = async (branchId, userIds = [], makePrimar
         });
       }
 
-      if (!res.ok) {
-        res = await apiFetch(`/user/${uid}`, {
-          method: "PUT",
-          body: JSON.stringify({
-            primaryBranchId: branchId,
-            branchId: branchId,
-          }),
-        });
-      }
+      // 2. Also direct user update for robust branch linkage
+      await apiFetch(`/user/${uid}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          primaryBranchId: branchId,
+          branchId: branchId,
+        }),
+      }).catch(() => null);
 
       return res.ok;
     })

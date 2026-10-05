@@ -195,7 +195,6 @@ import {
 } from '../../redux/slices/directorySlice';
 import { useBranch } from "../../context/BranchContext";
 import { API_BASE_URL } from "../../config/api";
-import BranchAccessSelector from "../../Components/Common/BranchAccessSelector";
 import "./HrOnboarding.css";
 
 /**
@@ -790,7 +789,33 @@ function HrOnboarding() {
   // Post-mutation refresh must bypass the fetchAuth TTL so role/permission
   // changes revalidate immediately.
   const refreshAuthContext = () => dispatch(fetchAuth({ force: true }));
-  const { organization, branches: contextBranches } = useBranch();
+  const { organization, branches: contextBranches, selectedBranchId, selectedBranchObj, primaryBranchId: contextPrimaryBranchId } = useBranch();
+
+  // Automatically resolve the creator's branch for newly onboarded candidates
+  const creatorBranch = useMemo(() => {
+    if (selectedBranchObj) return selectedBranchObj;
+    if (selectedBranchId && contextBranches?.length) {
+      const found = contextBranches.find((b) => String(b._id || b.id) === String(selectedBranchId));
+      if (found) return found;
+    }
+    const userPrimId = currentUser?.primaryBranchId?._id || currentUser?.primaryBranchId || currentUser?.branchId?._id || currentUser?.branchId;
+    if (userPrimId && contextBranches?.length) {
+      const found = contextBranches.find((b) => String(b._id || b.id) === String(userPrimId));
+      if (found) return found;
+    }
+    if (currentUser?.branch && typeof currentUser.branch === "object") {
+      return currentUser.branch;
+    }
+    if (currentUser?.primaryBranchId && typeof currentUser.primaryBranchId === "object") {
+      return currentUser.primaryBranchId;
+    }
+    if (contextBranches?.length === 1) {
+      return contextBranches[0];
+    }
+    return null;
+  }, [selectedBranchObj, selectedBranchId, contextBranches, currentUser]);
+
+  const creatorBranchId = creatorBranch?._id || creatorBranch?.id || currentUser?.primaryBranchId?._id || currentUser?.primaryBranchId || currentUser?.branchId?._id || currentUser?.branchId || selectedBranchId || contextPrimaryBranchId || null;
 
   // ── Top Level View: "pipeline" | "onboard" | "directory" (Restored from session) ──
   const [viewTab, setViewTab] = useState(() => {
@@ -1876,11 +1901,11 @@ function HrOnboarding() {
       }
 
       if (!formData.department?.trim()) {
-        errors.department = "Department is required. Please select from Organisation dropdown";
+        errors.department = "Department is required. Please select from dropdown";
       }
 
       if (!formData.designation?.trim()) {
-        errors.designation = "Designation is required. Please select from Organisation dropdown";
+        errors.designation = "Designation is required. Please select from dropdown";
       }
 
       if (!formData.joiningDate) {
@@ -1889,28 +1914,64 @@ function HrOnboarding() {
     }
 
     if (sectionId === "professional") {
-      if (Array.isArray(formData.professional)) {
-        formData.professional.forEach((prof, idx) => {
-          if (prof.companyWebsite && !/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/i.test(prof.companyWebsite.trim())) {
-            errors[`prof_website_${idx}`] = `Company #${idx + 1}: Please enter a valid website URL`;
-          }
-          if (prof.joiningDate && prof.expectedLastWorkingDate) {
-            if (new Date(prof.expectedLastWorkingDate) < new Date(prof.joiningDate)) {
-              errors[`prof_dates_${idx}`] = `Company #${idx + 1}: Expected last working date cannot precede joining date`;
+      const isCandidateFresher = Boolean(formData.isFresher || formData.professional?.some((p) => p.isFresher));
+      if (isCandidateFresher) {
+        if (!formData.joiningDate && !formData.professional?.[0]?.joiningDate) {
+          errors.joiningDate = "Joining Date is required";
+        }
+      } else {
+        if (Array.isArray(formData.professional) && formData.professional.length > 0) {
+          formData.professional.forEach((prof, idx) => {
+            if (!prof.isFresher) {
+              if (!prof.companyName?.trim()) {
+                errors[`prof_companyName_${idx}`] = `Company #${idx + 1}: Company Name is required`;
+              }
+              if (!prof.department?.trim() && !formData.department?.trim()) {
+                errors[`prof_department_${idx}`] = `Company #${idx + 1}: Department is required`;
+              }
+              if (!prof.designation?.trim() && !formData.designation?.trim()) {
+                errors[`prof_designation_${idx}`] = `Company #${idx + 1}: Designation is required`;
+              }
+              if (prof.salary === undefined || prof.salary === null || String(prof.salary).trim() === "") {
+                errors[`prof_salary_${idx}`] = `Company #${idx + 1}: Salary (CTC) is required`;
+              }
+              if (prof.companyWebsite && !/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/i.test(prof.companyWebsite.trim())) {
+                errors[`prof_website_${idx}`] = `Company #${idx + 1}: Please enter a valid website URL`;
+              }
+              if (prof.joiningDate && prof.expectedLastWorkingDate) {
+                if (new Date(prof.expectedLastWorkingDate) < new Date(prof.joiningDate)) {
+                  errors[`prof_dates_${idx}`] = `Company #${idx + 1}: Expected last working date cannot precede joining date`;
+                }
+              }
             }
-          }
-        });
+          });
+        }
       }
     }
 
     if (sectionId === "education") {
-      const currentYear = new Date().getFullYear();
-      if (formData.sslcYearOfPassing && (Number(formData.sslcYearOfPassing) < 1950 || Number(formData.sslcYearOfPassing) > currentYear + 1)) {
-        errors.sslcYearOfPassing = `SSLC passing year must be between 1950 and ${currentYear + 1}`;
+      // SSLC is mandatory in education
+      if (!formData.sslcSchoolName?.trim()) {
+        errors.sslcSchoolName = "SSLC School Name is required";
       }
-      if (formData.sslcPercentage && (Number(formData.sslcPercentage) < 0 || Number(formData.sslcPercentage) > 100)) {
+      if (!formData.sslcBoard?.trim()) {
+        errors.sslcBoard = "SSLC Board / Examination Authority is required";
+      }
+      if (!formData.sslcYearOfPassing) {
+        errors.sslcYearOfPassing = "SSLC Year of Passing is required";
+      } else {
+        const currentYear = new Date().getFullYear();
+        if (Number(formData.sslcYearOfPassing) < 1950 || Number(formData.sslcYearOfPassing) > currentYear + 1) {
+          errors.sslcYearOfPassing = `SSLC passing year must be between 1950 and ${currentYear + 1}`;
+        }
+      }
+      if (!formData.sslcPercentage && formData.sslcPercentage !== 0) {
+        errors.sslcPercentage = "SSLC Percentage is required";
+      } else if (Number(formData.sslcPercentage) < 0 || Number(formData.sslcPercentage) > 100) {
         errors.sslcPercentage = "SSLC Percentage must be between 0 and 100";
       }
+
+      const currentYear = new Date().getFullYear();
       if (formData.hscYearOfPassing && (Number(formData.hscYearOfPassing) < 1950 || Number(formData.hscYearOfPassing) > currentYear + 1)) {
         errors.hscYearOfPassing = `HSC passing year must be between 1950 and ${currentYear + 1}`;
       }
@@ -1934,8 +1995,17 @@ function HrOnboarding() {
     if (sectionId === "experience" && !formData.isFresher) {
       if (Array.isArray(formData.experience)) {
         formData.experience.forEach((exp, idx) => {
-          if (exp.startDate && exp.endDate) {
-            if (new Date(exp.endDate) < new Date(exp.startDate)) {
+          if (exp.companyName || exp.designation || exp.startDate) {
+            if (!exp.companyName?.trim()) {
+              errors[`exp_company_${idx}`] = `Experience #${idx + 1}: Company Name is required`;
+            }
+            if (!exp.designation?.trim()) {
+              errors[`exp_designation_${idx}`] = `Experience #${idx + 1}: Designation is required`;
+            }
+            if (!exp.startDate) {
+              errors[`exp_startDate_${idx}`] = `Experience #${idx + 1}: Start Date is required`;
+            }
+            if (exp.startDate && exp.endDate && new Date(exp.endDate) < new Date(exp.startDate)) {
               errors[`exp_dates_${idx}`] = `Experience #${idx + 1}: End date cannot be earlier than start date`;
             }
           }
@@ -1944,41 +2014,64 @@ function HrOnboarding() {
     }
 
     if (sectionId === "address") {
-      if (Array.isArray(formData.addresses)) {
+      if (!Array.isArray(formData.addresses) || formData.addresses.length === 0) {
+        errors.addresses = "At least one residential address is required";
+      } else {
         formData.addresses.forEach((addr, idx) => {
-          if (addr.pincode && !/^\d{4,10}$/.test(String(addr.pincode).replace(/\s/g, ""))) {
-            errors[`addr_pincode_${idx}`] = `${addr.addressType || "Address"} #${idx + 1}: PIN / Postal Code must be 4 to 10 digits`;
+          const hasAny = addr.addressLine1?.trim() || addr.city?.trim() || addr.state?.trim() || addr.pincode;
+          if (idx === 0 || hasAny) {
+            if (!addr.addressLine1?.trim() && !addr.address1?.trim()) {
+              errors[`addr_line1_${idx}`] = `Address #${idx + 1}: Address Line 1 is required`;
+            }
+            if (!addr.city?.trim()) {
+              errors[`addr_city_${idx}`] = `Address #${idx + 1}: City is required`;
+            }
+            if (!addr.state?.trim()) {
+              errors[`addr_state_${idx}`] = `Address #${idx + 1}: State is required`;
+            }
+            const pin = String(addr.pincode || "").replace(/\s/g, "");
+            if (!pin) {
+              errors[`addr_pincode_${idx}`] = `Address #${idx + 1}: PIN / Postal Code is required`;
+            } else if (!/^\d{4,10}$/.test(pin)) {
+              errors[`addr_pincode_${idx}`] = `Address #${idx + 1}: PIN / Postal Code must be 4 to 10 digits`;
+            }
           }
         });
-      }
-    }
-
-    if (sectionId === "access") {
-      if (formData.accessLevel === "BRANCH") {
-        if (!formData.primaryBranchId) {
-          errors.primaryBranchId = "Primary branch is required for branch-specific access";
-        }
-        if (!Array.isArray(formData.branchIds) || formData.branchIds.length === 0) {
-          errors.branchIds = "At least one branch must be selected for branch-specific access";
-        } else if (formData.primaryBranchId && !formData.branchIds.includes(formData.primaryBranchId)) {
-          errors.primaryBranchId = "Primary branch must be one of the selected branches in Branch Access";
-        }
       }
     }
 
     if (sectionId === "compensation") {
       const comp = formData.compensation || {};
       const cType = comp.compensationType || formData.compensationType || (formData.isUnpaid ? "UNPAID" : "SALARY");
-      if (cType === "SALARY" && comp.annualCtc) {
-        const ctcNum = parseFloat(String(comp.annualCtc).replace(/[^0-9.]/g, ""));
-        if (isNaN(ctcNum) || ctcNum < 0) {
-          errors.annualCtc = "Annual CTC must be a positive number";
+      if (cType === "SALARY") {
+        const ctc = comp.annualCtc !== undefined && comp.annualCtc !== "" ? comp.annualCtc : formData.salary || formData.compensationAmount;
+        if (!ctc) {
+          errors.annualCtc = "Annual CTC is required";
+        } else {
+          const ctcNum = parseFloat(String(ctc).replace(/[^0-9.]/g, ""));
+          if (isNaN(ctcNum) || ctcNum <= 0) {
+            errors.annualCtc = "Annual CTC must be a positive number";
+          }
         }
-      }
-      if (cType === "STIPEND" && comp.stipendAmount) {
-        const stipendNum = parseFloat(String(comp.stipendAmount).replace(/[^0-9.]/g, ""));
-        if (isNaN(stipendNum) || stipendNum < 0) {
-          errors.stipendAmount = "Stipend amount must be a positive number";
+      } else if (cType === "STIPEND") {
+        const stipend = comp.stipendAmount !== undefined && comp.stipendAmount !== "" ? comp.stipendAmount : formData.compensationAmount;
+        if (!stipend) {
+          errors.stipendAmount = "Stipend amount is required";
+        } else {
+          const stipendNum = parseFloat(String(stipend).replace(/[^0-9.]/g, ""));
+          if (isNaN(stipendNum) || stipendNum <= 0) {
+            errors.stipendAmount = "Stipend amount must be a positive number";
+          }
+        }
+      } else if (cType === "CONTRACT") {
+        const rate = comp.contractRate !== undefined && comp.contractRate !== "" ? comp.contractRate : formData.compensationAmount;
+        if (!rate) {
+          errors.contractRate = "Contract rate is required";
+        } else {
+          const rateNum = parseFloat(String(rate).replace(/[^0-9.]/g, ""));
+          if (isNaN(rateNum) || rateNum <= 0) {
+            errors.contractRate = "Contract rate must be a positive number";
+          }
         }
       }
     }
@@ -1991,23 +2084,36 @@ function HrOnboarding() {
         formData.compensation?.isUnpaid ||
         (Array.isArray(formData.professional) && formData.professional.some((p) => p.compensationType === "UNPAID" || p.isUnpaid))
       );
+      const pan = (formData.panNo || formData.statutoryDetails?.panNo || "").trim();
+      if (!pan) {
+        errors.panNo = "PAN Number is required";
+      } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(pan)) {
+        errors.panNo = "PAN must be 10 characters (e.g. ABCDE1234F: 5 letters, 4 numbers, 1 letter)";
+      }
+
+      const aadhaar = String(formData.aadhaarNo || formData.statutoryDetails?.aadhaarNo || "").replace(/[\s-]/g, "");
+      if (!aadhaar) {
+        errors.aadhaarNo = "Aadhaar Number is required";
+      } else if (!/^\d{12}$/.test(aadhaar)) {
+        errors.aadhaarNo = "Aadhaar number must be exactly 12 digits";
+      }
+
       if (!isUnpaidCandidate) {
-        if (formData.accountNo && !/^\d{6,22}$/.test(String(formData.accountNo).replace(/[\s-]/g, ""))) {
+        const accNo = String(formData.accountNo || formData.bankDetails?.accountNumber || "").replace(/[\s-]/g, "");
+        if (!accNo) {
+          errors.accountNo = "Bank Account Number is required";
+        } else if (!/^\d{6,22}$/.test(accNo)) {
           errors.accountNo = "Account number must be numeric (6 to 22 digits)";
         }
-        if (formData.ifsc && !/^[A-Z]{4}0[A-Z0-9]{6}$/i.test(String(formData.ifsc).trim())) {
+
+        const ifsc = String(formData.ifsc || formData.bankDetails?.ifscCode || "").trim();
+        if (!ifsc) {
+          errors.ifsc = "IFSC Code is required";
+        } else if (!/^[A-Z]{4}0[A-Z0-9]{6}$/i.test(ifsc)) {
           errors.ifsc = "IFSC code must be 11 characters (e.g. HDFC0001234)";
         }
       }
-      if (formData.panNo && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(String(formData.panNo).trim())) {
-        errors.panNo = "PAN must be 10 characters (e.g. ABCDE1234F: 5 letters, 4 numbers, 1 letter)";
-      }
-      if (formData.aadhaarNo) {
-        const cleanedAadhaar = String(formData.aadhaarNo).replace(/[\s-]/g, "");
-        if (!/^\d{12}$/.test(cleanedAadhaar)) {
-          errors.aadhaarNo = "Aadhaar number must be exactly 12 digits";
-        }
-      }
+
       if (formData.passportNo && !/^[A-Z0-9]{6,12}$/i.test(String(formData.passportNo).trim())) {
         errors.passportNo = "Passport Number must be 6 to 12 alphanumeric characters";
       }
@@ -2020,16 +2126,36 @@ function HrOnboarding() {
     }
 
     if (sectionId === "family") {
-      if (Array.isArray(formData.familyContacts)) {
-        formData.familyContacts.forEach((contact, idx) => {
-          if (contact.phone) {
-            const cleanPhone = contact.phone.replace(/[^\d+]/g, "");
-            if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+      if (!Array.isArray(formData.familyContacts) || formData.familyContacts.length === 0) {
+        errors.familyContacts = "At least one emergency contact is required";
+      } else {
+        const primary = formData.familyContacts[0] || {};
+        if (!primary.name?.trim()) {
+          errors.family_name_0 = "Primary Contact Name is required";
+        }
+        if (!primary.relationship?.trim()) {
+          errors.family_rel_0 = "Relationship is required";
+        }
+        const cleanPhone = String(primary.phone || "").replace(/[^\d+]/g, "");
+        if (!cleanPhone) {
+          errors.family_phone_0 = "Contact phone number is required";
+        } else if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+          errors.family_phone_0 = "Phone number must be 10 to 15 digits";
+        }
+
+        formData.familyContacts.slice(1).forEach((contact, i) => {
+          const idx = i + 1;
+          if (contact.name?.trim() || contact.phone?.trim()) {
+            if (!contact.name?.trim()) {
+              errors[`family_name_${idx}`] = `Contact #${idx + 1}: Name is required`;
+            }
+            const p = String(contact.phone || "").replace(/[^\d+]/g, "");
+            if (p && (p.length < 10 || p.length > 15)) {
               errors[`family_phone_${idx}`] = `Contact #${idx + 1}: Phone number must be 10 to 15 digits`;
             }
-          }
-          if (contact.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email.trim())) {
-            errors[`family_email_${idx}`] = `Contact #${idx + 1}: Please enter a valid email address`;
+            if (contact.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email.trim())) {
+              errors[`family_email_${idx}`] = `Contact #${idx + 1}: Please enter a valid email address`;
+            }
           }
         });
       }
@@ -2046,11 +2172,15 @@ function HrOnboarding() {
     const currentIdx = formTabs.findIndex((t) => t.id === activeFormTab);
     const targetIdx = formTabs.findIndex((t) => t.id === targetTabId);
     if (targetIdx > currentIdx) {
-      const { isValid, errors } = validateSection(activeFormTab);
-      if (!isValid) {
-        setFormErrors(errors);
-        setErrorMsg("Please complete all required fields correctly before moving forward.");
-        return;
+      for (let i = 0; i < targetIdx; i++) {
+        const tab = formTabs[i];
+        const { isValid, errors } = validateSection(tab.id);
+        if (!isValid) {
+          setFormErrors(errors);
+          setActiveFormTab(tab.id);
+          setErrorMsg("");
+          return;
+        }
       }
     }
     setErrorMsg("");
@@ -2062,7 +2192,7 @@ function HrOnboarding() {
     const { isValid, errors } = validateSection(activeFormTab);
     if (!isValid) {
       setFormErrors(errors);
-      setErrorMsg("Please complete all required fields correctly before moving to the next section.");
+      setErrorMsg("");
       return;
     }
     setErrorMsg("");
@@ -3806,11 +3936,16 @@ function HrOnboarding() {
     setErrorMsg("");
     setSuccessMsg("");
 
-    const { isValid, errors } = validateSection(activeFormTab);
-    if (!isValid) {
-      setFormErrors(errors);
-      setErrorMsg("Please correct the validation errors in this section before submitting.");
-      return;
+    // Validate all required form sections before final onboarding submission
+    for (const tab of formTabs) {
+      if (tab.id === "review") continue;
+      const { isValid, errors } = validateSection(tab.id);
+      if (!isValid) {
+        setFormErrors(errors);
+        setActiveFormTab(tab.id);
+        setErrorMsg(`Please complete all required fields in the "${tab.label}" section before submitting.`);
+        return;
+      }
     }
     setFormErrors({});
 
@@ -3997,9 +4132,10 @@ function HrOnboarding() {
         salary: isUnpaidCandidate ? "UNPAID" : candidateCompensationAmount,
         roleId: formData.roleId || defaultRole?._id,
         organizationId: formData.organizationId || organization?._id || organization?.id || undefined,
-        accessLevel: formData.accessLevel === "BRANCH" ? "BRANCH" : "ORGANIZATION",
-        primaryBranchId: formData.accessLevel === "BRANCH" ? (formData.primaryBranchId || null) : null,
-        branchIds: formData.accessLevel === "BRANCH" ? (Array.isArray(formData.branchIds) ? formData.branchIds : []) : [],
+        accessLevel: creatorBranchId ? "BRANCH" : (formData.accessLevel || "ORGANIZATION"),
+        primaryBranchId: creatorBranchId || formData.primaryBranchId || null,
+        branchId: creatorBranchId || formData.primaryBranchId || null,
+        branchIds: creatorBranchId ? [creatorBranchId] : (Array.isArray(formData.branchIds) ? formData.branchIds : []),
         isFresher: Boolean(isFresher),
         professional: normalizedProfessional,
         currentCompany: normalizedProfessional[0] || {},
@@ -4532,10 +4668,6 @@ function HrOnboarding() {
     address: Boolean(
       formData.addresses?.some((a) => a.addressLine1?.trim() || a.city?.trim() || a.state?.trim() || a.pincode?.trim())
     ),
-    access: Boolean(
-      formData.accessLevel === "ORGANIZATION" ||
-      (formData.accessLevel === "BRANCH" && formData.primaryBranchId && Array.isArray(formData.branchIds) && formData.branchIds.length > 0)
-    ),
     compensation: Boolean(
       formData.compensationType === "UNPAID" ||
       formData.isUnpaid ||
@@ -4826,7 +4958,6 @@ function HrOnboarding() {
     { id: "education", label: "Education & Certificates", icon: <FaGraduationCap /> },
     ...(!isFresher ? [{ id: "experience", label: "Experience & Payslips", icon: <FaBriefcase /> }] : []),
     { id: "address", label: "Address", icon: <FaHome /> },
-    { id: "access", label: "Access Configuration", icon: <FaCodeBranch /> },
     { id: "compensation", label: "Compensation", icon: <FaMoneyBillWave /> },
     { id: "documents", label: "Bank & Statutory", icon: <FaMoneyCheckAlt /> },
     { id: "family", label: "Family & Emergency", icon: <FaUsers /> },
@@ -6461,7 +6592,7 @@ function HrOnboarding() {
                       <SSLCSection
                         data={formData}
                         onChange={handleEduFieldChange}
-                        errors={{}}
+                        errors={formErrors}
                         file={formData.sslcDocumentFile}
                         docUrl={formData.sslcDocumentUrl || formData.sslcDocument}
                         onFileChange={(f) => handleEduFileChange("sslcDocument", f)}
@@ -6472,7 +6603,7 @@ function HrOnboarding() {
                       <HSCSection
                         data={formData}
                         onChange={handleEduFieldChange}
-                        errors={{}}
+                        errors={formErrors}
                         file={formData.hscDocumentFile}
                         docUrl={formData.hscDocumentUrl || formData.hscDocument}
                         onFileChange={(f) => handleEduFileChange("hscDocument", f)}
@@ -6483,7 +6614,7 @@ function HrOnboarding() {
                       <ITISection
                         data={formData}
                         onChange={handleEduFieldChange}
-                        errors={{}}
+                        errors={formErrors}
                         file={formData.itiDocumentFile}
                         docUrl={formData.itiDocumentUrl || formData.itiDocument}
                         onFileChange={(f) => handleEduFileChange("itiDocument", f)}
@@ -6497,7 +6628,7 @@ function HrOnboarding() {
                       <DiplomaSection
                         data={formData}
                         onChange={handleEduFieldChange}
-                        errors={{}}
+                        errors={formErrors}
                         file={formData.diplomaDocumentFile}
                         docUrl={formData.diplomaDocumentUrl || formData.diplomaDocument}
                         onFileChange={(f) => handleEduFileChange("diplomaDocument", f)}
@@ -6511,7 +6642,7 @@ function HrOnboarding() {
                       <UGSection
                         data={formData}
                         onChange={handleEduFieldChange}
-                        errors={{}}
+                        errors={formErrors}
                         file={formData.ugDocumentFile}
                         docUrl={formData.ugDocumentUrl || formData.ugDocument}
                         onFileChange={(f) => handleEduFileChange("ugDocument", f)}
@@ -6522,7 +6653,7 @@ function HrOnboarding() {
                       <PGSection
                         data={formData}
                         onChange={handleEduFieldChange}
-                        errors={{}}
+                        errors={formErrors}
                         file={formData.pgDocumentFile}
                         docUrl={formData.pgDocumentUrl || formData.pgDocument}
                         onFileChange={(f) => handleEduFileChange("pgDocument", f)}
@@ -6536,7 +6667,7 @@ function HrOnboarding() {
                       <PhDSection
                         data={formData}
                         onChange={handleEduFieldChange}
-                        errors={{}}
+                        errors={formErrors}
                         file={formData.phdDocumentFile}
                         docUrl={formData.phdDocumentUrl || formData.phdDocument}
                         onFileChange={(f) => handleEduFileChange("phdDocument", f)}
@@ -6895,40 +7026,64 @@ function HrOnboarding() {
                           </Col>
                           <Col md={8} xs={12}>
                             <Form.Group>
-                              <Form.Label className="extra-small fw-bold text-dark text-uppercase">Address Line 1</Form.Label>
+                              <Form.Label className="extra-small fw-bold text-dark text-uppercase">
+                                Address Line 1 <span className="text-danger">*</span>
+                              </Form.Label>
                               <Form.Control
                                 size="sm"
                                 placeholder="House / Flat No, Street, Apartment"
                                 value={addr.addressLine1 || addr.address1 || ""}
+                                isInvalid={Boolean(formErrors[`addr_line1_${idx}`])}
                                 onChange={(e) => {
                                   const arr = [...formData.addresses];
                                   arr[idx].addressLine1 = e.target.value;
                                   arr[idx].address1 = e.target.value;
                                   setFormData({ ...formData, addresses: arr });
+                                  if (formErrors[`addr_line1_${idx}`]) {
+                                    setFormErrors((prev) => ({ ...prev, [`addr_line1_${idx}`]: "" }));
+                                  }
                                 }}
                               />
+                              {formErrors[`addr_line1_${idx}`] && (
+                                <Form.Control.Feedback type="invalid" className="extra-small">
+                                  {formErrors[`addr_line1_${idx}`]}
+                                </Form.Control.Feedback>
+                              )}
                             </Form.Group>
                           </Col>
                         </Row>
                         <Row className="g-2">
                           <Col md={3} xs={6}>
                             <Form.Group>
-                              <Form.Label className="extra-small fw-bold text-dark text-uppercase">City</Form.Label>
+                              <Form.Label className="extra-small fw-bold text-dark text-uppercase">
+                                City <span className="text-danger">*</span>
+                              </Form.Label>
                               <Form.Control
                                 size="sm"
                                 placeholder="City"
                                 value={addr.city || ""}
+                                isInvalid={Boolean(formErrors[`addr_city_${idx}`])}
                                 onChange={(e) => {
                                   const arr = [...formData.addresses];
                                   arr[idx].city = e.target.value;
                                   setFormData({ ...formData, addresses: arr });
+                                  if (formErrors[`addr_city_${idx}`]) {
+                                    setFormErrors((prev) => ({ ...prev, [`addr_city_${idx}`]: "" }));
+                                  }
                                 }}
                               />
+                              {formErrors[`addr_city_${idx}`] && (
+                                <Form.Control.Feedback type="invalid" className="extra-small">
+                                  {formErrors[`addr_city_${idx}`]}
+                                </Form.Control.Feedback>
+                              )}
                             </Form.Group>
                           </Col>
                           <Col md={3} xs={6}>
                             <Form.Group>
-                              <Form.Label className="extra-small fw-bold text-dark text-uppercase">State</Form.Label>
+                              <Form.Label className="extra-small fw-bold text-dark text-uppercase">
+                                State <span className="text-danger">*</span>
+                              </Form.Label>
                               <StateSearchDropdown
                                 value={addr.state || ""}
                                 placeholder="Select State"
@@ -6936,8 +7091,16 @@ function HrOnboarding() {
                                   const arr = [...formData.addresses];
                                   arr[idx].state = val;
                                   setFormData({ ...formData, addresses: arr });
+                                  if (formErrors[`addr_state_${idx}`]) {
+                                    setFormErrors((prev) => ({ ...prev, [`addr_state_${idx}`]: "" }));
+                                  }
                                 }}
                               />
+                              {formErrors[`addr_state_${idx}`] && (
+                                <div className="text-danger extra-small mt-1">
+                                  {formErrors[`addr_state_${idx}`]}
+                                </div>
+                              )}
                             </Form.Group>
                           </Col>
                           <Col md={3} xs={6}>
@@ -6957,18 +7120,29 @@ function HrOnboarding() {
                           </Col>
                           <Col md={3} xs={6}>
                             <Form.Group>
-                              <Form.Label className="extra-small fw-bold text-dark text-uppercase">PIN Code</Form.Label>
+                              <Form.Label className="extra-small fw-bold text-dark text-uppercase">
+                                PIN Code <span className="text-danger">*</span>
+                              </Form.Label>
                               <Form.Control
                                 size="sm"
                                 placeholder="Pincode"
                                 maxLength={6}
                                 value={addr.pincode || ""}
+                                isInvalid={Boolean(formErrors[`addr_pincode_${idx}`])}
                                 onChange={(e) => {
                                   const arr = [...formData.addresses];
                                   arr[idx].pincode = e.target.value;
                                   setFormData({ ...formData, addresses: arr });
+                                  if (formErrors[`addr_pincode_${idx}`]) {
+                                    setFormErrors((prev) => ({ ...prev, [`addr_pincode_${idx}`]: "" }));
+                                  }
                                 }}
                               />
+                              {formErrors[`addr_pincode_${idx}`] && (
+                                <Form.Control.Feedback type="invalid" className="extra-small">
+                                  {formErrors[`addr_pincode_${idx}`]}
+                                </Form.Control.Feedback>
+                              )}
                             </Form.Group>
                           </Col>
                         </Row>
@@ -6977,265 +7151,12 @@ function HrOnboarding() {
                   </div>
                 )}
 
-                {/* Tab: Access Configuration */}
-                {activeFormTab === "access" && (
-                  <div>
-                    {/* 1. Master Role Assignment & Authority Section */}
-                    <Card className="border-0 shadow-sm p-4 bg-white rounded-4 mb-4">
-                      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
-                        <div className="d-flex align-items-center gap-2.5">
-                          <div className="onboarding-section-icon-badge">
-                            <FaKey style={{ color: "var(--color-primary, #C49A55)" }} />
-                          </div>
-                          <div>
-                            <h5 className="fw-bold mb-0 text-dark" style={{ fontSize: "16px" }}>
-                              Role Assignment & System Authority
-                            </h5>
-                            <span className="extra-small text-muted">
-                              Designate the candidate's primary security role and customize their application module capabilities.
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="d-flex align-items-center gap-2">
-                          <Button
-                            variant="outline-success"
-                            size="sm"
-                            className="rounded-pill px-3 py-1 extra-small fw-bold d-flex align-items-center gap-1.5 shadow-xs"
-                            onClick={handleOpenCreateRoleModal}
-                          >
-                            <FaPlus size={10} /> Create Custom Role
-                          </Button>
-                          <Button
-                            variant={isCustomizingPermissions ? "success" : "light"}
-                            size="sm"
-                            className="rounded-pill px-3 py-1 extra-small fw-semibold border d-flex align-items-center gap-1.5 shadow-xs"
-                            onClick={() => setIsCustomizingPermissions(!isCustomizingPermissions)}
-                          >
-                            <FaCog size={10} /> {isCustomizingPermissions ? "Hide Permission Matrix" : "Customize Permissions Matrix"}
-                          </Button>
-                        </div>
-                      </div>
-
-                      <Row className="g-3 align-items-center">
-                        <Col lg={6} md={7}>
-                          <Form.Group>
-                            <Form.Label className="extra-small fw-bold text-dark text-uppercase d-flex justify-content-between">
-                              <span>Primary System Role *</span>
-                              {formData.roleId && (
-                                <span className="text-success fw-normal">
-                                  {assignableRoles.find((r) => r._id === formData.roleId)?.roleName || "Selected"}
-                                </span>
-                              )}
-                            </Form.Label>
-                            <Form.Select
-                              size="sm"
-                              value={formData.roleId}
-                              onChange={(e) => handleSelectRoleInAccess(e.target.value)}
-                              className="fw-semibold text-dark shadow-none rounded-3 py-2"
-                            >
-                              <option value="">-- Select Candidate Role --</option>
-                              {assignableRoles.map((r) => (
-                                <option key={r._id} value={r._id}>
-                                  {r.roleName} (Level {r.priority || 3}) {r.description ? `— ${r.description}` : ""}
-                                </option>
-                              ))}
-                            </Form.Select>
-                          </Form.Group>
-                        </Col>
-
-                        <Col lg={6} md={5}>
-                          {(() => {
-                            const currentRole = assignableRoles.find((r) => r._id === formData.roleId);
-                            return (
-                              <div className="p-2.5 bg-light rounded-3 border d-flex align-items-center justify-content-between">
-                                <div>
-                                  <div className="extra-small text-muted fw-bold text-uppercase">Authority Level</div>
-                                  <div className="fw-bold small text-dark">
-                                    {currentRole ? `Level ${currentRole.priority || 3} Authority` : "No role selected"}
-                                  </div>
-                                </div>
-                                <Badge
-                                  bg={currentRole?.priority === 1 ? "danger" : currentRole?.priority === 2 ? "warning" : "success"}
-                                  className="rounded-pill px-3 py-1.5 text-uppercase extra-small"
-                                >
-                                  {currentRole?.roleName || "STANDARD USER"}
-                                </Badge>
-                              </div>
-                            );
-                          })()}
-                        </Col>
-                      </Row>
-
-                      {/* ── Granular Module & Permissions Matrix (Customizable) ── */}
-                      {isCustomizingPermissions && (
-                        <div className="mt-4 pt-3 border-top">
-                          <div className="d-flex justify-content-between align-items-center mb-3">
-                            <div>
-                              <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                                <FaShieldAlt className="text-success" /> Granular Module Menus & API Permissions Matrix
-                              </h6>
-                              <span className="extra-small text-muted">
-                                Customize sidebar module visibility and fine-grained operation privileges for this candidate.
-                              </span>
-                            </div>
-                            <Badge bg="light" text="dark" className="border px-3 py-1.5 rounded-pill extra-small fw-semibold">
-                              {(formData.selectedPermissionCodes || []).length} API Permissions Selected
-                            </Badge>
-                          </div>
-
-                          {/* Module Menus Bar */}
-                          {allMenus.length > 0 && (
-                            <div className="p-3 bg-light rounded-3 border mb-3">
-                              <span className="extra-small text-uppercase fw-bold text-muted d-block mb-2">
-                                1. Authorized Sidebar Application Modules
-                              </span>
-                              <Row className="g-2">
-                                {allMenus.map((menu) => {
-                                  const isMenuChecked = (formData.selectedMenuIds || []).includes(menu._id);
-                                  return (
-                                    <Col xs={6} sm={4} md={3} key={menu._id}>
-                                      <div
-                                        className={`p-2 rounded-3 border d-flex align-items-center gap-2 cursor-pointer transition-all extra-small ${
-                                          isMenuChecked
-                                            ? "bg-white border-success text-success fw-bold shadow-xs"
-                                            : "bg-white text-muted border-light-subtle"
-                                        }`}
-                                        onClick={() => toggleMenuInAccess(menu._id)}
-                                      >
-                                        <Form.Check
-                                          type="checkbox"
-                                          id={`menu-${menu._id}`}
-                                          checked={isMenuChecked}
-                                          onChange={() => {}}
-                                          className="pointer-events-none"
-                                        />
-                                        <span className="text-truncate">{menu.menuName}</span>
-                                      </div>
-                                    </Col>
-                                  );
-                                })}
-                              </Row>
-                            </div>
-                          )}
-
-                          {/* Granular Permission Catalog by Module */}
-                          {loadingRoleConfig ? (
-                            <div className="text-center py-4">
-                              <LoadingSpinner size="sm" color="success" className="me-2" />
-                              <span className="extra-small text-muted">Loading role permissions matrix...</span>
-                            </div>
-                          ) : Object.keys(permissionCatalog).length > 0 ? (
-                            <div className="d-flex flex-column gap-3">
-                              {Object.keys(permissionCatalog).map((moduleName) => {
-                                const perms = permissionCatalog[moduleName] || [];
-                                const moduleCodes = perms.map((p) => p.permissionCode);
-                                const selectedInModule = moduleCodes.filter((c) => (formData.selectedPermissionCodes || []).includes(c));
-                                const allSelected = moduleCodes.length > 0 && selectedInModule.length === moduleCodes.length;
-
-                                return (
-                                  <Card key={moduleName} className="border shadow-none rounded-3 overflow-hidden">
-                                    <Card.Header className="bg-light py-2 px-3 d-flex justify-content-between align-items-center">
-                                      <div className="d-flex align-items-center gap-2">
-                                        <span className="fw-bold text-dark extra-small text-uppercase">
-                                          📦 {moduleName} Module
-                                        </span>
-                                        <Badge bg="secondary" className="rounded-pill px-2 py-0.5 extra-small">
-                                          {selectedInModule.length} / {moduleCodes.length}
-                                        </Badge>
-                                      </div>
-                                      <Button
-                                        variant="link"
-                                        size="sm"
-                                        className="p-0 text-decoration-none extra-small text-success fw-bold"
-                                        onClick={() => toggleModuleAllPermissions(moduleName)}
-                                      >
-                                        {allSelected ? "Clear All" : "Select All"}
-                                      </Button>
-                                    </Card.Header>
-                                    <Card.Body className="p-3 bg-white">
-                                      <Row className="g-2">
-                                        {perms.map((p) => {
-                                          const isPermChecked = (formData.selectedPermissionCodes || []).includes(p.permissionCode);
-                                          return (
-                                            <Col md={4} sm={6} xs={12} key={p._id || p.permissionCode}>
-                                              <div
-                                                className={`p-2 rounded-2 border d-flex align-items-center gap-2 cursor-pointer extra-small ${
-                                                  isPermChecked
-                                                    ? "bg-success bg-opacity-10 border-success text-dark fw-medium"
-                                                    : "bg-light text-muted border-light-subtle"
-                                                }`}
-                                                onClick={() => togglePermissionInAccess(p.permissionCode)}
-                                              >
-                                                <Form.Check
-                                                  type="checkbox"
-                                                  id={`perm-${p.permissionCode}`}
-                                                  checked={isPermChecked}
-                                                  onChange={() => {}}
-                                                  className="pointer-events-none flex-shrink-0"
-                                                />
-                                                <div className="text-truncate">
-                                                  <span className="d-block text-truncate fw-semibold">{p.permissionName || p.permissionCode}</span>
-                                                  {p.description && (
-                                                    <span className="extra-small text-muted d-block text-truncate">{p.description}</span>
-                                                  )}
-                                                </div>
-                                              </div>
-                                            </Col>
-                                          );
-                                        })}
-                                      </Row>
-                                    </Card.Body>
-                                  </Card>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <div className="text-center py-3 text-muted extra-small">
-                              No granular API permissions catalog available. Role authority will apply default profile policies.
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </Card>
-
-                    {/* 2. Organization & Branch Access Control */}
-                    <Card className="border-0 shadow-sm p-4 bg-white rounded-4 mb-3">
-                      <BranchAccessSelector
-                        organization={organization}
-                        accessLevel={formData.accessLevel || "ORGANIZATION"}
-                        primaryBranchId={formData.primaryBranchId || ""}
-                        branchIds={formData.branchIds || []}
-                        branches={contextBranches || []}
-                        errors={formErrors}
-                        onChange={({ accessLevel, primaryBranchId, branchIds }) => {
-                          setFormData((prev) => ({
-                            ...prev,
-                            accessLevel,
-                            primaryBranchId,
-                            branchIds,
-                            organizationId: organization?._id || organization?.id || prev.organizationId,
-                          }));
-                          if (formErrors.primaryBranchId || formErrors.branchIds || formErrors.accessLevel) {
-                            setFormErrors((prev) => {
-                              const cp = { ...prev };
-                              delete cp.primaryBranchId;
-                              delete cp.branchIds;
-                              delete cp.accessLevel;
-                              return cp;
-                            });
-                          }
-                        }}
-                      />
-                    </Card>
-                  </div>
-                )}
-
                 {/* Tab: Compensation */}
                 {activeFormTab === "compensation" && (
                   <div>
                     <CompensationCard
                       data={formData}
+                      errors={formErrors}
                       isEditMode={true}
                       onChange={(field, val) => {
                         if (field === "compensation") {
@@ -7247,6 +7168,17 @@ function HrOnboarding() {
                             salary: (val.compensationType === "UNPAID" || val.isUnpaid) ? "UNPAID" : (val.annualCtc || val.stipendAmount || val.contractRate || prev.salary),
                             isUnpaid: Boolean(val.isUnpaid || val.compensationType === "UNPAID"),
                           }));
+                          if (formErrors.annualCtc || formErrors.salary || formErrors.compensationAmount || formErrors.stipendAmount || formErrors.contractRate) {
+                            setFormErrors((prev) => {
+                              const cp = { ...prev };
+                              delete cp.annualCtc;
+                              delete cp.salary;
+                              delete cp.compensationAmount;
+                              delete cp.stipendAmount;
+                              delete cp.contractRate;
+                              return cp;
+                            });
+                          }
                         } else {
                           setFormData((prev) => ({ ...prev, [field]: val }));
                         }
@@ -7265,6 +7197,7 @@ function HrOnboarding() {
                     <IdentityDetailsCard
                       data={formData}
                       isEditMode={true}
+                      errors={formErrors}
                       onChange={(field, val) => setFormData((prev) => ({ ...prev, [field]: val }))}
                     />
 
@@ -7316,6 +7249,7 @@ function HrOnboarding() {
                       <BankDetailsCard
                         data={formData}
                         isEditMode={true}
+                        errors={formErrors}
                         onChange={(field, val) => setFormData((prev) => ({ ...prev, [field]: val }))}
                         onPassbookChange={(file) => {
                           setFormData((prev) => ({
@@ -7332,6 +7266,7 @@ function HrOnboarding() {
                     <StatutoryDetailsCard
                       data={formData}
                       isEditMode={true}
+                      errors={formErrors}
                       onChange={(field, val) => setFormData((prev) => ({ ...prev, [field]: val }))}
                     />
                   </div>
@@ -7390,22 +7325,35 @@ function HrOnboarding() {
                           <Row className="g-3 mb-3">
                             <Col md={4} xs={12}>
                               <Form.Group>
-                                <Form.Label className="extra-small fw-bold text-dark text-uppercase">Full Name</Form.Label>
+                                <Form.Label className="extra-small fw-bold text-dark text-uppercase">
+                                  Full Name {idx === 0 && <span className="text-danger">*</span>}
+                                </Form.Label>
                                 <Form.Control
                                   size="sm"
                                   placeholder="Contact Person Name"
                                   value={contact.name || ""}
+                                  isInvalid={Boolean(formErrors[`family_name_${idx}`])}
                                   onChange={(e) => {
                                     const arr = [...formData.familyContacts];
                                     arr[idx].name = e.target.value;
                                     setFormData({ ...formData, familyContacts: arr });
+                                    if (formErrors[`family_name_${idx}`]) {
+                                      setFormErrors((prev) => ({ ...prev, [`family_name_${idx}`]: "" }));
+                                    }
                                   }}
                                 />
+                                {formErrors[`family_name_${idx}`] && (
+                                  <Form.Control.Feedback type="invalid" className="extra-small">
+                                    {formErrors[`family_name_${idx}`]}
+                                  </Form.Control.Feedback>
+                                )}
                               </Form.Group>
                             </Col>
                             <Col md={4} xs={12}>
                               <Form.Group>
-                                <Form.Label className="extra-small fw-bold text-dark text-uppercase">Relationship</Form.Label>
+                                <Form.Label className="extra-small fw-bold text-dark text-uppercase">
+                                  Relationship {idx === 0 && <span className="text-danger">*</span>}
+                                </Form.Label>
                                 <Form.Select
                                   size="sm"
                                   value={contact.relationship || "Father"}
@@ -7429,18 +7377,29 @@ function HrOnboarding() {
                             </Col>
                             <Col md={4} xs={12}>
                               <Form.Group>
-                                <Form.Label className="extra-small fw-bold text-dark text-uppercase">Mobile Phone</Form.Label>
+                                <Form.Label className="extra-small fw-bold text-dark text-uppercase">
+                                  Mobile Phone {idx === 0 && <span className="text-danger">*</span>}
+                                </Form.Label>
                                 <Form.Control
                                   size="sm"
                                   placeholder="10-digit Phone Number"
                                   maxLength={15}
                                   value={contact.phone || ""}
+                                  isInvalid={Boolean(formErrors[`family_phone_${idx}`])}
                                   onChange={(e) => {
                                     const arr = [...formData.familyContacts];
                                     arr[idx].phone = e.target.value.replace(/[^\d+]/g, "").slice(0, 15);
                                     setFormData({ ...formData, familyContacts: arr });
+                                    if (formErrors[`family_phone_${idx}`]) {
+                                      setFormErrors((prev) => ({ ...prev, [`family_phone_${idx}`]: "" }));
+                                    }
                                   }}
                                 />
+                                {formErrors[`family_phone_${idx}`] && (
+                                  <Form.Control.Feedback type="invalid" className="extra-small">
+                                    {formErrors[`family_phone_${idx}`]}
+                                  </Form.Control.Feedback>
+                                )}
                               </Form.Group>
                             </Col>
                           </Row>
@@ -7987,55 +7946,40 @@ function HrOnboarding() {
                       </Card.Body>
                     </Card>
 
-                    {/* Section 6: Access & Branch Permissions */}
+                    {/* Section 6: Organization & Creator's Branch Assignment */}
                     <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
                       <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center gap-2">
-                          <FaCodeBranch style={{ color: "var(--color-primary, #C49A55)" }} />
-                          <span className="fw-bold small text-dark">6. Access & Branch Permissions</span>
+                          <FaBuilding style={{ color: "var(--color-primary, #C49A55)" }} />
+                          <span className="fw-bold small text-dark">6. Organization & Branch Assignment</span>
                         </div>
-                        <Button
-                          variant="outline-secondary"
-                          size="sm"
-                          className="py-0.5 px-2 extra-small rounded-pill d-flex align-items-center gap-1"
-                          onClick={() => setActiveFormTab("access")}
-                        >
-                          <FaEdit size={11} /> Edit Section
-                        </Button>
+                        <Badge bg="success-subtle" className="text-success border border-success-subtle rounded-pill extra-small px-2.5 py-1">
+                          ● Auto-Assigned to Creator's Branch
+                        </Badge>
                       </Card.Header>
                       <Card.Body className="p-3">
                         <Row className="g-2 extra-small">
-                          <Col sm={6} md={3}>
+                          <Col sm={6} md={4}>
                             <div className="p-2 rounded bg-light border">
-                              <span className="text-muted d-block mb-0.5">Access Scope</span>
-                              <Badge bg={formData.accessLevel === "ORGANIZATION" ? "success-subtle" : "warning-subtle"} className={formData.accessLevel === "ORGANIZATION" ? "text-success border rounded-pill" : "text-warning border rounded-pill"}>
-                                {formData.accessLevel === "ORGANIZATION" ? "All Organization Branches" : "Branch-Specific Access"}
-                              </Badge>
-                            </div>
-                          </Col>
-                          <Col sm={6} md={3}>
-                            <div className="p-2 rounded bg-light border">
-                              <span className="text-muted d-block mb-0.5">Assigned Role</span>
+                              <span className="text-muted d-block mb-0.5">Organization</span>
                               <span className="fw-bold text-dark">
-                                {assignableRoles.find((r) => r._id === formData.roleId)?.roleName || "Employee / Standard"}
+                                {organization?.organizationName || "Organization HQ"}
                               </span>
                             </div>
                           </Col>
-                          <Col sm={6} md={3}>
+                          <Col sm={6} md={4}>
                             <div className="p-2 rounded bg-light border">
-                              <span className="text-muted d-block mb-0.5">Primary Branch</span>
-                              <span className="fw-bold text-dark">
-                                {formData.accessLevel === "BRANCH" && formData.primaryBranchId
-                                  ? (contextBranches?.find((b) => (b._id || b.id) === formData.primaryBranchId)?.branchName || "Assigned Branch")
-                                  : "All Branches / HQ"}
-                              </span>
-                            </div>
-                          </Col>
-                          <Col sm={6} md={3}>
-                            <div className="p-2 rounded bg-light border">
-                              <span className="text-muted d-block mb-0.5">Portal Access</span>
+                              <span className="text-muted d-block mb-0.5">Assigned Branch</span>
                               <span className="fw-bold text-success">
-                                {formData.hasLoginAccess !== false ? "Enabled" : "Disabled"}
+                                {creatorBranch?.branchName || (contextBranches?.find((b) => (b._id || b.id) === (formData.primaryBranchId || creatorBranchId))?.branchName) || organization?.organizationName || "HQ / Primary Branch"}
+                              </span>
+                            </div>
+                          </Col>
+                          <Col sm={6} md={4}>
+                            <div className="p-2 rounded bg-light border">
+                              <span className="text-muted d-block mb-0.5">Branch Code</span>
+                              <span className="fw-bold text-dark">
+                                {creatorBranch?.branchCode || "—"}
                               </span>
                             </div>
                           </Col>
@@ -8314,7 +8258,6 @@ function HrOnboarding() {
                       { id: "education", label: "Education Qualifications", complete: sectionStatus.education },
                       ...(!isFresher ? [{ id: "experience", label: "Past Work Experience", complete: sectionStatus.experience }] : []),
                       { id: "address", label: "Residential Addresses", complete: sectionStatus.address },
-                      { id: "access", label: "Access & Branch Permissions", complete: sectionStatus.access },
                       { id: "compensation", label: "Compensation Structure", complete: sectionStatus.compensation },
                       { id: "documents", label: "Bank & Statutory Details", complete: sectionStatus.documents },
                       { id: "family", label: "Family & Emergency Contact", complete: sectionStatus.family },

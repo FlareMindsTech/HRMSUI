@@ -50,6 +50,10 @@ import {
   FaProjectDiagram,
   FaLayerGroup,
   FaMoneyCheckAlt,
+  FaExchangeAlt,
+  FaUserMinus,
+  FaUserCheck,
+  FaFilter,
 } from "react-icons/fa";
 import {
   fetchBranches,
@@ -114,6 +118,7 @@ const BRANCH_DETAIL_NAV_GROUPS = [
     groupTitle: "People & Structure",
     groupIcon: FaSitemap,
     tabs: [
+      { key: "members", label: "Branch Members & Staff", icon: FaUsers },
       { key: "departments", label: "Departments", icon: FaSitemap },
       { key: "designations", label: "Designations", icon: FaUserTie },
       { key: "teams", label: "Teams", icon: FaUsers },
@@ -207,9 +212,19 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
   const [selectedMemberIds, setSelectedMemberIds] = useState(new Set());
   const [assignAsPrimary, setAssignAsPrimary] = useState(true);
   const [memberSearch, setMemberSearch] = useState("");
+  const [memberAssignFilter, setMemberAssignFilter] = useState("all"); // 'all' | 'other' | 'current' | 'unassigned'
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignModalError, setAssignModalError] = useState("");
   const [assignModalSuccess, setAssignModalSuccess] = useState("");
+
+  // Branch Members Tab Search & Filters
+  const [branchMemberSearch, setBranchMemberSearch] = useState("");
+  const [branchMemberDeptFilter, setBranchMemberDeptFilter] = useState("");
+
+  // Remove Member Confirm Modal State
+  const [showRemoveMemberModal, setShowRemoveMemberModal] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState(null);
+  const [removeMemberLoading, setRemoveMemberLoading] = useState(false);
 
   // Delete / Deactivate Confirm Modal
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
@@ -560,6 +575,36 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
       setAssignModalError(err.message || "Failed to assign branch members");
     } finally {
       setAssignLoading(false);
+    }
+  };
+
+  // ── Remove Member Modal Handlers ──
+  const handleOpenRemoveMemberModal = (member) => {
+    setMemberToRemove(member);
+    setShowRemoveMemberModal(true);
+  };
+
+  const handleConfirmRemoveMember = async () => {
+    if (!memberToRemove || !selectedBranchDetail) return;
+    const bId = selectedBranchDetail._id || selectedBranchDetail.id;
+    const empId = memberToRemove._id || memberToRemove.id;
+    const empName = memberToRemove.fullName || "Employee";
+
+    try {
+      setRemoveMemberLoading(true);
+      await removeEmployeeFromBranch(bId, empId);
+      setSuccess(`${empName} successfully removed from ${selectedBranchDetail.branchName}.`);
+      setShowRemoveMemberModal(false);
+      setMemberToRemove(null);
+      await loadAuxData();
+      await loadBranches();
+      if (refreshBranches) refreshBranches();
+      setTimeout(() => setSuccess(""), 4000);
+    } catch (err) {
+      setError(err.message || "Failed to remove employee from branch");
+      setTimeout(() => setError(""), 4000);
+    } finally {
+      setRemoveMemberLoading(false);
     }
   };
 
@@ -1933,6 +1978,171 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
           )}
 
           {/* Child Sub-Modules Scoped to Branch */}
+          {detailActiveTab === "members" && (
+            <div className="branch-members-pane">
+              <div className="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom flex-wrap gap-3">
+                <div>
+                  <div className="d-flex align-items-center gap-2">
+                    <h4 className="fw-bold mb-0 text-dark">Branch Members Directory</h4>
+                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1">
+                      {branchMembers.length} Members
+                    </span>
+                  </div>
+                  <p className="text-muted extra-small mb-0 mt-1">
+                    Personnel currently assigned to <strong>{b.branchName}</strong>. Directly add staff or transfer members from other branches.
+                  </p>
+                </div>
+
+                {canUpdate && (
+                  <button
+                    type="button"
+                    className="branches-btn-add"
+                    onClick={() => handleOpenAssignModal(b)}
+                  >
+                    <FaUserPlus /> Add / Transfer Members
+                  </button>
+                )}
+              </div>
+
+              {/* Toolbar */}
+              <div className="branches-toolbar-card mb-4">
+                <div className="branches-toolbar-row">
+                  <div className="branches-search-wrap">
+                    <FaSearch className="branches-search-icon" />
+                    <input
+                      type="text"
+                      className="branches-search-input"
+                      placeholder="Search member by name, email, code, or designation..."
+                      value={branchMemberSearch}
+                      onChange={(e) => setBranchMemberSearch(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="branches-filter-group">
+                    <select
+                      className="branches-filter-select"
+                      value={branchMemberDeptFilter}
+                      onChange={(e) => setBranchMemberDeptFilter(e.target.value)}
+                    >
+                      <option value="">All Departments</option>
+                      {Array.from(new Set(branchMembers.map((m) => m.department).filter(Boolean))).map((dept) => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Table / Empty State */}
+              {branchMembers.length === 0 ? (
+                <div className="branches-empty-state">
+                  <div className="branches-empty-icon">
+                    <FaUsers />
+                  </div>
+                  <h4 className="branches-empty-title">No Members in this Branch</h4>
+                  <p className="branches-empty-text">
+                    Add new members or transfer employees from other branches into {b.branchName}.
+                  </p>
+                  {canUpdate && (
+                    <button
+                      type="button"
+                      className="branches-btn-add"
+                      onClick={() => handleOpenAssignModal(b)}
+                    >
+                      <FaUserPlus /> Add / Transfer Members
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="branches-table-card">
+                  <Table responsive hover className="branches-table align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Employee</th>
+                        <th>Employee Code</th>
+                        <th>Department</th>
+                        <th>Designation</th>
+                        <th>Branch Status</th>
+                        {canUpdate && <th className="text-end">Actions</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {branchMembers
+                        .filter((m) => {
+                          const q = branchMemberSearch.toLowerCase();
+                          const matchSearch = !q ||
+                            (m.fullName && m.fullName.toLowerCase().includes(q)) ||
+                            (m.email && m.email.toLowerCase().includes(q)) ||
+                            (m.employeeCode && m.employeeCode.toLowerCase().includes(q)) ||
+                            (m.designation && m.designation.toLowerCase().includes(q));
+                          const matchDept = !branchMemberDeptFilter || m.department === branchMemberDeptFilter;
+                          return matchSearch && matchDept;
+                        })
+                        .map((m) => {
+                          const empId = m._id || m.id;
+                          const initials = m.fullName ? m.fullName.split(" ").map((n) => n[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() : "EM";
+                          return (
+                            <tr key={empId}>
+                              <td>
+                                <div className="d-flex align-items-center gap-2.5">
+                                  <div
+                                    style={{
+                                      width: 36,
+                                      height: 36,
+                                      borderRadius: "50%",
+                                      background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+                                      color: "#fff",
+                                      fontSize: 12,
+                                      fontWeight: 700,
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    {initials}
+                                  </div>
+                                  <div>
+                                    <div className="fw-bold text-dark">{m.fullName}</div>
+                                    <div className="extra-small text-muted">{m.email}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>
+                                <span className="branch-code-badge">{m.employeeCode || "—"}</span>
+                              </td>
+                              <td>
+                                <span className="fw-medium text-dark">{m.department || "—"}</span>
+                              </td>
+                              <td>
+                                <span className="fw-medium text-dark">{m.designation || "—"}</span>
+                              </td>
+                              <td>
+                                <Badge bg="success-subtle" className="text-success border border-success-subtle px-2.5 py-1">
+                                  <FaCheckCircle className="me-1" /> Primary Member
+                                </Badge>
+                              </td>
+                              {canUpdate && (
+                                <td className="text-end">
+                                  <button
+                                    type="button"
+                                    className="branches-btn-remove-pill"
+                                    onClick={() => handleOpenRemoveMemberModal(m)}
+                                    title="Remove from this branch"
+                                  >
+                                    <FaUserMinus size={11} /> Remove
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          )}
           {detailActiveTab === "departments" && <DepartmentsSection lockedBranchId={lockedBId} />}
           {detailActiveTab === "designations" && <DesignationsSection lockedBranchId={lockedBId} />}
           {detailActiveTab === "teams" && <TeamsSection lockedBranchId={lockedBId} />}
@@ -1946,6 +2156,323 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
           {detailActiveTab === "financial-years" && <FinancialYearsSection lockedBranchId={lockedBId} />}
           {detailActiveTab === "settings" && <BranchSettingsSection lockedBranchId={lockedBId} />}
         </div>
+
+        {/* ── Professional Remove Member Confirmation Modal ── */}
+        <Modal
+          show={showRemoveMemberModal}
+          onHide={() => !removeMemberLoading && setShowRemoveMemberModal(false)}
+          centered
+          backdrop="static"
+          className="luxury-confirm-modal"
+        >
+          <div className="p-4 bg-white rounded-4 shadow-lg border-0">
+            <div className="d-flex align-items-start gap-3 mb-3">
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 14,
+                  background: "linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)",
+                  color: "#dc2626",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 22,
+                  border: "1px solid rgba(220, 38, 38, 0.18)",
+                  flexShrink: 0,
+                }}
+              >
+                <FaUserMinus />
+              </div>
+              <div>
+                <h5 className="fw-bold mb-1 text-dark">Remove Staff from Branch</h5>
+                <span className="extra-small text-muted">
+                  Revoke branch assignment and workforce placement
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-3 bg-light border mb-3">
+              <div className="d-flex align-items-center gap-3">
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: "50%",
+                    background: "linear-gradient(135deg, #1C1D1D 0%, #2A2B2C 100%)",
+                    color: "var(--color-primary-light, #E2C278)",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    border: "1px solid rgba(196, 154, 85, 0.35)",
+                  }}
+                >
+                  {memberToRemove?.fullName
+                    ? memberToRemove.fullName.split(" ").map((n) => n[0]).filter(Boolean).slice(0, 2).join("").toUpperCase()
+                    : "EM"}
+                </div>
+                <div className="min-w-0 flex-grow-1">
+                  <div className="fw-bold text-dark fs-6 d-flex align-items-center gap-2">
+                    <span>{memberToRemove?.fullName}</span>
+                    {memberToRemove?.employeeCode && (
+                      <span className="branch-code-badge" style={{ fontSize: "10.5px" }}>
+                        {memberToRemove.employeeCode}
+                      </span>
+                    )}
+                  </div>
+                  <div className="small text-muted">{memberToRemove?.email} &bull; {memberToRemove?.department || "General"}</div>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-secondary small mb-4">
+              Are you sure you want to remove <strong>{memberToRemove?.fullName}</strong> from <strong>{selectedBranchDetail?.branchName}</strong>? This will release their branch assignment and return their status to unassigned.
+            </p>
+
+            <div className="d-flex align-items-center justify-content-end gap-2 pt-2 border-top">
+              <Button
+                variant="light"
+                className="px-4 py-2 small fw-semibold border text-dark"
+                onClick={() => setShowRemoveMemberModal(false)}
+                disabled={removeMemberLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                className="px-4 py-2 small fw-bold d-inline-flex align-items-center gap-2"
+                style={{
+                  background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                  border: "none",
+                  boxShadow: "0 4px 14px rgba(220, 38, 38, 0.3)",
+                }}
+                onClick={handleConfirmRemoveMember}
+                disabled={removeMemberLoading}
+              >
+                {removeMemberLoading ? (
+                  <LoadingSpinner variant="button" size="sm" className="me-1" />
+                ) : (
+                  <FaUserMinus />
+                )}
+                Remove from Branch
+              </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* ── Assign Members Modal (Inside Detail View) ── */}
+        <Modal show={showAssignModal} onHide={() => setShowAssignModal(false)} size="lg" centered backdrop="static">
+          <Modal.Header closeButton className="border-bottom px-4 py-3">
+            <Modal.Title className="fs-5 fw-bold d-flex align-items-center gap-2">
+              <FaUserPlus className="text-success" /> Manage Staff — {selectedBranchForMembers?.branchName}
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body className="p-4">
+            {assignModalError && <FeedbackAlert variant="danger" message={assignModalError} />}
+            {assignModalSuccess && <FeedbackAlert variant="success" message={assignModalSuccess} />}
+
+            <div className="p-3 rounded-3 bg-light border mb-3">
+              <div className="d-flex align-items-center gap-2 text-dark small fw-bold">
+                <FaUsers className="text-primary" />
+                <span>Branch Staff Assignment</span>
+              </div>
+              <div className="extra-small text-muted mt-1">
+                Manage assigned personnel or add unassigned employees to <strong>{selectedBranchForMembers?.branchName}</strong>. To view and edit branch allocations for all employees across the organization, go to <strong>Organization &gt; Access &amp; Security &gt; Organization Access</strong>.
+              </div>
+            </div>
+
+            <div className="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+              <div className="flex-grow-1" style={{ minWidth: 220 }}>
+                <SearchInput
+                  inputGroupTextClassName="bg-white border-end-0"
+                  iconClassName="text-muted"
+                  inputClassName="border-start-0 ps-0"
+                  placeholder="Search staff by name, email, code, or department..."
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                />
+              </div>
+
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                <select
+                  className="form-select form-select-sm"
+                  value={memberAssignFilter}
+                  onChange={(e) => setMemberAssignFilter(e.target.value)}
+                  style={{ width: "auto" }}
+                >
+                  <option value="all">All Available Personnel</option>
+                  <option value="current">Current Branch Members</option>
+                  <option value="unassigned">Unassigned Employees Only</option>
+                </select>
+
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  onClick={() => {
+                    const targetBId = String(selectedBranchForMembers?._id || selectedBranchForMembers?.id || "");
+                    const filteredIds = onboardedStaff
+                      .filter((emp) => {
+                        const empBId = String(emp.primaryBranchId || "");
+                        const isCurrent = empBId && empBId === targetBId;
+                        const isUnassigned = !empBId;
+                        if (!isCurrent && !isUnassigned) return false; // Exclude other branch members
+
+                        const q = memberSearch.toLowerCase();
+                        const matchSearch = !q ||
+                          (emp.fullName && emp.fullName.toLowerCase().includes(q)) ||
+                          (emp.email && emp.email.toLowerCase().includes(q)) ||
+                          (emp.employeeCode && emp.employeeCode.toLowerCase().includes(q)) ||
+                          (emp.department && emp.department.toLowerCase().includes(q));
+                        if (!matchSearch) return false;
+
+                        if (memberAssignFilter === "current") return isCurrent;
+                        if (memberAssignFilter === "unassigned") return isUnassigned;
+                        return true;
+                      })
+                      .map((e) => String(e._id || e.id));
+                    setSelectedMemberIds((prev) => {
+                      const next = new Set(prev);
+                      filteredIds.forEach((id) => next.add(id));
+                      return next;
+                    });
+                  }}
+                >
+                  Select Filtered
+                </Button>
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  onClick={() => setSelectedMemberIds(new Set())}
+                >
+                  Clear All
+                </Button>
+              </div>
+            </div>
+
+            <div style={{ maxHeight: 380, overflowY: "auto" }}>
+              <Table hover responsive className="align-middle mb-0">
+                <thead className="table-light small">
+                  <tr>
+                    <th style={{ width: 40 }}></th>
+                    <th>Employee</th>
+                    <th>Department & Designation</th>
+                    <th>Branch Assignment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {onboardedStaff
+                    .filter((emp) => {
+                      const targetBId = String(selectedBranchForMembers?._id || selectedBranchForMembers?.id || "");
+                      const empBId = String(emp.primaryBranchId || "");
+                      const isCurrent = empBId && empBId === targetBId;
+                      const isUnassigned = !empBId;
+
+                      // Exclude other branch members from this branch's modal
+                      if (!isCurrent && !isUnassigned) return false;
+
+                      const q = memberSearch.toLowerCase();
+                      const matchSearch = !q ||
+                        (emp.fullName && emp.fullName.toLowerCase().includes(q)) ||
+                        (emp.email && emp.email.toLowerCase().includes(q)) ||
+                        (emp.employeeCode && emp.employeeCode.toLowerCase().includes(q)) ||
+                        (emp.department && emp.department.toLowerCase().includes(q));
+                      if (!matchSearch) return false;
+
+                      if (memberAssignFilter === "current") return isCurrent;
+                      if (memberAssignFilter === "unassigned") return isUnassigned;
+                      return true;
+                    })
+                    .map((emp) => {
+                      const empId = String(emp._id || emp.id);
+                      const isChecked = selectedMemberIds.has(empId);
+                      const targetBId = String(selectedBranchForMembers?._id || selectedBranchForMembers?.id || "");
+                      const empBId = String(emp.primaryBranchId || "");
+                      const isCurrent = empBId && empBId === targetBId;
+
+                      return (
+                        <tr
+                          key={empId}
+                          onClick={() => toggleMember(empId)}
+                          role="button"
+                          className={isChecked ? "table-active" : ""}
+                        >
+                          <td>
+                            <Form.Check
+                              checked={isChecked}
+                              onChange={() => {}}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </td>
+                          <td>
+                            <div className="fw-semibold text-dark d-flex align-items-center gap-2">
+                              <span>{emp.fullName}</span>
+                              {emp.employeeCode && (
+                                <span className="branch-code-badge" style={{ fontSize: "10px", padding: "1px 5px" }}>
+                                  {emp.employeeCode}
+                                </span>
+                              )}
+                            </div>
+                            <div className="small text-muted">{emp.email}</div>
+                          </td>
+                          <td>
+                            <div className="small text-dark fw-medium">{emp.designation || "—"}</div>
+                            <div className="extra-small text-muted">{emp.department || "—"}</div>
+                          </td>
+                          <td>
+                            {isCurrent ? (
+                              <Badge bg="success-subtle" className="text-success border border-success-subtle px-2.5 py-1">
+                                <FaCheckCircle className="me-1" /> Assigned to this Branch
+                              </Badge>
+                            ) : (
+                              <Badge bg="secondary-subtle" className="text-secondary border px-2.5 py-1">
+                                Unassigned {isChecked && <span className="ms-1 fw-bold text-success">➔ Add to Branch</span>}
+                              </Badge>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </Table>
+            </div>
+          </Modal.Body>
+          <Modal.Footer className="bg-light px-4 py-3 border-top d-flex justify-content-between">
+            <span className="small text-muted"><strong>{selectedMemberIds.size}</strong> staff selected for this branch</span>
+            <div className="d-flex gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setShowAssignModal(false)} disabled={assignLoading}>
+                Cancel
+              </Button>
+              <Button variant="success" size="sm" onClick={handleSaveMembers} disabled={assignLoading}>
+                {assignLoading ? <LoadingSpinner variant="button" size="sm" /> : "Save Staff Assignments"}
+              </Button>
+            </div>
+          </Modal.Footer>
+        </Modal>
+
+        {/* ── Deactivate Confirm Modal (Inside Detail View) ── */}
+        <Modal show={showDeactivateModal} onHide={() => setShowDeactivateModal(false)} centered>
+          <Modal.Header closeButton>
+            <Modal.Title className="fs-5 fw-bold text-danger">
+              Deactivate {deactivatingBranch?.branchName}?
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <p className="text-muted">
+              Existing employee and HR records will be retained, but the branch will no longer be available for new employee assignments or active attendance clock-ins.
+            </p>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" size="sm" onClick={() => setShowDeactivateModal(false)} disabled={deactivatingLoading}>
+              Cancel
+            </Button>
+            <Button variant="danger" size="sm" onClick={handleConfirmDeactivate} disabled={deactivatingLoading}>
+              {deactivatingLoading ? "Deactivating..." : "Deactivate Branch"}
+            </Button>
+          </Modal.Footer>
+        </Modal>
       </div>
     );
   }
@@ -2531,42 +3058,134 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-4">
-          <FeedbackAlert variant="danger" message={assignModalError} />
-          <FeedbackAlert variant="success" message={assignModalSuccess} />
+          {assignModalError && <FeedbackAlert variant="danger" message={assignModalError} />}
+          {assignModalSuccess && <FeedbackAlert variant="success" message={assignModalSuccess} />}
 
-          <div className="mb-3">
-            <SearchInput
-              inputGroupTextClassName="bg-white border-end-0"
-              iconClassName="text-muted"
-              inputClassName="border-start-0 ps-0"
-              placeholder="Search staff by name, email, or department..."
-              value={memberSearch}
-              onChange={(e) => setMemberSearch(e.target.value)}
-            />
+          <div className="p-3 rounded-3 bg-light border mb-3">
+            <div className="d-flex align-items-center gap-2 text-dark small fw-bold">
+              <FaUsers className="text-primary" />
+              <span>Branch Staff Assignment</span>
+            </div>
+            <div className="extra-small text-muted mt-1">
+              Manage assigned personnel or add unassigned employees to <strong>{selectedBranchForMembers?.branchName}</strong>. To view and edit branch allocations for all employees across the organization, go to <strong>Organization &gt; Access &amp; Security &gt; Organization Access</strong>.
+            </div>
           </div>
 
-          <div style={{ maxHeight: 340, overflowY: "auto" }}>
+          <div className="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+            <div className="flex-grow-1" style={{ minWidth: 220 }}>
+              <SearchInput
+                inputGroupTextClassName="bg-white border-end-0"
+                iconClassName="text-muted"
+                inputClassName="border-start-0 ps-0"
+                placeholder="Search staff by name, email, code, or department..."
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+              />
+            </div>
+
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <select
+                className="form-select form-select-sm"
+                value={memberAssignFilter}
+                onChange={(e) => setMemberAssignFilter(e.target.value)}
+                style={{ width: "auto" }}
+              >
+                <option value="all">All Available Personnel</option>
+                <option value="current">Current Branch Members</option>
+                <option value="unassigned">Unassigned Employees Only</option>
+              </select>
+
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={() => {
+                  const targetBId = String(selectedBranchForMembers?._id || selectedBranchForMembers?.id || "");
+                  const filteredIds = onboardedStaff
+                    .filter((emp) => {
+                      const empBId = String(emp.primaryBranchId || "");
+                      const isCurrent = empBId && empBId === targetBId;
+                      const isUnassigned = !empBId;
+                      if (!isCurrent && !isUnassigned) return false; // Exclude other branch members
+
+                      const q = memberSearch.toLowerCase();
+                      const matchSearch = !q ||
+                        (emp.fullName && emp.fullName.toLowerCase().includes(q)) ||
+                        (emp.email && emp.email.toLowerCase().includes(q)) ||
+                        (emp.employeeCode && emp.employeeCode.toLowerCase().includes(q)) ||
+                        (emp.department && emp.department.toLowerCase().includes(q));
+                      if (!matchSearch) return false;
+
+                      if (memberAssignFilter === "current") return isCurrent;
+                      if (memberAssignFilter === "unassigned") return isUnassigned;
+                      return true;
+                    })
+                    .map((e) => String(e._id || e.id));
+                  setSelectedMemberIds((prev) => {
+                    const next = new Set(prev);
+                    filteredIds.forEach((id) => next.add(id));
+                    return next;
+                  });
+                }}
+              >
+                Select Filtered
+              </Button>
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={() => setSelectedMemberIds(new Set())}
+              >
+                Clear All
+              </Button>
+            </div>
+          </div>
+
+          <div style={{ maxHeight: 380, overflowY: "auto" }}>
             <Table hover responsive className="align-middle mb-0">
               <thead className="table-light small">
                 <tr>
                   <th style={{ width: 40 }}></th>
                   <th>Employee</th>
-                  <th>Designation</th>
-                  <th>Department</th>
-                  <th>Primary Branch</th>
+                  <th>Department & Designation</th>
+                  <th>Branch Assignment</th>
                 </tr>
               </thead>
               <tbody>
                 {onboardedStaff
                   .filter((emp) => {
+                    const targetBId = String(selectedBranchForMembers?._id || selectedBranchForMembers?.id || "");
+                    const empBId = String(emp.primaryBranchId || "");
+                    const isCurrent = empBId && empBId === targetBId;
+                    const isUnassigned = !empBId;
+
+                    // Exclude other branch members from this branch's modal
+                    if (!isCurrent && !isUnassigned) return false;
+
                     const q = memberSearch.toLowerCase();
-                    return !q || emp.fullName.toLowerCase().includes(q) || emp.email.toLowerCase().includes(q) || emp.department.toLowerCase().includes(q);
+                    const matchSearch = !q ||
+                      (emp.fullName && emp.fullName.toLowerCase().includes(q)) ||
+                      (emp.email && emp.email.toLowerCase().includes(q)) ||
+                      (emp.employeeCode && emp.employeeCode.toLowerCase().includes(q)) ||
+                      (emp.department && emp.department.toLowerCase().includes(q));
+                    if (!matchSearch) return false;
+
+                    if (memberAssignFilter === "current") return isCurrent;
+                    if (memberAssignFilter === "unassigned") return isUnassigned;
+                    return true;
                   })
                   .map((emp) => {
                     const empId = String(emp._id || emp.id);
                     const isChecked = selectedMemberIds.has(empId);
+                    const targetBId = String(selectedBranchForMembers?._id || selectedBranchForMembers?.id || "");
+                    const empBId = String(emp.primaryBranchId || "");
+                    const isCurrent = empBId && empBId === targetBId;
+
                     return (
-                      <tr key={empId} onClick={() => toggleMember(empId)} role="button">
+                      <tr
+                        key={empId}
+                        onClick={() => toggleMember(empId)}
+                        role="button"
+                        className={isChecked ? "table-active" : ""}
+                      >
                         <td>
                           <Form.Check
                             checked={isChecked}
@@ -2575,18 +3194,29 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                           />
                         </td>
                         <td>
-                          <div className="fw-semibold text-dark">{emp.fullName}</div>
+                          <div className="fw-semibold text-dark d-flex align-items-center gap-2">
+                            <span>{emp.fullName}</span>
+                            {emp.employeeCode && (
+                              <span className="branch-code-badge" style={{ fontSize: "10px", padding: "1px 5px" }}>
+                                {emp.employeeCode}
+                              </span>
+                            )}
+                          </div>
                           <div className="small text-muted">{emp.email}</div>
                         </td>
-                        <td className="small text-dark">{emp.designation}</td>
-                        <td className="small text-dark">{emp.department}</td>
                         <td>
-                          {emp.primaryBranchId ? (
-                            <Badge bg="light" text="dark" className="border">
-                              Assigned
+                          <div className="small text-dark fw-medium">{emp.designation || "—"}</div>
+                          <div className="extra-small text-muted">{emp.department || "—"}</div>
+                        </td>
+                        <td>
+                          {isCurrent ? (
+                            <Badge bg="success-subtle" className="text-success border border-success-subtle px-2.5 py-1">
+                              <FaCheckCircle className="me-1" /> Assigned to this Branch
                             </Badge>
                           ) : (
-                            <span className="text-muted small">None</span>
+                            <Badge bg="secondary-subtle" className="text-secondary border px-2.5 py-1">
+                              Unassigned {isChecked && <span className="ms-1 fw-bold text-success">➔ Add to Branch</span>}
+                            </Badge>
                           )}
                         </td>
                       </tr>
@@ -2597,7 +3227,7 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
           </div>
         </Modal.Body>
         <Modal.Footer className="bg-light px-4 py-3 border-top d-flex justify-content-between">
-          <span className="small text-muted"><strong>{selectedMemberIds.size}</strong> staff selected</span>
+          <span className="small text-muted"><strong>{selectedMemberIds.size}</strong> staff selected for this branch</span>
           <div className="d-flex gap-2">
             <Button variant="secondary" size="sm" onClick={() => setShowAssignModal(false)} disabled={assignLoading}>
               Cancel

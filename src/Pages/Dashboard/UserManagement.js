@@ -35,6 +35,7 @@ import {
   FaLock,
   FaBuilding,
   FaCodeBranch,
+  FaCrown,
 } from "react-icons/fa";
 import {
   createCustomRole,
@@ -1065,7 +1066,7 @@ function UserManagement({ initialTab = "users" }) {
                 <tbody>
                   {paginatedUsers.map((u) => {
                     const hasAccount = u.hasLoginAccess === true;
-                    const isOwnerUser = u.role?.priority === 1 || u.role?.roleCode === "OWNER";
+                    const isOwnerUser = u.role?.priority === 1 || u.role?.roleCode === "OWNER" || u.isOwner === true;
                     const canModify =
                       currentUser?.priority === 1 ||
                       (!isOwnerUser && (isSystemAdmin || hasPermission("user.manage_roles")));

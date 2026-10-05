@@ -8,8 +8,11 @@ const StatutoryDetailsCard = ({
   onChange,
   onSave,
   saving,
+  errors: externalErrors = {},
 }) => {
   const [errors, setErrors] = useState({});
+
+  const displayErrors = { ...errors, ...externalErrors };
 
   const validate = () => {
     const errs = {};
@@ -90,7 +93,7 @@ const StatutoryDetailsCard = ({
                     placeholder="e.g. 100123456789 (12 digits)"
                     maxLength={12}
                     value={data?.uanNo || ""}
-                    isInvalid={Boolean(errors.uanNo)}
+                    isInvalid={Boolean(displayErrors.uanNo)}
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, "");
                       onChange("uanNo", val);
@@ -98,7 +101,7 @@ const StatutoryDetailsCard = ({
                     }}
                   />
                   <Form.Control.Feedback type="invalid" className="extra-small">
-                    {errors.uanNo}
+                    {displayErrors.uanNo}
                   </Form.Control.Feedback>
                   <Form.Text className="extra-small text-muted">
                     12 digits EPF identifier
@@ -116,7 +119,7 @@ const StatutoryDetailsCard = ({
                     placeholder="e.g. MH/BAN/0012345/000/0012345"
                     maxLength={22}
                     value={data?.pfNo || ""}
-                    isInvalid={Boolean(errors.pfNo)}
+                    isInvalid={Boolean(displayErrors.pfNo)}
                     onChange={(e) => {
                       const val = e.target.value.toUpperCase();
                       onChange("pfNo", val);
@@ -124,7 +127,7 @@ const StatutoryDetailsCard = ({
                     }}
                   />
                   <Form.Control.Feedback type="invalid" className="extra-small">
-                    {errors.pfNo}
+                    {displayErrors.pfNo}
                   </Form.Control.Feedback>
                   <Form.Text className="extra-small text-muted">
                     5-22 alphanumeric characters
@@ -142,7 +145,7 @@ const StatutoryDetailsCard = ({
                     placeholder="e.g. 31000123450000101 (17 digits)"
                     maxLength={17}
                     value={data?.esiNo || ""}
-                    isInvalid={Boolean(errors.esiNo)}
+                    isInvalid={Boolean(displayErrors.esiNo)}
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, "");
                       onChange("esiNo", val);
@@ -150,7 +153,7 @@ const StatutoryDetailsCard = ({
                     }}
                   />
                   <Form.Control.Feedback type="invalid" className="extra-small">
-                    {errors.esiNo}
+                    {displayErrors.esiNo}
                   </Form.Control.Feedback>
                   <Form.Text className="extra-small text-muted">
                     17 digits insurance number

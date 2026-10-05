@@ -17,6 +17,7 @@ import {
  */
 const CompensationCard = ({
   data = {},
+  errors = {},
   isEditMode = true,
   onChange = () => {},
   onSave = null,
@@ -441,19 +442,27 @@ const CompensationCard = ({
                   <Form.Group>
                     <Form.Label className="extra-small fw-bold text-uppercase">Annual CTC (Cost to Company) *</Form.Label>
                     {isEditMode && !readOnly ? (
-                      <InputGroup size="sm">
-                        <InputGroup.Text className="bg-light text-muted">₹</InputGroup.Text>
-                        <Form.Control
-                          placeholder="e.g. 600000"
-                          value={comp.annualCtc || ""}
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            const num = parseFloat(raw) || 0;
-                            const extra = num > 0 ? { monthlyGross: String(Math.round(num / 12)) } : {};
-                            handleFieldUpdate("annualCtc", raw, extra);
-                          }}
-                        />
-                      </InputGroup>
+                      <div>
+                        <InputGroup size="sm">
+                          <InputGroup.Text className="bg-light text-muted">₹</InputGroup.Text>
+                          <Form.Control
+                            placeholder="e.g. 600000"
+                            value={comp.annualCtc || ""}
+                            isInvalid={Boolean(errors.annualCtc || errors.compensationAmount || errors.salary)}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              const num = parseFloat(raw) || 0;
+                              const extra = num > 0 ? { monthlyGross: String(Math.round(num / 12)) } : {};
+                              handleFieldUpdate("annualCtc", raw, extra);
+                            }}
+                          />
+                        </InputGroup>
+                        {(errors.annualCtc || errors.compensationAmount || errors.salary) && (
+                          <Form.Control.Feedback type="invalid" className="d-block extra-small mt-1">
+                            {errors.annualCtc || errors.compensationAmount || errors.salary}
+                          </Form.Control.Feedback>
+                        )}
+                      </div>
                     ) : (
                       <div className="fw-bold text-dark small">₹ {comp.annualCtc ? Number(comp.annualCtc).toLocaleString("en-IN") : "—"}</div>
                     )}
@@ -620,14 +629,22 @@ const CompensationCard = ({
                 <Form.Group>
                   <Form.Label className="extra-small fw-bold text-uppercase">Monthly Stipend Amount *</Form.Label>
                   {isEditMode && !readOnly ? (
-                    <InputGroup size="sm">
-                      <InputGroup.Text className="bg-light text-muted">₹</InputGroup.Text>
-                      <Form.Control
-                        placeholder="e.g. 15000"
-                        value={comp.stipendAmount || data.compensationAmount || ""}
-                        onChange={(e) => handleFieldUpdate("stipendAmount", e.target.value)}
-                      />
-                    </InputGroup>
+                    <div>
+                      <InputGroup size="sm">
+                        <InputGroup.Text className="bg-light text-muted">₹</InputGroup.Text>
+                        <Form.Control
+                          placeholder="e.g. 15000"
+                          value={comp.stipendAmount || data.compensationAmount || ""}
+                          isInvalid={Boolean(errors.stipendAmount)}
+                          onChange={(e) => handleFieldUpdate("stipendAmount", e.target.value)}
+                        />
+                      </InputGroup>
+                      {errors.stipendAmount && (
+                        <Form.Control.Feedback type="invalid" className="d-block extra-small mt-1">
+                          {errors.stipendAmount}
+                        </Form.Control.Feedback>
+                      )}
+                    </div>
                   ) : (
                     <div className="fw-bold text-dark small">₹ {comp.stipendAmount ? Number(comp.stipendAmount).toLocaleString("en-IN") : "—"}</div>
                   )}
@@ -683,14 +700,22 @@ const CompensationCard = ({
                 <Form.Group>
                   <Form.Label className="extra-small fw-bold text-uppercase">Contract Fee / Rate Amount *</Form.Label>
                   {isEditMode && !readOnly ? (
-                    <InputGroup size="sm">
-                      <InputGroup.Text className="bg-light text-muted">₹</InputGroup.Text>
-                      <Form.Control
-                        placeholder="e.g. 75000"
-                        value={comp.contractRate || data.compensationAmount || ""}
-                        onChange={(e) => handleFieldUpdate("contractRate", e.target.value)}
-                      />
-                    </InputGroup>
+                    <div>
+                      <InputGroup size="sm">
+                        <InputGroup.Text className="bg-light text-muted">₹</InputGroup.Text>
+                        <Form.Control
+                          placeholder="e.g. 75000"
+                          value={comp.contractRate || data.compensationAmount || ""}
+                          isInvalid={Boolean(errors.contractRate)}
+                          onChange={(e) => handleFieldUpdate("contractRate", e.target.value)}
+                        />
+                      </InputGroup>
+                      {errors.contractRate && (
+                        <Form.Control.Feedback type="invalid" className="d-block extra-small mt-1">
+                          {errors.contractRate}
+                        </Form.Control.Feedback>
+                      )}
+                    </div>
                   ) : (
                     <div className="fw-bold text-dark small">₹ {comp.contractRate ? Number(comp.contractRate).toLocaleString("en-IN") : "—"}</div>
                   )}
