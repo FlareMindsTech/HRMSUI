@@ -59,7 +59,7 @@ function ApprovalWorkflows() {
     allowSelfApproval: false,
     isActive: true,
     approvalLevels: [
-      { level: 1, roleId: '', roleName: '', minimumPriority: 3, isMandatory: true }
+      { level: 1, name: 'Level 1', roleId: '', roleName: '', minimumPriority: 3, isMandatory: true }
     ],
   });
 
@@ -107,7 +107,26 @@ function ApprovalWorkflows() {
       return;
     }
     try {
-      await configureWorkflow(configForm);
+      const sanitizedLevels = (configForm.approvalLevels || []).map((lvl, index) => {
+        const lvlNum = lvl.level || index + 1;
+        const matchedRole = roles.find((r) => String(r._id || r.id) === String(lvl.roleId));
+        const roleTitle = lvl.roleName || matchedRole?.roleName || matchedRole?.name || '';
+        return {
+          level: lvlNum,
+          name: lvl.name || roleTitle || `Level ${lvlNum}`,
+          roleId: lvl.roleId || undefined,
+          roleName: roleTitle || `Level ${lvlNum} Authority`,
+          minimumPriority: Number(lvl.minimumPriority) || 1,
+          isMandatory: lvl.isMandatory !== undefined ? Boolean(lvl.isMandatory) : true,
+        };
+      });
+
+      const payload = {
+        ...configForm,
+        approvalLevels: sanitizedLevels,
+      };
+
+      await configureWorkflow(payload);
       setAlert({ type: 'success', message: 'Workflow configuration saved successfully.' });
       setShowConfigModal(false);
       loadData();
@@ -135,19 +154,23 @@ function ApprovalWorkflows() {
   };
 
   const addLevel = () => {
-    setConfigForm((prev) => ({
-      ...prev,
-      approvalLevels: [
-        ...prev.approvalLevels,
-        {
-          level: prev.approvalLevels.length + 1,
-          roleId: '',
-          roleName: '',
-          minimumPriority: 2,
-          isMandatory: true,
-        },
-      ],
-    }));
+    setConfigForm((prev) => {
+      const nextLvl = (prev.approvalLevels?.length || 0) + 1;
+      return {
+        ...prev,
+        approvalLevels: [
+          ...(prev.approvalLevels || []),
+          {
+            level: nextLvl,
+            name: `Level ${nextLvl}`,
+            roleId: '',
+            roleName: '',
+            minimumPriority: 2,
+            isMandatory: true,
+          },
+        ],
+      };
+    });
   };
 
   const removeLevel = (index) => {
@@ -156,7 +179,11 @@ function ApprovalWorkflows() {
       ...prev,
       approvalLevels: prev.approvalLevels
         .filter((_, i) => i !== index)
-        .map((lvl, idx) => ({ ...lvl, level: idx + 1 })),
+        .map((lvl, idx) => ({
+          ...lvl,
+          level: idx + 1,
+          name: lvl.name || `Level ${idx + 1}`,
+        })),
     }));
   };
 
@@ -213,7 +240,17 @@ function ApprovalWorkflows() {
               description: row.description || '',
               allowSelfApproval: Boolean(row.allowSelfApproval),
               isActive: row.isActive !== undefined ? row.isActive : true,
-              approvalLevels: row.approvalLevels?.length ? row.approvalLevels : [{ level: 1, roleId: '', roleName: '', minimumPriority: 3, isMandatory: true }],
+              approvalLevels: row.approvalLevels?.length
+                ? row.approvalLevels.map((lvl, idx) => ({
+                    ...lvl,
+                    level: lvl.level || idx + 1,
+                    name: lvl.name || lvl.roleName || `Level ${lvl.level || idx + 1}`,
+                    roleId: lvl.roleId || '',
+                    roleName: lvl.roleName || '',
+                    minimumPriority: lvl.minimumPriority ?? 3,
+                    isMandatory: lvl.isMandatory !== undefined ? lvl.isMandatory : true,
+                  }))
+                : [{ level: 1, name: 'Level 1', roleId: '', roleName: '', minimumPriority: 3, isMandatory: true }],
             });
             setShowConfigModal(true);
           }}
@@ -300,7 +337,7 @@ function ApprovalWorkflows() {
                     description: '',
                     allowSelfApproval: false,
                     isActive: true,
-                    approvalLevels: [{ level: 1, roleId: '', roleName: '', minimumPriority: 3, isMandatory: true }],
+                    approvalLevels: [{ level: 1, name: 'Level 1', roleId: '', roleName: '', minimumPriority: 3, isMandatory: true }],
                   });
                   setShowConfigModal(true);
                 }}
@@ -423,10 +460,12 @@ function ApprovalWorkflows() {
                         onChange={(e) => {
                           const selected = roles.find((r) => String(r._id || r.id) === String(e.target.value));
                           const updated = [...configForm.approvalLevels];
+                          const roleTitle = selected?.roleName || selected?.name || '';
                           updated[index] = {
                             ...updated[index],
                             roleId: e.target.value,
-                            roleName: selected?.roleName || selected?.name || 'Authority Role',
+                            roleName: roleTitle || 'Authority Role',
+                            name: roleTitle || updated[index].name || `Level ${updated[index].level || index + 1}`,
                           };
                           setConfigForm({ ...configForm, approvalLevels: updated });
                         }}

@@ -225,6 +225,55 @@ const ALL_COMPLIANCE_DOMAINS = [
 const EMPTY_TARGET_EMP = Object.freeze({});
 
 /**
+ * Automatically infer standard Bank Name from IFSC code prefix
+ */
+export const deriveBankNameFromIfsc = (ifsc) => {
+  if (!ifsc || typeof ifsc !== "string") return "";
+  const code = ifsc.trim().toUpperCase().slice(0, 4);
+  const bankMap = {
+    HDFC: "HDFC Bank",
+    SBIN: "State Bank of India",
+    ICIC: "ICICI Bank",
+    UTIB: "Axis Bank",
+    KKBK: "Kotak Mahindra Bank",
+    PUNB: "Punjab National Bank",
+    BARB: "Bank of Baroda",
+    CNRB: "Canara Bank",
+    UBIN: "Union Bank of India",
+    IDIB: "Indian Bank",
+    IOBA: "Indian Overseas Bank",
+    YESB: "Yes Bank",
+    INDB: "IndusInd Bank",
+    FDRL: "Federal Bank",
+    IDFB: "IDFC FIRST Bank",
+    BKID: "Bank of India",
+    CBIN: "Central Bank of India",
+    MAHB: "Bank of Maharashtra",
+    PSIB: "Punjab & Sind Bank",
+    UCOB: "UCO Bank",
+    CITI: "Citibank",
+    HSBC: "HSBC Bank",
+    SCBL: "Standard Chartered Bank",
+    DBSS: "DBS Bank",
+    RATN: "RBL Bank",
+    KVBL: "Karur Vysya Bank",
+    SIBL: "South Indian Bank",
+    TMBL: "Tamilnad Mercantile Bank",
+    CSBK: "CSB Bank",
+    DCBL: "DCB Bank",
+    BDBL: "Bandhan Bank",
+    AUBL: "AU Small Finance Bank",
+    ESFB: "Equitas Small Finance Bank",
+    UJVN: "Ujjivan Small Finance Bank",
+    JSFB: "Jana Small Finance Bank",
+    AIRP: "Airtel Payments Bank",
+    PYTM: "Paytm Payments Bank",
+    IPOS: "India Post Payments Bank",
+  };
+  return bankMap[code] || (code && code.length >= 4 ? `${code} Bank` : "");
+};
+
+/**
  * Filter bank and statutory payroll requirements if candidate is enrolled under Unpaid engagement
  */
 const sanitizeValidationReport = (rawReport, isCandidateUnpaid) => {
@@ -279,10 +328,18 @@ const sanitizeValidationReport = (rawReport, isCandidateUnpaid) => {
     if (text.includes("access") || text.includes("system") || text.includes("tool")) {
       sections.systemAccess = false;
     }
-    if (text.includes("bank") || text.includes("salary") || text.includes("compensation") || text.includes("payroll")) {
+    if (text.includes("bank") || text.includes("salary") || text.includes("compensation") || text.includes("payroll") || text.includes("ifsc") || text.includes("account number")) {
       if (!isCandidateUnpaid) sections.payroll = false;
     }
-    if (text.includes("profile") || text.includes("personal") || text.includes("name") || text.includes("email")) {
+    // Only flag employeeInformation if genuinely personal profile missing, not just because "Bank Name" contains "name"
+    if (
+      text.includes("profile") ||
+      text.includes("personal") ||
+      text.includes("first name") ||
+      text.includes("last name") ||
+      text.includes("email") ||
+      (text.includes("name") && !text.includes("bank") && !text.includes("company") && !text.includes("account"))
+    ) {
       sections.employeeInformation = false;
     }
     if (text.includes("employment") || text.includes("department") || text.includes("designation") || text.includes("manager")) {
@@ -3210,22 +3267,27 @@ function HrOnboarding() {
         }
       }
 
+      const currentBank = candidateProfileData.bankDetails || {};
+      const ifscValue = (currentBank.ifsc || currentBank.ifscCode || "").trim().toUpperCase();
+      const resolvedBankName = (currentBank.bankName || "").trim() || deriveBankNameFromIfsc(ifscValue) || (ifscValue ? `${ifscValue.slice(0, 4)} Bank` : "Primary Bank");
+      const resolvedAccountHolder = (currentBank.accountHolderName || currentBank.accountName || "").trim() || `${candidateProfileData.firstName || ""} ${candidateProfileData.lastName || ""}`.trim();
+
       await updatePayroll(selectedOnboarding._id, {
         bankDetails: {
-          bankName: candidateProfileData.bankDetails?.bankName || "",
-          accountHolderName: candidateProfileData.bankDetails?.accountHolderName || candidateProfileData.bankDetails?.accountName || "",
-          accountNumber: candidateProfileData.bankDetails?.accountNumber || "",
-          accountType: candidateProfileData.bankDetails?.accountType || "SAVINGS",
-          ifsc: candidateProfileData.bankDetails?.ifsc || candidateProfileData.bankDetails?.ifscCode || "",
-          ifscCode: candidateProfileData.bankDetails?.ifsc || candidateProfileData.bankDetails?.ifscCode || "",
-          branchName: candidateProfileData.bankDetails?.branchName || "",
+          bankName: resolvedBankName,
+          accountHolderName: resolvedAccountHolder,
+          accountNumber: (currentBank.accountNumber || currentBank.accountNo || "").trim(),
+          accountType: currentBank.accountType || "SAVINGS",
+          ifsc: ifscValue,
+          ifscCode: ifscValue,
+          branchName: (currentBank.branchName || "").trim(),
         },
         statutoryDetails: {
-          panNo: candidateProfileData.statutoryDetails?.panNo || "",
-          aadhaarNo: candidateProfileData.statutoryDetails?.aadhaarNo || "",
-          uanNo: candidateProfileData.statutoryDetails?.uanNo || "",
-          pfNo: candidateProfileData.statutoryDetails?.pfNo || "",
-          esiNo: candidateProfileData.statutoryDetails?.esiNo || "",
+          panNo: (candidateProfileData.statutoryDetails?.panNo || "").trim().toUpperCase(),
+          aadhaarNo: (candidateProfileData.statutoryDetails?.aadhaarNo || "").trim(),
+          uanNo: (candidateProfileData.statutoryDetails?.uanNo || "").trim(),
+          pfNo: (candidateProfileData.statutoryDetails?.pfNo || "").trim(),
+          esiNo: (candidateProfileData.statutoryDetails?.esiNo || "").trim(),
         },
       });
 

@@ -2,6 +2,45 @@ import React, { useState } from "react";
 import { Card, Form, Row, Col, Button, Badge } from "react-bootstrap";
 import { FaUniversity, FaCheck, FaEye, FaEyeSlash, FaSave, FaFileAlt, FaFileUpload } from "react-icons/fa";
 
+const deriveBankName = (ifsc) => {
+  if (!ifsc || typeof ifsc !== "string") return "";
+  const code = ifsc.trim().toUpperCase().slice(0, 4);
+  const bankMap = {
+    HDFC: "HDFC Bank",
+    SBIN: "State Bank of India",
+    ICIC: "ICICI Bank",
+    UTIB: "Axis Bank",
+    KKBK: "Kotak Mahindra Bank",
+    PUNB: "Punjab National Bank",
+    BARB: "Bank of Baroda",
+    CNRB: "Canara Bank",
+    UBIN: "Union Bank of India",
+    IDIB: "Indian Bank",
+    IOBA: "Indian Overseas Bank",
+    YESB: "Yes Bank",
+    INDB: "IndusInd Bank",
+    FDRL: "Federal Bank",
+    IDFB: "IDFC FIRST Bank",
+    BKID: "Bank of India",
+    CBIN: "Central Bank of India",
+    MAHB: "Bank of Maharashtra",
+    PSIB: "Punjab & Sind Bank",
+    UCOB: "UCO Bank",
+    CITI: "Citibank",
+    HSBC: "HSBC Bank",
+    SCBL: "Standard Chartered Bank",
+    DBSS: "DBS Bank",
+    RATN: "RBL Bank",
+    KVBL: "Karur Vysya Bank",
+    SIBL: "South Indian Bank",
+    TMBL: "Tamilnad Mercantile Bank",
+    CSBK: "CSB Bank",
+    DCBL: "DCB Bank",
+    BDBL: "Bandhan Bank",
+  };
+  return bankMap[code] || (code && code.length >= 4 ? `${code} Bank` : "");
+};
+
 const BankDetailsCard = ({
   data,
   isEditMode,
@@ -36,6 +75,10 @@ const BankDetailsCard = ({
 
   const handleSaveClick = () => {
     if (validate()) {
+      if (!data?.bankName && data?.ifsc) {
+        const inferred = deriveBankName(data.ifsc);
+        if (inferred) onChange("bankName", inferred);
+      }
       onSave();
     }
   };
@@ -171,6 +214,10 @@ const BankDetailsCard = ({
                     onChange={(e) => {
                       const val = e.target.value.toUpperCase();
                       onChange("ifsc", val);
+                      if (!data?.bankName) {
+                        const inferred = deriveBankName(val);
+                        if (inferred) onChange("bankName", inferred);
+                      }
                       if (errors.ifsc) setErrors({ ...errors, ifsc: null });
                     }}
                   />
