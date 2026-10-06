@@ -10,7 +10,6 @@ import {
   Modal,
   Form,
   InputGroup,
-  Nav,
 } from "react-bootstrap";
 import {
   FaUserShield,
@@ -18,7 +17,6 @@ import {
   FaEdit,
   FaTrash,
   FaCheckCircle,
-  FaExclamationTriangle,
   FaUsers,
   FaKey,
   FaShieldAlt,
@@ -29,23 +27,25 @@ import {
   FaEye,
   FaEyeSlash,
   FaUserCheck,
-  FaUserTimes,
-  FaSearch,
   FaTimes,
-  FaLock,
   FaBuilding,
   FaCodeBranch,
-  FaCrown,
+  FaLock,
+  FaSave,
 } from "react-icons/fa";
 import {
   createCustomRole,
   updateCustomRole,
   deleteCustomRole,
+  fetchRoleById,
   fetchRoleAccessConfig,
   assignUserRole,
   provisionUserAccount,
   updateAccountStatus,
   resetAccountCredentials,
+  canAssignRole,
+  validateRolePayload,
+  minCreatablePriority,
 } from "../../services/rbacService";
 import {
   getAllPasswordResetRules,
@@ -65,6 +65,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { selectAuthUser, useHasPermission, selectIsSystemAdmin, fetchAuth } from '../../redux/slices/authSlice';
 import {
   fetchAccessMasters,
+  fetchRolesFiltered,
   selectRoles,
   selectAssignableRoles,
   selectPermissionCatalog,
@@ -79,7 +80,9 @@ import BranchAccessSelector from "../../Components/Common/BranchAccessSelector";
 import LoadingSpinner from "../../Components/Common/LoadingSpinner";
 import PaginationBar from "../../Components/Common/PaginationBar";
 import ConfirmModal from "../../Components/Common/ConfirmModal";
-import FeedbackAlert from "../../Components/Common/FeedbackAlert";
+import AppToast from "../../Components/Common/AppToast";
+import SearchInput from "../../Components/Common/SearchInput";
+import FilterSelect from "../../Components/Common/FilterSelect";
 import "./UserManagement.css";
 
 function UserManagement({ initialTab = "users" }) {
@@ -129,6 +132,7 @@ function UserManagement({ initialTab = "users" }) {
     roleName: "",
     description: "",
     priority: 3,
+    accessLevel: "BRANCH",
     isActive: true,
     selectedMenuIds: [],
     selectedPermissionCodes: [],
@@ -268,7 +272,9 @@ function UserManagement({ initialTab = "users" }) {
 
   // ── Search & Filter State: Employee Directory ──
   const [userSearch, setUserSearch] = useState("");
-  const [accountStatusFilter, setAccountStatusFilter] = useState("all");
+  // Default view shows completed (Active) accounts only — No Login Account
+  // rows are one filter change away (Login Status → All / Need Provisioning).
+  const [accountStatusFilter, setAccountStatusFilter] = useState("active");
   const [roleFilter, setRoleFilter] = useState("all");
 
   // ── Search & Filter State: Roles ──
@@ -314,10 +320,15 @@ function UserManagement({ initialTab = "users" }) {
   // ── Open Create Role Modal ──
   const handleOpenCreateRoleModal = () => {
     setEditingRoleId(null);
+    setOriginalPriority(null);
+    setFocusedMenuId(null);
+    setModuleSearch("");
+    setActionSearch("");
     setRoleForm({
       roleName: "",
       description: "",
       priority: 3,
+      accessLevel: "BRANCH",
       isActive: true,
       selectedMenuIds: [],
       selectedPermissionCodes: [],
@@ -326,23 +337,40 @@ function UserManagement({ initialTab = "users" }) {
   };
 
   // ── Open Edit Role Modal ──
+  // Pre-checks the role first: 404 = deleted since list load, 403 = cross-org.
   const handleOpenEditRoleModal = async (role) => {
     setEditingRoleId(role._id);
+    setOriginalPriority(role.priority ?? 3);
+    setFocusedMenuId(null);
+    setModuleSearch("");
+    setActionSearch("");
     setModalLoading(true);
     setShowRoleModal(true);
 
     try {
+      const fresh = await fetchRoleById(role._id);
+      const liveRole = fresh?.role || fresh || role;
+      setOriginalPriority(liveRole.priority ?? 3);
       const config = await fetchRoleAccessConfig(role._id);
       setRoleForm({
-        roleName: role.roleName,
-        description: role.description || "",
-        priority: role.priority || 3,
-        isActive: role.isActive !== false,
-        selectedMenuIds: config?.menuIds || [],
+        roleName: liveRole.roleName ?? role.roleName,
+        description: liveRole.description || "",
+        priority: liveRole.priority ?? 3,
+        accessLevel: liveRole.accessLevel || "BRANCH",
+        isActive: liveRole.isActive !== false,
+        selectedMenuIds: (config?.menuIds || []).map(String),
         selectedPermissionCodes: config?.permissionCodes || [],
       });
     } catch (err) {
-      setErrorMessage("Failed to load role access configuration");
+      setShowRoleModal(false);
+      setEditingRoleId(null);
+      setErrorMessage(
+        err?.status === 404
+          ? "This role no longer exists (deleted)."
+          : err?.status === 403
+            ? "You cannot edit a role from another organization."
+            : "Failed to load role access configuration"
+      );
     } finally {
       setModalLoading(false);
     }
@@ -374,10 +402,8 @@ function UserManagement({ initialTab = "users" }) {
     });
   };
 
-  // ── Select All Permissions in a Module ──
-  const toggleModulePermissions = (moduleName) => {
-    const modulePerms = catalog[moduleName] || [];
-    const moduleCodes = modulePerms.map((p) => p.permissionCode);
+  // ── Select All Permissions in a Module (scoped union helper) ──
+  const toggleModulePermissions = (moduleCodes) => {
     const allSelected = moduleCodes.every((code) =>
       roleForm.selectedPermissionCodes.includes(code)
     );
@@ -390,11 +416,148 @@ function UserManagement({ initialTab = "users" }) {
     }));
   };
 
+  // ── Menu ↔ permission-module linkage (Section 1 drives Section 2) ──
+  // Menus (menuCode: ATTENDANCE, ASSETS…) and the permission catalog (module
+  // keys: ATTENDANCE, ASSET…) use different vocabularies, so an explicit map
+  // covers the known pairs and a token matcher covers the rest (menu
+  // LEAVE_MGMT ↔ module LEAVE, ASSETS ↔ ASSET, USER_MANAGEMENT ↔ USER…).
+  const MENU_TO_MODULES = {
+    DASHBOARD: ["DASHBOARD"],
+    ATTENDANCE: ["ATTENDANCE"],
+    PROJECTS: ["PROJECT"],
+    ORGANISATION: ["ORGANISATION", "ORGANIZATION"],
+    LEAVE_MGMT: ["LEAVE"],
+    REIMBURSEMENT: ["REIMBURSEMENT"],
+    USER_MANAGEMENT: ["USER", "ONBOARDING"],
+    ROLE_MANAGEMENT: ["ROLE", "APPROVAL"],
+    ASSETS: ["ASSET"],
+    PAYSLIP: ["PAYSLIP"],
+    EPFO: ["EPFO"],
+    MIS: ["MIS"],
+  };
+  const normToken = (s) => String(s || "").toUpperCase().replace(/[^A-Z0-9]+/g, "");
+  const getMenuId = (m) => String(m?._id || "");
+  const modulesForMenu = (menuCode, catalogKeys) => {
+    const direct = MENU_TO_MODULES[String(menuCode || "").toUpperCase()];
+    if (direct) return direct.filter((k) => catalogKeys.includes(k));
+    // Dynamic fallback: match catalog key against menu tokens, tolerating a
+    // trailing S (ASSETS→ASSET) and _MGMT-style suffixes (LEAVE_MGMT→LEAVE).
+    const tokens = String(menuCode || "").toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+    return catalogKeys.filter((key) => {
+      const nk = normToken(key);
+      return tokens.some((t) => nk === t || nk === `${t}S` || t === `${nk}S` || nk.startsWith(t) || t.startsWith(nk));
+    });
+  };
+  // Platform containment for non-platform creators (backend blocks `*` and
+  // `platform.*`; the UI stops offering them instead of failing on save).
+  const isPlatformCreator =
+    String(currentUser?.roleCode || "").toUpperCase() === "SAAS_SUPER_ADMIN" || (currentUser?.priority ?? 99) <= 0;
+  const grantablePerms = (perms) =>
+    (perms || []).filter((p) => {
+      const code = String(p?.permissionCode || "");
+      if (!code) return false;
+      if (isPlatformCreator) return true;
+      return code !== "*" && !code.startsWith("platform.");
+    });
+  // Modules linked to menus (menuId → catalog module keys). Unmapped catalog
+  // modules are still reachable: every catalog key appears under at least one
+  // menu via the token fallback, else under the focused menu's own group.
+  const catalogKeys = Object.keys(catalog || {});
+  const catalogKeySig = catalogKeys.join("|");
+  const menuIdToModules = useMemo(() => {
+    const map = {};
+    (menus || []).forEach((m) => {
+      map[getMenuId(m)] = modulesForMenu(m.menuCode, catalogKeys);
+    });
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [menus, catalogKeySig]);
+  // Accordion state: which Section-1 menu cards are expanded to preview
+  // their related API actions inline. Reset whenever the modal opens.
+  const [focusedMenuId, setFocusedMenuId] = useState(null);
+  const [moduleSearch, setModuleSearch] = useState("");
+  const [actionSearch, setActionSearch] = useState("");
+  // Original priority of the role being edited (lets an edit KEEP its current
+  // priority while still blocking escalation above viewer authority).
+  const [originalPriority, setOriginalPriority] = useState(null);
+  const minPriority = minCreatablePriority(currentUser);
+  // Focused menu drives the right panel: first checked menu, else first menu.
+  const focusMenuId =
+    focusedMenuId ||
+    (menus || []).map(getMenuId).find((id) => roleForm.selectedMenuIds.includes(id)) ||
+    getMenuId(menus[0]) ||
+    "";
+  const focusMenu = (menus || []).find((m) => getMenuId(m) === focusMenuId) || null;
+  const focusLinkedModules = menuIdToModules[focusMenuId] || [];
+  const focusAllPerms = focusLinkedModules.flatMap((mod) => grantablePerms(catalog[mod] || []));
+  const focusVisiblePerms = focusAllPerms.filter((p) => {
+    const q = actionSearch.trim().toLowerCase();
+    if (!q) return true;
+    return `${p.permissionName} ${p.permissionCode}`.toLowerCase().includes(q);
+  });
+  const focusCodes = focusAllPerms.map((p) => p.permissionCode);
+  const focusAllSelected =
+    focusCodes.length > 0 && focusCodes.every((c) => roleForm.selectedPermissionCodes.includes(c));
+  // Select All scoped to the focused menu's actions only.
+  const toggleFocusModulePermissions = () => toggleModulePermissions(focusCodes);
+  const visibleMenus = useMemo(() => {
+    const q = moduleSearch.trim().toLowerCase();
+    if (!q) return menus || [];
+    return (menus || []).filter((m) =>
+      `${m.menuName || ""} ${m.menuCode || ""}`.toLowerCase().includes(q)
+    );
+  }, [menus, moduleSearch]);
+  // Icon per module (reuses already-imported icons; data keywords only).
+  const moduleIcon = (key = "") => {
+    const k = String(key).toUpperCase();
+    if (k.includes("USER") || k.includes("ONBOARD") || k.includes("EMPLOYEE")) return FaUsers;
+    if (k.includes("ROLE")) return FaShieldAlt;
+    if (k.includes("APPROV")) return FaCheckCircle;
+    if (k.includes("ATTEND")) return FaUserCheck;
+    if (k.includes("LEAVE")) return FaUserPlus;
+    if (k.includes("REIMBURS") || k.includes("PAYSLIP") || k.includes("FINANC") || k.includes("EPFO")) return FaPlus;
+    if (k.includes("ASSET")) return FaCog;
+    if (k.includes("PROJECT")) return FaCodeBranch;
+    if (k.includes("ORGAN") || k.includes("BRANCH") || k.includes("LOCATION")) return FaBuilding;
+    if (k.includes("SHIFT") || k.includes("CALENDAR") || k.includes("HOLIDAY")) return FaCog;
+    return FaKey;
+  };
+
   // ── Save Custom Role ──
+  // Backend enforces: hierarchy (P1->=2, P2->=3), reserved substrings
+  // ADMIN|OWNER|SAAS|PLATFORM|SUPER, and `*`/platform.* containment.
+  // Pre-flight here for instant UX; server remains the enforcer.
+  // Renders backend 403 keys per the access-denied contract, e.g.
+  // "Access denied · needs `role.read`" / "needs menu ROLE_MANAGEMENT".
+  const formatRoleError = (err) => {
+    const base = err?.message || "Failed to save role";
+    const key = err?.requiredPermission
+      ? `needs \`${err.requiredPermission}\``
+      : err?.requiredMenu
+        ? `needs menu ${err.requiredMenu}`
+        : err?.requiredPriority !== undefined
+          ? `requires priority ${err.requiredPriority}`
+          : Array.isArray(err?.requiredAnyPermission) && err.requiredAnyPermission.length > 0
+            ? `needs one of ${err.requiredAnyPermission.map((p) => `\`${p}\``).join(", ")}`
+            : "";
+    return key ? `${base} · ${key}` : base;
+  };
   const handleSaveRole = async (e) => {
     e.preventDefault();
     if (!roleForm.roleName.trim()) {
       alert("Please enter a role name");
+      return;
+    }
+    const preflight = validateRolePayload(currentUser, {
+      roleName: roleForm.roleName,
+      priority: roleForm.priority,
+      permissionCodes: roleForm.selectedPermissionCodes,
+    });
+    // Create: always enforced. Edit: enforced only when the priority CHANGED
+    // from the role's original (keeping P2 as Admin is fine; dropping P3→P2
+    // as Admin is blocked). Server remains the final enforcer.
+    if (preflight && (!editingRoleId || roleForm.priority !== originalPriority)) {
+      setErrorMessage(preflight);
       return;
     }
 
@@ -407,6 +570,7 @@ function UserManagement({ initialTab = "users" }) {
           description: roleForm.description,
           priority: roleForm.priority,
           isActive: roleForm.isActive,
+          accessLevel: roleForm.accessLevel,
           menuIds: roleForm.selectedMenuIds,
           permissionCodes: roleForm.selectedPermissionCodes,
         });
@@ -416,6 +580,7 @@ function UserManagement({ initialTab = "users" }) {
           roleName: roleForm.roleName,
           description: roleForm.description,
           priority: roleForm.priority,
+          accessLevel: roleForm.accessLevel,
           menuIds: roleForm.selectedMenuIds,
           permissionCodes: roleForm.selectedPermissionCodes,
         });
@@ -426,7 +591,7 @@ function UserManagement({ initialTab = "users" }) {
       await loadData({ forceMasters: true });
       await refreshAuthContext();
     } catch (err) {
-      setErrorMessage(err.message || "Failed to save role");
+      setErrorMessage(formatRoleError(err));
     } finally {
       setModalLoading(false);
     }
@@ -456,6 +621,7 @@ function UserManagement({ initialTab = "users" }) {
       setShowDeleteConfirm(false);
       setDeletingRole(null);
       await loadData({ forceMasters: true });
+      await refreshAuthContext();
     } catch (err) {
       setErrorMessage(err.message || "Failed to delete role");
     } finally {
@@ -480,6 +646,13 @@ function UserManagement({ initialTab = "users" }) {
   const handleProvisionSubmit = async (e) => {
     e.preventDefault();
     if (!provisioningUser || !provisionForm.roleId) return;
+    // Pre-flight mirror of backend canAssignRole (server enforces).
+    const targetRole = assignableRoles.find((r) => String(r._id) === String(provisionForm.roleId))
+      || roles.find((r) => String(r._id) === String(provisionForm.roleId));
+    if (targetRole && !canAssignRole(currentUser, targetRole)) {
+      setErrorMessage(`You cannot assign role '${targetRole.roleName}' with your authority.`);
+      return;
+    }
 
     setModalLoading(true);
     setErrorMessage("");
@@ -661,22 +834,25 @@ function UserManagement({ initialTab = "users" }) {
   }, [users]);
   const configuredRolesCount = roles.length;
 
-  // ── Filtered Users List ──
+  // Locked backend keys: role and menu identity is ALWAYS _id (never id).
+  const norm = (v) => String(v || "").toLowerCase().trim();
+  const getRoleOptionId = (r) => String(r?._id || "");
+  const getUserRoleId = (u) =>
+    String(u?.role?._id || u?.roleId || (typeof u?.role === "string" ? u.role : "") || "");
+  const getUserRoleCode = (u) => String(u?.role?.roleCode || u?.roleCode || "").toUpperCase();
   const filteredUsers = useMemo(() => {
+    const search = norm(userSearch);
     return users.filter((u) => {
-      const fullName = `${u.firstName || ""} ${u.lastName || ""}`.toLowerCase();
-      const email = (u.email || "").toLowerCase();
-      const empCode = (u.employeeCode || "").toLowerCase();
-      const dept = (u.department || "").toLowerCase();
-      const search = userSearch.toLowerCase().trim();
-      const matchesSearch =
-        !search ||
-        fullName.includes(search) ||
-        email.includes(search) ||
-        empCode.includes(search) ||
-        dept.includes(search);
-
-      if (!matchesSearch) return false;
+      if (search) {
+        const hay = [
+          `${u.firstName || ""} ${u.lastName || ""}`,
+          u.firstName, u.lastName, u.email, u.employeeCode,
+          u.department, u.designation,
+          u.role?.roleName, u.role?.roleCode,
+          u.primaryBranch?.branchName, u.primaryBranchName,
+        ].map(norm).join(" | ");
+        if (!hay.includes(search)) return false;
+      }
 
       // Status filter
       if (accountStatusFilter === "active" && (!u.hasLoginAccess || !u.isActive || u.isBlocked)) return false;
@@ -684,15 +860,21 @@ function UserManagement({ initialTab = "users" }) {
       if (accountStatusFilter === "blocked" && !u.isBlocked) return false;
       if (accountStatusFilter === "inactive" && (u.isActive || !u.hasLoginAccess)) return false;
 
-      // Role filter
+      // Role filter (string-safe: populated object, raw id, or _id/id mix;
+      // falls back to roleCode so cross-collection id mismatches still match)
       if (roleFilter !== "all") {
-        const uRoleId = u.role?._id || u.role;
-        if (uRoleId !== roleFilter) return false;
+        const selected = roles.find((r) => getRoleOptionId(r) === String(roleFilter));
+        const selectedCode = String(selected?.roleCode || "").toUpperCase();
+        const uRoleId = getUserRoleId(u);
+        const uRoleCode = getUserRoleCode(u);
+        const idMatch = uRoleId && uRoleId === String(roleFilter);
+        const codeMatch = selectedCode && uRoleCode && uRoleCode === selectedCode;
+        if (!idMatch && !codeMatch) return false;
       }
 
       return true;
     });
-  }, [users, userSearch, accountStatusFilter, roleFilter]);
+  }, [users, userSearch, accountStatusFilter, roleFilter, roles]);
 
   // ── Dynamic Pagination for Users ──
   const totalFilteredUsers = filteredUsers.length;
@@ -702,6 +884,28 @@ function UserManagement({ initialTab = "users" }) {
     return filteredUsers.slice(start, start + USER_PAGE_SIZE);
   }, [filteredUsers, userPage]);
 
+  // ── Row action visibility (single source for cell + column) ──
+  // Account Action column is rendered only when at least one visible row has
+  // an actionable button; otherwise the empty column is dropped dynamically.
+  // Role-wise priority gate: a button is given only where the viewer holds
+  // hierarchy authority over the target role (canAssignRole mirror of the
+  // backend table — Owner: all except SAAS/OWNER, Admin: P>2 only, HR:
+  // EMPLOYEE only). No authority → no button. Own record stays manageable.
+  const canProvision = isSystemAdmin || hasPermission("user.provision_account");
+  const rowActionOf = (u) => {
+    const hasAccount = u.hasLoginAccess === true;
+    const isOwnerUser = u.role?.priority === 1 || u.role?.roleCode === "OWNER" || u.isOwner === true;
+    const canModify =
+      currentUser?.priority === 1 ||
+      (!isOwnerUser && (isSystemAdmin || hasPermission("user.manage_roles")));
+    const isOwnRecord = String(u._id || u.id || "") && String(u._id || u.id || "") === String(currentUser?._id || currentUser?.id || "");
+    const hasRole = Boolean(u.role?.roleCode || u.role?.roleName);
+    const inAuthority = !hasRole || isOwnRecord || canAssignRole(currentUser, u.role);
+    if (!hasAccount) return canProvision && inAuthority ? "create" : null;
+    return canModify && inAuthority ? "manage" : null;
+  };
+  const showActionColumn = paginatedUsers.some((u) => rowActionOf(u));
+
   // Safe boundary check
   useEffect(() => {
     if (userPage > totalUserPages && totalUserPages > 0) {
@@ -709,33 +913,67 @@ function UserManagement({ initialTab = "users" }) {
     }
   }, [totalUserPages, userPage]);
 
-  // ── Filtered Roles List ──
+  // ── Filtered Roles List (priority-wise: P0 first, then name) ──
+  // Priority NUMBERS come from the backend role records; the colored labels
+  // are frontend presentation (see priorityPillClass below).
+  const byPriorityThenName = (a, b) =>
+    (Number(a.priority ?? 99) - Number(b.priority ?? 99)) ||
+    String(a.roleName || "").localeCompare(String(b.roleName || ""));
+  // Priority-wise option lists for every role dropdown (filter, provision,
+  // manage, reset rules) so pickers always read P0 → P4+.
+  const rolesByPriority = useMemo(() => [...roles].sort(byPriorityThenName), [roles]);
+  const assignableByPriority = useMemo(
+    () => [...assignableRoles].sort(byPriorityThenName),
+    [assignableRoles]
+  );
   const filteredRoles = useMemo(() => {
-    return roles.filter((role) => {
-      const search = roleSearch.toLowerCase().trim();
-      const roleName = (role.roleName || "").toLowerCase();
-      const roleCode = (role.roleCode || "").toLowerCase();
-      const description = (role.description || "").toLowerCase();
-      const matchesSearch =
-        !search ||
-        roleName.includes(search) ||
-        roleCode.includes(search) ||
-        description.includes(search);
+    return roles
+      .filter((role) => {
+        const search = roleSearch.toLowerCase().trim();
+        const roleName = (role.roleName || "").toLowerCase();
+        const roleCode = (role.roleCode || "").toLowerCase();
+        const description = (role.description || "").toLowerCase();
+        const matchesSearch =
+          !search ||
+          roleName.includes(search) ||
+          roleCode.includes(search) ||
+          description.includes(search);
 
-      if (!matchesSearch) return false;
+        if (!matchesSearch) return false;
 
-      const isSystem = Boolean(
-        role.isSystemRole ||
-        role.priority <= 2 ||
-        ["OWNER", "ADMIN", "HR", "EMPLOYEE"].includes(role.roleCode)
-      );
+        const isSystem = Boolean(
+          role.isSystemRole ||
+          role.priority <= 2 ||
+          ["OWNER", "ADMIN", "HR", "EMPLOYEE"].includes(role.roleCode)
+        );
 
-      if (roleTypeFilter === "system" && !isSystem) return false;
-      if (roleTypeFilter === "custom" && isSystem) return false;
+        if (roleTypeFilter === "system" && !isSystem) return false;
+        if (roleTypeFilter === "custom" && isSystem) return false;
 
-      return true;
-    });
+        return true;
+      })
+      .slice()
+      .sort(byPriorityThenName);
   }, [roles, roleSearch, roleTypeFilter]);
+
+  // Priority-wise pill: P0 slate (platform), P1 red (owner), P2 orange
+  // (admin level), P3 slate-blue (staff), P4+ green (custom). Numbers from
+  // backend; colors/labels are frontend-only presentation.
+  const priorityPillClass = (role) => {
+    const p = Number(role?.priority ?? 99);
+    if (p <= 0) return "pri-0";
+    if (p === 1) return "pri-1";
+    if (p === 2) return "pri-2";
+    if (p === 3) return "pri-3";
+    return "pri-4";
+  };
+  const prioritySuffix = (role) => {
+    const p = Number(role?.priority ?? 99);
+    if (p <= 0) return " · PLATFORM";
+    if (p === 1) return " · OWNER";
+    if (p === 2) return " · ADMIN LEVEL";
+    return "";
+  };
 
   // ── Dynamic Pagination for Roles ──
   const totalFilteredRoles = filteredRoles.length;
@@ -752,11 +990,49 @@ function UserManagement({ initialTab = "users" }) {
     }
   }, [totalRolePages, rolePage]);
 
+  // ── Server-side role filters (spec E, debounced) ──
+  // Sends search/isSystemRole to GET /role; clearing both restores the full
+  // masters list. Client-side filteredRoles stays as a second pass.
+  useEffect(() => {
+    if (activeTab !== "roles") return undefined;
+    const search = roleSearch.trim();
+    const hasFilter = search !== "" || roleTypeFilter !== "all";
+    const timer = setTimeout(() => {
+      if (!hasFilter) {
+        dispatch(fetchAccessMasters({ force: true })).catch(() => null);
+        return;
+      }
+      const params = { limit: 100 };
+      if (search) params.search = search;
+      if (roleTypeFilter === "system") params.isSystemRole = true;
+      if (roleTypeFilter === "custom") params.isSystemRole = false;
+      setRolePage(1);
+      dispatch(fetchRolesFiltered(params)).catch(() => null);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [roleSearch, roleTypeFilter, activeTab, dispatch]);
+
   // Helper for Initials
   const getInitials = (firstName, lastName) => {
     const f = (firstName || "").charAt(0);
     const l = (lastName || "").charAt(0);
     return (f + l).toUpperCase() || "?";
+  };
+
+  // ── Shared pill vocabularies (single source for this table) ──
+  // Theme-driven: colors come from the redux theme CSS variables
+  // (--color-success/warning/danger), never hardcoded hex.
+  const loginStatusOf = (u) => {
+    if (!u.hasLoginAccess) return "NO_ACCOUNT";
+    if (u.isBlocked) return "BLOCKED";
+    if (u.isActive) return "ACTIVE";
+    return "INACTIVE";
+  };
+  const LOGIN_STATUS_LABEL = {
+    NO_ACCOUNT: "No Login Account",
+    BLOCKED: "Blocked",
+    ACTIVE: "Active",
+    INACTIVE: "Inactive",
   };
 
   // ── Employee Directory Pagination Render Component ──
@@ -828,7 +1104,7 @@ function UserManagement({ initialTab = "users" }) {
           </p>
         </div>
 
-        {isSystemAdmin && (
+        {isSystemAdmin && activeTab === "roles" && (
           <Button
             variant="success"
             className="user-mgmt-create-btn d-inline-flex align-items-center gap-2 px-3 py-2 rounded-pill shadow-sm fw-semibold text-nowrap"
@@ -839,10 +1115,30 @@ function UserManagement({ initialTab = "users" }) {
         )}
       </div>
 
-      {/* ── Real Data KPI Summary Row ── */}
+      {/* ── Real Data KPI Summary Row (click a card to filter) ── */}
       <Row className="g-3 mb-4">
         <Col xs={6} md={3}>
-          <div className="user-mgmt-kpi-card">
+          <div
+            className="user-mgmt-kpi-card user-mgmt-kpi-clickable"
+            role="button"
+            tabIndex={0}
+            title="Show all employees"
+            onClick={() => {
+              setActiveTab("users");
+              setUserSearch("");
+              setAccountStatusFilter("all");
+              setRoleFilter("all");
+              setUserPage(1);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setActiveTab("users");
+                setAccountStatusFilter("all");
+                setUserPage(1);
+              }
+            }}
+          >
             <div className="d-flex align-items-center gap-3">
               <div className="user-mgmt-kpi-icon icon-employees">
                 <FaUsers />
@@ -856,7 +1152,25 @@ function UserManagement({ initialTab = "users" }) {
         </Col>
 
         <Col xs={6} md={3}>
-          <div className="user-mgmt-kpi-card">
+          <div
+            className="user-mgmt-kpi-card user-mgmt-kpi-clickable"
+            role="button"
+            tabIndex={0}
+            title="Show active logins"
+            onClick={() => {
+              setActiveTab("users");
+              setAccountStatusFilter("active");
+              setUserPage(1);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setActiveTab("users");
+                setAccountStatusFilter("active");
+                setUserPage(1);
+              }
+            }}
+          >
             <div className="d-flex align-items-center gap-3">
               <div className="user-mgmt-kpi-icon icon-active">
                 <FaUserCheck />
@@ -870,7 +1184,25 @@ function UserManagement({ initialTab = "users" }) {
         </Col>
 
         <Col xs={6} md={3}>
-          <div className="user-mgmt-kpi-card">
+          <div
+            className="user-mgmt-kpi-card user-mgmt-kpi-clickable"
+            role="button"
+            tabIndex={0}
+            title="Show employees needing provisioning"
+            onClick={() => {
+              setActiveTab("users");
+              setAccountStatusFilter("no-account");
+              setUserPage(1);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setActiveTab("users");
+                setAccountStatusFilter("no-account");
+                setUserPage(1);
+              }
+            }}
+          >
             <div className="d-flex align-items-center gap-3">
               <div className="user-mgmt-kpi-icon icon-provision">
                 <FaUserPlus />
@@ -884,7 +1216,19 @@ function UserManagement({ initialTab = "users" }) {
         </Col>
 
         <Col xs={6} md={3}>
-          <div className="user-mgmt-kpi-card">
+          <div
+            className="user-mgmt-kpi-card user-mgmt-kpi-clickable"
+            role="button"
+            tabIndex={0}
+            title="Open roles & permissions"
+            onClick={() => setActiveTab("roles")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setActiveTab("roles");
+              }
+            }}
+          >
             <div className="d-flex align-items-center gap-3">
               <div className="user-mgmt-kpi-icon icon-roles">
                 <FaShieldAlt />
@@ -898,13 +1242,20 @@ function UserManagement({ initialTab = "users" }) {
         </Col>
       </Row>
 
-      {/* ── Alerts ── */}
-      {errorMessage && (
-        <FeedbackAlert variant="danger" dismissible onClose={() => setErrorMessage("")} className="small py-2 mb-3" message={<><FaExclamationTriangle className="me-2" />{errorMessage}</>} />
-      )}
-      {successMessage && (
-        <FeedbackAlert variant="success" dismissible onClose={() => setSuccessMessage("")} className="small py-2 mb-3" message={<><FaCheckCircle className="me-2" />{successMessage}</>} />
-      )}
+      {/* ── Page alerts as floating popup (single icon, auto-dismiss) ── */}
+      <AppToast
+        toast={
+          errorMessage
+            ? { variant: "danger", message: errorMessage }
+            : successMessage
+              ? { variant: "success", message: successMessage }
+              : null
+        }
+        onClose={() => {
+          setErrorMessage("");
+          setSuccessMessage("");
+        }}
+      />
 
       {/* ── Section Navigation Tabs (Exclusive Section View) ── */}
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4 pb-1">
@@ -914,7 +1265,7 @@ function UserManagement({ initialTab = "users" }) {
             className={`user-mgmt-nav-tab ${activeTab === "users" ? "active" : ""}`}
             onClick={() => setActiveTab("users")}
           >
-            <FaUsers className="me-1.5" /> Employee Directory & Accounts
+            <FaUsers className="me-2 flex-shrink-0" /> <span>Employee Directory & Accounts</span>
             <span className="user-mgmt-tab-count ms-2">({users.length})</span>
           </button>
 
@@ -925,7 +1276,7 @@ function UserManagement({ initialTab = "users" }) {
                 className={`user-mgmt-nav-tab ${activeTab === "roles" ? "active" : ""}`}
                 onClick={() => setActiveTab("roles")}
               >
-                <FaShieldAlt className="me-1.5" /> Roles & Permissions Architecture
+                <FaShieldAlt className="me-2 flex-shrink-0" /> <span>Roles & Permissions Architecture</span>
                 <span className="user-mgmt-tab-count ms-2">({roles.length})</span>
               </button>
               <button
@@ -933,7 +1284,7 @@ function UserManagement({ initialTab = "users" }) {
                 className={`user-mgmt-nav-tab ${activeTab === "security" ? "active" : ""}`}
                 onClick={() => setActiveTab("security")}
               >
-                <FaKey className="me-1.5" /> Password Reset Governance
+                <FaKey className="me-2 flex-shrink-0" /> <span>Password Reset Governance</span>
                 {resetApprovals.length > 0 && (
                   <span className="badge bg-warning text-dark ms-2">{resetApprovals.length}</span>
                 )}
@@ -951,83 +1302,65 @@ function UserManagement({ initialTab = "users" }) {
             <div className="d-flex align-items-center flex-wrap gap-2">
               {/* Search Bar */}
               <div className="user-mgmt-search-box flex-grow-1" style={{ minWidth: "220px", maxWidth: "380px" }}>
-                <InputGroup size="sm">
-                  <InputGroup.Text className="bg-light border-end-0 text-muted">
-                    <FaSearch size={12} />
-                  </InputGroup.Text>
-                  <Form.Control
-                    type="search"
-                    placeholder="Search employee..."
-                    value={userSearch}
-                    onChange={(e) => {
-                      setUserSearch(e.target.value);
-                      setUserPage(1);
-                    }}
-                    className="shadow-none border-start-0 user-mgmt-ctrl"
-                  />
-                  {userSearch && (
-                    <Button
-                      variant="light"
-                      className="border border-start-0"
-                      onClick={() => {
-                        setUserSearch("");
-                        setUserPage(1);
-                      }}
-                    >
-                      <FaTimes size={11} className="text-muted" />
-                    </Button>
-                  )}
-                </InputGroup>
+                <SearchInput
+                  value={userSearch}
+                  onChange={(e) => {
+                    setUserSearch(e.target.value);
+                    setUserPage(1);
+                  }}
+                  placeholder="Search employee..."
+                  size="sm"
+                  inputGroupClassName="user-mgmt-search-group"
+                  inputGroupTextClassName="bg-light border-end-0 text-muted"
+                  inputClassName="shadow-none border-start-0 user-mgmt-ctrl"
+                  ariaLabel="Search employee"
+                />
               </div>
 
               {/* Status Filter */}
-              <div style={{ minWidth: "160px" }}>
-                <Form.Select
-                  size="sm"
-                  className="shadow-none user-mgmt-ctrl"
-                  value={accountStatusFilter}
-                  onChange={(e) => {
-                    setAccountStatusFilter(e.target.value);
-                    setUserPage(1);
-                  }}
-                >
-                  <option value="all">Login Status</option>
-                  <option value="active">Active Logins Only</option>
-                  <option value="no-account">Need Provisioning (No Account)</option>
-                  <option value="blocked">Blocked / Locked</option>
-                  <option value="inactive">Inactive / Suspended</option>
-                </Form.Select>
-              </div>
+              <FilterSelect
+                value={accountStatusFilter}
+                onChange={(e) => {
+                  setAccountStatusFilter(e.target.value);
+                  setUserPage(1);
+                }}
+                placeholder="Login Status"
+                className="shadow-none user-mgmt-ctrl"
+                options={[
+                  { value: "active", label: "Active Logins Only" },
+                  { value: "no-account", label: "Need Provisioning (No Account)" },
+                  { value: "blocked", label: "Blocked / Locked" },
+                  { value: "inactive", label: "Inactive / Suspended" },
+                ]}
+              />
 
-              {/* Role Filter */}
-              <div style={{ minWidth: "160px" }}>
-                <Form.Select
-                  size="sm"
-                  className="shadow-none user-mgmt-ctrl"
-                  value={roleFilter}
-                  onChange={(e) => {
-                    setRoleFilter(e.target.value);
-                    setUserPage(1);
-                  }}
-                >
-                  <option value="all">Role</option>
-                  {roles.map((r) => (
-                    <option key={r._id} value={r._id}>
-                      {r.roleName} ({r.roleCode})
-                    </option>
-                  ))}
-                </Form.Select>
-              </div>
+              {/* Role Filter — authority-scoped: only roles under my own rank.
+                  Top-priority roles (P0 platform, P1 owner) never appear here
+                  unless the viewer holds them (assignableRoles is backend-
+                  scoped; falls back to full list only when empty). */}
+              <FilterSelect
+                value={roleFilter}
+                onChange={(e) => {
+                  setRoleFilter(e.target.value);
+                  setUserPage(1);
+                }}
+                placeholder="Role"
+                className="shadow-none user-mgmt-ctrl"
+                options={(assignableByPriority.length ? assignableByPriority : rolesByPriority).map((r) => ({
+                  value: getRoleOptionId(r) || r.roleCode,
+                  label: `${r.roleName} (${r.roleCode})`,
+                }))}
+              />
 
               {/* Reset Filter Button */}
-              {(userSearch || accountStatusFilter !== "all" || roleFilter !== "all") && (
+              {(userSearch || accountStatusFilter !== "active" || roleFilter !== "all") && (
                 <Button
                   variant="outline-secondary"
                   size="sm"
                   className="user-mgmt-ctrl d-inline-flex align-items-center gap-1"
                   onClick={() => {
                     setUserSearch("");
-                    setAccountStatusFilter("all");
+                    setAccountStatusFilter("active");
                     setRoleFilter("all");
                     setUserPage(1);
                   }}
@@ -1051,26 +1384,26 @@ function UserManagement({ initialTab = "users" }) {
                 <p className="small mb-0">No employees match your search or filter criteria.</p>
               </div>
             ) : (
-              <Table hover align="middle" className="mb-0 small user-mgmt-table">
+              <Table hover align="middle" className="mb-0 small user-mgmt-table user-mgmt-users-table">
                 <thead className="table-light extra-small text-uppercase text-muted">
                   <tr>
-                    <th className="ps-3 ps-md-4" style={{ width: "24%" }}>Employee</th>
-                    <th style={{ width: "11%" }}>Employee Code</th>
-                    <th style={{ width: "14%" }}>Department / Role</th>
-                    <th style={{ width: "18%" }}>Branch Access</th>
-                    <th style={{ width: "12%" }}>Login Status</th>
-                    <th style={{ width: "11%" }}>Assigned Role</th>
-                    <th className="text-end pe-3 pe-md-4" style={{ width: "10%" }}>Account Action</th>
+                    <th className="ps-3 ps-md-4 text-start user-mgmt-th-emp">Employee</th>
+                    <th className="text-start user-mgmt-th-code">Employee Code</th>
+                    <th className="text-start user-mgmt-th-dept">Department / Role</th>
+                    <th className="text-start user-mgmt-th-branch">Branch Access</th>
+                    <th className="text-center user-mgmt-th-status">Login Status</th>
+                    <th className="text-start user-mgmt-th-role">Assigned Role</th>
+                    {showActionColumn && (
+                      <th className="text-end pe-3 pe-md-4 user-mgmt-th-action">Account Action</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedUsers.map((u) => {
                     const hasAccount = u.hasLoginAccess === true;
-                    const isOwnerUser = u.role?.priority === 1 || u.role?.roleCode === "OWNER" || u.isOwner === true;
-                    const canModify =
-                      currentUser?.priority === 1 ||
-                      (!isOwnerUser && (isSystemAdmin || hasPermission("user.manage_roles")));
+                    const action = rowActionOf(u);
                     const initials = getInitials(u.firstName, u.lastName);
+                    const isOwnerUser = u.role?.priority === 1 || u.role?.roleCode === "OWNER" || u.isOwner === true;
                     const isOrgWide = u.accessLevel === "ORGANIZATION" || (!u.accessLevel && isOwnerUser);
                     const branchCount = Array.isArray(u.branchIds)
                       ? u.branchIds.length
@@ -1081,48 +1414,49 @@ function UserManagement({ initialTab = "users" }) {
                       u.primaryBranch?.branchName ||
                       u.primaryBranchId?.branchName ||
                       u.primaryBranchName ||
-                      contextBranches.find((b) => b._id === (u.primaryBranchId || u.primaryBranch))?.branchName ||
-                      "Branch";
+                      contextBranches.find((b) => String(b._id) === String(u.primaryBranchId || u.primaryBranch))?.branchName ||
+                      contextBranches.find((b) => String(b._id) === String(u.branchId))?.branchName ||
+                      (isOrgWide ? "" : "Unassigned");
 
                     return (
-                      <tr key={u._id || u.id}>
-                        <td className="ps-3 ps-md-4">
-                          <div className="d-flex align-items-center gap-2.5">
+                      <tr key={u._id || u.id} className="user-mgmt-row">
+                        <td className="ps-3 ps-md-4 user-mgmt-cell-emp">
+                          <div className="user-mgmt-emp">
                             <div
                               className={`user-mgmt-avatar-chip ${hasAccount ? "account-active" : "account-none"}`}
                             >
                               {initials}
                             </div>
-                            <div className="min-w-0">
-                              <div className="fw-semibold text-dark text-truncate">
+                            <div className="user-mgmt-emp-id">
+                              <div className="user-mgmt-emp-name">
                                 {u.firstName} {u.lastName}
                               </div>
-                              <div className="extra-small text-muted text-truncate">{u.email}</div>
+                              <div className="user-mgmt-emp-email" title={u.email}>{u.email}</div>
                             </div>
                           </div>
                         </td>
-                        <td>
-                          <code>{u.employeeCode || "—"}</code>
+                        <td className="user-mgmt-cell-code">
+                          <span className="user-mgmt-emp-code">{u.employeeCode || "—"}</span>
                         </td>
-                        <td>
+                        <td className="user-mgmt-cell-dept">
                           <div className="small text-dark fw-medium text-truncate">{u.department || "General"}</div>
                           <div className="extra-small text-muted text-truncate">{u.designation || "Employee"}</div>
                         </td>
-                        <td>
+                        <td className="user-mgmt-cell-branch">
                           {isOrgWide ? (
                             <div>
-                              <Badge bg="primary" className="bg-opacity-10 text-primary border border-primary-subtle rounded-pill px-2 py-0.5 fw-medium">
-                                <FaBuilding size={9} className="me-1" /> All Branches
-                              </Badge>
+                              <span className="user-mgmt-org-pill">
+                                <FaBuilding size={9} className="me-1" /> ALL BRANCHES
+                              </span>
                               <div className="extra-small text-muted mt-0.5">Org-wide Access</div>
                             </div>
                           ) : (
                             <div>
                               <div className="d-flex align-items-center gap-1">
-                                <Badge bg="light" text="dark" className="border rounded-pill px-2 py-0.5 fw-medium text-truncate" style={{ maxWidth: "150px" }}>
+                                <span className="user-mgmt-branch-pill" title={pBranchName}>
                                   <FaCodeBranch size={9} className="me-1 text-success" />
                                   {pBranchName}
-                                </Badge>
+                                </span>
                               </div>
                               {branchCount > 1 ? (
                                 <div className="extra-small text-muted mt-0.5">
@@ -1134,64 +1468,45 @@ function UserManagement({ initialTab = "users" }) {
                             </div>
                           )}
                         </td>
-                        <td className="text-nowrap">
-                          {!hasAccount ? (
-                            <span className="app-pill app-pill-warning">
-                              No Login Account
-                            </span>
-                          ) : u.isBlocked ? (
-                            <Badge bg="danger" className="rounded-pill px-2 py-1">
-                              <FaLock size={10} className="me-1" /> Blocked
-                            </Badge>
-                          ) : u.isActive ? (
-                            <span className="app-pill app-pill-success">
-                              <FaUserCheck size={11} /> Active
-                            </span>
-                          ) : (
-                            <span className="app-pill app-pill-muted">
-                              <FaUserTimes size={11} /> Inactive
-                            </span>
-                          )}
+                        <td className="text-nowrap user-mgmt-cell-status">
+                          <span className={`user-mgmt-status status-${loginStatusOf(u).toLowerCase().replace(/_/g, "-")}`}>
+                            {LOGIN_STATUS_LABEL[loginStatusOf(u)]}
+                          </span>
                         </td>
-                        <td className="text-nowrap">
+                        <td className="user-mgmt-cell-role">
                           {u.role ? (
-                            <Badge
-                              bg={u.role.priority === 1 ? "danger" : u.role.priority === 2 ? "warning" : "light"}
-                              text={u.role.priority <= 2 ? "white" : "dark"}
-                              className="border px-2 py-1 rounded-pill"
+                            <span
+                              className={`user-mgmt-role-plain ${u.role.priority === 1 ? "role-p1" : u.role.priority === 2 ? "role-p2" : "role-staff"}`}
                             >
                               <FaKey size={10} className="me-1" />
-                              {u.role.roleName || "Employee"}
-                            </Badge>
+                              {(u.role.roleName || "Employee").toUpperCase()}
+                            </span>
                           ) : (
                             <span className="text-muted extra-small">Not Assigned</span>
                           )}
                         </td>
-                        <td className="text-end pe-3 pe-md-4 text-nowrap">
-                          {!hasAccount ? (
-                            (isSystemAdmin || hasPermission("user.provision_account")) && (
+                        {showActionColumn && (
+                        <td className="text-end pe-3 pe-md-4 text-nowrap user-mgmt-cell-action">
+                          {action === "create" && (
                               <Button
-                                variant="success"
                                 size="sm"
-                                className="rounded-pill px-3 py-1 fw-semibold d-inline-flex align-items-center gap-1 shadow-sm micro-text text-nowrap"
+                                className="user-mgmt-action-btn user-mgmt-action-create"
                                 onClick={() => handleOpenProvisionModal(u)}
                               >
                                 <FaUserPlus size={11} /> Create Account
                               </Button>
-                            )
-                          ) : (
-                            canModify && (
+                          )}
+                          {action === "manage" && (
                               <Button
-                                variant="outline-secondary"
                                 size="sm"
-                                className="rounded-pill px-3 py-1 d-inline-flex align-items-center gap-1 micro-text text-nowrap"
+                                className="user-mgmt-action-btn user-mgmt-action-manage"
                                 onClick={() => handleOpenManageModal(u)}
                               >
                                 <FaCog size={11} /> Manage
                               </Button>
-                            )
                           )}
                         </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -1217,51 +1532,36 @@ function UserManagement({ initialTab = "users" }) {
             <div className="d-flex align-items-center flex-wrap gap-2">
               {/* Search Role */}
               <div style={{ minWidth: "200px", maxWidth: "280px" }}>
-                <InputGroup size="sm">
-                  <InputGroup.Text className="bg-light border-end-0 text-muted">
-                    <FaSearch size={12} />
-                  </InputGroup.Text>
-                  <Form.Control
-                    type="search"
-                    placeholder="Search role..."
-                    value={roleSearch}
-                    onChange={(e) => {
-                      setRoleSearch(e.target.value);
-                      setRolePage(1);
-                    }}
-                    className="shadow-none border-start-0 user-mgmt-ctrl"
-                  />
-                  {roleSearch && (
-                    <Button
-                      variant="light"
-                      className="border border-start-0"
-                      onClick={() => {
-                        setRoleSearch("");
-                        setRolePage(1);
-                      }}
-                    >
-                      <FaTimes size={11} className="text-muted" />
-                    </Button>
-                  )}
-                </InputGroup>
+                <SearchInput
+                  value={roleSearch}
+                  onChange={(e) => {
+                    setRoleSearch(e.target.value);
+                    setRolePage(1);
+                  }}
+                  placeholder="Search role..."
+                  size="sm"
+                  inputGroupClassName="user-mgmt-search-group"
+                  inputGroupTextClassName="bg-light border-end-0 text-muted"
+                  inputClassName="shadow-none border-start-0 user-mgmt-ctrl"
+                  ariaLabel="Search role"
+                />
               </div>
 
               {/* Role Type Filter */}
-              <div style={{ minWidth: "150px" }}>
-                <Form.Select
-                  size="sm"
-                  className="shadow-none user-mgmt-ctrl"
-                  value={roleTypeFilter}
-                  onChange={(e) => {
-                    setRoleTypeFilter(e.target.value);
-                    setRolePage(1);
-                  }}
-                >
-                  <option value="all">Role Type</option>
-                  <option value="system">System Core</option>
-                  <option value="custom">Custom Roles</option>
-                </Form.Select>
-              </div>
+              <FilterSelect
+                value={roleTypeFilter}
+                onChange={(e) => {
+                  setRoleTypeFilter(e.target.value);
+                  setRolePage(1);
+                }}
+                placeholder="Role Type"
+                minWidth={150}
+                className="shadow-none user-mgmt-ctrl"
+                options={[
+                  { value: "system", label: "System Core" },
+                  { value: "custom", label: "Custom Roles" },
+                ]}
+              />
 
               {/* Reset Filter Button */}
               {(roleSearch || roleTypeFilter !== "all") && (
@@ -1340,12 +1640,9 @@ function UserManagement({ initialTab = "users" }) {
                           <code>{role.roleCode}</code>
                         </td>
                         <td className="text-nowrap">
-                          <Badge
-                            bg={role.priority === 1 ? "danger" : role.priority === 2 ? "warning" : "secondary"}
-                            className="rounded-pill px-2 py-1 fw-medium"
-                          >
-                            Priority {role.priority} {role.priority === 1 ? "(Owner)" : role.priority === 2 ? "(Admin)" : ""}
-                          </Badge>
+                          <span className={`user-mgmt-priority-pill ${priorityPillClass(role)}`}>
+                            PRIORITY {role.priority ?? "—"}{prioritySuffix(role)}
+                          </span>
                         </td>
                         <td>
                           <div className="d-flex flex-column gap-1">
@@ -1631,44 +1928,45 @@ function UserManagement({ initialTab = "users" }) {
         onHide={() => setShowProvisionModal(false)}
         centered
         backdrop="static"
+        contentClassName="user-mgmt-role-modal"
       >
-        <Modal.Header closeButton className="border-0 pb-0">
-          <Modal.Title className="h6 fw-bold d-flex align-items-center gap-2">
-            <FaUserPlus className="text-success" /> Provision Employee Login Account
-          </Modal.Title>
+        <Modal.Header closeButton className="rw-head border-0">
+          <div className="rw-head-icon">
+            <FaUserPlus />
+          </div>
+          <div className="min-w-0">
+            <Modal.Title className="rw-head-title">Provision Employee Login Account</Modal.Title>
+            <div className="rw-head-sub">Create credentials and assign an initial role</div>
+          </div>
         </Modal.Header>
         <Form onSubmit={handleProvisionSubmit}>
-          <Modal.Body className="p-4">
+          <Modal.Body className="rw-body">
             {/* Employee Summary Card */}
-            <Card className="bg-light border-0 mb-3 p-3 rounded-3">
-              <div className="d-flex justify-content-between align-items-start">
-                <div>
-                  <h6 className="fw-bold mb-0 text-dark">
-                    {provisioningUser?.firstName} {provisioningUser?.lastName}
-                  </h6>
-                  <span className="extra-small text-muted">{provisioningUser?.email}</span>
+            <div className="rw-user-card">
+              <div className="rw-user-avatar">
+                {getInitials(provisioningUser?.firstName, provisioningUser?.lastName)}
+              </div>
+              <div className="min-w-0 flex-grow-1">
+                <div className="rw-user-name">
+                  {provisioningUser?.firstName} {provisioningUser?.lastName}
                 </div>
-                <Badge bg="dark">
-                  <code>{provisioningUser?.employeeCode}</code>
-                </Badge>
+                <div className="rw-user-meta">
+                  {provisioningUser?.email} · <code>{provisioningUser?.employeeCode || "N/A"}</code> · {provisioningUser?.department || "General"}
+                </div>
               </div>
-              <div className="extra-small text-muted mt-2">
-                Department: <strong>{provisioningUser?.department || "General"}</strong> | Designation:{" "}
-                <strong>{provisioningUser?.designation || "Employee"}</strong>
-              </div>
-            </Card>
+            </div>
 
             {/* Role Selection */}
             <Form.Group className="mb-3">
-              <Form.Label className="small fw-bold">Assign Initial Role *</Form.Label>
+              <Form.Label className="rw-label">Assign Initial Role *</Form.Label>
               <Form.Select
                 value={provisionForm.roleId}
                 onChange={(e) => setProvisionForm({ ...provisionForm, roleId: e.target.value })}
                 required
-                className="shadow-none"
+                className="shadow-none rw-control"
               >
                 <option value="">-- Select Permitted Role --</option>
-                {assignableRoles.map((r) => (
+                {assignableByPriority.map((r) => (
                   <option key={r._id} value={r._id}>
                     {r.roleName} (Level {r.priority})
                   </option>
@@ -1681,7 +1979,7 @@ function UserManagement({ initialTab = "users" }) {
 
             {/* Initial Password */}
             <Form.Group className="mb-3">
-              <Form.Label className="small fw-bold">Initial Temporary Password *</Form.Label>
+              <Form.Label className="rw-label">Initial Temporary Password *</Form.Label>
               <InputGroup>
                 <Form.Control
                   type={provisionForm.showPass ? "text" : "password"}
@@ -1689,10 +1987,11 @@ function UserManagement({ initialTab = "users" }) {
                   onChange={(e) => setProvisionForm({ ...provisionForm, password: e.target.value })}
                   placeholder="Enter temporary password (min 6 chars)"
                   required
-                  className="shadow-none"
+                  className="shadow-none rw-control"
                 />
                 <Button
                   variant="outline-secondary"
+                  className="rw-eye-btn"
                   onClick={() => setProvisionForm((p) => ({ ...p, showPass: !p.showPass }))}
                 >
                   {provisionForm.showPass ? <FaEyeSlash /> : <FaEye />}
@@ -1716,13 +2015,15 @@ function UserManagement({ initialTab = "users" }) {
             </Form.Group>
           </Modal.Body>
 
-          <Modal.Footer className="border-0 pt-0">
-            <Button variant="light" size="sm" onClick={() => setShowProvisionModal(false)}>
-              Cancel
-            </Button>
-            <Button variant="success" size="sm" type="submit" disabled={modalLoading}>
-              {modalLoading ? "Provisioning..." : "Create Login Account"}
-            </Button>
+          <Modal.Footer className="user-mgmt-role-modal-foot rw-foot border-0">
+            <div className="rw-foot-actions">
+              <Button className="user-mgmt-role-modal-cancel" size="sm" onClick={() => setShowProvisionModal(false)}>
+                Cancel
+              </Button>
+              <Button className="user-mgmt-role-modal-submit" size="sm" type="submit" disabled={modalLoading}>
+                {modalLoading ? "Provisioning..." : "Create Login Account"}
+              </Button>
+            </div>
           </Modal.Footer>
         </Form>
       </Modal>
@@ -1737,65 +2038,75 @@ function UserManagement({ initialTab = "users" }) {
         centered
         backdrop="static"
         scrollable
+        contentClassName="user-mgmt-role-modal"
       >
-        <Modal.Header closeButton className="border-bottom pb-3">
-          <Modal.Title className="h6 fw-bold d-flex align-items-center gap-2 mb-0">
-            <FaCog className="text-primary" /> Manage Employee Account & Access
-          </Modal.Title>
+        <Modal.Header closeButton className="rw-head border-0">
+          <div className="rw-head-icon">
+            <FaCog />
+          </div>
+          <div className="min-w-0">
+            <Modal.Title className="rw-head-title">Manage Employee Account & Access</Modal.Title>
+            <div className="rw-head-sub">
+              {managingUser?.firstName} {managingUser?.lastName} · {managingUser?.employeeCode || "N/A"}
+            </div>
+          </div>
         </Modal.Header>
         <Form onSubmit={handleManageSubmit}>
-          <Modal.Body className="p-3 p-md-4">
+          <Modal.Body className="rw-body">
             {/* User Info Header */}
-            <div className="mb-3 p-3 bg-light rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
-              <div>
-                <h6 className="fw-bold mb-1 text-dark">
+            <div className="rw-user-card">
+              <div className="rw-user-avatar">
+                {getInitials(managingUser?.firstName, managingUser?.lastName)}
+              </div>
+              <div className="min-w-0 flex-grow-1">
+                <div className="rw-user-name rw-user-name-lg">
                   {managingUser?.firstName} {managingUser?.lastName}
-                </h6>
-                <div className="extra-small text-muted">
-                  {managingUser?.email} | <code>{managingUser?.employeeCode || "N/A"}</code> | {managingUser?.department || "General"}
+                </div>
+                <div className="rw-user-meta">
+                  {managingUser?.email} · <code className="rw-user-code">{managingUser?.employeeCode || "N/A"}</code> · {managingUser?.department || "General"}
                 </div>
               </div>
-              <Badge bg="secondary" className="px-2.5 py-1.5 rounded-pill fw-medium extra-small">
-                {managingUser?.role?.roleName || "Employee"}
-              </Badge>
+              <span className="rw-role-chip">
+                {managingUser?.role?.roleCode || managingUser?.role?.roleName || "Employee"}
+              </span>
             </div>
 
             {/* Modal Navigation Tabs */}
-            <Nav variant="tabs" className="mb-3">
-              <Nav.Item>
-                <Nav.Link
-                  active={manageModalTab === "account"}
-                  onClick={() => setManageModalTab("account")}
-                  className="small fw-semibold py-2"
-                >
-                  <FaKey className="me-1.5 text-primary" /> Account & Credentials
-                </Nav.Link>
-              </Nav.Item>
-              <Nav.Item>
-                <Nav.Link
-                  active={manageModalTab === "access"}
-                  onClick={() => setManageModalTab("access")}
-                  className="small fw-semibold py-2"
-                >
-                  <FaBuilding className="me-1.5 text-success" /> Organization & Branch Access
-                </Nav.Link>
-              </Nav.Item>
-            </Nav>
+            <div className="rw-tabbar" role="tablist" aria-label="Manage account sections">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={manageModalTab === "account"}
+                className={`rw-tab${manageModalTab === "account" ? " active" : ""}`}
+                onClick={() => setManageModalTab("account")}
+              >
+                <FaKey className="me-2" /> Account & Credentials
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={manageModalTab === "access"}
+                className={`rw-tab${manageModalTab === "access" ? " active" : ""}`}
+                onClick={() => setManageModalTab("access")}
+              >
+                <FaBuilding className="me-2" /> Organization & Branch Access
+              </button>
+            </div>
 
             {/* TAB 1: Account & Credentials */}
             {manageModalTab === "account" && (
               <div>
                 {/* Role Reassignment */}
                 <Form.Group className="mb-3">
-                  <Form.Label className="small fw-bold">Assigned Security Role</Form.Label>
+                  <Form.Label className="rw-label"><FaShieldAlt className="rw-label-icon" /> Assigned Security Role</Form.Label>
                   <Form.Select
                     value={manageForm.roleId}
                     onChange={(e) => setManageForm({ ...manageForm, roleId: e.target.value })}
                     required
-                    className="shadow-none"
+                    className="shadow-none rw-control rw-field"
                   >
                     <option value="">-- Choose Role --</option>
-                    {assignableRoles.map((r) => (
+                    {assignableByPriority.map((r) => (
                       <option key={r._id} value={r._id}>
                         {r.roleName} (Level {r.priority})
                       </option>
@@ -1805,26 +2116,29 @@ function UserManagement({ initialTab = "users" }) {
 
                 {/* Status Checks */}
                 <Row className="g-3 mb-3">
-                  <Col xs={6}>
+                  <Col xs={12} sm={6}>
                     <Form.Group>
-                      <Form.Label className="small fw-bold">Account Status</Form.Label>
-                      <Form.Select
-                        value={manageForm.isActive ? "true" : "false"}
-                        onChange={(e) => setManageForm({ ...manageForm, isActive: e.target.value === "true" })}
-                        className="shadow-none"
-                      >
-                        <option value="true">Active</option>
-                        <option value="false">Inactive / Suspended</option>
-                      </Form.Select>
+                      <Form.Label className="rw-label"><FaUserCheck className="rw-label-icon" /> Account Status</Form.Label>
+                      <div className="rw-dot-field">
+                        <span className={`rw-dot${manageForm.isActive ? " on" : ""}`} aria-hidden="true" />
+                        <Form.Select
+                          value={manageForm.isActive ? "true" : "false"}
+                          onChange={(e) => setManageForm({ ...manageForm, isActive: e.target.value === "true" })}
+                          className="shadow-none rw-control rw-field rw-has-dot"
+                        >
+                          <option value="true">Active</option>
+                          <option value="false">Inactive / Suspended</option>
+                        </Form.Select>
+                      </div>
                     </Form.Group>
                   </Col>
-                  <Col xs={6}>
+                  <Col xs={12} sm={6}>
                     <Form.Group>
-                      <Form.Label className="small fw-bold">Access Lock</Form.Label>
+                      <Form.Label className="rw-label"><FaLock className="rw-label-icon" /> Access Lock</Form.Label>
                       <Form.Select
                         value={manageForm.isBlocked ? "true" : "false"}
                         onChange={(e) => setManageForm({ ...manageForm, isBlocked: e.target.value === "true" })}
-                        className="shadow-none"
+                        className="shadow-none rw-control rw-field"
                       >
                         <option value="false">Normal Access</option>
                         <option value="true">Blocked / Locked</option>
@@ -1835,17 +2149,18 @@ function UserManagement({ initialTab = "users" }) {
 
                 {/* Reset Password */}
                 <Form.Group className="mb-2">
-                  <Form.Label className="small fw-bold">Reset Password (Optional)</Form.Label>
+                  <Form.Label className="rw-label"><FaKey className="rw-label-icon" /> Reset Password (Optional)</Form.Label>
                   <InputGroup>
                     <Form.Control
                       type={manageForm.showPass ? "text" : "password"}
                       value={manageForm.newPassword}
                       onChange={(e) => setManageForm({ ...manageForm, newPassword: e.target.value })}
                       placeholder="Leave blank to keep existing password"
-                      className="shadow-none"
+                      className="shadow-none rw-control rw-field"
                     />
                     <Button
                       variant="outline-secondary"
+                      className="rw-eye-btn"
                       onClick={() => setManageForm((p) => ({ ...p, showPass: !p.showPass }))}
                     >
                       {manageForm.showPass ? <FaEyeSlash /> : <FaEye />}
@@ -1874,17 +2189,17 @@ function UserManagement({ initialTab = "users" }) {
             )}
           </Modal.Body>
 
-          <Modal.Footer className="border-top pt-3">
-            <Button variant="light" size="sm" onClick={() => setShowManageModal(false)}>
+          <Modal.Footer className="user-mgmt-role-modal-foot rw-foot rw-foot-split border-0">
+            <Button className="user-mgmt-role-modal-cancel" size="sm" onClick={() => setShowManageModal(false)}>
               Cancel
             </Button>
             <Button
-              variant="primary"
+              className="user-mgmt-role-modal-submit"
               size="sm"
               type="submit"
               disabled={modalLoading || (manageModalTab === "access" && !manageAccessValidation.isValid)}
             >
-              {modalLoading ? "Saving..." : "Save Changes"}
+              <FaSave className="me-2" /> {modalLoading ? "Saving..." : "Save Changes"}
             </Button>
           </Modal.Footer>
         </Form>
@@ -1896,19 +2211,28 @@ function UserManagement({ initialTab = "users" }) {
       <Modal
         show={showRoleModal}
         onHide={() => setShowRoleModal(false)}
-        size="lg"
+        size="xl"
         centered
         backdrop="static"
         scrollable
+        dialogClassName="user-mgmt-role-modal-dialog"
+        contentClassName="user-mgmt-role-modal"
       >
-        <Modal.Header closeButton className="border-bottom">
-          <Modal.Title className="h5 fw-bold d-flex align-items-center gap-2">
-            <FaUserShield className="text-success" />
-            {editingRoleId ? "Edit Role Access Configuration" : "Create New Custom Role"}
-          </Modal.Title>
+        <Modal.Header closeButton className="rw-head border-0">
+          <div className="rw-head-icon">
+            <FaUserShield />
+          </div>
+          <div className="min-w-0">
+            <Modal.Title className="rw-head-title">
+              {editingRoleId ? "Edit Role Access Configuration" : "Create New Custom Role"}
+            </Modal.Title>
+            <div className="rw-head-sub">
+              Define access level, menus and granular API actions for this role
+            </div>
+          </div>
         </Modal.Header>
 
-        <Modal.Body className="p-4">
+        <Modal.Body className="rw-body">
           {modalLoading ? (
             <div className="text-center py-5">
               <LoadingSpinner color="success" />
@@ -1916,178 +2240,270 @@ function UserManagement({ initialTab = "users" }) {
             </div>
           ) : (
             <Form onSubmit={handleSaveRole}>
-              {/* Basic Details */}
-              <Row className="g-3 mb-4">
-                <Col md={6}>
+              {/* Role configuration — same fields and values as before */}
+              <Row className="g-3 mb-3">
+                <Col md={4}>
                   <Form.Group>
-                    <Form.Label className="small fw-bold">Role Name *</Form.Label>
+                    <Form.Label className="rw-label">Role Name <span className="text-danger">*</span></Form.Label>
                     <Form.Control
                       type="text"
                       placeholder="e.g. Senior Project Lead, QA Specialist"
                       value={roleForm.roleName}
                       onChange={(e) => setRoleForm({ ...roleForm, roleName: e.target.value })}
                       required
-                      className="shadow-none"
+                      className="shadow-none rw-control"
                     />
                   </Form.Group>
                 </Col>
 
                 <Col md={3}>
                   <Form.Group>
-                    <Form.Label className="small fw-bold">Priority Hierarchy</Form.Label>
+                    <Form.Label className="rw-label">Priority Hierarchy</Form.Label>
                     <Form.Select
                       value={roleForm.priority}
                       onChange={(e) => setRoleForm({ ...roleForm, priority: Number(e.target.value) })}
-                      className="shadow-none"
+                      className="shadow-none rw-control"
                     >
-                      <option value={3}>Level 3 (Staff / Custom)</option>
-                      <option value={2}>Level 2 (Admin Level)</option>
-                      {roleForm.priority === 1 && <option value={1}>Level 1 (Owner)</option>}
+                      {/* Only levels at/below viewer authority are listed —
+                          top levels above it are hidden, not just disabled. */}
+                      {[4, 3, 2, 1].map((lvl) => {
+                        if (lvl < minPriority && roleForm.priority !== lvl) return null;
+                        const label =
+                          lvl === 4 ? "Level 4+ (Custom / Branch)"
+                          : lvl === 3 ? "Level 3 (Staff / Custom)"
+                          : lvl === 2 ? "Level 2 (Admin Level)"
+                          : "Level 1 (Owner)";
+                        return <option key={lvl} value={lvl}>{label}</option>;
+                      })}
                     </Form.Select>
                   </Form.Group>
                 </Col>
 
                 <Col md={3}>
                   <Form.Group>
-                    <Form.Label className="small fw-bold">Status</Form.Label>
+                    <Form.Label className="rw-label">Access Level</Form.Label>
                     <Form.Select
-                      value={roleForm.isActive ? "true" : "false"}
-                      onChange={(e) => setRoleForm({ ...roleForm, isActive: e.target.value === "true" })}
-                      className="shadow-none"
+                      value={roleForm.accessLevel}
+                      onChange={(e) => setRoleForm({ ...roleForm, accessLevel: e.target.value })}
+                      className="shadow-none rw-control"
                     >
-                      <option value="true">Active</option>
-                      <option value="false">Inactive</option>
+                      <option value="BRANCH">BRANCH</option>
+                      <option value="ORGANIZATION">ORGANIZATION</option>
                     </Form.Select>
+                  </Form.Group>
+                </Col>
+
+                <Col md={2}>
+                  <Form.Group>
+                    <Form.Label className="rw-label">Status</Form.Label>
+                    <div className="rw-status-toggle">
+                      <Form.Check
+                        type="switch"
+                        id="role-status-switch"
+                        checked={roleForm.isActive}
+                        onChange={(e) => setRoleForm({ ...roleForm, isActive: e.target.checked })}
+                        aria-label="Role active status"
+                      />
+                      <span className="small fw-semibold">{roleForm.isActive ? "Active" : "Inactive"}</span>
+                    </div>
                   </Form.Group>
                 </Col>
 
                 <Col md={12}>
                   <Form.Group>
-                    <Form.Label className="small fw-bold">Description</Form.Label>
+                    <Form.Label className="rw-label">Description</Form.Label>
                     <Form.Control
-                      type="text"
-                      placeholder="Summary of responsibilities and scope of this role"
+                      as="textarea"
+                      rows={2}
+                      placeholder="Summary of responsibilities and scope of this role..."
                       value={roleForm.description}
                       onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
-                      className="shadow-none"
+                      className="shadow-none rw-control rw-textarea"
                     />
                   </Form.Group>
                 </Col>
               </Row>
 
-              {/* ── Section 1: Module Access (RoleMenu) ── */}
-              <div className="mb-4 p-3 bg-light rounded-3 border">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <h6 className="fw-bold mb-0 text-dark">
-                    1. Application Module Access (Sidebar Visibility)
-                  </h6>
-                  <span className="extra-small text-muted">
-                    Determines which modules appear in the user sidebar
-                  </span>
-                </div>
-
-                <Row className="g-2 pt-2">
-                  {menus.map((menu) => {
-                    const isChecked = roleForm.selectedMenuIds.includes(menu._id);
-                    return (
-                      <Col xs={6} md={4} key={menu._id}>
+              {/* ── Permission workspace: modules (left) + actions (right) ── */}
+              {/* Same data, handlers and payload as before: menus from
+                  GET /menu/getAll-menu, catalog groups from the permission
+                  catalog, toggleMenu / togglePermission, menuIds[] +
+                  permissionCodes[] on save. Layout only. */}
+              <div className="rw-workspace">
+                {/* Left — Application Modules (all loaded modules, searchable) */}
+                <div className="rw-modules">
+                  <div className="rw-modules-title">1. Application Module Access</div>
+                  <div className="rw-modules-sub">Select modules to configure permissions</div>
+                  <SearchInput
+                    value={moduleSearch}
+                    onChange={(e) => setModuleSearch(e.target.value)}
+                    placeholder="Search modules..."
+                    size="sm"
+                    inputGroupClassName="rw-search"
+                    ariaLabel="Search modules"
+                  />
+                  <div className="rw-module-list" role="listbox" aria-label="Application modules">
+                    {visibleMenus.map((menu) => {
+                      const menuId = getMenuId(menu);
+                      const isChecked = roleForm.selectedMenuIds.includes(menuId);
+                      const isFocused = focusMenuId === menuId;
+                      const linked = menuIdToModules[menuId] || [];
+                      const badge = linked[0] || menu.menuCode || "";
+                      const Icon = moduleIcon(linked[0] || menu.menuCode);
+                      return (
                         <div
-                          className={`p-2 user-mgmt-checkbox-item d-flex align-items-center gap-2 ${
-                            isChecked ? "selected text-success fw-bold shadow-sm" : "text-secondary"
-                          }`}
-                          onClick={() => toggleMenu(menu._id)}
+                          key={menuId || menu.menuCode}
+                          role="option"
+                          aria-selected={isFocused}
+                          tabIndex={0}
+                          className={`rw-module-row${isFocused ? " focused" : ""}${isChecked ? " enabled" : ""}`}
+                          onClick={() => setFocusedMenuId(menuId)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              setFocusedMenuId(menuId);
+                            }
+                          }}
                         >
-                          {isChecked ? <FaCheckSquare /> : <FaSquare className="text-muted" />}
-                          <span className="small">{menu.menuName}</span>
+                          <span
+                            className={`rw-module-check${isChecked ? " checked" : ""}`}
+                            role="checkbox"
+                            aria-checked={isChecked}
+                            aria-label={`Enable ${menu.menuName}`}
+                            tabIndex={0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleMenu(menuId);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                toggleMenu(menuId);
+                              }
+                            }}
+                          />
+                          <span className="rw-module-icon"><Icon /></span>
+                          <span className="rw-module-name" title={menu.menuName}>{menu.menuName}</span>
+                          {badge && <span className="rw-module-badge">{badge}</span>}
+                          <span className="rw-module-chev" aria-hidden="true">›</span>
                         </div>
-                      </Col>
-                    );
-                  })}
-                </Row>
-              </div>
-
-              {/* ── Section 2: Granular Action Permissions (RolePermission) ── */}
-              <div className="mb-4">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <div>
-                    <h6 className="fw-bold mb-0 text-dark">
-                      2. Granular API Action Permissions
-                    </h6>
-                    <span className="extra-small text-muted">
-                      Backend authorization will strictly enforce these action rights
-                    </span>
+                      );
+                    })}
+                    {visibleMenus.length === 0 && (
+                      <div className="rw-empty-note">No modules match your search.</div>
+                    )}
                   </div>
                 </div>
 
-                {Object.keys(catalog).map((moduleName) => {
-                  const perms = catalog[moduleName] || [];
-                  const moduleCodes = perms.map((p) => p.permissionCode);
-                  const isAllSelected = moduleCodes.every((c) =>
-                    roleForm.selectedPermissionCodes.includes(c)
-                  );
-
-                  return (
-                    <Card key={moduleName} className="mb-3 border shadow-none">
-                      <Card.Header className="bg-white py-2 d-flex justify-content-between align-items-center border-bottom">
-                        <span className="fw-bold text-dark small">
-                          📦 {moduleName.toUpperCase()} MODULE
+                {/* Right — Module API Actions for the focused menu */}
+                <div className="rw-actions">
+                  {focusMenu ? (
+                    <>
+                      <div className="rw-actions-head">
+                        <span className="rw-actions-icon">
+                          {moduleIcon((menuIdToModules[focusMenuId] || [])[0] || focusMenu.menuCode)}
                         </span>
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="p-0 extra-small text-decoration-none text-success fw-semibold"
-                          onClick={() => toggleModulePermissions(moduleName)}
+                        <div className="min-w-0 flex-grow-1">
+                          <div className="rw-actions-title">
+                            {focusMenu.menuName} MODULE
+                            {((menuIdToModules[focusMenuId] || [])[0] || focusMenu.menuCode) && (
+                              <span className="rw-module-badge">
+                                {(menuIdToModules[focusMenuId] || [])[0] || focusMenu.menuCode}
+                              </span>
+                            )}
+                          </div>
+                          <div className="rw-actions-sub">
+                            {focusAllPerms.length} API actions
+                            {focusLinkedModules.length > 1 ? ` · ${focusLinkedModules.join(" · ")}` : ""}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="rw-select-all"
+                          onClick={toggleFocusModulePermissions}
                         >
-                          {isAllSelected ? "Deselect All" : "Select All"}
-                        </Button>
-                      </Card.Header>
-                      <Card.Body className="p-3">
-                        <Row className="g-2">
-                          {perms.map((p) => {
-                            const isSelected = roleForm.selectedPermissionCodes.includes(
-                              p.permissionCode
-                            );
-                            return (
-                              <Col md={6} key={p.permissionCode}>
-                                <div
-                                  className={`p-2 user-mgmt-checkbox-item ${
-                                    isSelected
-                                      ? "selected text-dark shadow-xs"
-                                      : "text-muted"
-                                  }`}
-                                  onClick={() => togglePermission(p.permissionCode)}
-                                >
-                                  <div className="d-flex align-items-center gap-2 mb-1">
-                                    {isSelected ? (
-                                      <FaCheckSquare className="text-success" />
-                                    ) : (
-                                      <FaSquare className="text-muted" />
-                                    )}
-                                    <span className="small fw-semibold">
-                                      {p.permissionName}
-                                    </span>
-                                  </div>
-                                  <div className="extra-small text-muted ps-4">
-                                    <code>{p.permissionCode}</code>
-                                  </div>
-                                </div>
-                              </Col>
-                            );
-                          })}
-                        </Row>
-                      </Card.Body>
-                    </Card>
-                  );
-                })}
+                          <FaCheckSquare /> {focusAllSelected ? "Deselect All" : "Select All"}
+                        </button>
+                      </div>
+                      <div className="rw-actions-bar">
+                        <span className="rw-actions-count">API Actions ({focusVisiblePerms.length})</span>
+                        <SearchInput
+                          value={actionSearch}
+                          onChange={(e) => setActionSearch(e.target.value)}
+                          placeholder="Search actions..."
+                          size="sm"
+                          inputGroupClassName="rw-search rw-search-sm"
+                          ariaLabel="Search API actions"
+                        />
+                      </div>
+                      <div className="rw-perm-grid">
+                        {focusVisiblePerms.map((p) => {
+                          const sel = roleForm.selectedPermissionCodes.includes(p.permissionCode);
+                          return (
+                            <div
+                              key={p.permissionCode}
+                              className={`rw-perm-card${sel ? " selected" : ""}`}
+                              onClick={() => togglePermission(p.permissionCode)}
+                              role="checkbox"
+                              aria-checked={sel}
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  togglePermission(p.permissionCode);
+                                }
+                              }}
+                            >
+                              <span className="rw-perm-check">
+                                {sel ? <FaCheckSquare /> : <FaSquare />}
+                              </span>
+                              <span className="rw-perm-text">
+                                <span className="rw-perm-name">{p.permissionName}</span>
+                                <code className="rw-perm-code">{p.permissionCode}</code>
+                                {p.description && (
+                                  <span className="rw-perm-desc">{p.description}</span>
+                                )}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        {focusAllPerms.length === 0 && (
+                          <div className="rw-empty-note">No API actions linked to this module.</div>
+                        )}
+                        {focusAllPerms.length > 0 && focusVisiblePerms.length === 0 && (
+                          <div className="rw-empty-note">No actions match your search.</div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rw-empty-note">Select a module to view its API actions.</div>
+                  )}
+                </div>
               </div>
 
-              <div className="d-flex justify-content-end gap-2 pt-3 border-top">
-                <Button variant="light" onClick={() => setShowRoleModal(false)}>
-                  Cancel
-                </Button>
-                <Button variant="success" type="submit" disabled={modalLoading}>
-                  {modalLoading ? "Saving..." : editingRoleId ? "Update Role Access" : "Create Role"}
-                </Button>
+              <div className="user-mgmt-role-modal-foot rw-foot">
+                <div className="rw-counts">
+                  <span className="rw-count">
+                    <FaCodeBranch className="rw-count-icon" />
+                    <span className="rw-count-text">Selected Modules<small>{roleForm.selectedMenuIds.length} module{roleForm.selectedMenuIds.length === 1 ? "" : "s"}</small></span>
+                  </span>
+                  <span className="rw-count">
+                    <FaCog className="rw-count-icon" />
+                    <span className="rw-count-text">Selected Actions<small>{roleForm.selectedPermissionCodes.length} action{roleForm.selectedPermissionCodes.length === 1 ? "" : "s"}</small></span>
+                  </span>
+                </div>
+                <div className="rw-foot-actions">
+                  <Button
+                    className="user-mgmt-role-modal-cancel"
+                    onClick={() => setShowRoleModal(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button className="user-mgmt-role-modal-submit" type="submit" disabled={modalLoading}>
+                    {modalLoading ? "Saving..." : editingRoleId ? "Update Role Access" : "Create Role"}
+                  </Button>
+                </div>
               </div>
             </Form>
           )}
@@ -2095,23 +2511,35 @@ function UserManagement({ initialTab = "users" }) {
       </Modal>
 
       {/* ── Configure Password Reset Rule Modal ── */}
-      <Modal show={showRuleModal} onHide={() => setShowRuleModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="h6 fw-bold">
-            {editingRule ? "Edit Password Reset Rule" : "Configure Password Reset Rule"}
-          </Modal.Title>
+      <Modal
+        show={showRuleModal}
+        onHide={() => setShowRuleModal(false)}
+        centered
+        contentClassName="user-mgmt-role-modal"
+      >
+        <Modal.Header closeButton className="rw-head border-0">
+          <div className="rw-head-icon">
+            <FaKey />
+          </div>
+          <div className="min-w-0">
+            <Modal.Title className="rw-head-title">
+              {editingRule ? "Edit Password Reset Rule" : "Configure Password Reset Rule"}
+            </Modal.Title>
+            <div className="rw-head-sub">Define which roles need approval for password resets</div>
+          </div>
         </Modal.Header>
         <Form onSubmit={handleSaveRule}>
-          <Modal.Body className="p-4">
+          <Modal.Body className="rw-body">
             <Form.Group className="mb-3">
-              <Form.Label className="small fw-bold">Requester Role <span className="text-danger">*</span></Form.Label>
+              <Form.Label className="rw-label">Requester Role <span className="text-danger">*</span></Form.Label>
               <Form.Select
                 required
                 value={ruleForm.requesterRole}
                 onChange={(e) => setRuleForm({ ...ruleForm, requesterRole: e.target.value })}
+                className="shadow-none rw-control rw-field"
               >
                 <option value="">-- Select Target Role --</option>
-                {roles.map((r) => (
+                {rolesByPriority.map((r) => (
                   <option key={r._id} value={r._id}>
                     {r.roleName} (Level {r.priority})
                   </option>
@@ -2129,19 +2557,21 @@ function UserManagement({ initialTab = "users" }) {
                 label="Require Higher Authority Approval Before Reset"
                 checked={ruleForm.approvalRequired}
                 onChange={(e) => setRuleForm({ ...ruleForm, approvalRequired: e.target.checked })}
+                className="rw-check"
               />
             </Form.Group>
 
             {ruleForm.approvalRequired && (
               <Form.Group className="mb-3">
-                <Form.Label className="small fw-bold">Designated Approver Role <span className="text-danger">*</span></Form.Label>
+                <Form.Label className="rw-label">Designated Approver Role <span className="text-danger">*</span></Form.Label>
                 <Form.Select
                   required={ruleForm.approvalRequired}
                   value={ruleForm.approverRole}
                   onChange={(e) => setRuleForm({ ...ruleForm, approverRole: e.target.value })}
+                  className="shadow-none rw-control rw-field"
                 >
                   <option value="">-- Select Approver Role --</option>
-                  {roles
+                  {rolesByPriority
                     .filter((r) => {
                       if (!ruleForm.requesterRole) return true;
                       const reqRoleObj = roles.find((x) => x._id === ruleForm.requesterRole);
@@ -2166,16 +2596,19 @@ function UserManagement({ initialTab = "users" }) {
                 label="Rule Active"
                 checked={ruleForm.isActive}
                 onChange={(e) => setRuleForm({ ...ruleForm, isActive: e.target.checked })}
+                className="rw-check"
               />
             </Form.Group>
           </Modal.Body>
-          <Modal.Footer>
-            <Button variant="light" onClick={() => setShowRuleModal(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" disabled={ruleSubmitting}>
-              {ruleSubmitting ? "Saving..." : "Save Rule"}
-            </Button>
+          <Modal.Footer className="user-mgmt-role-modal-foot rw-foot border-0">
+            <div className="rw-foot-actions">
+              <Button className="user-mgmt-role-modal-cancel" onClick={() => setShowRuleModal(false)}>
+                Cancel
+              </Button>
+              <Button className="user-mgmt-role-modal-submit" type="submit" disabled={ruleSubmitting}>
+                {ruleSubmitting ? "Saving..." : "Save Rule"}
+              </Button>
+            </div>
           </Modal.Footer>
         </Form>
       </Modal>

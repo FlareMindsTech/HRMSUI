@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   MdDashboard,
@@ -15,7 +15,6 @@ import {
   MdAdminPanelSettings,
   MdDevices,
   MdChevronRight,
-  MdCorporateFare,
   MdPayments,
   MdAccountTree,
   MdSecurity,
@@ -26,6 +25,9 @@ import { useSelector, useDispatch } from 'react-redux';
 import { selectAuthUser, selectIsSystemAdmin, useHasMenu, logout } from '../../redux/slices/authSlice';
 import './Sidebar.css';
 
+// Menu codes frozen to backend seed registry. ROLE_MANAGEMENT is granted to
+// Owner/Admin only (HR intentionally excluded); REIMBURSEMENT stands alone
+// (never LEAVE_MGMT). ORGANISATION uses British S; everything else American Z.
 const menuItems = [
   { name: 'Dashboard', path: '/dashboard', menuCode: 'DASHBOARD', icon: MdDashboard, section: 'main' },
   { name: 'Attendance', path: '/attendance', menuCode: 'ATTENDANCE', icon: MdAccessTime, section: 'main' },
@@ -41,7 +43,7 @@ const menuItems = [
     ],
   },
   { name: 'Leave Request', path: '/leave', menuCode: 'LEAVE_MGMT', icon: MdEventNote, section: 'main' },
-  { name: 'Reimbursements', path: '/reimbursement', menuCode: 'LEAVE_MGMT', icon: MdPayments, section: 'main' },
+  { name: 'Reimbursements', path: '/reimbursement', menuCode: 'REIMBURSEMENT', icon: MdPayments, section: 'main' },
   { name: 'HR Onboarding', path: '/onboarding', menuCode: 'USER_MANAGEMENT', icon: MdPersonAdd, section: 'manage' },
   { name: 'Lifecycle & Separation', path: '/lifecycle', menuCode: 'USER_MANAGEMENT', icon: MdHistoryEdu, section: 'manage' },
   { name: 'Role Management', path: '/roles', menuCode: 'ROLE_MANAGEMENT', icon: MdAdminPanelSettings, section: 'manage' },

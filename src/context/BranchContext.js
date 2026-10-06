@@ -29,13 +29,16 @@ export const BranchProvider = ({ children }) => {
   const orgLoadedForRef = useRef(null);
   const branchesLoadedForRef = useRef(null);
   const isOwner = user?.roleCode === "OWNER" || user?.priority === 1;
-  const rawAccessLevel = user?.accessLevel || (user?.primaryBranchId || (Array.isArray(user?.branchIds) && user.branchIds.length > 0) ? "BRANCH" : "ORGANIZATION");
+  // Locked /auth/me keys: user.branchId (single, null for Owner) +
+  // user.assignedBranchIds[]. Never read branchIds/primaryBranchId aliases.
+  const assignedIds = Array.isArray(user?.assignedBranchIds) ? user.assignedBranchIds : [];
+  const rawAccessLevel = user?.accessLevel || (user?.branchId || assignedIds.length > 0 ? "BRANCH" : "ORGANIZATION");
   const accessLevel = isOwner ? "ORGANIZATION" : rawAccessLevel;
 
-  const primaryBranchId = user?.primaryBranchId?._id || user?.primaryBranchId || null;
+  const primaryBranchId = user?.branchId || null;
   const userBranchIds = useMemo(() => {
-    if (!user?.branchIds || !Array.isArray(user.branchIds)) return [];
-    return user.branchIds.map((b) => (typeof b === "object" && b !== null ? b._id || b.id : b)).filter(Boolean);
+    if (!Array.isArray(user?.assignedBranchIds)) return [];
+    return user.assignedBranchIds.filter(Boolean).map(String);
   }, [user]);
 
   // Load Organization
@@ -133,8 +136,8 @@ export const BranchProvider = ({ children }) => {
   // Branches depend on the access filter, so reload when the filter inputs
   // actually change — but not mid-refresh (authStatus === 'loading' means the
   // enriched fetchAuth user is incoming) and not twice for the same filter.
-  const branchIdsKey = Array.isArray(user?.branchIds)
-    ? user.branchIds.map((b) => (typeof b === 'object' && b !== null ? b._id || b.id : b)).join(',')
+  const branchIdsKey = Array.isArray(user?.assignedBranchIds)
+    ? user.assignedBranchIds.map(String).join(',')
     : '';
   const branchesFilterKey = `${userId || ''}|${accessLevel}|${branchIdsKey}`;
   useEffect(() => {

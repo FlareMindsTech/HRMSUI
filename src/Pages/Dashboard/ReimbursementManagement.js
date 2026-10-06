@@ -9,7 +9,7 @@ import {
   MdReceipt
 } from 'react-icons/md';
 import { useSelector } from 'react-redux';
-import { selectAuthUser, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import { selectAuthUser, selectIsSystemAdmin, useHasMenu, useHasPermission } from '../../redux/slices/authSlice';
 import DataTable from '../../Components/Common/DataTable';
 import StatusBadge from '../../Components/Common/StatusBadge';
 import LoadingSpinner from '../../Components/Common/LoadingSpinner';
@@ -29,8 +29,18 @@ const CATEGORIES = ['TRAVEL', 'FOOD', 'MEDICAL', 'OFFICE_SUPPLIES', 'INTERNET', 
 function ReimbursementManagement() {
   const currentUser = useSelector(selectAuthUser);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useHasPermission();
+  const hasMenu = useHasMenu();
   const userRole = currentUser?.roleCode || currentUser?.role?.roleCode || '';
-  const isHrOrAdmin = isSystemAdmin || ['OWNER', 'ADMIN', 'HR', 'HR_MANAGER', 'FINANCE'].includes(userRole);
+  // Backend 7.4 split: submit -> reimbursement.submit, list -> reimbursement.read,
+  // pay -> reimbursement.pay (+ APPROVED-settlement gate server-side).
+  // Role-code fallback kept for pre-seed backends without the module.
+  const canSubmit = hasPermission('reimbursement.submit') || !!currentUser;
+  const canReadAll = hasPermission('reimbursement.read') || isSystemAdmin || ['OWNER', 'ADMIN', 'HR', 'HR_MANAGER', 'FINANCE'].includes(userRole);
+  const canPay = hasPermission('reimbursement.pay') || isSystemAdmin || ['OWNER', 'ADMIN', 'FINANCE'].includes(userRole);
+  const isHrOrAdmin = canReadAll;
+  void hasMenu;
+  void canSubmit;
 
   const [activeTab, setActiveTab] = useState(isHrOrAdmin ? 'all-claims' : 'my-claims');
   const [claims, setClaims] = useState([]);
@@ -192,7 +202,7 @@ function ReimbursementManagement() {
       header: 'Actions',
       render: (row) => (
         <div className="d-flex gap-2">
-          {isHrOrAdmin && row.status === 'APPROVED' && (
+          {canPay && row.status === 'APPROVED' && (
             <Button
               size="sm"
               variant="outline-success"

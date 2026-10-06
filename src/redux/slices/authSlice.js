@@ -54,30 +54,39 @@ const initialState = {
 const AUTH_TTL_MS = 60 * 1000;
 
 // Fetch live auth context (GET /auth/me).
+// Backend contract (locked): { data: { user, tenant } } where user carries
+// permissions[] + menus[] as string codes, priority, roleCode,
+// organizationId, branchId, assignedBranchIds. No top-level menus/permissions.
 export const fetchAuth = createAsyncThunk('auth/fetchAuth', async (_, { rejectWithValue }) => {
   try {
     const token = getAuthToken();
-    if (!token) return rejectWithValue('No token');
+    if (!token) return rejectWithValue({ message: 'No token', status: 401 });
     const data = await fetchAuthContext();
     // Persist cache (previously done by AuthContext.loadAuthContext).
     try {
       if (data?.user) localStorage.setItem('user', JSON.stringify(data.user));
       const tid =
-        data?.user?.tenantId || data?.user?.organizationId || data?.tenantId || data?.user?.tenant?._id;
-      if (tid) localStorage.setItem('tenantId', tid);
+        data?.user?.tenantId || data?.user?.organizationId || data?.tenant?._id || data?.tenant?.organizationId;
+      if (tid) {
+        localStorage.setItem('tenantId', tid);
+        localStorage.setItem('organizationId', tid);
+      }
     } catch {
       // ignore storage errors — never block auth load
     }
     return {
       user: data?.user || null,
-      menus: data?.menus || [],
-      permissions: data?.permissions || [],
+      tenant: data?.tenant || null,
+      menus: data?.user?.menus || [],
+      permissions: data?.user?.permissions || [],
       // Timestamp is produced here in the thunk (side-effect-capable layer)
       // so the reducer stays a pure state transition.
       fetchedAt: Date.now(),
     };
   } catch (err) {
-    return rejectWithValue(err.message || 'Failed to load session');
+    // 401 vs 403 discipline: the rejected payload carries the HTTP status so
+    // callers redirect to login on 401 only — never on 403 (AccessDenied).
+    return rejectWithValue({ message: err.message || 'Failed to load session', status: err.status });
   }
 },
   {
@@ -226,7 +235,7 @@ export const authSlice = createSlice({
       })
       .addCase(fetchAuth.rejected, (state, action) => {
         state.status = 'failed';
-        state.error = action.payload || 'Failed to load session';
+        state.error = action.payload?.message || action.payload || 'Failed to load session';
       })
       .addCase(login.pending, (state) => {
         state.status = 'loading';

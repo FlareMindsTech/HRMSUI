@@ -3,14 +3,7 @@
 // Connected to the live AWS backend API.
 // ============================================================
 
-// Reads from HRMSUI/.env or dynamically detects localhost
-const isLocalhost =
-  typeof window !== "undefined"
-    ? window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1" ||
-    window.location.hostname.startsWith("192.168.")
-    : process.env.NODE_ENV !== "production";
-
+// Reads from HRMSUI/.env (REACT_APP_API_BASE_URL).
 export const API_BASE_URL =
   process.env.REACT_APP_API_BASE_URL;
 
@@ -243,14 +236,20 @@ export const buildQuery = (params = {}) => {
 
 /**
  * Consistent API error carrying HTTP status + response payload.
- * Message contract is unchanged (server message first, then fallback), so
- * existing UI code reading `err.message` behaves exactly as before, while
- * new/updated callers can also branch on `err.status` (e.g. 404 handling).
+ * Backend 403s carry additive machine-readable keys alongside the message:
+ * requiredPermission (requirePermission), requiredPriority (isAdmin → 2),
+ * requiredMenu (checkMenuAccess), requiredAnyPermission + requiredPermission
+ * (ownership routes). Keys are ABSENT (not null) when not applicable.
+ * 401 = re-login; 403 = AccessDenied with key — never redirect to login.
  */
 export const apiError = (res, fallbackMessage = "Request failed") => {
   const message = res?.data?.message || res?.data?.error || fallbackMessage;
   const err = new Error(message);
   err.status = res?.status;
   err.data = res?.data;
+  err.requiredPermission = res?.data?.requiredPermission;
+  err.requiredPriority = res?.data?.requiredPriority;
+  err.requiredMenu = res?.data?.requiredMenu;
+  err.requiredAnyPermission = res?.data?.requiredAnyPermission;
   return err;
 };  

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Form, Button, Alert, Row, Col } from "react-bootstrap";
+import { Form, Button, Row, Col } from "react-bootstrap";
 import {
   FaMapMarkerAlt,
   FaWifi,
@@ -13,6 +13,7 @@ import {
   FaCheckCircle,
 } from "react-icons/fa";
 import { fetchLocations } from "../../services/organizationService";
+import FeedbackAlert from "../Common/FeedbackAlert";
 import "./AttendanceVerificationMethodConfig.css";
 
 // Standard IPv4 Validation Regular Expression
@@ -236,10 +237,11 @@ const AttendanceVerificationMethodConfig = ({
           </div>
 
           {allowedIps.length === 0 ? (
-            <Alert variant="warning" className="py-2 small mb-0 rounded-3">
-              <FaExclamationTriangle className="me-2 text-warning" />
-              At least one static public IP must be registered for <strong>{value === "BOTH" ? "Both (Geofence + Wi-Fi)" : "Wi-Fi / Office Network"}</strong> attendance to work. Punch-ins from non-registered networks will be blocked.
-            </Alert>
+            <FeedbackAlert
+              variant="warning"
+              className="mb-0"
+              message={<>At least one static public IP must be registered for <strong>{value === "BOTH" ? "Both (Geofence + Wi-Fi)" : "Wi-Fi / Office Network"}</strong> attendance to work. Punch-ins from non-registered networks will be blocked.</>}
+            />
           ) : (
             <div className="verification-ip-chips">
               {allowedIps.map((ip) => (
@@ -281,10 +283,11 @@ const AttendanceVerificationMethodConfig = ({
           <div className="verification-detail-panel-title">
             <FaFingerprint className="text-secondary" /> Biometric Machine Integration
           </div>
-          <Alert variant="info" className="py-2 small mb-0 rounded-3 border-0 bg-info-subtle text-info-emphasis">
-            <FaInfoCircle className="me-2" />
-            <strong>Biometric Integration — Coming Soon.</strong> Direct hardware synchronization (e.g. ZKTeco, eSSL biometric readers) is scheduled for an upcoming release. Manual and desktop attendance continues to be supported.
-          </Alert>
+            <FeedbackAlert
+              variant="info"
+              className="mb-0"
+              message={<><strong>Biometric Integration — Coming Soon.</strong> Direct hardware synchronization (e.g. ZKTeco, eSSL biometric readers) is scheduled for an upcoming release. Manual and desktop attendance continues to be supported.</>}
+            />
         </div>
       )}
 
