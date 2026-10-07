@@ -109,20 +109,6 @@
   background: var(--color-background, #F7F5F0);
 }
 
-/* ── Header Wrapper ── */
-.app-layout-header-wrapper {
-  height: 64px;
-  flex-shrink: 0;
-  background: var(--color-background, #F7F5F0);
-  border-bottom: 1px solid var(--color-border, rgba(196, 154, 85, 0.12));
-  z-index: 900;
-  transition: height 0.2s ease;
-}
-
-.app-layout-header-wrapper.is-mobile {
-  height: 56px;
-}
-
 /* ── Content Container ── */
 .app-layout-content {
   flex: 1;
@@ -157,10 +143,6 @@
 
 /* ── Responsive Queries for Viewport Fallback (aligned with JS isMobile < 768px) ── */
 @media (max-width: 767.98px) {
-  .app-layout-header-wrapper {
-    height: 56px;
-  }
-
   .app-layout-content {
     padding: 14px;
   }

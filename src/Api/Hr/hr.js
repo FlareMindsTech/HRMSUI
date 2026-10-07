@@ -1120,3 +1120,36 @@ export const disableLogin = async (id) => {
   }
   return res.data;
 };
+
+/**
+ * Fetch employment types from backend master / lookup API
+ */
+export const fetchEmploymentTypes = async () => {
+  const endpoints = [
+    "/current-company/employment-types",
+    "/onboarding/employment-types",
+    "/organization/employment-types",
+    "/lookup/employment-types",
+    "/settings/employment-types",
+  ];
+  for (const ep of endpoints) {
+    try {
+      const res = await apiFetch(ep, { method: "GET" });
+      if (res && (res.ok || res.status === 200)) {
+        const data = res.data?.data || res.data || [];
+        if (Array.isArray(data) && data.length > 0) {
+          return data;
+        }
+      }
+    } catch (e) { }
+  }
+  return [
+    { value: "FULL_TIME", label: "Full Time" },
+    { value: "PART_TIME", label: "Part Time" },
+    { value: "INTERN", label: "Intern" },
+    { value: "CONTRACT", label: "Contract" },
+    { value: "CONSULTANT", label: "Consultant" },
+    { value: "APPRENTICE", label: "Apprentice" },
+    { value: "VOLUNTEER", label: "Volunteer" },
+  ];
+};

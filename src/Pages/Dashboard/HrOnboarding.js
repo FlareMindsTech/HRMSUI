@@ -54,7 +54,6 @@ import {
   FaUnlock,
   FaClock,
   FaBuilding,
-  FaCodeBranch,
   FaMoneyCheckAlt,
   FaCreditCard,
   FaUniversity,
@@ -67,14 +66,11 @@ import {
   FaMobileAlt,
   FaPhoneAlt,
   FaEnvelope,
-  FaCalendarAlt,
   FaTv,
   FaKeyboard,
   FaCar,
   FaBox,
-  FaExchangeAlt,
   FaUndoAlt,
-  FaBarcode,
   FaRedo,
   FaChevronDown,
   FaExternalLinkAlt,
@@ -83,7 +79,6 @@ import {
   FaDownload,
   FaUpload,
   FaArrowUp,
-  FaPaperPlane,
   FaEllipsisV,
   FaChartPie,
   FaFileInvoice,
@@ -95,6 +90,7 @@ import { MdDevices } from "react-icons/md";
 import { createEducation, getEducationByUserId, updateEducation } from "../../Api/Education/educationApi";
 import EducationSummary from "../../Components/Education/EducationSummary";
 import SSLCSection from "../../Components/Education/SSLCSection";
+import DocumentUploadBox from "../../Components/Education/DocumentUploadBox";
 import HSCSection from "../../Components/Education/HSCSection";
 import ITISection from "../../Components/Education/ITISection";
 import DiplomaSection from "../../Components/Education/DiplomaSection";
@@ -106,6 +102,8 @@ import DocumentSummary from "../../Components/Document/DocumentSummary";
 import BankDetailsCard from "../../Components/Document/BankDetailsCard";
 import StatutoryDetailsCard from "../../Components/Document/StatutoryDetailsCard";
 import IdentityDetailsCard from "../../Components/Document/IdentityDetailsCard";
+import CountryCodeDropdown from "../../Components/Common/CountryCodeDropdown";
+import { parsePhoneNumber, getCountryByIso2, getCountryByDialCode } from "../../data/countryCallingCodes";
 import { addExperienceApi, getExperienceByUserId } from "../../Api/Experience/experienceApi";
 import { createDocumentApi } from "../../Api/Document/documentApi";
 import {
@@ -157,6 +155,7 @@ import {
   provisionOnboardingAccount,
   enableLogin,
   disableLogin,
+  fetchEmploymentTypes,
 } from "../../Api/Hr/hr";
 import {
   fetchRoleAccessConfig,
@@ -659,10 +658,12 @@ const INITIAL_ONBOARDING_FORM_DATA = {
   gender: "",
   marriageStatus: "",
   mobileNo: "",
+  countryCode: "+91",
+  countryIso2: "IN",
   department: "",
   designation: "",
   joiningDate: new Date().toISOString().split("T")[0],
-  employmentType: "FULL_TIME",
+  employmentType: "",
   compensationType: "SALARY",
   compensationAmount: "",
   roleId: "",
@@ -723,17 +724,17 @@ const INITIAL_ONBOARDING_FORM_DATA = {
       salary: "",
       compensationType: "SALARY",
       compensationAmount: "",
-      employmentType: "FULL_TIME",
+      employmentType: "",
       isUnpaid: false,
       joiningDate: new Date().toISOString().split("T")[0],
       reportedTo: "",
       noticePeriod: "",
       expectedLastWorkingDate: "",
-      employmentStatus: "CURRENTLY_EMPLOYED",
+      employmentStatus: "",
       isFresher: false,
       location: "",
       isCurrent: true,
-      docType: "OFFER_LETTER",
+      docType: "",
       docFile: null,
       docName: "",
     },
@@ -1052,6 +1053,44 @@ function HrOnboarding() {
     }
   });
   const [submittingForm, setSubmittingForm] = useState(false);
+  const [employmentTypes, setEmploymentTypes] = useState([
+    { value: "FULL_TIME", label: "Full Time" },
+    { value: "PART_TIME", label: "Part Time" },
+    { value: "INTERN", label: "Intern" },
+    { value: "CONTRACT", label: "Contract" },
+    { value: "CONSULTANT", label: "Consultant" },
+    { value: "APPRENTICE", label: "Apprentice" },
+    { value: "VOLUNTEER", label: "Volunteer" },
+  ]);
+
+  // ── Fetch Employment Types from Backend API ──
+  useEffect(() => {
+    let isMounted = true;
+    const loadTypes = async () => {
+      try {
+        const types = await fetchEmploymentTypes();
+        if (isMounted && Array.isArray(types) && types.length > 0) {
+          const normalized = types.map((t) => {
+            if (typeof t === "string") {
+              const label = t.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+              return { value: t, label };
+            }
+            const val = t.value || t.key || t.code || t.name || t.employmentType || t.type || "";
+            const lab = t.label || t.name || t.title || t.displayName || (val ? val.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : "Employment Type");
+            return { value: val, label: lab };
+          }).filter((t) => Boolean(t.value));
+          if (normalized.length > 0) {
+            setEmploymentTypes(normalized);
+          }
+        }
+      } catch (e) {
+        console.warn("Could not load backend employment types, using standard:", e.message);
+      }
+    };
+    loadTypes();
+    return () => { isMounted = false; };
+  }, []);
+
   const [formData, setFormData] = useState(() => {
     try {
       const saved = sessionStorage.getItem("hrms_onboarding_formData");
@@ -1069,13 +1108,13 @@ function HrOnboarding() {
   useEffect(() => {
     try {
       sessionStorage.setItem("hrms_onboarding_viewTab", viewTab);
-    } catch (e) {}
+    } catch (e) { }
   }, [viewTab]);
 
   useEffect(() => {
     try {
       sessionStorage.setItem("hrms_onboarding_activeFormTab", activeFormTab);
-    } catch (e) {}
+    } catch (e) { }
   }, [activeFormTab]);
 
   useEffect(() => {
@@ -1091,7 +1130,7 @@ function HrOnboarding() {
         serializable[key] = value;
       }
       sessionStorage.setItem("hrms_onboarding_formData", JSON.stringify(serializable));
-    } catch (e) {}
+    } catch (e) { }
   }, [formData]);
 
   // ── Education Form Sections & File Handlers ──
@@ -1175,7 +1214,7 @@ function HrOnboarding() {
     if (prevUrl && typeof prevUrl === "string" && prevUrl.startsWith("blob:")) {
       try {
         URL.revokeObjectURL(prevUrl);
-      } catch (e) {}
+      } catch (e) { }
     }
     const fileUrl = URL.createObjectURL(file);
     if (fieldKey === "sslcDocument") {
@@ -1236,7 +1275,7 @@ function HrOnboarding() {
     if (prevUrl && typeof prevUrl === "string" && prevUrl.startsWith("blob:")) {
       try {
         URL.revokeObjectURL(prevUrl);
-      } catch (e) {}
+      } catch (e) { }
     }
     if (fieldKey === "sslcDocument") {
       setFormData((prev) => ({ ...prev, sslcDocumentFile: null, sslcDocumentName: "", sslcDocumentUrl: "" }));
@@ -1361,7 +1400,7 @@ function HrOnboarding() {
             if (prev?.url && prev.url.startsWith("blob:") && prev.url !== inlineBlobUrl) {
               try {
                 URL.revokeObjectURL(prev.url);
-              } catch (e) {}
+              } catch (e) { }
             }
             return {
               ...prev,
@@ -1382,7 +1421,7 @@ function HrOnboarding() {
     if (docPreview.url && docPreview.url.startsWith("blob:")) {
       try {
         URL.revokeObjectURL(docPreview.url);
-      } catch (e) {}
+      } catch (e) { }
     }
     setDocPreview({ show: false, url: "", title: "", type: "", file: null });
   };
@@ -1520,8 +1559,8 @@ function HrOnboarding() {
     const allDocs = Array.isArray(detailDocs) && detailDocs.length > 0
       ? detailDocs
       : Array.isArray(selectedOnboarding?.documents)
-      ? selectedOnboarding.documents
-      : [];
+        ? selectedOnboarding.documents
+        : [];
 
     const deg = (eduItem.degree || "").toLowerCase().trim();
     const stream = (eduItem.stream || eduItem.specialization || "").toLowerCase().trim();
@@ -1670,7 +1709,7 @@ function HrOnboarding() {
     if (!file || !selectedOnboarding?._id) return;
     setUploadingEduIndex(index);
     setErrorMsg("");
-    
+
     // Create instant local URL for immediate preview
     const localPreviewUrl = URL.createObjectURL(file);
 
@@ -1687,7 +1726,7 @@ function HrOnboarding() {
       if (userObjId) {
         const eduFormData = new FormData();
         const deg = (eduItem.degree || "").toLowerCase().trim();
-        
+
         eduFormData.append("userId", String(userObjId));
         eduFormData.append("employeeId", String(userObjId));
 
@@ -1841,7 +1880,7 @@ function HrOnboarding() {
       try {
         const docsRes = await fetchOnboardingDocuments(selectedOnboarding._id).catch(() => null);
         if (docsRes) setDetailDocs(toArray(docsRes));
-      } catch (e) {}
+      } catch (e) { }
 
       if (uploadSuccess || file) {
         // Optimistically update qualification row in workspace state with file object and URL
@@ -1939,10 +1978,13 @@ function HrOnboarding() {
 
       const rawMobile = (formData.mobileNo || "").trim();
       const cleanedMobile = rawMobile.replace(/\D/g, "");
+      const isIndia = (formData.countryIso2 === "IN" || (!formData.countryIso2 && (formData.countryCode === "+91" || !formData.countryCode)));
       if (!rawMobile) {
-        errors.mobileNo = "Mobile Number is required (10 digits)";
-      } else if (cleanedMobile.length !== 10) {
+        errors.mobileNo = isIndia ? "Mobile Number is required (10 digits)" : "Mobile Number is required";
+      } else if (isIndia && cleanedMobile.length !== 10) {
         errors.mobileNo = `Mobile Number must be exactly 10 digits (currently ${cleanedMobile.length}/10)`;
+      } else if (!isIndia && (cleanedMobile.length < 6 || cleanedMobile.length > 15)) {
+        errors.mobileNo = `Please enter a valid mobile number (6–15 digits, currently ${cleanedMobile.length})`;
       }
 
       if (!formData.dob) {
@@ -1964,17 +2006,17 @@ function HrOnboarding() {
       if (!formData.designation?.trim()) {
         errors.designation = "Designation is required. Please select from dropdown";
       }
-
-      if (!formData.joiningDate) {
-        errors.joiningDate = "Joining Date is required";
-      }
     }
 
     if (sectionId === "professional") {
       const isCandidateFresher = Boolean(formData.isFresher || formData.professional?.some((p) => p.isFresher));
       if (isCandidateFresher) {
-        if (!formData.joiningDate && !formData.professional?.[0]?.joiningDate) {
-          errors.joiningDate = "Joining Date is required";
+        const firstProf = formData.professional?.[0] || {};
+        if (!formData.joiningDate && !firstProf.joiningDate) {
+          errors.joiningDate = "Joining Date is required for fresher";
+        }
+        if (!formData.reportingManager && !firstProf.reportedTo) {
+          errors.reportingManager = "Reporting Manager is required for fresher";
         }
       } else {
         if (Array.isArray(formData.professional) && formData.professional.length > 0) {
@@ -1983,17 +2025,32 @@ function HrOnboarding() {
               if (!prof.companyName?.trim()) {
                 errors[`prof_companyName_${idx}`] = `Company #${idx + 1}: Company Name is required`;
               }
+              if (!prof.companyWebsite?.trim() && !prof.website?.trim() && !prof.linkedin?.trim()) {
+                errors[`prof_website_${idx}`] = `Company #${idx + 1}: Company Website / LinkedIn URL is required`;
+              }
               if (!prof.department?.trim() && !formData.department?.trim()) {
                 errors[`prof_department_${idx}`] = `Company #${idx + 1}: Department is required`;
               }
               if (!prof.designation?.trim() && !formData.designation?.trim()) {
                 errors[`prof_designation_${idx}`] = `Company #${idx + 1}: Designation is required`;
               }
+              if (!prof.role?.trim()) {
+                errors[`prof_role_${idx}`] = `Company #${idx + 1}: Role / Position is required`;
+              }
               if (prof.salary === undefined || prof.salary === null || String(prof.salary).trim() === "") {
                 errors[`prof_salary_${idx}`] = `Company #${idx + 1}: Salary (CTC) is required`;
               }
-              if (prof.companyWebsite && !/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/i.test(prof.companyWebsite.trim())) {
-                errors[`prof_website_${idx}`] = `Company #${idx + 1}: Please enter a valid website URL`;
+              if (!prof.joiningDate) {
+                errors[`prof_joiningDate_${idx}`] = `Company #${idx + 1}: Joining Date is required`;
+              }
+              if (!prof.expectedLastWorkingDate) {
+                errors[`prof_lastDate_${idx}`] = `Company #${idx + 1}: Expected Last Working Date is required`;
+              }
+              if (!prof.noticePeriod?.trim()) {
+                errors[`prof_noticePeriod_${idx}`] = `Company #${idx + 1}: Notice Period is required`;
+              }
+              if (!prof.reportedTo && !formData.reportingManager) {
+                errors[`prof_reportedTo_${idx}`] = `Company #${idx + 1}: Reporting Manager is required`;
               }
               if (prof.joiningDate && prof.expectedLastWorkingDate) {
                 if (new Date(prof.expectedLastWorkingDate) < new Date(prof.joiningDate)) {
@@ -2659,14 +2716,14 @@ function HrOnboarding() {
       const rawProf = (Array.isArray(profDetails.professional) && profDetails.professional.length > 0)
         ? profDetails.professional
         : (dbCurrentComp && Object.keys(dbCurrentComp).length > 0)
-        ? [dbCurrentComp]
-        : (Array.isArray(profileDomains.professional) && profileDomains.professional.length > 0)
-        ? profileDomains.professional
-        : (Array.isArray(emp.professional) && emp.professional.length > 0)
-        ? emp.professional
-        : (Array.isArray(data.professional) && data.professional.length > 0)
-        ? data.professional
-        : [];
+          ? [dbCurrentComp]
+          : (Array.isArray(profileDomains.professional) && profileDomains.professional.length > 0)
+            ? profileDomains.professional
+            : (Array.isArray(emp.professional) && emp.professional.length > 0)
+              ? emp.professional
+              : (Array.isArray(data.professional) && data.professional.length > 0)
+                ? data.professional
+                : [];
 
       const candidateJoiningDate = emp.joiningDate || data.joiningDate || (dbCurrentComp?.joiningDate) || "";
       const candidateManagerId = emp.reportingManager?._id || emp.reportingManager || data.reportingManager?._id || data.reportingManager || (dbCurrentComp?.reportedTo?._id || dbCurrentComp?.reportedTo) || "";
@@ -2735,14 +2792,14 @@ function HrOnboarding() {
       const rawExp = (dbExp.length > 0)
         ? dbExp
         : (Array.isArray(profDetails.experience) && profDetails.experience.length > 0)
-        ? profDetails.experience
-        : (Array.isArray(profileDomains.experience) && profileDomains.experience.length > 0)
-        ? profileDomains.experience
-        : (Array.isArray(emp.experience) && emp.experience.length > 0)
-        ? emp.experience
-        : (Array.isArray(data.experience) && data.experience.length > 0)
-        ? data.experience
-        : [];
+          ? profDetails.experience
+          : (Array.isArray(profileDomains.experience) && profileDomains.experience.length > 0)
+            ? profileDomains.experience
+            : (Array.isArray(emp.experience) && emp.experience.length > 0)
+              ? emp.experience
+              : (Array.isArray(data.experience) && data.experience.length > 0)
+                ? data.experience
+                : [];
 
       const expList = rawExp.map((ex) => ({
         prevCompany: ex.prevCompany || ex.companyName || ex.employer || "",
@@ -2756,18 +2813,18 @@ function HrOnboarding() {
       const rawAddr = (dbAddresses.length > 0)
         ? dbAddresses
         : (Array.isArray(profDetails.addresses) && profDetails.addresses.length > 0)
-        ? profDetails.addresses
-        : (Array.isArray(profileDomains.addresses) && profileDomains.addresses.length > 0)
-        ? profileDomains.addresses
-        : (Array.isArray(emp.addresses) && emp.addresses.length > 0)
-        ? emp.addresses
-        : (Array.isArray(emp.address) && emp.address.length > 0)
-        ? emp.address
-        : (Array.isArray(data.addresses) && data.addresses.length > 0)
-        ? data.addresses
-        : (Array.isArray(data.address) && data.address.length > 0)
-        ? data.address
-        : [];
+          ? profDetails.addresses
+          : (Array.isArray(profileDomains.addresses) && profileDomains.addresses.length > 0)
+            ? profileDomains.addresses
+            : (Array.isArray(emp.addresses) && emp.addresses.length > 0)
+              ? emp.addresses
+              : (Array.isArray(emp.address) && emp.address.length > 0)
+                ? emp.address
+                : (Array.isArray(data.addresses) && data.addresses.length > 0)
+                  ? data.addresses
+                  : (Array.isArray(data.address) && data.address.length > 0)
+                    ? data.address
+                    : [];
 
       const addrList = rawAddr
         .map((ad) => ({
@@ -2816,13 +2873,13 @@ function HrOnboarding() {
       const emergency = (profileDomains.emergencyContact && Object.keys(profileDomains.emergencyContact).length > 0)
         ? profileDomains.emergencyContact
         : (dbFamily && dbFamily.familyMembers && dbFamily.familyMembers[0])
-        ? {
+          ? {
             name: dbFamily.familyMembers[0].name || "",
             relationship: dbFamily.familyMembers[0].relationship || "Father",
             phone: dbFamily.familyMembers[0].phone || "",
             email: dbFamily.familyMembers[0].email || "",
           }
-        : emp.emergencyContact || data.emergencyContact || { name: "", relationship: "", phone: "", email: "" };
+          : emp.emergencyContact || data.emergencyContact || { name: "", relationship: "", phone: "", email: "" };
 
       const candidateRoleObj = emp.role || data.role || {};
       const candidateRoleId = typeof candidateRoleObj === "object" ? (candidateRoleObj._id || "") : (typeof candidateRoleObj === "string" ? candidateRoleObj : "");
@@ -3357,10 +3414,10 @@ function HrOnboarding() {
           : [err.message || "Mandatory onboarding requirements must be fulfilled."];
       const isCandidateUnpaid = Boolean(
         candidateProfileData?.isUnpaid ||
-          candidateProfileData?.compensationType === "UNPAID" ||
-          selectedOnboarding?.isUnpaid ||
-          selectedOnboarding?.compensationType === "UNPAID" ||
-          candidateProfileData?.professional?.some((p) => p.compensationType === "UNPAID" || p.isUnpaid)
+        candidateProfileData?.compensationType === "UNPAID" ||
+        selectedOnboarding?.isUnpaid ||
+        selectedOnboarding?.compensationType === "UNPAID" ||
+        candidateProfileData?.professional?.some((p) => p.compensationType === "UNPAID" || p.isUnpaid)
       );
       const report = sanitizeValidationReport(
         {
@@ -3421,10 +3478,10 @@ function HrOnboarding() {
           : [err.message || "Mandatory onboarding requirements must be fulfilled."];
       const isCandidateUnpaid = Boolean(
         candidateProfileData?.isUnpaid ||
-          candidateProfileData?.compensationType === "UNPAID" ||
-          selectedOnboarding?.isUnpaid ||
-          selectedOnboarding?.compensationType === "UNPAID" ||
-          candidateProfileData?.professional?.some((p) => p.compensationType === "UNPAID" || p.isUnpaid)
+        candidateProfileData?.compensationType === "UNPAID" ||
+        selectedOnboarding?.isUnpaid ||
+        selectedOnboarding?.compensationType === "UNPAID" ||
+        candidateProfileData?.professional?.some((p) => p.compensationType === "UNPAID" || p.isUnpaid)
       );
       const report = sanitizeValidationReport(
         {
@@ -3854,7 +3911,7 @@ function HrOnboarding() {
           designation: "",
           role: "",
           salary: "",
-          employmentType: prev.employmentType || "FULL_TIME",
+          employmentType: prev.employmentType || "",
           compensationType: prev.compensationType || "SALARY",
           compensationAmount: "",
           isUnpaid: Boolean(prev.compensationType === "UNPAID" || prev.isUnpaid),
@@ -3862,11 +3919,11 @@ function HrOnboarding() {
           reportedTo: "",
           noticePeriod: "",
           expectedLastWorkingDate: "",
-          employmentStatus: "CURRENTLY_EMPLOYED",
+          employmentStatus: "",
           isFresher: false,
           location: "",
           isCurrent: false,
-          docType: "EXPERIENCE_LETTER",
+          docType: "",
           docFile: null,
           docName: "",
         },
@@ -3958,7 +4015,7 @@ function HrOnboarding() {
       if (prevUrl && typeof prevUrl === "string" && prevUrl.startsWith("blob:")) {
         try {
           URL.revokeObjectURL(prevUrl);
-        } catch (err) {}
+        } catch (err) { }
       }
       const previewUrl = URL.createObjectURL(file);
       setFormData((prev) => ({
@@ -3974,7 +4031,7 @@ function HrOnboarding() {
     if (prevUrl && typeof prevUrl === "string" && prevUrl.startsWith("blob:")) {
       try {
         URL.revokeObjectURL(prevUrl);
-      } catch (err) {}
+      } catch (err) { }
     }
     setFormData((prev) => ({
       ...prev,
@@ -3983,11 +4040,13 @@ function HrOnboarding() {
     }));
   };
 
-  // ── Mobile Number Input Handler (Digits Only, Max 10) ──
+  // ── Mobile Number Input Handler (Country Aware) ──
   const handleMobileChange = (e) => {
-    const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+    const isIndia = (formData.countryIso2 === "IN" || (!formData.countryIso2 && (formData.countryCode === "+91" || !formData.countryCode)));
+    const maxLen = isIndia ? 10 : 15;
+    const digits = e.target.value.replace(/\D/g, "").slice(0, maxLen);
     setFormData((prev) => ({ ...prev, mobileNo: digits }));
-    if (formErrors.mobileNo && digits.length === 10) {
+    if (formErrors.mobileNo && ((isIndia && digits.length === 10) || (!isIndia && digits.length >= 6))) {
       setFormErrors((prev) => ({ ...prev, mobileNo: "" }));
     }
   };
@@ -4162,14 +4221,14 @@ function HrOnboarding() {
 
       const normalizedFamily = Array.isArray(formData.familyContacts)
         ? formData.familyContacts
-            .filter((f) => f.name || f.phone)
-            .map((f) => ({
-              name: f.name || "",
-              relationship: f.relationship || "Guardian",
-              phone: f.phone || "",
-              email: f.email || "",
-              occupation: f.occupation || "",
-            }))
+          .filter((f) => f.name || f.phone)
+          .map((f) => ({
+            name: f.name || "",
+            relationship: f.relationship || "Guardian",
+            phone: f.phone || "",
+            email: f.email || "",
+            occupation: f.occupation || "",
+          }))
         : [];
 
       // 1. Initiate candidate onboarding directly via /onboarding/initiate
@@ -4462,7 +4521,7 @@ function HrOnboarding() {
         try {
           sessionStorage.removeItem("hrms_onboarding_formData");
           sessionStorage.removeItem("hrms_onboarding_activeFormTab");
-        } catch (e) {}
+        } catch (e) { }
         setViewTab("pipeline");
         handleOpenCandidateWorkspace(onboardingId);
       }
@@ -4499,8 +4558,8 @@ function HrOnboarding() {
       // Find matching onboarding record if available
       let onboardingId =
         selectedOnboarding?._id &&
-        ((selectedOnboarding?.employeeId?._id || selectedOnboarding?.employeeId) === targetEmpId ||
-          selectedOnboarding?._id === targetEmpId)
+          ((selectedOnboarding?.employeeId?._id || selectedOnboarding?.employeeId) === targetEmpId ||
+            selectedOnboarding?._id === targetEmpId)
           ? selectedOnboarding._id
           : null;
 
@@ -4722,10 +4781,10 @@ function HrOnboarding() {
     ),
     ...(!isFresher
       ? {
-          experience: Boolean(
-            formData.experience?.some((e) => e.companyName?.trim() || e.prevCompany?.trim() || e.designation?.trim())
-          ),
-        }
+        experience: Boolean(
+          formData.experience?.some((e) => e.companyName?.trim() || e.prevCompany?.trim() || e.designation?.trim())
+        ),
+      }
       : {}),
     address: Boolean(
       formData.addresses?.some((a) => a.addressLine1?.trim() || a.city?.trim() || a.state?.trim() || a.pincode?.trim())
@@ -4744,20 +4803,20 @@ function HrOnboarding() {
     ),
     documents: isCandidateUnpaidForm
       ? Boolean(
-          formData.statutoryDetails?.panNo?.trim() ||
-          formData.statutoryDetails?.aadhaarNo?.trim() ||
-          formData.panNo?.trim() ||
-          formData.aadhaarNo?.trim() ||
-          true // Unpaid engagements are always complete without requiring bank fields
-        )
+        formData.statutoryDetails?.panNo?.trim() ||
+        formData.statutoryDetails?.aadhaarNo?.trim() ||
+        formData.panNo?.trim() ||
+        formData.aadhaarNo?.trim() ||
+        true // Unpaid engagements are always complete without requiring bank fields
+      )
       : Boolean(
-          formData.statutoryDetails?.panNo?.trim() ||
-          formData.statutoryDetails?.aadhaarNo?.trim() ||
-          formData.bankDetails?.accountNumber?.trim() ||
-          formData.panNo?.trim() ||
-          formData.bankName?.trim() ||
-          formData.accountNo?.trim()
-        ),
+        formData.statutoryDetails?.panNo?.trim() ||
+        formData.statutoryDetails?.aadhaarNo?.trim() ||
+        formData.bankDetails?.accountNumber?.trim() ||
+        formData.panNo?.trim() ||
+        formData.bankName?.trim() ||
+        formData.accountNo?.trim()
+      ),
     family: Boolean(
       formData.emergencyContact?.name?.trim() ||
       formData.emergencyContact?.mobileNo?.trim() ||
@@ -4775,10 +4834,12 @@ function HrOnboarding() {
       gender: "",
       marriageStatus: "",
       mobileNo: "",
+      countryCode: "+91",
+      countryIso2: "IN",
       department: "",
       designation: "",
       joiningDate: new Date().toISOString().split("T")[0],
-      employmentType: "FULL_TIME",
+      employmentType: "",
       compensationType: "SALARY",
       compensationAmount: "",
       roleId: "",
@@ -4830,7 +4891,7 @@ function HrOnboarding() {
           designation: "",
           role: "",
           salary: "",
-          employmentType: "FULL_TIME",
+          employmentType: "",
           compensationType: "SALARY",
           compensationAmount: "",
           isUnpaid: false,
@@ -4838,11 +4899,11 @@ function HrOnboarding() {
           reportedTo: "",
           noticePeriod: "",
           expectedLastWorkingDate: "",
-          employmentStatus: "CURRENTLY_EMPLOYED",
+          employmentStatus: "",
           isFresher: false,
           location: "",
           isCurrent: true,
-          docType: "OFFER_LETTER",
+          docType: "",
           docFile: null,
           docName: "",
         },
@@ -4998,10 +5059,10 @@ function HrOnboarding() {
     // Past Experience Letters & Payslips (if not fresher)
     ...(!isFresher && Array.isArray(formData.experience)
       ? formData.experience.flatMap((e) => [
-          Boolean(e.experienceDocFile || e.experienceDocUrl || e.docFile || e.docUrl),
-          Boolean(e.payslipFile || e.payslipDocUrl),
-          Boolean(e.relievingDocFile || e.relievingDocUrl),
-        ])
+        Boolean(e.experienceDocFile || e.experienceDocUrl || e.docFile || e.docUrl),
+        Boolean(e.payslipFile || e.payslipDocUrl),
+        Boolean(e.relievingDocFile || e.relievingDocUrl),
+      ])
       : []),
     // Bank Passbook & Statutory IDs
     Boolean(formData.passbookFile || formData.passbookUrl || formData.bankDetails?.passbookFile || formData.bankDetails?.passbookUrl),
@@ -5016,14 +5077,14 @@ function HrOnboarding() {
 
   const formTabs = [
     { id: "personal", label: "Personal", icon: <FaUser /> },
-    { id: "professional", label: "Professional & Company", icon: <FaBuilding /> },
-    { id: "education", label: "Education & Certificates", icon: <FaGraduationCap /> },
-    ...(!isFresher ? [{ id: "experience", label: "Experience & Payslips", icon: <FaBriefcase /> }] : []),
+    { id: "professional", label: "Professional", icon: <FaBuilding /> },
+    { id: "education", label: "Education", icon: <FaGraduationCap /> },
+    ...(!isFresher ? [{ id: "experience", label: "Experience", icon: <FaBriefcase /> }] : []),
     { id: "address", label: "Address", icon: <FaHome /> },
     { id: "compensation", label: "Compensation", icon: <FaMoneyBillWave /> },
     { id: "documents", label: "Bank & Statutory", icon: <FaMoneyCheckAlt /> },
-    { id: "family", label: "Family & Emergency", icon: <FaUsers /> },
-    { id: "review", label: "Review & Initialize", icon: <FaClipboardCheck /> },
+    { id: "family", label: "Family", icon: <FaUsers /> },
+    { id: "review", label: "Review", icon: <FaClipboardCheck /> },
   ];
 
   // Pipeline Metric Stats
@@ -5116,7 +5177,7 @@ function HrOnboarding() {
                   Enterprise
                 </span>
               </div>
-             
+
             </div>
           </div>
 
@@ -5714,91 +5775,147 @@ function HrOnboarding() {
             <Card className="border-0 shadow-sm rounded-4" style={{ overflow: "visible" }}>
               <Card.Body className="p-3 p-md-4">
                 {/* Step Tabs Navigation */}
-                <Nav variant="pills" className="bg-light p-1 rounded-3 gap-1 mb-3 flex-wrap">
-                  {formTabs.map((tab) => (
-                    <Nav.Item key={tab.id}>
-                      <Nav.Link
-                        active={activeFormTab === tab.id}
-                        onClick={() => handleTabClick(tab.id)}
-                        className={`onboarding-step-nav-link d-flex align-items-center gap-1.5 ${
-                          activeFormTab === tab.id ? "active" : ""
-                        }`}
-                      >
-                        {tab.icon} {tab.label}
-                      </Nav.Link>
-                    </Nav.Item>
-                  ))}
-                </Nav>
+                <div className="onboarding-step-tabs-container mb-4">
+                  <Nav
+                    variant="pills"
+                    fill
+                    justify
+                    className="onboarding-step-tabs-nav p-1.5 rounded-3 w-100"
+                    style={{ gap: "8px" }}
+                  >
+                    {formTabs.map((tab) => {
+                      const isActive = activeFormTab === tab.id;
+                      const isComplete = Boolean(sectionStatus[tab.id]);
+                      return (
+                        <Nav.Item key={tab.id} className="flex-fill" style={{ margin: "0 2px" }}>
+                          <Nav.Link
+                            active={isActive}
+                            onClick={() => handleTabClick(tab.id)}
+                            className={`onboarding-step-nav-link text-center w-100 ${isActive ? "active" : ""
+                              } ${isComplete ? "completed" : ""}`}
+                            title={`${tab.label}${isComplete ? " (Completed)" : ""}`}
+                          >
+                            <span className="onboarding-tab-icon">{tab.icon}</span>
+                            <span className="onboarding-tab-label">{tab.label}</span>
+                          </Nav.Link>
+                        </Nav.Item>
+                      );
+                    })}
+                  </Nav>
+                </div>
 
                 {/* Tab 1: Personal Information & Profile Photo */}
                 {activeFormTab === "personal" && (
-                  <Form>
-                    {/* ── Unified Professional Header & Profile Photo Bar ── */}
-                    <div className="onboarding-unified-step-header mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
-                      {/* Left: Big Avatar + Title & Info with generous gap */}
-                      <div className="d-flex align-items-center" style={{ gap: "22px" }}>
-                        <label className="position-relative flex-shrink-0 cursor-pointer mb-0" title="Click to upload/change photo">
-                          {formData.profilePicPreview ? (
-                            <Image
-                              src={formData.profilePicPreview}
-                              roundedCircle
-                              width={72}
-                              height={72}
-                              alt="Candidate photo preview"
-                              className="onboarding-profile-pic-ring shadow-sm object-fit-cover"
-                              style={{ width: "72px", height: "72px", objectFit: "cover" }}
-                            />
-                          ) : (
-                            <div
-                              className="rounded-circle d-flex align-items-center justify-content-center shadow-xs"
+                  <Form className="mb-2">
+                    {/* ── Step Header & Profile Photo Upload ── */}
+                    <div
+                      className="onboarding-unified-step-header mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3 p-3 rounded-3"
+                      style={{
+                        background: "var(--color-surface, #FFFFFF)",
+                        border: "1px solid var(--color-border, #E5E0D7)",
+                      }}
+                    >
+                      <div className="d-flex align-items-center gap-3">
+                        {/* Profile Photo Avatar / Upload Trigger */}
+                        <div className="position-relative">
+                          <label
+                            htmlFor="candidate-profile-pic-input"
+                            className="position-relative d-block rounded-circle cursor-pointer mb-0 shadow-xs"
+                            style={{
+                              width: "68px",
+                              height: "68px",
+                              border: "2.5px solid var(--color-primary, #C49A55)",
+                              padding: "2px",
+                              background: "var(--color-background, #FAF7F0)",
+                              transition: "all 0.2s ease",
+                            }}
+                            title="Click to select / upload candidate profile photo"
+                          >
+                            {formData.profilePicPreview || formData.avatar ? (
+                              <Image
+                                src={formData.profilePicPreview || formData.avatar}
+                                roundedCircle
+                                alt="Candidate photo preview"
+                                className="w-100 h-100 object-fit-cover rounded-circle"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <div
+                                className="w-100 h-100 rounded-circle d-flex align-items-center justify-content-center"
+                                style={{
+                                  background: "linear-gradient(135deg, var(--color-primary-light, #F1E8D6) 0%, var(--color-background, #FAF7F0) 100%)",
+                                }}
+                              >
+                                <FaUser size={26} style={{ color: "var(--color-primary, #C49A55)" }} />
+                              </div>
+                            )}
+
+                            {/* Camera upload badge */}
+                            <span
+                              className="position-absolute bottom-0 end-0 rounded-circle d-flex align-items-center justify-content-center shadow-sm"
                               style={{
-                                width: "72px",
-                                height: "72px",
-                                background: "linear-gradient(135deg, var(--color-background, #FAF7F0) 0%, var(--color-background, #F1E9D9) 100%)",
-                                border: "2.5px solid var(--color-primary, #C49A55)",
-                                boxShadow: "0 4px 14px rgba(196, 154, 85, 0.18)",
+                                width: "24px",
+                                height: "24px",
+                                background: "var(--color-sidebar, #1C1D1D)",
+                                color: "var(--color-primary-light, #E2C278)",
+                                border: "2px solid #FFFFFF",
+                                transform: "translate(2px, 2px)",
                               }}
                             >
-                              <FaUser size={32} style={{ color: "var(--color-primary, #C49A55)" }} />
+                              <FaCamera size={10} />
+                            </span>
+                          </label>
+                          <input
+                            id="candidate-profile-pic-input"
+                            type="file"
+                            accept="image/png,image/jpeg,image/jpg,image/webp"
+                            hidden
+                            onChange={handleProfilePhotoChange}
+                          />
+                        </div>
+
+                        {/* Title & Actions */}
+                        <div>
+                          <h5 className="fw-bold mb-0 text-dark" style={{ fontSize: "16px" }}>
+                            Personal & Basic Details
+                          </h5>
+                          {(formData.profilePicPreview || formData.profilePicFile) && (
+                            <div className="mt-1">
+                              <button
+                                type="button"
+                                className="btn btn-link p-0 text-danger extra-small text-decoration-none d-inline-flex align-items-center gap-1"
+                                onClick={handleRemoveProfilePhoto}
+                              >
+                                <FaTrash size={10} /> Remove photo
+                              </button>
                             </div>
                           )}
-                          <span
-                            className="position-absolute bottom-0 end-0 onboarding-camera-badge rounded-circle d-flex align-items-center justify-content-center shadow-sm border border-2 border-white"
-                            style={{ width: "26px", height: "26px", transform: "translate(8%, 8%)" }}
-                          >
-                            <FaCamera size={11} />
-                          </span>
-                          <input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={handleProfilePhotoChange} />
-                        </label>
-
-                        <div>
-                          <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
-                            <h5 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2" style={{ fontSize: "16px" }}>
-                              <FaUser size={14} style={{ color: "var(--color-primary, #C49A55)" }} /> Personal & Basic Details
-                            </h5>
-                          
-                          </div>
-                          <span className="extra-small text-muted d-block">
-                            Fields marked with <span className="text-danger fw-bold">*</span> are mandatory for onboarding compliance.
-                          </span>
                         </div>
                       </div>
 
-                      {/* Right: Step Pill & Remove Action (if uploaded) */}
-                      <div className="d-flex align-items-center gap-2.5 flex-wrap">
-                        {formData.profilePicPreview && (
-                          <button
-                            type="button"
-                            className="onboarding-remove-photo-btn"
-                            onClick={handleRemoveProfilePhoto}
-                            title="Remove uploaded photo"
-                          >
-                            <FaTrash size={11} /> Remove Photo
-                          </button>
-                        )}
-
-                        <span className="onboarding-step-badge">
-                          Step 1 of 7
+                      {/* Right: Step Indicator */}
+                      <div className="d-flex align-items-center gap-2">
+                        <span
+                          className="onboarding-step-badge"
+                          style={{
+                            background: "linear-gradient(135deg, #E2C278 0%, #C49A55 100%)",
+                            color: "#1C1D1D",
+                            border: "1px solid rgba(196, 154, 85, 0.6)",
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            letterSpacing: "0.6px",
+                            padding: "5px 14px",
+                            borderRadius: "9999px",
+                            textTransform: "uppercase",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            boxShadow: "0 2px 8px rgba(196, 154, 85, 0.25)",
+                          }}
+                        >
+                          Step 1 of {formTabs.length}
                         </span>
                       </div>
                     </div>
@@ -5864,9 +5981,9 @@ function HrOnboarding() {
                       </Col>
                     </Row>
 
-                    {/* Row 2: Email and Mobile Number */}
+                    {/* Row 2: Email Address, Mobile Number, Date of Birth (3 in a Row) */}
                     <Row className="g-3 mb-3">
-                      <Col md={6}>
+                      <Col md={4}>
                         <Form.Group>
                           <Form.Label className="small fw-bold">
                             Email Address <span className="text-danger">*</span>
@@ -5877,7 +5994,7 @@ function HrOnboarding() {
                             </InputGroup.Text>
                             <Form.Control
                               type="email"
-                              placeholder="Enter work / official email address"
+                              placeholder="Enter work email address"
                               value={formData.email}
                               isInvalid={!!formErrors.email}
                               onChange={(e) => {
@@ -5893,25 +6010,35 @@ function HrOnboarding() {
                           </InputGroup>
                         </Form.Group>
                       </Col>
-                      <Col md={6}>
+                      <Col md={4}>
                         <Form.Group>
                           <div className="d-flex justify-content-between align-items-center mb-1">
                             <Form.Label className="small fw-bold mb-0">
                               Mobile Number <span className="text-danger">*</span>
                             </Form.Label>
-                            <span className={`extra-small font-monospace ${(formData.mobileNo || "").length === 10 ? "text-success fw-bold" : "text-muted"}`}>
-                              {(formData.mobileNo || "").length}/10 digits
+                            <span className={`extra-small font-monospace ${(formData.mobileNo || "").length >= (formData.countryIso2 === "IN" || !formData.countryIso2 ? 10 : 6) ? "text-success fw-bold" : "text-muted"}`}>
+                              {(formData.mobileNo || "").length}/{formData.countryIso2 === "IN" || !formData.countryIso2 ? "10" : "15"} digits
                             </span>
                           </div>
                           <InputGroup hasValidation>
-                            <InputGroup.Text className="bg-light text-muted small fw-semibold">
-                              <FaPhoneAlt size={11} className="me-1" /> +91
-                            </InputGroup.Text>
+                            <CountryCodeDropdown
+                              value={formData.countryCode || "+91"}
+                              iso2={formData.countryIso2 || "IN"}
+                              onChange={(c) => {
+                                setFormData({
+                                  ...formData,
+                                  countryCode: c.dialCode,
+                                  countryIso2: c.iso2,
+                                });
+                                if (formErrors.mobileNo) setFormErrors((prev) => ({ ...prev, mobileNo: "" }));
+                              }}
+                              id="onboardingCountryCodeDropdown"
+                            />
                             <Form.Control
                               type="tel"
-                              placeholder="10-digit mobile number"
+                              placeholder={formData.countryIso2 === "IN" || !formData.countryIso2 ? "10-digit mobile number" : "Mobile number"}
                               value={formData.mobileNo || ""}
-                              maxLength={10}
+                              maxLength={formData.countryIso2 === "IN" || !formData.countryIso2 ? 10 : 15}
                               isInvalid={!!formErrors.mobileNo}
                               onChange={handleMobileChange}
                             />
@@ -5921,42 +6048,34 @@ function HrOnboarding() {
                               </Form.Control.Feedback>
                             )}
                           </InputGroup>
-                          <div className="extra-small text-muted mt-1">
-                            Only 10-digit numeric mobile numbers are allowed.
-                          </div>
                         </Form.Group>
                       </Col>
-                    </Row>
-
-                    {/* Row 3: Date of Birth, Gender, Marital Status */}
-                    <Row className="g-3 mb-3">
                       <Col md={4}>
                         <Form.Group>
                           <Form.Label className="small fw-bold">
                             Date of Birth <span className="text-danger">*</span>
                           </Form.Label>
-                          <InputGroup hasValidation>
-                            <InputGroup.Text className="bg-light text-muted">
-                              <FaCalendarAlt size={12} />
-                            </InputGroup.Text>
-                            <Form.Control
-                              type="date"
-                              value={formData.dob}
-                              max={new Date().toISOString().split("T")[0]}
-                              isInvalid={!!formErrors.dob}
-                              onChange={(e) => {
-                                setFormData({ ...formData, dob: e.target.value });
-                                if (formErrors.dob) setFormErrors((prev) => ({ ...prev, dob: "" }));
-                              }}
-                            />
-                            {formErrors.dob && (
-                              <Form.Control.Feedback type="invalid" className="d-block extra-small">
-                                {formErrors.dob}
-                              </Form.Control.Feedback>
-                            )}
-                          </InputGroup>
+                          <Form.Control
+                            type="date"
+                            value={formData.dob}
+                            max={new Date().toISOString().split("T")[0]}
+                            isInvalid={!!formErrors.dob}
+                            onChange={(e) => {
+                              setFormData({ ...formData, dob: e.target.value });
+                              if (formErrors.dob) setFormErrors((prev) => ({ ...prev, dob: "" }));
+                            }}
+                          />
+                          {formErrors.dob && (
+                            <Form.Control.Feedback type="invalid" className="d-block extra-small">
+                              {formErrors.dob}
+                            </Form.Control.Feedback>
+                          )}
                         </Form.Group>
                       </Col>
+                    </Row>
+
+                    {/* Row 3: Gender, Marital Status, Blood Group (3 in a Row) */}
+                    <Row className="g-3 mb-3">
                       <Col md={4}>
                         <Form.Group>
                           <Form.Label className="small fw-bold">Gender</Form.Label>
@@ -5964,7 +6083,7 @@ function HrOnboarding() {
                             value={formData.gender || ""}
                             onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
                           >
-                            <option value="">-- Select Gender --</option>
+                            <option value="">Select Gender</option>
                             <option value="Male">Male</option>
                             <option value="Female">Female</option>
                             <option value="Others">Others</option>
@@ -5978,15 +6097,34 @@ function HrOnboarding() {
                             value={formData.marriageStatus || ""}
                             onChange={(e) => setFormData({ ...formData, marriageStatus: e.target.value })}
                           >
-                            <option value="">-- Select Marital Status --</option>
+                            <option value="">Select Marital Status</option>
                             <option value="Married">Married</option>
                             <option value="Unmarried">Unmarried</option>
                           </Form.Select>
                         </Form.Group>
                       </Col>
+                      <Col md={4}>
+                        <Form.Group>
+                          <Form.Label className="small fw-bold">Blood Group</Form.Label>
+                          <Form.Select
+                            value={formData.bloodGroup || ""}
+                            onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
+                          >
+                            <option value="">Select Blood Group</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                          </Form.Select>
+                        </Form.Group>
+                      </Col>
                     </Row>
 
-                    {/* Row 4: Department, Designation, Role Assignment */}
+                    {/* Row 4: Department, Designation, Role Assignment (3 in a Row) */}
                     <Row className="g-3 mb-3">
                       <Col md={4}>
                         <Form.Group>
@@ -6001,7 +6139,7 @@ function HrOnboarding() {
                               if (formErrors.department) setFormErrors((p) => ({ ...p, department: "" }));
                             }}
                           >
-                            <option value="">-- Select Department --</option>
+                            <option value="">Select Department</option>
                             {orgDepartments.map((dept) => {
                               const deptName = dept.departmentName || dept.name;
                               return (
@@ -6034,7 +6172,7 @@ function HrOnboarding() {
                               if (formErrors.designation) setFormErrors((p) => ({ ...p, designation: "" }));
                             }}
                           >
-                            <option value="">-- Select Designation --</option>
+                            <option value="">Select Designation</option>
                             {getFilteredDesignations(formData.department).map((des) => {
                               const desName = des.designationName || des.name;
                               return (
@@ -6061,75 +6199,12 @@ function HrOnboarding() {
                             value={formData.roleId}
                             onChange={(e) => setFormData({ ...formData, roleId: e.target.value })}
                           >
-                            <option value="">-- Select Role --</option>
+                            <option value="">Select Role</option>
                             {assignableRoles.map((r) => (
                               <option key={r._id} value={r._id}>
                                 {r.roleName} (Level {r.priority})
                               </option>
                             ))}
-                          </Form.Select>
-                        </Form.Group>
-                      </Col>
-                    </Row>
-
-                    {/* Row 5: Blood Group, Joining Date, Employment Type */}
-                    <Row className="g-3">
-                      <Col md={4}>
-                        <Form.Group>
-                          <Form.Label className="small fw-bold">Blood Group</Form.Label>
-                          <Form.Select
-                            value={formData.bloodGroup || ""}
-                            onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
-                          >
-                            <option value="">-- Select Blood Group --</option>
-                            <option value="A+">A+</option>
-                            <option value="A-">A-</option>
-                            <option value="B+">B+</option>
-                            <option value="B-">B-</option>
-                            <option value="AB+">AB+</option>
-                            <option value="AB-">AB-</option>
-                            <option value="O+">O+</option>
-                            <option value="O-">O-</option>
-                          </Form.Select>
-                        </Form.Group>
-                      </Col>
-                      <Col md={4}>
-                        <Form.Group>
-                          <Form.Label className="small fw-bold">
-                            Joining Date <span className="text-danger">*</span>
-                          </Form.Label>
-                          <InputGroup hasValidation>
-                            <InputGroup.Text className="bg-light text-muted">
-                              <FaCalendarAlt size={12} />
-                            </InputGroup.Text>
-                            <Form.Control
-                              type="date"
-                              value={formData.joiningDate}
-                              isInvalid={!!formErrors.joiningDate}
-                              onChange={(e) => {
-                                setFormData({ ...formData, joiningDate: e.target.value });
-                                if (formErrors.joiningDate) setFormErrors((p) => ({ ...p, joiningDate: "" }));
-                              }}
-                            />
-                            {formErrors.joiningDate && (
-                              <Form.Control.Feedback type="invalid" className="d-block extra-small">
-                                {formErrors.joiningDate}
-                              </Form.Control.Feedback>
-                            )}
-                          </InputGroup>
-                        </Form.Group>
-                      </Col>
-                      <Col md={4}>
-                        <Form.Group>
-                          <Form.Label className="small fw-bold">Employment Type</Form.Label>
-                          <Form.Select
-                            value={formData.employmentType}
-                            onChange={(e) => setFormData({ ...formData, employmentType: e.target.value })}
-                          >
-                            <option value="FULL_TIME">Full Time</option>
-                            <option value="PART_TIME">Part Time</option>
-                            <option value="CONTRACT">Contract</option>
-                            <option value="INTERN">Intern</option>
                           </Form.Select>
                         </Form.Group>
                       </Col>
@@ -6140,25 +6215,102 @@ function HrOnboarding() {
                 {/* Tab 2: Professional & Current Company */}
                 {activeFormTab === "professional" && (
                   <div>
-                    <div className="d-flex justify-content-between align-items-center mb-3">
-                      <h6 className="fw-bold mb-0 text-dark">Current & Past Company Experience</h6>
-                      <Button variant="outline-success" size="sm" className="rounded-pill px-3 extra-small" onClick={addProfessionalRow}>
-                        <FaPlus className="me-1" /> Add Company Record
-                      </Button>
+                    {/* ── Step 2 Header & Action ── */}
+                    <div
+                      className="onboarding-unified-step-header mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3 p-3 rounded-3"
+                      style={{
+                        background: "var(--color-surface, #FFFFFF)",
+                        border: "1px solid var(--color-border, #E5E0D7)",
+                      }}
+                    >
+                      <div className="d-flex align-items-center gap-3">
+                        <div
+                          className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                          style={{
+                            width: "42px",
+                            height: "42px",
+                            background: "linear-gradient(135deg, rgba(226, 194, 120, 0.25) 0%, rgba(196, 154, 85, 0.25) 100%)",
+                            color: "#9B7229",
+                            border: "1px solid rgba(196, 154, 85, 0.35)",
+                          }}
+                        >
+                          <FaBriefcase size={18} />
+                        </div>
+                        <div>
+                          <h5 className="fw-bold mb-0 text-dark" style={{ fontSize: "16px" }}>
+                            Current & Past Company Experience
+                          </h5>
+                         
+                        </div>
+                      </div>
+
+                      <div className="d-flex align-items-center gap-2.5 flex-wrap">
+                        <button
+                          type="button"
+                          className="btn btn-sm d-inline-flex align-items-center gap-1.5 fw-bold transition-all"
+                          style={{
+                            background: "linear-gradient(135deg, #E2C278 0%, #C49A55 100%)",
+                            color: "#1C1D1D",
+                            border: "1px solid #C49A55",
+                            borderRadius: "9999px",
+                            padding: "6px 16px",
+                            fontSize: "12px",
+                            boxShadow: "0 2px 8px rgba(196, 154, 85, 0.22)",
+                          }}
+                          onClick={addProfessionalRow}
+                        >
+                          <FaPlus size={10} /> Add Company Record
+                        </button>
+                        <span
+                          className="onboarding-step-badge"
+                          style={{
+                            background: "linear-gradient(135deg, #E2C278 0%, #C49A55 100%)",
+                            color: "#1C1D1D",
+                            border: "1px solid rgba(196, 154, 85, 0.6)",
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            letterSpacing: "0.6px",
+                            padding: "5px 14px",
+                            borderRadius: "9999px",
+                            textTransform: "uppercase",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            boxShadow: "0 2px 8px rgba(196, 154, 85, 0.25)",
+                          }}
+                        >
+                          Step 2 of {formTabs.length}
+                        </span>
+                      </div>
                     </div>
 
                     {formData.professional.map((prof, idx) => (
-                      <Card key={idx} className="p-3 bg-light border-0 rounded-3 mb-3 shadow-sm">
+                      <Card
+                        key={idx}
+                        className="p-3 bg-white rounded-3 mb-3 shadow-xs"
+                        style={{
+                          border: "1px solid rgba(196, 154, 85, 0.3)",
+                          boxShadow: "0 2px 10px rgba(196, 154, 85, 0.05)",
+                        }}
+                      >
                         <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-wrap gap-2">
                           <div className="d-flex align-items-center gap-2">
-                            <span className="fw-bold small text-dark">
+                            <span className="fw-bold small" style={{ color: "#1C1D1D" }}>
                               Company Record #{idx + 1}
                             </span>
-                            {!prof.isFresher && prof.isCurrent && (
-                              <span className="onboarding-employer-badge ms-1">Current Employer</span>
-                            )}
                             {prof.isFresher && (
-                              <Badge bg="info" className="ms-1 text-white">Fresher</Badge>
+                              <span
+                                style={{
+                                  background: "rgba(196, 154, 85, 0.15)",
+                                  color: "#8C621E",
+                                  border: "1px solid rgba(196, 154, 85, 0.35)",
+                                  borderRadius: "9999px",
+                                  padding: "2px 9px",
+                                  fontSize: "11px",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                Fresher
+                              </span>
                             )}
                           </div>
                           <div className="d-flex align-items-center gap-3">
@@ -6202,7 +6354,9 @@ function HrOnboarding() {
                             <Row className="g-3 mb-2">
                               <Col md={4} sm={6}>
                                 <Form.Group>
-                                  <Form.Label className="extra-small fw-bold text-uppercase">Joining Date</Form.Label>
+                                  <Form.Label className="extra-small fw-bold text-uppercase">
+                                    Joining Date <span className="text-danger">*</span>
+                                  </Form.Label>
                                   <Form.Control
                                     size="sm"
                                     type="date"
@@ -6217,7 +6371,9 @@ function HrOnboarding() {
                               </Col>
                               <Col md={4} sm={6}>
                                 <Form.Group>
-                                  <Form.Label className="extra-small fw-bold text-uppercase">Reporting Manager</Form.Label>
+                                  <Form.Label className="extra-small fw-bold text-uppercase">
+                                    Reporting Manager <span className="text-danger">*</span>
+                                  </Form.Label>
                                   <Form.Select
                                     size="sm"
                                     value={prof.reportedTo || ""}
@@ -6227,7 +6383,7 @@ function HrOnboarding() {
                                       setFormData({ ...formData, professional: arr });
                                     }}
                                   >
-                                    <option value="">Select Reporting Manager (Optional)</option>
+                                    <option value="">Select Reporting Manager</option>
                                     {employees.map((emp) => (
                                       <option key={emp._id || emp.id} value={emp._id || emp.id}>
                                         {emp.firstName} {emp.lastName} ({emp.employeeCode || emp.designation || "Employee"})
@@ -6241,7 +6397,7 @@ function HrOnboarding() {
                                   <Form.Label className="extra-small fw-bold text-uppercase">Employment Type</Form.Label>
                                   <Form.Select
                                     size="sm"
-                                    value={prof.employmentType || formData.employmentType || "FULL_TIME"}
+                                    value={prof.employmentType || ""}
                                     onChange={(e) => {
                                       const val = e.target.value;
                                       const arr = [...formData.professional];
@@ -6249,12 +6405,12 @@ function HrOnboarding() {
                                       setFormData({ ...formData, employmentType: val, professional: arr });
                                     }}
                                   >
-                                    <option value="FULL_TIME">Full Time</option>
-                                    <option value="PART_TIME">Part Time</option>
-                                    <option value="INTERNSHIP">Internship</option>
-                                    <option value="CONTRACT">Contract</option>
-                                    <option value="TRAINEE">Trainee</option>
-                                    <option value="PROBATION">Probation</option>
+                                    <option value="">Select Employment Type</option>
+                                    {employmentTypes.map((t) => (
+                                      <option key={t.value} value={t.value}>
+                                        {t.label}
+                                      </option>
+                                    ))}
                                   </Form.Select>
                                 </Form.Group>
                               </Col>
@@ -6263,13 +6419,16 @@ function HrOnboarding() {
                         ) : (
                           /* Experienced Mode: Show full company & employment inputs */
                           <div>
+                            {/* Row 1: Company Details */}
                             <Row className="g-2 mb-2">
                               <Col md={4}>
                                 <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">Company Name</Form.Label>
+                                  <Form.Label className="extra-small fw-bold">
+                                    Company Name <span className="text-danger">*</span>
+                                  </Form.Label>
                                   <Form.Control
                                     size="sm"
-                                    placeholder="Company Name"
+                                    placeholder="Enter the company name "
                                     value={prof.companyName || ""}
                                     onChange={(e) => {
                                       const arr = [...formData.professional];
@@ -6281,10 +6440,12 @@ function HrOnboarding() {
                               </Col>
                               <Col md={4}>
                                 <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">Company Website / LinkedIn</Form.Label>
+                                  <Form.Label className="extra-small fw-bold">
+                                    Company Website / LinkedIn <span className="text-danger">*</span>
+                                  </Form.Label>
                                   <Form.Control
                                     size="sm"
-                                    placeholder="https://..."
+                                    placeholder="https://company.com or LinkedIn URL"
                                     value={prof.companyWebsite || prof.website || prof.linkedin || ""}
                                     onChange={(e) => {
                                       const arr = [...formData.professional];
@@ -6300,7 +6461,7 @@ function HrOnboarding() {
                                   <Form.Label className="extra-small fw-bold">Location / Branch</Form.Label>
                                   <Form.Control
                                     size="sm"
-                                    placeholder="Enter office / branch location"
+                                    placeholder="Enter the Location"
                                     value={prof.location || ""}
                                     onChange={(e) => {
                                       const arr = [...formData.professional];
@@ -6312,10 +6473,13 @@ function HrOnboarding() {
                               </Col>
                             </Row>
 
+                            {/* Row 2: Department, Designation, Role */}
                             <Row className="g-2 mb-2">
                               <Col md={4}>
                                 <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">Department</Form.Label>
+                                  <Form.Label className="extra-small fw-bold">
+                                    Department <span className="text-danger">*</span>
+                                  </Form.Label>
                                   <Form.Select
                                     size="sm"
                                     value={prof.department || ""}
@@ -6325,7 +6489,7 @@ function HrOnboarding() {
                                       setFormData({ ...formData, professional: arr });
                                     }}
                                   >
-                                    <option value="">-- Select Department --</option>
+                                    <option value="">Select Department</option>
                                     {orgDepartments.map((dept) => {
                                       const deptName = dept.departmentName || dept.name;
                                       return (
@@ -6342,7 +6506,9 @@ function HrOnboarding() {
                               </Col>
                               <Col md={4}>
                                 <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">Designation</Form.Label>
+                                  <Form.Label className="extra-small fw-bold">
+                                    Designation <span className="text-danger">*</span>
+                                  </Form.Label>
                                   <Form.Select
                                     size="sm"
                                     value={prof.designation || ""}
@@ -6352,7 +6518,7 @@ function HrOnboarding() {
                                       setFormData({ ...formData, professional: arr });
                                     }}
                                   >
-                                    <option value="">-- Select Designation --</option>
+                                    <option value="">Select Designation</option>
                                     {getFilteredDesignations(prof.department).map((des) => {
                                       const desName = des.designationName || des.name;
                                       return (
@@ -6369,10 +6535,12 @@ function HrOnboarding() {
                               </Col>
                               <Col md={4}>
                                 <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">Role / Position</Form.Label>
+                                  <Form.Label className="extra-small fw-bold">
+                                    Role / Position <span className="text-danger">*</span>
+                                  </Form.Label>
                                   <Form.Control
                                     size="sm"
-                                    placeholder="Enter job role / title"
+                                    placeholder="Enter The Role"
                                     value={prof.role || ""}
                                     onChange={(e) => {
                                       const arr = [...formData.professional];
@@ -6384,13 +6552,14 @@ function HrOnboarding() {
                               </Col>
                             </Row>
 
+                            {/* Row 3: Employment Type, Employment Status, Salary (CTC) */}
                             <Row className="g-2 mb-2">
-                              <Col md={6}>
+                              <Col md={4}>
                                 <Form.Group>
                                   <Form.Label className="extra-small fw-bold">Employment Type</Form.Label>
                                   <Form.Select
                                     size="sm"
-                                    value={prof.employmentType || formData.employmentType || "FULL_TIME"}
+                                    value={prof.employmentType || ""}
                                     onChange={(e) => {
                                       const val = e.target.value;
                                       const arr = [...formData.professional];
@@ -6398,21 +6567,43 @@ function HrOnboarding() {
                                       setFormData({ ...formData, employmentType: val, professional: arr });
                                     }}
                                   >
-                                    <option value="FULL_TIME">Full Time</option>
-                                    <option value="PART_TIME">Part Time</option>
-                                    <option value="INTERNSHIP">Internship</option>
-                                    <option value="CONTRACT">Contract</option>
-                                    <option value="TRAINEE">Trainee</option>
-                                    <option value="PROBATION">Probation</option>
+                                    <option value="">Select Employment Type</option>
+                                    {employmentTypes.map((t) => (
+                                      <option key={t.value} value={t.value}>
+                                        {t.label}
+                                      </option>
+                                    ))}
                                   </Form.Select>
                                 </Form.Group>
                               </Col>
-                              <Col md={6}>
+                              <Col md={4}>
                                 <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">Salary (CTC) <span className="text-danger">*</span></Form.Label>
+                                  <Form.Label className="extra-small fw-bold">Employment Status</Form.Label>
+                                  <Form.Select
+                                    size="sm"
+                                    value={prof.employmentStatus || ""}
+                                    onChange={(e) => {
+                                      const arr = [...formData.professional];
+                                      arr[idx].employmentStatus = e.target.value;
+                                      setFormData({ ...formData, professional: arr });
+                                    }}
+                                  >
+                                    <option value="">Select Employment Status</option>
+                                    <option value="CURRENTLY_EMPLOYED">Currently Employed</option>
+                                    <option value="RESIGNED">Resigned</option>
+                                    <option value="RELIEVED">Relieved</option>
+                                    <option value="NOT_APPLICABLE">Not Applicable</option>
+                                  </Form.Select>
+                                </Form.Group>
+                              </Col>
+                              <Col md={4}>
+                                <Form.Group>
+                                  <Form.Label className="extra-small fw-bold">
+                                    Salary (CTC) <span className="text-danger">*</span>
+                                  </Form.Label>
                                   <Form.Control
                                     size="sm"
-                                    placeholder="e.g. 50,000/mo or 6.5 LPA"
+                                    placeholder="e.g. ₹6,50,000 / 6.5 LPA"
                                     value={prof.salary !== undefined && prof.salary !== null ? prof.salary : ""}
                                     onChange={(e) => {
                                       const val = e.target.value;
@@ -6425,10 +6616,13 @@ function HrOnboarding() {
                               </Col>
                             </Row>
 
+                            {/* Row 4: Joining Date, Expected Last Working Date, Notice Period */}
                             <Row className="g-2 mb-2">
                               <Col md={4}>
                                 <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">Joining Date</Form.Label>
+                                  <Form.Label className="extra-small fw-bold">
+                                    Joining Date <span className="text-danger">*</span>
+                                  </Form.Label>
                                   <Form.Control
                                     size="sm"
                                     type="date"
@@ -6443,28 +6637,26 @@ function HrOnboarding() {
                               </Col>
                               <Col md={4}>
                                 <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">Reporting Manager</Form.Label>
-                                  <Form.Select
+                                  <Form.Label className="extra-small fw-bold">
+                                    Expected Last Working Date <span className="text-danger">*</span>
+                                  </Form.Label>
+                                  <Form.Control
                                     size="sm"
-                                    value={prof.reportedTo || ""}
+                                    type="date"
+                                    value={prof.expectedLastWorkingDate ? new Date(prof.expectedLastWorkingDate).toISOString().split("T")[0] : ""}
                                     onChange={(e) => {
                                       const arr = [...formData.professional];
-                                      arr[idx].reportedTo = e.target.value;
+                                      arr[idx].expectedLastWorkingDate = e.target.value;
                                       setFormData({ ...formData, professional: arr });
                                     }}
-                                  >
-                                    <option value="">Select Reporting Manager (Optional)</option>
-                                    {employees.map((emp) => (
-                                      <option key={emp._id || emp.id} value={emp._id || emp.id}>
-                                        {emp.firstName} {emp.lastName} ({emp.employeeCode || emp.designation || "Employee"})
-                                      </option>
-                                    ))}
-                                  </Form.Select>
+                                  />
                                 </Form.Group>
                               </Col>
                               <Col md={4}>
                                 <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">Notice Period</Form.Label>
+                                  <Form.Label className="extra-small fw-bold">
+                                    Notice Period <span className="text-danger">*</span>
+                                  </Form.Label>
                                   <Form.Select
                                     size="sm"
                                     value={prof.noticePeriod || ""}
@@ -6485,122 +6677,79 @@ function HrOnboarding() {
                               </Col>
                             </Row>
 
-                            <Row className="g-2 mb-2">
-                              <Col md={4}>
+                            {/* Row 5: Reporting Manager & Document Type */}
+                            <Row className="g-2 mb-3">
+                              <Col md={6}>
                                 <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">Expected Last Working Date</Form.Label>
-                                  <Form.Control
-                                    size="sm"
-                                    type="date"
-                                    value={prof.expectedLastWorkingDate ? new Date(prof.expectedLastWorkingDate).toISOString().split("T")[0] : ""}
-                                    onChange={(e) => {
-                                      const arr = [...formData.professional];
-                                      arr[idx].expectedLastWorkingDate = e.target.value;
-                                      setFormData({ ...formData, professional: arr });
-                                    }}
-                                  />
-                                </Form.Group>
-                              </Col>
-                              <Col md={4}>
-                                <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">Employment Status</Form.Label>
+                                  <Form.Label className="extra-small fw-bold">
+                                    Reporting Manager <span className="text-danger">*</span>
+                                  </Form.Label>
                                   <Form.Select
                                     size="sm"
-                                    value={prof.employmentStatus || "CURRENTLY_EMPLOYED"}
+                                    value={prof.reportedTo || ""}
                                     onChange={(e) => {
                                       const arr = [...formData.professional];
-                                      arr[idx].employmentStatus = e.target.value;
+                                      arr[idx].reportedTo = e.target.value;
                                       setFormData({ ...formData, professional: arr });
                                     }}
                                   >
-                                    <option value="CURRENTLY_EMPLOYED">Currently Employed</option>
-                                    <option value="RESIGNED">Resigned</option>
-                                    <option value="RELIEVED">Relieved</option>
-                                    <option value="NOT_APPLICABLE">Not Applicable</option>
+                                    <option value="">Select Reporting Manager</option>
+                                    {employees.map((emp) => (
+                                      <option key={emp._id || emp.id} value={emp._id || emp.id}>
+                                        {emp.firstName} {emp.lastName} ({emp.employeeCode || emp.designation || "Employee"})
+                                      </option>
+                                    ))}
                                   </Form.Select>
                                 </Form.Group>
                               </Col>
-                              <Col md={4} className="d-flex align-items-center pt-3">
-                                <Form.Check
-                                  type="checkbox"
-                                  id={`isCurrent-${idx}`}
-                                  label="Is Current Employer"
-                                  checked={prof.isCurrent !== false}
-                                  onChange={(e) => {
-                                    const arr = [...formData.professional];
-                                    arr[idx].isCurrent = e.target.checked;
-                                    setFormData({ ...formData, professional: arr });
-                                  }}
-                                  className="extra-small fw-semibold text-dark"
-                                />
+                              <Col md={6}>
+                                <Form.Group>
+                                  <Form.Label className="extra-small fw-bold">Document Type</Form.Label>
+                                  <Form.Select
+                                    size="sm"
+                                    value={prof.docType || ""}
+                                    onChange={(e) => {
+                                      const arr = [...formData.professional];
+                                      arr[idx].docType = e.target.value;
+                                      setFormData({ ...formData, professional: arr });
+                                    }}
+                                  >
+                                    <option value="">Select Document Type</option>
+                                    <option value="OFFER_LETTER">Offer Letter</option>
+                                    <option value="APPOINTMENT_LETTER">Appointment Letter</option>
+                                    <option value="CURRENT_EMPLOYMENT_LETTER">Current Employment Letter</option>
+                                    <option value="EXPERIENCE_LETTER">Experience Letter</option>
+                                    <option value="PAYSLIP">Salary Slip / Payslip</option>
+                                    <option value="RELIEVING_LETTER">Relieving Letter</option>
+                                    <option value="RESIGNATION_ACKNOWLEDGEMENT">Resignation Ack</option>
+                                    <option value="OTHER">Other Document</option>
+                                  </Form.Select>
+                                </Form.Group>
                               </Col>
                             </Row>
 
-                            {/* Optional Professional Document Upload */}
-                            <div className="pt-2 border-top mt-2 d-flex flex-wrap align-items-center justify-content-between gap-2">
-                              <div className="d-flex align-items-center gap-2">
-                                <span className="extra-small text-muted fw-semibold">Document:</span>
-                                <Form.Select
-                                  size="sm"
-                                  className="onboarding-col-w220-sm"
-                                  value={prof.docType || "OFFER_LETTER"}
-                                  onChange={(e) => {
-                                    const arr = [...formData.professional];
-                                    arr[idx].docType = e.target.value;
-                                    setFormData({ ...formData, professional: arr });
-                                  }}
-                                >
-                                  <option value="OFFER_LETTER">Offer Letter</option>
-                                  <option value="APPOINTMENT_LETTER">Appointment Letter</option>
-                                  <option value="CURRENT_EMPLOYMENT_LETTER">Current Employment Letter</option>
-                                  <option value="EXPERIENCE_LETTER">Experience Letter</option>
-                                  <option value="PAYSLIP">Salary Slip / Payslip</option>
-                                  <option value="RELIEVING_LETTER">Relieving Letter</option>
-                                  <option value="RESIGNATION_ACKNOWLEDGEMENT">Resignation Ack</option>
-                                  <option value="OTHER">Other Document</option>
-                                </Form.Select>
-                              </div>
-                              <div className="d-flex align-items-center gap-2 flex-wrap">
-                                <label className={`onboarding-doc-upload-btn mb-0 ${prof.docName ? "uploaded" : ""}`}>
-                                  <span className="onboarding-doc-upload-icon-wrap">
-                                    {prof.docName ? <FaCheck size={10} /> : <FaFileUpload size={11} />}
-                                  </span>
-                                  <span>
-                                    {prof.docName ? (
-                                      <>
-                                        <span className="fw-bold">{prof.docName}</span>
-                                        <span className="extra-small text-muted ms-1">(Change)</span>
-                                      </>
-                                    ) : (
-                                      "Choose Document File (Optional)"
-                                    )}
-                                  </span>
-                                  <input
-                                    type="file"
-                                    accept=".pdf,.png,.jpg,.jpeg"
-                                    hidden
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) {
-                                        const arr = [...formData.professional];
-                                        arr[idx].docFile = file;
-                                        arr[idx].docName = file.name;
-                                        setFormData({ ...formData, professional: arr });
-                                      }
-                                    }}
-                                  />
-                                </label>
-                                {prof.docFile && (
-                                  <Button
-                                    variant="outline-primary"
-                                    size="sm"
-                                    className="onboarding-doc-action-btn"
-                                    onClick={() => handleOpenDocPreview(prof.docFile, prof.docName || "Professional Document")}
-                                  >
-                                    <FaEye size={11} /> View File
-                                  </Button>
-                                )}
-                              </div>
+                            {/* Document Upload Box (Matching Education / SSLC Style) */}
+                            <div className="mt-3 pt-3 border-top">
+                              <DocumentUploadBox
+                                label={`UPLOAD ${(prof.docType ? prof.docType.replace(/_/g, " ") : "DOCUMENT")} (OPTIONAL)`}
+                                docUrl={prof.docUrl || prof.documentUrl}
+                                file={prof.docFile}
+                                onFileChange={(file) => {
+                                  const arr = [...formData.professional];
+                                  arr[idx].docFile = file;
+                                  arr[idx].docName = file.name;
+                                  setFormData({ ...formData, professional: arr });
+                                }}
+                                onFileRemove={() => {
+                                  const arr = [...formData.professional];
+                                  arr[idx].docFile = null;
+                                  arr[idx].docName = "";
+                                  arr[idx].docUrl = "";
+                                  setFormData({ ...formData, professional: arr });
+                                }}
+                                fieldName={`currentCompanyDoc_${idx}`}
+                                required={false}
+                              />
                             </div>
                           </div>
                         )}
@@ -7538,7 +7687,23 @@ function HrOnboarding() {
                         </div>
                       </div>
                       <div className="d-flex align-items-center gap-2">
-                        <span className="onboarding-step-badge">
+                        <span
+                          className="onboarding-step-badge"
+                          style={{
+                            background: "linear-gradient(135deg, #E2C278 0%, #C49A55 100%)",
+                            color: "#1C1D1D",
+                            border: "1px solid rgba(196, 154, 85, 0.6)",
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            letterSpacing: "0.6px",
+                            padding: "5px 14px",
+                            borderRadius: "9999px",
+                            textTransform: "uppercase",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            boxShadow: "0 2px 8px rgba(196, 154, 85, 0.25)",
+                          }}
+                        >
                           Step {formTabs.length} of {formTabs.length}
                         </span>
                       </div>
@@ -8266,7 +8431,7 @@ function HrOnboarding() {
                 )}
 
                 {/* Navigation Buttons */}
-                <div className="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
+                <div className="mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
                   <button
                     type="button"
                     className="onboarding-nav-btn onboarding-prev-btn"
@@ -8328,9 +8493,8 @@ function HrOnboarding() {
                       <div
                         key={sec.id}
                         onClick={() => handleTabClick(sec.id)}
-                        className={`d-flex align-items-center justify-content-between p-2 rounded-2 cursor-pointer extra-small onboarding-checklist-row ${
-                          activeFormTab === sec.id ? "onboarding-checklist-active" : "text-muted"
-                        }`}
+                        className={`d-flex align-items-center justify-content-between p-2 rounded-2 cursor-pointer extra-small onboarding-checklist-row ${activeFormTab === sec.id ? "onboarding-checklist-active" : "text-muted"
+                          }`}
                       >
                         <span className="d-flex align-items-center gap-1.5">
                           {sec.complete ? <FaCheckCircle className="onboarding-checklist-icon-filled flex-shrink-0" /> : <FaTimesCircle className="text-secondary opacity-50 flex-shrink-0" />}
@@ -8576,7 +8740,7 @@ function HrOnboarding() {
           ======================================================== */}
       <Modal
         show={showDetailModal}
-          onHide={handleCloseWorkspace}
+        onHide={handleCloseWorkspace}
         size="xl"
         centered
         scrollable
@@ -8723,8 +8887,8 @@ function HrOnboarding() {
                         active={detailActiveTab === tab.id}
                         onClick={() => setDetailActiveTab(tab.id)}
                         className={`d-flex align-items-center gap-1.5 extra-small py-1.5 px-3 rounded-pill cursor-pointer fw-bold ${detailActiveTab === tab.id
-                            ? "text-white shadow-xs"
-                            : "text-secondary border-0 bg-transparent"
+                          ? "text-white shadow-xs"
+                          : "text-secondary border-0 bg-transparent"
                           }`}
                         style={detailActiveTab === tab.id ? { backgroundColor: "#2DC58A" } : {}}
                       >
@@ -8864,7 +9028,7 @@ function HrOnboarding() {
                                       value={candidateProfileData.gender || ""}
                                       onChange={(e) => setCandidateProfileData({ ...candidateProfileData, gender: e.target.value })}
                                     >
-                                      <option value="">-- Select Gender --</option>
+                                      <option value="">Select Gender</option>
                                       <option value="Male">Male</option>
                                       <option value="Female">Female</option>
                                       <option value="Others">Others</option>
@@ -8879,7 +9043,7 @@ function HrOnboarding() {
                                       value={candidateProfileData.marriageStatus || ""}
                                       onChange={(e) => setCandidateProfileData({ ...candidateProfileData, marriageStatus: e.target.value })}
                                     >
-                                      <option value="">-- Select Marital Status --</option>
+                                      <option value="">Select Marital Status</option>
                                       <option value="Married">Married</option>
                                       <option value="Unmarried">Unmarried</option>
                                     </Form.Select>
@@ -8893,7 +9057,7 @@ function HrOnboarding() {
                                       value={candidateProfileData.bloodGroup || ""}
                                       onChange={(e) => setCandidateProfileData({ ...candidateProfileData, bloodGroup: e.target.value })}
                                     >
-                                      <option value="">-- Select Blood Group --</option>
+                                      <option value="">Select Blood Group</option>
                                       {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map((bg) => (
                                         <option key={bg} value={bg}>{bg}</option>
                                       ))}
@@ -8917,7 +9081,7 @@ function HrOnboarding() {
                                       value={candidateProfileData.department || ""}
                                       onChange={(e) => setCandidateProfileData({ ...candidateProfileData, department: e.target.value })}
                                     >
-                                      <option value="">-- Select Department --</option>
+                                      <option value="">Select Department</option>
                                       {orgDepartments.map((dept) => {
                                         const deptName = dept.departmentName || dept.name;
                                         return (
@@ -8940,7 +9104,7 @@ function HrOnboarding() {
                                       value={candidateProfileData.designation || ""}
                                       onChange={(e) => setCandidateProfileData({ ...candidateProfileData, designation: e.target.value })}
                                     >
-                                      <option value="">-- Select Designation --</option>
+                                      <option value="">Select Designation</option>
                                       {getFilteredDesignations(candidateProfileData.department).map((des) => {
                                         const desName = des.designationName || des.name;
                                         return (
@@ -8970,7 +9134,7 @@ function HrOnboarding() {
                                         });
                                       }}
                                     >
-                                      <option value="">-- Select Role --</option>
+                                      <option value="">Select Role</option>
                                       {assignableRoles.map((r) => (
                                         <option key={r._id} value={r._id}>
                                           {r.roleName} (Level {r.priority})
@@ -8987,10 +9151,11 @@ function HrOnboarding() {
                                       value={candidateProfileData.employmentType || "FULL_TIME"}
                                       onChange={(e) => setCandidateProfileData({ ...candidateProfileData, employmentType: e.target.value })}
                                     >
-                                      <option value="FULL_TIME">Full Time</option>
-                                      <option value="PART_TIME">Part Time</option>
-                                      <option value="CONTRACT">Contract</option>
-                                      <option value="INTERN">Intern</option>
+                                      {employmentTypes.map((t) => (
+                                        <option key={t.value} value={t.value}>
+                                          {t.label}
+                                        </option>
+                                      ))}
                                     </Form.Select>
                                   </Form.Group>
                                 </Col>
@@ -9141,10 +9306,18 @@ function HrOnboarding() {
                             <FaBuilding className="text-success" /> Current & Past Company Experience ({candidateProfileData.professional?.length || 0})
                           </span>
                           {isEditingCandidateProfile && (
-                            <Button
-                              variant="outline-success"
-                              size="sm"
-                              className="rounded-pill px-3 extra-small fw-semibold d-inline-flex align-items-center gap-1"
+                            <button
+                              type="button"
+                              className="btn btn-sm d-inline-flex align-items-center gap-1.5 fw-bold transition-all"
+                              style={{
+                                background: "linear-gradient(135deg, #E2C278 0%, #C49A55 100%)",
+                                color: "#1C1D1D",
+                                border: "1px solid #C49A55",
+                                borderRadius: "9999px",
+                                padding: "5px 14px",
+                                fontSize: "12px",
+                                boxShadow: "0 2px 6px rgba(196, 154, 85, 0.2)",
+                              }}
                               onClick={() => {
                                 setCandidateProfileData((prev) => ({
                                   ...prev,
@@ -9176,7 +9349,7 @@ function HrOnboarding() {
                               }}
                             >
                               <FaPlus /> Add Company Record
-                            </Button>
+                            </button>
                           )}
                         </div>
 
@@ -9194,9 +9367,6 @@ function HrOnboarding() {
                                         <span className="fw-bold small text-dark">
                                           Company Record #{i + 1}
                                         </span>
-                                        {!prof.isFresher && prof.isCurrent && (
-                                          <span className="onboarding-employer-badge ms-1">Current Employer</span>
-                                        )}
                                         {prof.isFresher && (
                                           <Badge bg="info" className="ms-1 text-white">Fresher</Badge>
                                         )}
@@ -9263,7 +9433,9 @@ function HrOnboarding() {
                                           </Col>
                                           <Col md={4} sm={6}>
                                             <Form.Group>
-                                              <Form.Label className="extra-small fw-bold">REPORTING MANAGER</Form.Label>
+                                              <Form.Label className="extra-small fw-bold">
+                                                REPORTING MANAGER <span className="text-danger">*</span>
+                                              </Form.Label>
                                               <Form.Select
                                                 size="sm"
                                                 value={prof.reportedTo || ""}
@@ -9273,7 +9445,7 @@ function HrOnboarding() {
                                                   setCandidateProfileData({ ...candidateProfileData, professional: arr });
                                                 }}
                                               >
-                                                <option value="">Select Reporting Manager (Optional)</option>
+                                                <option value="">Select Reporting Manager</option>
                                                 {employees.map((emp) => (
                                                   <option key={emp._id || emp.id} value={emp._id || emp.id}>
                                                     {emp.firstName} {emp.lastName} ({emp.employeeCode || emp.designation || "Employee"})
@@ -9295,12 +9467,11 @@ function HrOnboarding() {
                                                   setCandidateProfileData({ ...candidateProfileData, employmentType: val, professional: arr });
                                                 }}
                                               >
-                                                <option value="FULL_TIME">Full Time</option>
-                                                <option value="PART_TIME">Part Time</option>
-                                                <option value="INTERNSHIP">Internship</option>
-                                                <option value="CONTRACT">Contract</option>
-                                                <option value="TRAINEE">Trainee</option>
-                                                <option value="PROBATION">Probation</option>
+                                                {employmentTypes.map((t) => (
+                                                  <option key={t.value} value={t.value}>
+                                                    {t.label}
+                                                  </option>
+                                                ))}
                                               </Form.Select>
                                             </Form.Group>
                                           </Col>
@@ -9371,7 +9542,7 @@ function HrOnboarding() {
                                                   setCandidateProfileData({ ...candidateProfileData, professional: arr });
                                                 }}
                                               >
-                                                <option value="">-- Select Department --</option>
+                                                <option value="">Select Department</option>
                                                 {orgDepartments.map((dept) => {
                                                   const deptName = dept.departmentName || dept.name;
                                                   return (
@@ -9398,7 +9569,7 @@ function HrOnboarding() {
                                                   setCandidateProfileData({ ...candidateProfileData, professional: arr });
                                                 }}
                                               >
-                                                <option value="">-- Select Designation --</option>
+                                                <option value="">Select Designation</option>
                                                 {getFilteredDesignations(prof.department).map((des) => {
                                                   const desName = des.designationName || des.name;
                                                   return (
@@ -9436,7 +9607,7 @@ function HrOnboarding() {
                                               <Form.Label className="extra-small fw-bold">EMPLOYMENT TYPE</Form.Label>
                                               <Form.Select
                                                 size="sm"
-                                                value={prof.employmentType || candidateProfileData.employmentType || "FULL_TIME"}
+                                                value={prof.employmentType || ""}
                                                 onChange={(e) => {
                                                   const val = e.target.value;
                                                   const arr = [...candidateProfileData.professional];
@@ -9444,12 +9615,12 @@ function HrOnboarding() {
                                                   setCandidateProfileData({ ...candidateProfileData, employmentType: val, professional: arr });
                                                 }}
                                               >
-                                                <option value="FULL_TIME">Full Time</option>
-                                                <option value="PART_TIME">Part Time</option>
-                                                <option value="INTERNSHIP">Internship</option>
-                                                <option value="CONTRACT">Contract</option>
-                                                <option value="TRAINEE">Trainee</option>
-                                                <option value="PROBATION">Probation</option>
+                                                <option value="">Select Employment Type</option>
+                                                {employmentTypes.map((t) => (
+                                                  <option key={t.value} value={t.value}>
+                                                    {t.label}
+                                                  </option>
+                                                ))}
                                               </Form.Select>
                                             </Form.Group>
                                           </Col>
@@ -9458,7 +9629,7 @@ function HrOnboarding() {
                                               <Form.Label className="extra-small fw-bold">SALARY (CTC) <span className="text-danger">*</span></Form.Label>
                                               <Form.Control
                                                 size="sm"
-                                                placeholder="e.g. 6.5 LPA or 50,000/mo"
+                                                placeholder="e.g. ₹6,50,000 / 6.5 LPA"
                                                 value={prof.salary !== undefined && prof.salary !== null ? prof.salary : ""}
                                                 onChange={(e) => {
                                                   const val = e.target.value;
@@ -9489,7 +9660,9 @@ function HrOnboarding() {
                                           </Col>
                                           <Col md={6}>
                                             <Form.Group>
-                                              <Form.Label className="extra-small fw-bold">REPORTING MANAGER</Form.Label>
+                                              <Form.Label className="extra-small fw-bold">
+                                                REPORTING MANAGER <span className="text-danger">*</span>
+                                              </Form.Label>
                                               <Form.Select
                                                 size="sm"
                                                 value={prof.reportedTo || ""}
@@ -9499,7 +9672,7 @@ function HrOnboarding() {
                                                   setCandidateProfileData({ ...candidateProfileData, professional: arr });
                                                 }}
                                               >
-                                                <option value="">Select Reporting Manager (Optional)</option>
+                                                <option value="">Select Reporting Manager</option>
                                                 {employees.map((emp) => (
                                                   <option key={emp._id || emp.id} value={emp._id || emp.id}>
                                                     {emp.firstName} {emp.lastName} ({emp.employeeCode || emp.designation || "Employee"})
@@ -9552,13 +9725,14 @@ function HrOnboarding() {
                                               <Form.Label className="extra-small fw-bold">EMPLOYMENT STATUS</Form.Label>
                                               <Form.Select
                                                 size="sm"
-                                                value={prof.employmentStatus || "CURRENTLY_EMPLOYED"}
+                                                value={prof.employmentStatus || ""}
                                                 onChange={(e) => {
                                                   const arr = [...candidateProfileData.professional];
                                                   arr[i].employmentStatus = e.target.value;
                                                   setCandidateProfileData({ ...candidateProfileData, professional: arr });
                                                 }}
                                               >
+                                                <option value="">Select Employment Status</option>
                                                 <option value="CURRENTLY_EMPLOYED">Currently Employed</option>
                                                 <option value="RESIGNED">Resigned</option>
                                                 <option value="RELIEVED">Relieved</option>
@@ -10676,42 +10850,42 @@ function HrOnboarding() {
                                 )}
                               </Col>
 
-                            {/* ── Right Column: Statutory & Compliance Details ── */}
-                            <Col lg={6}>
-                              <div className="h-100 p-3 bg-white rounded-3 border d-flex flex-column">
-                                <div className="extra-small text-uppercase fw-bold text-muted mb-2 d-flex align-items-center gap-1.5 pb-2 border-bottom">
-                                  <FaFileContract style={{ color: "var(--color-primary, #C49A55)" }} /> Statutory & Compliance Details
+                              {/* ── Right Column: Statutory & Compliance Details ── */}
+                              <Col lg={6}>
+                                <div className="h-100 p-3 bg-white rounded-3 border d-flex flex-column">
+                                  <div className="extra-small text-uppercase fw-bold text-muted mb-2 d-flex align-items-center gap-1.5 pb-2 border-bottom">
+                                    <FaFileContract style={{ color: "var(--color-primary, #C49A55)" }} /> Statutory & Compliance Details
+                                  </div>
+                                  <Table borderless responsive size="sm" className="mb-0 align-middle">
+                                    <tbody>
+                                      <tr>
+                                        <td className="text-muted extra-small py-1.5 text-uppercase fw-semibold review-table-label-col">PAN Number</td>
+                                        <td className="fw-bold text-dark small py-1.5 font-monospace">{candidateProfileData.statutoryDetails?.panNo || "—"}</td>
+                                      </tr>
+                                      <tr className="border-top border-light-subtle">
+                                        <td className="text-muted extra-small py-1.5 text-uppercase fw-semibold">Aadhaar Number</td>
+                                        <td className="fw-bold text-dark small py-1.5 font-monospace">{candidateProfileData.statutoryDetails?.aadhaarNo || "—"}</td>
+                                      </tr>
+                                      <tr className="border-top border-light-subtle">
+                                        <td className="text-muted extra-small py-1.5 text-uppercase fw-semibold">UAN Number</td>
+                                        <td className="fw-bold text-dark small py-1.5 font-monospace">{candidateProfileData.statutoryDetails?.uanNo || "—"}</td>
+                                      </tr>
+                                      <tr className="border-top border-light-subtle">
+                                        <td className="text-muted extra-small py-1.5 text-uppercase fw-semibold">PF Number</td>
+                                        <td className="fw-semibold text-dark small py-1.5 font-monospace">{candidateProfileData.statutoryDetails?.pfNo || "—"}</td>
+                                      </tr>
+                                      <tr className="border-top border-light-subtle">
+                                        <td className="text-muted extra-small py-1.5 text-uppercase fw-semibold">ESI Number</td>
+                                        <td className="fw-semibold text-dark small py-1.5 font-monospace">{candidateProfileData.statutoryDetails?.esiNo || "—"}</td>
+                                      </tr>
+                                    </tbody>
+                                  </Table>
                                 </div>
-                                <Table borderless responsive size="sm" className="mb-0 align-middle">
-                                  <tbody>
-                                    <tr>
-                                      <td className="text-muted extra-small py-1.5 text-uppercase fw-semibold review-table-label-col">PAN Number</td>
-                                      <td className="fw-bold text-dark small py-1.5 font-monospace">{candidateProfileData.statutoryDetails?.panNo || "—"}</td>
-                                    </tr>
-                                    <tr className="border-top border-light-subtle">
-                                      <td className="text-muted extra-small py-1.5 text-uppercase fw-semibold">Aadhaar Number</td>
-                                      <td className="fw-bold text-dark small py-1.5 font-monospace">{candidateProfileData.statutoryDetails?.aadhaarNo || "—"}</td>
-                                    </tr>
-                                    <tr className="border-top border-light-subtle">
-                                      <td className="text-muted extra-small py-1.5 text-uppercase fw-semibold">UAN Number</td>
-                                      <td className="fw-bold text-dark small py-1.5 font-monospace">{candidateProfileData.statutoryDetails?.uanNo || "—"}</td>
-                                    </tr>
-                                    <tr className="border-top border-light-subtle">
-                                      <td className="text-muted extra-small py-1.5 text-uppercase fw-semibold">PF Number</td>
-                                      <td className="fw-semibold text-dark small py-1.5 font-monospace">{candidateProfileData.statutoryDetails?.pfNo || "—"}</td>
-                                    </tr>
-                                    <tr className="border-top border-light-subtle">
-                                      <td className="text-muted extra-small py-1.5 text-uppercase fw-semibold">ESI Number</td>
-                                      <td className="fw-semibold text-dark small py-1.5 font-monospace">{candidateProfileData.statutoryDetails?.esiNo || "—"}</td>
-                                    </tr>
-                                  </tbody>
-                                </Table>
-                              </div>
-                            </Col>
-                          </Row>
-                        );
-                      })()}
-                    </Card>
+                              </Col>
+                            </Row>
+                          );
+                        })()}
+                      </Card>
 
                       {/* Section 7: Family / Emergency Contact */}
                       <Card className="p-3 bg-light border-0 rounded-3">
@@ -10840,11 +11014,10 @@ function HrOnboarding() {
                           return (
                             <Col md={4} key={dom.key}>
                               <div
-                                className={`p-2 px-3 rounded-3 border d-flex align-items-center justify-content-between small ${
-                                  isPass
+                                className={`p-2 px-3 rounded-3 border d-flex align-items-center justify-content-between small ${isPass
                                     ? "bg-success bg-opacity-10 text-success border-success border-opacity-25"
                                     : "bg-danger bg-opacity-10 text-danger border-danger border-opacity-25"
-                                }`}
+                                  }`}
                               >
                                 <span className="fw-semibold extra-small text-dark">{dom.label}</span>
                                 {isPass ? <FaCheckCircle className="text-success" /> : <FaTimesCircle className="text-danger" />}
@@ -10904,19 +11077,19 @@ function HrOnboarding() {
                       {/* Missing Requirements List */}
                       {toArray(validationReport.missingRequirements).length > 0 && (
                         <FeedbackAlert variant="warning" className="small rounded-3 mb-0" message={<><div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-                            <h6 className="fw-bold small mb-0 text-dark">
-                              <FaExclamationTriangle className="me-1.5 text-warning" /> Missing Requirements to Fulfill:
-                            </h6>
-                            <Button
-                              size="sm"
-                              variant="success"
-                              className="rounded-pill px-3 py-1 extra-small fw-bold d-flex align-items-center gap-1.5 shadow-sm"
-                              onClick={handleAutoFulfillAndCompleteOnboarding}
-                              disabled={actionLoading}
-                            >
-                              <FaCheckCircle size={11} /> Auto-Fulfill Checklist & Complete
-                            </Button>
-                          </div>
+                          <h6 className="fw-bold small mb-0 text-dark">
+                            <FaExclamationTriangle className="me-1.5 text-warning" /> Missing Requirements to Fulfill:
+                          </h6>
+                          <Button
+                            size="sm"
+                            variant="success"
+                            className="rounded-pill px-3 py-1 extra-small fw-bold d-flex align-items-center gap-1.5 shadow-sm"
+                            onClick={handleAutoFulfillAndCompleteOnboarding}
+                            disabled={actionLoading}
+                          >
+                            <FaCheckCircle size={11} /> Auto-Fulfill Checklist & Complete
+                          </Button>
+                        </div>
                           <ul className="mb-0 ps-3">
                             {toArray(validationReport.missingRequirements).map((req, idx) => (
                               <li key={idx} className="mb-1 fw-medium">{req}</li>
@@ -11750,8 +11923,8 @@ function HrOnboarding() {
               {/* Overall Status Banner */}
               <div
                 className={`p-3 rounded-4 mb-3 border d-flex align-items-center justify-content-between ${validationReport.valid
-                    ? "bg-success bg-opacity-10 border-success text-success"
-                    : "bg-danger bg-opacity-10 border-danger text-danger"
+                  ? "bg-success bg-opacity-10 border-success text-success"
+                  : "bg-danger bg-opacity-10 border-danger text-danger"
                   }`}
               >
                 <div className="d-flex align-items-center gap-2">
@@ -11819,11 +11992,10 @@ function HrOnboarding() {
                   return (
                     <Col md={4} sm={6} xs={12} key={dom.key}>
                       <div
-                        className={`p-2 px-3 rounded-3 border d-flex align-items-center justify-content-between small ${
-                          isPass
+                        className={`p-2 px-3 rounded-3 border d-flex align-items-center justify-content-between small ${isPass
                             ? "bg-success bg-opacity-10 text-success border-success border-opacity-25"
                             : "bg-danger bg-opacity-10 text-danger border-danger border-opacity-25"
-                        }`}
+                          }`}
                       >
                         <span className="fw-semibold extra-small text-dark">{dom.label}</span>
                         {isPass ? <FaCheckCircle className="text-success" /> : <FaTimesCircle className="text-danger" />}
@@ -12646,9 +12818,8 @@ function HrOnboarding() {
                     return (
                       <Col xs={6} md={4} key={menu._id}>
                         <div
-                          className={`p-2 rounded-2 border d-flex align-items-center gap-2 cursor-pointer extra-small ${
-                            isChecked ? "bg-white border-success text-success fw-bold shadow-xs" : "bg-white text-muted"
-                          }`}
+                          className={`p-2 rounded-2 border d-flex align-items-center gap-2 cursor-pointer extra-small ${isChecked ? "bg-white border-success text-success fw-bold shadow-xs" : "bg-white text-muted"
+                            }`}
                           onClick={() => {
                             setNewRoleForm((prev) => {
                               const cur = prev.selectedMenuIds || [];
@@ -12665,7 +12836,7 @@ function HrOnboarding() {
                             type="checkbox"
                             id={`modal-menu-${menu._id}`}
                             checked={isChecked}
-                            onChange={() => {}}
+                            onChange={() => { }}
                             className="pointer-events-none"
                           />
                           <span>{menu.menuName}</span>

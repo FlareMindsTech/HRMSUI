@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import Sidebar from "../Components/Sidebar/Sidebar";
-import Header from "../Components/Header/Header";
 import Footer from "../Components/Footer/Footer";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useBranch } from "../context/BranchContext";
@@ -109,11 +108,6 @@ function Layout() {
 
       {/* ── Main Workspace ── */}
       <div className="app-layout-main">
-        {/* Header */}
-        <div className={`app-layout-header-wrapper${isMobile ? " is-mobile" : ""}`}>
-          <Header isMobile={isMobile} />
-        </div>
-
         {/* Content */}
         <div className={`app-layout-content no-scrollbar${isMobile ? " is-mobile" : ""}`}>
           <Outlet />

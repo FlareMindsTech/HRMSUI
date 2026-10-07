@@ -21,6 +21,7 @@ import {
   MdSecurity,
   MdHistoryEdu,
   MdDns,
+  MdAssignment,
 } from 'react-icons/md';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectAuthUser, selectIsSystemAdmin, useHasMenu, logout } from '../../redux/slices/authSlice';
@@ -29,7 +30,16 @@ import './Sidebar.css';
 const menuItems = [
   { name: 'Dashboard', path: '/dashboard', menuCode: 'DASHBOARD', icon: MdDashboard, section: 'main' },
   { name: 'Attendance', path: '/attendance', menuCode: 'ATTENDANCE', icon: MdAccessTime, section: 'main' },
-  { name: 'Projects', path: '/projects', menuCode: 'PROJECTS', icon: MdWork, section: 'main' },
+  {
+    name: 'Projects',
+    path: '/projects',
+    menuCode: 'PROJECTS',
+    icon: MdWork,
+    section: 'main',
+    children: [
+      { name: 'Tasks', path: '/projects/tasks', icon: MdAssignment },
+    ],
+  },
   {
     name: 'Organisation',
     path: '/organisation',
@@ -101,7 +111,7 @@ function Sidebar({ isExpanded = false }) {
   const renderItem = (item) => {
     const hasChildren = item.children && item.children.length > 0;
     const isBranchChildActive = hasChildren && item.children.some((c) => location.pathname.startsWith(c.path));
-    const isExactParentActive = location.pathname === item.path || (item.path === '/organisation' && !isBranchChildActive && location.pathname.startsWith('/organisation'));
+    const isExactParentActive = location.pathname === item.path || (!isBranchChildActive && location.pathname.startsWith(item.path));
     const isParentActive = activePath === item.path || location.pathname.startsWith(item.path);
     const isHovered = hovered === item.path;
     const isOpen = Boolean(openSubMenus[item.path]) || isBranchChildActive;

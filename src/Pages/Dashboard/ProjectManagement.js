@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Container, Row, Col, Card, Form, Button, Badge, Table, Modal,
-  Dropdown, Nav, Tab
+  Dropdown, Nav, Tab, InputGroup
 } from 'react-bootstrap';
 import {
-  FaProjectDiagram, FaPlus,
+  FaPlus,
   FaEllipsisV, FaEdit, FaTrash, FaArrowLeft, FaTimes, FaExclamationTriangle,
   FaCheckCircle, FaUserPlus, FaInbox, FaPaperPlane,
-  FaSyncAlt, FaComments, FaSearch, FaClock
+  FaSyncAlt, FaComments, FaClock,
+  FaPlay, FaPause, FaStop, FaVideo, FaUpload, FaFileImport, FaSearch
 } from 'react-icons/fa';
+import { FiArrowUpRight } from 'react-icons/fi';
 import {
   logTime,
   getTimeLogsByTask,
@@ -154,8 +157,22 @@ function ProjectManagement() {
   const [taskStatusFilter, setTaskStatusFilter] = useState('all');
   const [taskAssigneeFilter, setTaskAssigneeFilter] = useState('all');
 
+  const location = useLocation();
+  const navigate = useNavigate();
+
   // View mode: 'projects' or 'my-tasks'
-  const [currentView, setCurrentView] = useState('projects');
+  const [currentView, setCurrentView] = useState(
+    location.pathname.includes('/tasks') || location.search.includes('tasks') ? 'my-tasks' : 'projects'
+  );
+
+  // Sync route changes
+  useEffect(() => {
+    if (location.pathname.includes('/tasks') || location.search.includes('tasks')) {
+      setCurrentView('my-tasks');
+    } else if (location.pathname === '/projects' && !location.search.includes('tasks')) {
+      setCurrentView('projects');
+    }
+  }, [location.pathname, location.search]);
 
   // My Tasks state
   const [myTasks, setMyTasks] = useState([]);
@@ -221,6 +238,49 @@ function ProjectManagement() {
   const [savingTask, setSavingTask] = useState(false);
   const [savingMember, setSavingMember] = useState(false);
 
+  // --- Dashboard Calm UI State ---
+  const [allDashboardSprints, setAllDashboardSprints] = useState([]);
+  const [allDashboardSprintsLoading, setAllDashboardSprintsLoading] = useState(false);
+  const [trackerSeconds, setTrackerSeconds] = useState(0); // 00:00:00
+  const [trackerRunning, setTrackerRunning] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importDataText, setImportDataText] = useState('');
+  const [importingData, setImportingData] = useState(false);
+  const [dashboardCategoryFilter, setDashboardCategoryFilter] = useState('all');
+  const [showCategoryModal, setShowCategoryModal] = useState({ show: false, title: 'All Projects', filter: 'all' });
+  const [categoryModalSearch, setCategoryModalSearch] = useState('');
+
+  useEffect(() => {
+    let interval = null;
+    if (trackerRunning) {
+      interval = setInterval(() => {
+        setTrackerSeconds((prev) => prev + 1);
+      }, 1000);
+    } else if (!trackerRunning && interval) {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [trackerRunning]);
+
+  const formatTrackerTime = (totalSecs) => {
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
+  const handleStopTracker = () => {
+    setTrackerRunning(false);
+    const durationMins = Math.max(1, Math.round(trackerSeconds / 60));
+    setTimeLogForm((prev) => ({
+      ...prev,
+      durationMinutes: durationMins,
+      description: trackerSeconds > 0 ? `Tracked work session (${formatTrackerTime(trackerSeconds)})` : 'Tracked work session',
+    }));
+    setShowTimeLogModal(true);
+    setTrackerSeconds(0);
+  };
+
   // --- Selected Project Authorization & Capabilities (NOW AFTER STATE DECLARATIONS) ---
   const currentUserId = user?._id || user?.id;
   const isCurrentProjectPM = Boolean(
@@ -239,28 +299,18 @@ function ProjectManagement() {
   // ============================================================
   // Fetchers
   // ============================================================
-  const fetchProjects = useCallback(async (selectIdAfter) => {
-    setProjectsLoading(true);
-    setProjectsError('');
+  const fetchSprints = useCallback(async (projectId) => {
+    if (!projectId) return;
+    setSprintsLoading(true);
     try {
-      const { ok, data } = isOwnerOrAdmin ? await getAllProjectsApi() : await getMyProjectsApi();
-      if (ok && data.success) {
-        setProjects(data.data || []);
-        if (selectIdAfter) {
-          setSelectedProjectId(selectIdAfter);
-        } else if (data.data && data.data.length > 0 && !selectedProjectId) {
-          setSelectedProjectId(data.data[0]._id);
-        }
-      } else {
-        setProjectsError(data.message || 'Failed to load projects.');
-      }
+      const { ok, data } = await getProjectSprintsApi(projectId);
+      if (ok && data.success) setSprints(data.data || []);
     } catch (e) {
       console.error(e);
-      setProjectsError('Could not reach the server. Please check your connection.');
     } finally {
-      setProjectsLoading(false);
+      setSprintsLoading(false);
     }
-  }, [isOwnerOrAdmin, selectedProjectId]);
+  }, []);
 
   const fetchEligiblePMs = useCallback(async () => {
     try {
@@ -288,19 +338,6 @@ function ProjectManagement() {
       setDetailsLoading(false);
     }
   }, [showFeedback]);
-
-  const fetchSprints = useCallback(async (projectId) => {
-    if (!projectId) return;
-    setSprintsLoading(true);
-    try {
-      const { ok, data } = await getProjectSprintsApi(projectId);
-      if (ok && data.success) setSprints(data.data || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setSprintsLoading(false);
-    }
-  }, []);
 
   const fetchTasks = useCallback(async (projectId, sprintId) => {
     if (!projectId) return;
@@ -339,6 +376,111 @@ function ProjectManagement() {
     }
   }, []);
 
+  const fetchAllDashboardSprints = useCallback(async (projectList) => {
+    if (!projectList || projectList.length === 0) {
+      setAllDashboardSprints([]);
+      return;
+    }
+    setAllDashboardSprintsLoading(true);
+    try {
+      const results = await Promise.allSettled(
+        projectList.map(p => getProjectSprintsApi(p._id))
+      );
+      const combined = [];
+      results.forEach((res, idx) => {
+        if (res.status === 'fulfilled' && res.value?.data?.success) {
+          const list = res.value.data.data || [];
+          list.forEach(s => combined.push({ ...s, project: projectList[idx] }));
+        }
+      });
+      setAllDashboardSprints(combined);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setAllDashboardSprintsLoading(false);
+    }
+  }, []);
+
+  const fetchProjects = useCallback(async (selectIdAfter) => {
+    setProjectsLoading(true);
+    setProjectsError('');
+    try {
+      const { ok, data } = isOwnerOrAdmin ? await getAllProjectsApi() : await getMyProjectsApi();
+      if (ok && data.success) {
+        const list = data.data || [];
+        setProjects(list);
+        if (selectIdAfter) {
+          setSelectedProjectId(selectIdAfter);
+        }
+        fetchAllDashboardSprints(list);
+      } else {
+        setProjectsError(data.message || 'Failed to load projects.');
+      }
+    } catch (e) {
+      console.error(e);
+      setProjectsError('Could not reach the server. Please check your connection.');
+    } finally {
+      setProjectsLoading(false);
+    }
+  }, [isOwnerOrAdmin, fetchAllDashboardSprints]);
+
+  const handleImportData = async () => {
+    if (!importDataText.trim()) {
+      showFeedback('warning', 'Please enter valid JSON or CSV data to import.');
+      return;
+    }
+    setImportingData(true);
+    try {
+      let parsed = [];
+      try {
+        parsed = JSON.parse(importDataText);
+        if (!Array.isArray(parsed)) parsed = [parsed];
+      } catch (err) {
+        // Simple CSV line parser
+        const lines = importDataText.split('\n').map(l => l.trim()).filter(Boolean);
+        if (lines.length > 1) {
+          const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
+          for (let i = 1; i < lines.length; i++) {
+            const row = lines[i].split(',').map(r => r.trim().replace(/^["']|["']$/g, ''));
+            const obj = {};
+            headers.forEach((h, idx) => { obj[h] = row[idx] || ''; });
+            parsed.push(obj);
+          }
+        }
+      }
+
+      if (parsed.length === 0) {
+        showFeedback('warning', 'No valid records found in data.');
+        setImportingData(false);
+        return;
+      }
+
+      let createdCount = 0;
+      for (const item of parsed) {
+        const payload = {
+          projectName: item.projectName || item.name || item.title || `Imported Project ${Date.now()}`,
+          description: item.description || 'Imported via dashboard wizard',
+          status: item.status || 'Pending',
+          priority: item.priority || 'Medium',
+          startDate: item.startDate || new Date().toISOString().slice(0, 10),
+          endDate: item.endDate || new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+        };
+        const { ok } = await createProjectApi(payload);
+        if (ok) createdCount++;
+      }
+
+      showFeedback('success', `Successfully imported ${createdCount} project(s)!`);
+      setShowImportModal(false);
+      setImportDataText('');
+      fetchProjects();
+    } catch (e) {
+      console.error(e);
+      showFeedback('danger', 'Failed to import data: ' + e.message);
+    } finally {
+      setImportingData(false);
+    }
+  };
+
   const fetchCompanyUsers = useCallback(async () => {
     setCompanyUsersLoading(true);
     try {
@@ -367,8 +509,9 @@ function ProjectManagement() {
   useEffect(() => {
     fetchProjects();
     fetchMyTasks();
+    fetchCompanyUsers();
     if (isOwnerOrAdmin) fetchEligiblePMs();
-  }, [fetchProjects, fetchMyTasks, isOwnerOrAdmin, fetchEligiblePMs]);
+  }, [fetchProjects, fetchMyTasks, fetchCompanyUsers, isOwnerOrAdmin, fetchEligiblePMs]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -978,14 +1121,88 @@ function ProjectManagement() {
   });
 
   const filteredProjects = useMemo(() => {
-    if (!projectSearch.trim()) return projects;
+    let list = projects;
+    if (dashboardCategoryFilter === 'ended') {
+      list = list.filter(p => p.status === 'Completed');
+    } else if (dashboardCategoryFilter === 'running') {
+      list = list.filter(p => p.status === 'In Progress');
+    } else if (dashboardCategoryFilter === 'pending') {
+      list = list.filter(p => p.status === 'Pending' || p.status === 'On Hold');
+    }
+    if (!projectSearch.trim()) return list;
     const q = projectSearch.toLowerCase();
-    return projects.filter(p =>
+    return list.filter(p =>
       p.projectName?.toLowerCase().includes(q) ||
       p.status?.toLowerCase().includes(q) ||
       (p.projectManager && getDisplayName(p.projectManager).toLowerCase().includes(q))
     );
-  }, [projects, projectSearch]);
+  }, [projects, dashboardCategoryFilter, projectSearch]);
+
+  const categoryModalProjects = useMemo(() => {
+    let list = projects;
+    if (showCategoryModal.filter === 'ended') {
+      list = list.filter(p => p.status === 'Completed');
+    } else if (showCategoryModal.filter === 'running') {
+      list = list.filter(p => p.status === 'In Progress');
+    } else if (showCategoryModal.filter === 'pending') {
+      list = list.filter(p => p.status === 'Pending' || p.status === 'On Hold');
+    }
+    if (!categoryModalSearch.trim()) return list;
+    const q = categoryModalSearch.toLowerCase();
+    return list.filter(p =>
+      p.projectName?.toLowerCase().includes(q) ||
+      p.status?.toLowerCase().includes(q) ||
+      (p.projectManager && getDisplayName(p.projectManager).toLowerCase().includes(q))
+    );
+  }, [projects, showCategoryModal.filter, categoryModalSearch]);
+
+  const endedProjectsCount = useMemo(() => projects.filter(p => p.status === 'Completed').length, [projects]);
+  const runningProjectsCount = useMemo(() => projects.filter(p => p.status === 'In Progress').length, [projects]);
+  const pendingProjectsCount = useMemo(() => projects.filter(p => p.status === 'Pending' || p.status === 'On Hold').length, [projects]);
+  const progressPercent = useMemo(() => projects.length > 0 ? Math.round((endedProjectsCount / projects.length) * 100) : 0, [projects, endedProjectsCount]);
+
+  const weeklyAnalyticsData = useMemo(() => {
+    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const counts = [0, 0, 0, 0, 0, 0, 0];
+
+    projects.forEach((p) => {
+      if (p.createdAt) {
+        const d = new Date(p.createdAt).getDay();
+        if (!isNaN(d)) counts[d] += 1;
+      }
+      if (p.endDate) {
+        const d = new Date(p.endDate).getDay();
+        if (!isNaN(d)) counts[d] += 1;
+      }
+    });
+
+    myTasks.forEach((t) => {
+      if (t.createdAt) {
+        const d = new Date(t.createdAt).getDay();
+        if (!isNaN(d)) counts[d] += 1;
+      }
+      if (t.dueDate) {
+        const d = new Date(t.dueDate).getDay();
+        if (!isNaN(d)) counts[d] += 1;
+      }
+    });
+
+    const max = Math.max(...counts, 1);
+    const todayIndex = new Date().getDay();
+
+    return days.map((day, idx) => {
+      const count = counts[idx];
+      const height = count > 0 ? Math.min(150, Math.max(45, Math.round(40 + (count / max) * 105))) : 40;
+      const isToday = idx === todayIndex;
+      return {
+        day,
+        count,
+        height,
+        isToday,
+        isHatched: count === 0 && !isToday,
+      };
+    });
+  }, [projects, myTasks]);
 
   const filteredReports = projectReports.filter(r => {
     if (selectedMemberFilter === 'all') return true;
@@ -1061,189 +1278,587 @@ function ProjectManagement() {
         />
       )}
 
-      {/* Header */}
-      <Row className="mb-3 g-2 align-items-center">
-        <Col xs={12} md={6}>
-          <div className="d-flex align-items-center gap-2 flex-wrap">
-            <h4 className="fw-bold mb-0 pm-page-title">Project Management</h4>
-            {isOwnerOrAdmin && <Badge bg="primary" className="rounded-pill">Admin View</Badge>}
-            {isProjectManager && <Badge bg="info" text="dark" className="rounded-pill">PM View</Badge>}
-            {isEmployee && <Badge bg="secondary" className="rounded-pill">Team View</Badge>}
-          </div>
-          <p className="text-muted small mb-0">Oversee projects, manage sprints, and track team tasks seamlessly.</p>
-        </Col>
-        <Col xs={12} md={6} className="d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
-          {/* View Mode Toggle: Projects vs My Tasks */}
-          <div className="bg-light p-1 rounded-pill border d-flex gap-1 shadow-sm">
-            <Button
-              size="sm"
-              variant={currentView === 'projects' ? 'primary' : 'light'}
-              className="rounded-pill px-3 py-1 fw-bold small border-0"
-              onClick={() => setCurrentView('projects')}
-            >
-              Projects
-            </Button>
-            <Button
-              size="sm"
-              variant={currentView === 'my-tasks' ? 'primary' : 'light'}
-              className="rounded-pill px-3 py-1 fw-bold small border-0 d-flex align-items-center gap-1"
-              onClick={() => {
-                setCurrentView('my-tasks');
-                fetchMyTasks();
-              }}
-            >
-              My Tasks
-              {myTasks.length > 0 && (
-                <Badge
-                  bg={currentView === 'my-tasks' ? 'light' : 'primary'}
-                  text={currentView === 'my-tasks' ? 'dark' : 'white'}
-                  className="rounded-pill ms-1"
-                >
-                  {myTasks.length}
-                </Badge>
-              )}
-            </Button>
-          </div>
+      {/* SVG Definitions for Bar Chart and Donut Gauge Patterns */}
+      <svg width="0" height="0" className="d-none">
+        <defs>
+          <pattern id="diagonalHatch" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="0" x2="0" y2="8" stroke="var(--color-secondary-text, #C7BFB5)" strokeWidth="2.5" />
+          </pattern>
+          <pattern id="diagonalHatchDark" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="0" x2="0" y2="8" stroke="var(--color-primary-dark, #A98245)" strokeWidth="2.5" />
+          </pattern>
+        </defs>
+      </svg>
 
-          {currentView === 'projects' && (isOwnerOrAdmin || isProjectManager || hasPermission('project.create')) && (
-            <Button
-              variant="primary"
-              className="pm-new-project-btn rounded-pill gradient-bg px-3 py-2 shadow-sm d-flex align-items-center gap-2 justify-content-center"
-              onClick={openCreateProject}
-            >
-              <FaPlus /> New Project
-            </Button>
-          )}
-        </Col>
-      </Row>
+      {/* ── TOP HEADER ── */}
+      <div className="pm-calm-header-row d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+        <div>
+          <h2 className="pm-calm-title">Dashboard</h2>
+          <p className="pm-calm-subtitle">Everything your team is shipping, in one calm place.</p>
+        </div>
+
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <Button
+            className="pm-btn-dark-pill"
+            onClick={openCreateProject}
+          >
+            <FaPlus size={11} /> Add Project
+          </Button>
+
+          <Button
+            className="pm-btn-white-pill"
+            onClick={() => setShowImportModal(true)}
+          >
+            <FaUpload size={11} /> Import Data
+          </Button>
+        </div>
+      </div>
 
       {currentView === 'projects' && projectsError && (
-        <FeedbackAlert variant="danger" className="d-flex align-items-center justify-content-between py-2 shadow-sm mb-3" message={<><span className="small d-flex align-items-center gap-2"><FaExclamationTriangle /> {projectsError}</span><Button size="sm" variant="outline-danger" onClick={() => fetchProjects()}>Retry</Button></>} />
+        <FeedbackAlert
+          variant="danger"
+          className="d-flex align-items-center justify-content-between py-2 shadow-sm mb-3"
+          message={
+            <>
+              <span className="small d-flex align-items-center gap-2">
+                <FaExclamationTriangle /> {projectsError}
+              </span>
+              <Button size="sm" variant="outline-danger" onClick={() => fetchProjects()}>
+                Retry
+              </Button>
+            </>
+          }
+        />
       )}
 
       {currentView === 'projects' ? (
-        <Row className="g-3">
-        {/* Projects list */}
-        {showList && (
-          <Col xs={12} lg={3}>
-            <Card className="border-0 shadow-sm h-100">
-              <Card.Body className="p-3">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <h6 className="fw-bold small text-uppercase text-muted mb-0">
-                    {isOwnerOrAdmin ? 'All Projects' : 'My Projects'} ({projects.length})
-                  </h6>
-                </div>
-
-                {projects.length > 2 && (
-                  <div className="pm-search-input-group">
-                    <FaSearch className="pm-search-icon" />
-                    <Form.Control
-                      type="text"
-                      size="sm"
-                      placeholder="Search projects..."
-                      value={projectSearch}
-                      onChange={e => setProjectSearch(e.target.value)}
-                    />
-                  </div>
-                )}
-
-                {projectsLoading && (
-                  <div className="d-flex justify-content-center py-4">
-                    <LoadingSpinner size="sm" className="pm-spinner" />
-                  </div>
-                )}
-
-                {!projectsLoading && !projectsError && projects.length === 0 && (
-                  <div className="pm-empty-state text-center py-4">
-                    <FaInbox size={28} className="pm-empty-icon mb-2 opacity-50" />
-                    <p className="small text-muted mb-2">No projects assigned.</p>
-                    {(isOwnerOrAdmin || isProjectManager || hasPermission('project.create')) && (
-                      <Button size="sm" variant="outline-primary" className="pm-outline-btn" onClick={openCreateProject}>
-                        Create first project
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {!projectsLoading && filteredProjects.length === 0 && projects.length > 0 && (
-                  <p className="small text-muted text-center py-3">No matching projects found.</p>
-                )}
-
-                <div className="d-flex flex-column gap-2">
-                  {filteredProjects.map(project => (
-                    <div
-                      key={project._id}
-                      onClick={() => selectProject(project)}
-                      className={`pm-project-card p-2 rounded cursor-pointer border ${selectedProjectId === project._id ? 'pm-active border-primary bg-light' : 'border-light'}`}
+        !selectedProjectId ? (
+          /* ===================================================================
+             MAIN CALM DASHBOARD (MATCHING ATTACHED REFERENCE UI EXACTLY)
+             =================================================================== */
+          <div className="d-flex flex-column gap-3">
+            {/* ROW 1: TOP 4 METRIC CARDS */}
+            <Row className="g-3">
+              {/* 1. Total Projects (Featured Theme Card) */}
+              <Col xs={12} sm={6} lg={3}>
+                <div
+                  className={`pm-metric-card pm-metric-card-dark ${dashboardCategoryFilter === 'all' ? 'pm-metric-selected' : ''}`}
+                  onClick={() => {
+                    setDashboardCategoryFilter('all');
+                    setShowCategoryModal({ show: true, title: 'All Registered Projects', filter: 'all' });
+                  }}
+                  title="Click to view all projects"
+                >
+                  <div className="d-flex justify-content-between align-items-start">
+                    <span className="pm-metric-title">Total Projects</span>
+                    <button
+                      type="button"
+                      className="pm-metric-arrow-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDashboardCategoryFilter('all');
+                        setShowCategoryModal({ show: true, title: 'All Registered Projects', filter: 'all' });
+                      }}
+                      title="View all projects"
                     >
-                      <div className="d-flex justify-content-between align-items-start gap-2">
-                        <div className="flex-grow-1 pm-min-w-0">
-                          <p className="pm-project-name text-truncate fw-bold mb-1" title={project.projectName}>{project.projectName}</p>
-                          {getStatusBadge(project.status)}
-                        </div>
-                        {isOwnerOrAdmin && (
-                          <div className="d-flex gap-1 flex-shrink-0">
-                            <Button
-                              size="sm" variant="light" className="pm-icon-btn p-1"
-                              onClick={(e) => { e.stopPropagation(); openEditProject(project); }}
-                              title="Edit project"
-                            >
-                              <FaEdit size={12} />
-                            </Button>
-                            <Button
-                              size="sm" variant="light" className="pm-icon-btn pm-danger p-1 text-danger"
-                              onClick={(e) => { e.stopPropagation(); deleteProject(project); }}
-                              title="Delete project"
-                            >
-                              <FaTrash size={12} />
-                            </Button>
-                          </div>
+                      <FiArrowUpRight size={14} />
+                    </button>
+                  </div>
+                  <div>
+                    <h3 className="pm-metric-value">{projects.length}</h3>
+                    <div className="pm-metric-badge">
+                      <span className="pm-metric-tag-num">{projects.length}</span>
+                      <span>Total Registered</span>
+                    </div>
+                  </div>
+                </div>
+              </Col>
+
+              {/* 2. Ended Projects */}
+              <Col xs={12} sm={6} lg={3}>
+                <div
+                  className={`pm-metric-card ${dashboardCategoryFilter === 'ended' ? 'pm-metric-selected' : ''}`}
+                  onClick={() => {
+                    setDashboardCategoryFilter('ended');
+                    setShowCategoryModal({ show: true, title: 'Ended / Completed Projects', filter: 'ended' });
+                  }}
+                  title="Click to view completed projects"
+                >
+                  <div className="d-flex justify-content-between align-items-start">
+                    <span className="pm-metric-title">Ended Projects</span>
+                    <button
+                      type="button"
+                      className="pm-metric-arrow-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDashboardCategoryFilter('ended');
+                        setShowCategoryModal({ show: true, title: 'Ended / Completed Projects', filter: 'ended' });
+                      }}
+                      title="View completed projects"
+                    >
+                      <FiArrowUpRight size={14} />
+                    </button>
+                  </div>
+                  <div>
+                    <h3 className="pm-metric-value">{endedProjectsCount}</h3>
+                    <div className="pm-metric-badge">
+                      <span className="pm-metric-tag-num">{endedProjectsCount}</span>
+                      <span>Completed Projects</span>
+                    </div>
+                  </div>
+                </div>
+              </Col>
+
+              {/* 3. Running Projects */}
+              <Col xs={12} sm={6} lg={3}>
+                <div
+                  className={`pm-metric-card ${dashboardCategoryFilter === 'running' ? 'pm-metric-selected' : ''}`}
+                  onClick={() => {
+                    setDashboardCategoryFilter('running');
+                    setShowCategoryModal({ show: true, title: 'Running / In Progress Projects', filter: 'running' });
+                  }}
+                  title="Click to view in-progress projects"
+                >
+                  <div className="d-flex justify-content-between align-items-start">
+                    <span className="pm-metric-title">Running Projects</span>
+                    <button
+                      type="button"
+                      className="pm-metric-arrow-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDashboardCategoryFilter('running');
+                        setShowCategoryModal({ show: true, title: 'Running / In Progress Projects', filter: 'running' });
+                      }}
+                      title="View in-progress projects"
+                    >
+                      <FiArrowUpRight size={14} />
+                    </button>
+                  </div>
+                  <div>
+                    <h3 className="pm-metric-value">{runningProjectsCount}</h3>
+                    <div className="pm-metric-badge">
+                      <span className="pm-metric-tag-num">{runningProjectsCount}</span>
+                      <span>In Active Progress</span>
+                    </div>
+                  </div>
+                </div>
+              </Col>
+
+              {/* 4. Pending Projects */}
+              <Col xs={12} sm={6} lg={3}>
+                <div
+                  className={`pm-metric-card ${dashboardCategoryFilter === 'pending' ? 'pm-metric-selected' : ''}`}
+                  onClick={() => {
+                    setDashboardCategoryFilter('pending');
+                    setShowCategoryModal({ show: true, title: 'Pending / Review Projects', filter: 'pending' });
+                  }}
+                  title="Click to view pending projects"
+                >
+                  <div className="d-flex justify-content-between align-items-start">
+                    <span className="pm-metric-title">Pending Projects</span>
+                    <button
+                      type="button"
+                      className="pm-metric-arrow-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDashboardCategoryFilter('pending');
+                        setShowCategoryModal({ show: true, title: 'Pending / Review Projects', filter: 'pending' });
+                      }}
+                      title="View pending projects"
+                    >
+                      <FiArrowUpRight size={14} />
+                    </button>
+                  </div>
+                  <div>
+                    <h3 className="pm-metric-value">{pendingProjectsCount}</h3>
+                    <div className="pm-metric-badge text-muted">
+                      <span>{pendingProjectsCount > 0 ? `${pendingProjectsCount} Awaiting review` : 'No pending reviews'}</span>
+                    </div>
+                  </div>
+                </div>
+              </Col>
+            </Row>
+
+            {/* ROW 2: PROJECT ANALYTICS (LEFT) | SPRINTS (MIDDLE) | PROJECT LIST (RIGHT) */}
+            <Row className="g-3">
+              {/* Project Analytics Capsule Chart */}
+              <Col xs={12} lg={6}>
+                <div className="pm-card-box">
+                  <div className="pm-card-box-header">
+                    <h4 className="pm-card-box-title">Project Analytics</h4>
+                  </div>
+                  
+                  {/* Weekly Capsule Bars (Dynamic from Real Data) */}
+                  <div className="pm-chart-wrap">
+                    {weeklyAnalyticsData.map((item, idx) => (
+                      <div key={item.day + idx} className="pm-chart-col">
+                        {item.isToday && (
+                          <div className="pm-chart-tooltip-bubble">{progressPercent}%</div>
+                        )}
+                        <svg width="34" height={item.height} className="pm-chart-pill-bar">
+                          <rect
+                            x="0"
+                            y="0"
+                            width="34"
+                            height={item.height}
+                            rx="17"
+                            fill={
+                              item.isToday
+                                ? 'var(--color-primary, #C79D58)'
+                                : item.count > 0
+                                ? 'var(--color-primary-dark, #A98245)'
+                                : 'url(#diagonalHatch)'
+                            }
+                          />
+                        </svg>
+                        <span className="pm-chart-day-label">{item.day}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Col>
+
+              {/* Sprints Widget (Showing Real Sprints, No Dummy Meeting, Theme Styled) */}
+              <Col xs={12} md={6} lg={3}>
+                <div className="pm-card-box">
+                  <div className="pm-sprints-box">
+                    <div className="pm-card-box-header mb-2">
+                      <div className="d-flex align-items-center gap-2">
+                        <h4 className="pm-card-box-title">Sprints</h4>
+                        {allDashboardSprints.length > 0 && (
+                          <Badge className="pm-theme-badge rounded-pill">
+                            {allDashboardSprints.length}
+                          </Badge>
                         )}
                       </div>
-                      {project.projectManager && (
-                        <p className="pm-project-pm-label text-muted small mt-2 mb-0">
-                          PM: {getDisplayName(project.projectManager)}
-                        </p>
+                      <button
+                        type="button"
+                        className="pm-pill-badge-btn"
+                        onClick={() => {
+                          if (projects.length > 0) {
+                            selectProject(projects[0]);
+                            setActiveTab('sprints');
+                          } else {
+                            openCreateProject();
+                          }
+                        }}
+                      >
+                        <FaPlus size={9} /> New Sprint
+                      </button>
+                    </div>
+
+                    {allDashboardSprints.length > 0 ? (
+                      <div className="pm-sprints-list-wrap">
+                        {allDashboardSprints.slice(0, 3).map((sprint, sIdx) => (
+                          <div
+                            key={sprint._id || sIdx}
+                            className="pm-sprint-card-item"
+                            onClick={() => {
+                              const p = sprint.project || projects.find(pr => pr._id === getId(sprint.projectId));
+                              if (p) selectProject(p);
+                              setActiveTab('sprints');
+                            }}
+                          >
+                            <div className="d-flex justify-content-between align-items-start mb-1">
+                              <h6 className="pm-sprint-item-title mb-0 text-truncate" style={{ maxWidth: '140px' }}>
+                                {sprint.sprintName}
+                              </h6>
+                              <span className={`pm-collab-badge ${
+                                sprint.status === 'Completed' ? 'pm-badge-completed' : sprint.status === 'Active' ? 'pm-badge-progress' : 'pm-badge-pending'
+                              }`}>
+                                {sprint.status || 'Active'}
+                              </span>
+                            </div>
+                            <p className="pm-sprint-item-proj mb-1 text-truncate">
+                              {sprint.project?.projectName || (sprint.projectId?.projectName) || 'Active Project'}
+                            </p>
+                            <div className="d-flex justify-content-between align-items-center">
+                              <span className="pm-sprint-item-dates">
+                                {sprint.startDate ? `${formatDate(sprint.startDate)} – ${formatDate(sprint.endDate)}` : 'Active Sprint'}
+                              </span>
+                              <span className="pm-sprint-item-link">View Sprints →</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="pm-empty-sprint-state">
+                        <p className="text-muted small mb-3">No active sprints currently scheduled.</p>
+                        <Button
+                          className="pm-sprints-btn"
+                          onClick={() => {
+                            if (projects.length > 0) {
+                              selectProject(projects[0]);
+                              setActiveTab('sprints');
+                            } else {
+                              openCreateProject();
+                            }
+                          }}
+                        >
+                          <FaPlus size={11} /> Create Sprint
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Col>
+
+              {/* Project Mini List (Real Data Only) */}
+              <Col xs={12} md={6} lg={3}>
+                <div className="pm-card-box">
+                  <div className="pm-card-box-header">
+                    <div className="d-flex align-items-center gap-2">
+                      <h4 className="pm-card-box-title">
+                        Projects {dashboardCategoryFilter !== 'all' && (
+                          <span className="small fw-normal text-muted">
+                            ({dashboardCategoryFilter === 'ended' ? 'Ended' : dashboardCategoryFilter === 'running' ? 'Running' : 'Pending'})
+                          </span>
+                        )}
+                      </h4>
+                      {dashboardCategoryFilter !== 'all' && (
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="p-0 text-decoration-none small"
+                          style={{ fontSize: '0.72rem', color: 'var(--color-primary, #C79D58)' }}
+                          onClick={() => setDashboardCategoryFilter('all')}
+                        >
+                          Show All
+                        </Button>
                       )}
                     </div>
-                  ))}
+                  </div>
+
+                  {filteredProjects.length > 0 ? (
+                    <div className="pm-project-mini-list">
+                      {filteredProjects.slice(0, 6).map((item, idx) => {
+                        const symbols = ['///', '●', '✚', '◑', '❖', '◈'];
+                        const bgs = ['#EAF0FC', '#E6F6F0', '#FEF3F2', '#FFFBEB', '#F3E8FF', '#ECFDF5'];
+                        const cols = ['#2563EB', '#059669', '#E11D48', '#D97706', '#9333EA', '#10B981'];
+                        const iconBg = bgs[idx % bgs.length];
+                        const iconCol = cols[idx % cols.length];
+                        const symbol = symbols[idx % symbols.length];
+
+                        return (
+                          <div
+                            key={item._id || idx}
+                            className="pm-project-mini-item"
+                            onClick={() => selectProject(item)}
+                          >
+                            <div className="pm-mini-badge-icon" style={{ backgroundColor: iconBg, color: iconCol, fontWeight: 'bold' }}>
+                              {symbol}
+                            </div>
+                            <div className="flex-grow-1 min-w-0">
+                              <p className="pm-mini-project-name text-truncate">{item.projectName}</p>
+                              <p className="pm-mini-project-due">
+                                Due: {item.endDate ? formatDate(item.endDate) : 'No due date'}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="d-flex flex-column align-items-center justify-content-center py-4 text-center">
+                      <p className="text-muted small mb-2">No projects created yet.</p>
+                      <Button size="sm" variant="outline-success" className="rounded-pill" onClick={openCreateProject}>
+                        <FaPlus size={10} /> Create First Project
+                      </Button>
+                    </div>
+                  )}
                 </div>
-              </Card.Body>
-            </Card>
-          </Col>
-        )}
+              </Col>
+            </Row>
 
-        {/* Selected project detail workspace - Main Column */}
-        {showDetail && (
-          <>
-            {/* Main Workspace Column: Overview, Team Members, Sprints, Tasks */}
-            <Col xs={12} lg={9}>
-              {isMobile && selectedProjectId && (
-                <Button variant="light" size="sm" className="mb-2 d-flex align-items-center gap-2" onClick={backToList}>
-                  <FaArrowLeft /> Back to projects
-                </Button>
-              )}
+            {/* ROW 3: TEAM COLLABORATION (LEFT) | PROJECT PROGRESS GAUGE (MIDDLE) | TIME TRACKER (RIGHT) */}
+            <Row className="g-3">
+              {/* Team Collaboration (Real Company Members) */}
+              <Col xs={12} lg={5}>
+                <div className="pm-card-box">
+                  <div className="pm-card-box-header">
+                    <h4 className="pm-card-box-title">Team Collaboration</h4>
+                    <button
+                      type="button"
+                      className="pm-pill-badge-btn"
+                      onClick={openAddMember}
+                    >
+                      <FaPlus size={9} /> Add Member
+                    </button>
+                  </div>
 
-              {!selectedProjectId && (
-                <Card className="border-0 shadow-sm h-100">
-                  <Card.Body className="d-flex flex-column align-items-center justify-content-center text-center py-5 text-muted">
-                    <FaProjectDiagram size={40} className="mb-3 opacity-50" />
-                    <p className="mb-0">Select a project from the list to view details, sprints, tasks, and daily reports.</p>
-                  </Card.Body>
-                </Card>
-              )}
+                  {companyUsers.length > 0 ? (
+                    <div className="pm-collab-list">
+                      {companyUsers.slice(0, 5).map((member, i) => {
+                        const avatarColors = [
+                          { bg: '#FDEAE4', color: '#D9534F' },
+                          { bg: '#E4F4EC', color: '#2E7D32' },
+                          { bg: '#EBF1FA', color: '#3366CC' },
+                          { bg: '#FEF3E2', color: '#D97706' },
+                          { bg: '#F3E8FF', color: '#9333EA' },
+                        ];
+                        const ac = avatarColors[i % avatarColors.length];
+                        const roleLabel = member.designation || member.department?.name || member.role?.name || member.roleCode || 'Team Member';
+                        const status = member.status || (member.isActive ? 'Active' : 'Active');
 
-              {selectedProjectId && detailsLoading && !projectDetails && (
-                <div className="d-flex justify-content-center py-5">
-                  <LoadingSpinner className="pm-spinner" />
+                        return (
+                          <div key={member._id || i} className="pm-collab-item">
+                            <div className="d-flex align-items-center gap-3 min-w-0 flex-grow-1">
+                              <div className="pm-collab-avatar" style={{ backgroundColor: ac.bg, color: ac.color }}>
+                                {getInitials(member)}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="pm-collab-name text-truncate">{getDisplayName(member)}</p>
+                                <p className="pm-collab-task text-truncate">{roleLabel}</p>
+                              </div>
+                            </div>
+                            <span className={`pm-collab-badge ${
+                              status === 'Active' ? 'pm-badge-completed' : 'pm-badge-progress'
+                            }`}>
+                              {status}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="d-flex flex-column align-items-center justify-content-center py-4 text-center">
+                      <p className="text-muted small mb-0">No team members registered yet.</p>
+                    </div>
+                  )}
                 </div>
-              )}
+              </Col>
 
-              {selectedProjectId && projectDetails && (
-                <>
-                  {/* Workspace Tab Container */}
+              {/* Project Progress Semi-Gauge Donut (Real Statistics) */}
+              <Col xs={12} md={6} lg={4}>
+                <div className="pm-card-box">
+                  <div className="pm-card-box-header mb-1">
+                    <h4 className="pm-card-box-title">Project Progress</h4>
+                  </div>
+
+                  <div className="pm-progress-wrap py-2">
+                    <svg width="220" height="130" viewBox="0 0 220 130">
+                      {/* Background base arc */}
+                      <path
+                        d="M 25 115 A 85 85 0 0 1 195 115"
+                        fill="none"
+                        stroke="#E2E8E5"
+                        strokeWidth="26"
+                        strokeLinecap="round"
+                      />
+                      {/* Completed arc */}
+                      <path
+                        d="M 25 115 A 85 85 0 0 1 155 45"
+                        fill="none"
+                        stroke="var(--color-primary-dark, #A98245)"
+                        strokeWidth="26"
+                        strokeLinecap="round"
+                      />
+                      {/* In Progress arc */}
+                      <path
+                        d="M 25 115 A 85 85 0 0 1 90 35"
+                        fill="none"
+                        stroke="var(--color-primary, #C79D58)"
+                        strokeWidth="26"
+                        strokeLinecap="round"
+                      />
+                      {/* Hatched pending arc */}
+                      <path
+                        d="M 160 50 A 85 85 0 0 1 195 115"
+                        fill="none"
+                        stroke="url(#diagonalHatchDark)"
+                        strokeWidth="26"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+
+                    <div className="pm-gauge-center-text">
+                      <span className="pm-gauge-percent">{progressPercent}%</span>
+                      <p className="pm-gauge-label mb-0">Project Ended</p>
+                    </div>
+
+                    <div className="pm-gauge-legend">
+                      <div className="pm-legend-item">
+                        <span className="pm-legend-dot" style={{ background: 'var(--color-primary-dark, #A98245)' }} />
+                        <span>{endedProjectsCount} Completed</span>
+                      </div>
+                      <div className="pm-legend-item">
+                        <span className="pm-legend-dot" style={{ background: 'var(--color-primary, #C79D58)' }} />
+                        <span>{runningProjectsCount} In Progress</span>
+                      </div>
+                      <div className="pm-legend-item">
+                        <span className="pm-legend-dot" style={{ background: 'var(--color-secondary-text, #C7BFB5)' }} />
+                        <span>{pendingProjectsCount} Pending</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Col>
+
+              {/* Time Tracker Interactive Stopwatch Widget */}
+              <Col xs={12} md={6} lg={3}>
+                <div className="pm-tracker-card">
+                  <div className="pm-tracker-ripple-bg" />
+                  <div>
+                    <span className="pm-tracker-title">Time Tracker</span>
+                    <div className="pm-tracker-clock">
+                      {formatTrackerTime(trackerSeconds)}
+                    </div>
+                  </div>
+
+                  <div className="pm-tracker-actions">
+                    <button
+                      type="button"
+                      className="pm-tracker-play-btn"
+                      onClick={() => setTrackerRunning(!trackerRunning)}
+                      title={trackerRunning ? 'Pause Tracker' : 'Start Tracker'}
+                    >
+                      {trackerRunning ? <FaPause /> : <FaPlay style={{ marginLeft: 2 }} />}
+                    </button>
+                    <button
+                      type="button"
+                      className="pm-tracker-stop-btn"
+                      onClick={handleStopTracker}
+                      title="Stop and Log Time"
+                    >
+                      <FaStop />
+                    </button>
+                  </div>
+                </div>
+              </Col>
+            </Row>
+          </div>
+        ) : (
+          /* ===================================================================
+             SELECTED PROJECT DETAIL WORKSPACE
+             =================================================================== */
+          <div className="d-flex flex-column gap-3">
+            {/* Top Navigation Back to Calm Dashboard */}
+            <div className="d-flex justify-content-between align-items-center bg-white p-3 rounded-4 border shadow-sm flex-wrap gap-2">
+              <Button
+                variant="light"
+                className="d-flex align-items-center gap-2 rounded-pill border px-3 py-1 fw-bold text-dark"
+                onClick={() => setSelectedProjectId(null)}
+              >
+                <FaArrowLeft /> Back to Dashboard
+              </Button>
+              <div className="d-flex align-items-center gap-2">
+                <h5 className="fw-bold mb-0 text-dark">{projectDetails?.projectName || 'Project Workspace'}</h5>
+                {projectDetails && getStatusBadge(projectDetails.status)}
+              </div>
+            </div>
+
+            <Row className="g-3">
+              {/* Project Workspace Details */}
+              <Col xs={12}>
+                {detailsLoading && !projectDetails && (
+                  <div className="d-flex justify-content-center py-5">
+                    <LoadingSpinner className="pm-spinner" />
+                  </div>
+                )}
+
+                {projectDetails && (
                   <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
-                    {/* 1. PROJECT NAVIGATION (TOP OF WORKSPACE) */}
+                    {/* Workspace Top Navigation Tabs */}
                     <div className="pm-top-nav-bar">
                       <Nav variant="pills" className="pm-nav-pills-custom no-scrollbar">
                         <Nav.Item>
@@ -1927,13 +2542,11 @@ function ProjectManagement() {
                       </Tab.Pane>
                     </Tab.Content>
                   </Tab.Container>
-                </>
-              )}
-            </Col>
-
-          </>
-        )}
-      </Row>
+                )}
+              </Col>
+            </Row>
+          </div>
+        )
       ) : (
         /* MY TASKS VIEW (GET /api/task/my-tasks) */
         <Row className="g-3">
@@ -2643,6 +3256,172 @@ function ProjectManagement() {
             </Button>
           </Modal.Footer>
         </Form>
+      </Modal>
+
+      {/* Import Data Modal */}
+      <Modal
+        show={showImportModal}
+        onHide={() => setShowImportModal(false)}
+        centered
+        backdrop="static"
+        dialogClassName="pm-detail-modal"
+      >
+        <Modal.Header closeButton className="border-bottom">
+          <Modal.Title className="fw-bold d-flex align-items-center gap-2">
+            <FaFileImport className="text-success" /> Import Projects Data
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted small mb-2">
+            Paste project records in <strong>JSON</strong> or <strong>CSV</strong> format to import them into your dashboard workspace.
+          </p>
+          <Form.Group className="mb-3">
+            <Form.Label className="small fw-semibold">Data Payload (JSON Array or CSV)</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={8}
+              placeholder={'[\n  {\n    "projectName": "Payments API v2",\n    "status": "In Progress",\n    "priority": "High",\n    "startDate": "2026-10-01",\n    "endDate": "2026-10-20"\n  }\n]'}
+              value={importDataText}
+              onChange={(e) => setImportDataText(e.target.value)}
+              style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline-secondary" onClick={() => setShowImportModal(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="success"
+            className="d-flex align-items-center gap-2"
+            onClick={handleImportData}
+            disabled={importingData || !importDataText.trim()}
+          >
+            {importingData ? <LoadingSpinner size="sm" /> : <FaUpload />}
+            {importingData ? 'Importing...' : 'Import Data'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Category Projects List Modal */}
+      <Modal
+        show={showCategoryModal.show}
+        onHide={() => {
+          setShowCategoryModal({ show: false, title: '', filter: 'all' });
+          setCategoryModalSearch('');
+        }}
+        size="lg"
+        centered
+      >
+        <Modal.Header closeButton className="border-bottom">
+          <Modal.Title className="fw-bold fs-5 d-flex align-items-center gap-2">
+            <span>{showCategoryModal.title}</span>
+            <Badge
+              className="rounded-pill"
+              style={{ background: 'var(--color-primary, #C79D58)', color: '#ffffff' }}
+            >
+              {categoryModalProjects.length}
+            </Badge>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-3">
+          <div className="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
+            <InputGroup size="sm" style={{ maxWidth: '300px' }}>
+              <InputGroup.Text className="bg-white border-end-0">
+                <FaSearch size={12} className="text-muted" />
+              </InputGroup.Text>
+              <Form.Control
+                placeholder="Search projects in this list..."
+                value={categoryModalSearch}
+                onChange={(e) => setCategoryModalSearch(e.target.value)}
+                className="border-start-0"
+              />
+            </InputGroup>
+            <Button
+              size="sm"
+              className="pm-btn-dark-pill"
+              onClick={() => {
+                setShowCategoryModal({ show: false, title: '', filter: 'all' });
+                openCreateProject();
+              }}
+            >
+              <FaPlus size={10} /> Create New Project
+            </Button>
+          </div>
+
+          {categoryModalProjects.length > 0 ? (
+            <div className="d-flex flex-column gap-2" style={{ maxHeight: '420px', overflowY: 'auto' }}>
+              {categoryModalProjects.map((proj) => (
+                <div
+                  key={proj._id}
+                  className="p-3 bg-white rounded-3 border d-flex justify-content-between align-items-center gap-3"
+                  style={{ cursor: 'pointer', transition: 'all 0.18s ease' }}
+                  onClick={() => {
+                    setShowCategoryModal({ show: false, title: '', filter: 'all' });
+                    selectProject(proj);
+                  }}
+                >
+                  <div className="min-w-0 flex-grow-1">
+                    <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                      <h6 className="fw-bold mb-0" style={{ color: 'var(--color-text, #1C1D1D)' }}>
+                        {proj.projectName}
+                      </h6>
+                      {getStatusBadge(proj.status)}
+                    </div>
+                    {proj.description && (
+                      <p className="text-muted small mb-1 text-truncate" style={{ maxWidth: '480px' }}>
+                        {proj.description}
+                      </p>
+                    )}
+                    <div className="d-flex align-items-center gap-3 small text-muted flex-wrap">
+                      {proj.projectManager && (
+                        <span>
+                          <strong>PM:</strong> {getDisplayName(proj.projectManager)}
+                        </span>
+                      )}
+                      {proj.endDate && (
+                        <span>
+                          <strong>Due:</strong> {formatDate(proj.endDate)}
+                        </span>
+                      )}
+                      {Array.isArray(proj.teamMembers) && proj.teamMembers.length > 0 && (
+                        <span>
+                          <strong>Team:</strong> {proj.teamMembers.length} members
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline-primary"
+                    className="rounded-pill px-3 py-1 fw-bold flex-shrink-0"
+                    style={{
+                      borderColor: 'var(--color-primary, #C79D58)',
+                      color: 'var(--color-primary-dark, #A98245)',
+                    }}
+                  >
+                    Open Workspace →
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-5 text-muted">
+              <p className="mb-2">No projects found in this category.</p>
+              <Button
+                size="sm"
+                variant="outline-success"
+                className="rounded-pill"
+                onClick={() => {
+                  setShowCategoryModal({ show: false, title: '', filter: 'all' });
+                  openCreateProject();
+                }}
+              >
+                <FaPlus size={10} /> Create New Project
+              </Button>
+            </div>
+          )}
+        </Modal.Body>
       </Modal>
 
     </Container>

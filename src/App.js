@@ -22,6 +22,7 @@ import Attendance from './Pages/Dashboard/Attendance';
 import Epfo from './Pages/Dashboard/Epfo';
 import Login from './view/Login';
 import ProjectManagement from './Pages/Dashboard/ProjectManagement';
+import TasksPage from './Pages/Dashboard/TasksPage';
 import AssetManagement from './Pages/Dashboard/AssetManagement';
 import InitialSetupPage from './Pages/Dashboard/InitialSetupPage';
 import LifecycleManagement from './Pages/Dashboard/LifecycleManagement';
@@ -148,7 +149,7 @@ function App() {
           {/* Standalone One-Time Setup Route */}
           <Route path="/setup" element={<InitialSetupPage />} />
 
-          {/* Public Login Route */}
+          {/* Public Login & Signup Routes */}
           <Route
             path="/login"
             element={
@@ -157,7 +158,19 @@ function App() {
               ) : setupRequired === true ? (
                 <Navigate to="/setup" replace />
               ) : (
-                <Login onLogin={() => handleLogin(true)} />
+                <Login onLogin={() => handleLogin(true)} initialMode="signin" />
+              )
+            }
+          />
+          <Route
+            path="/signup"
+            element={
+              isAuthenticated ? (
+                <Navigate to="/dashboard" replace />
+              ) : setupRequired === true ? (
+                <Navigate to="/setup" replace />
+              ) : (
+                <Login onLogin={() => handleLogin(true)} initialMode="signup" />
               )
             }
           />
@@ -178,6 +191,8 @@ function App() {
               <Route path="/assets" element={<AssetManagement />} />
               <Route path="/attendance" element={<Attendance />} />
               <Route path="/projects" element={<ProjectManagement />} />
+              <Route path="/projects/tasks" element={<TasksPage />} />
+              <Route path="/tasks" element={<TasksPage />} />
               <Route path="/epfo" element={<Epfo />} />
               <Route path="/lifecycle" element={<LifecycleManagement />} />
               <Route path="/resignation" element={<LifecycleManagement />} />

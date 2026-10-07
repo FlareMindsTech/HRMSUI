@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  MdSearch,
   MdNotifications,
   MdKeyboardArrowDown,
   MdLogout,
@@ -21,7 +20,6 @@ function Header({ isMobile }) {
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const dispatch = useDispatch();
   const {
-    organization,
     branches,
     accessLevel,
     selectedBranchId,
@@ -30,8 +28,6 @@ function Header({ isMobile }) {
   } = useBranch();
   const navigate = useNavigate();
 
-  const [searchVal, setSearchVal] = useState('');
-  const [searchFocus, setFocus] = useState(false);
   const [notifCount] = useState(3);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
@@ -40,8 +36,6 @@ function Header({ isMobile }) {
   const profileMenuRef = useRef(null);
   const notifMenuRef = useRef(null);
   const branchMenuRef = useRef(null);
-
-  const orgDisplayName = organization?.organizationName || organization?.displayName || organization?.legalName || "Organization";
 
   const fullName = user?.firstName
     ? `${user.firstName} ${user.lastName || ''}`.trim()
@@ -80,58 +74,18 @@ function Header({ isMobile }) {
 
   return (
     <header className="header-container">
-      {/* ── Left: Search Bar or Mobile Brand ── */}
+      {/* ── Left: Mobile Brand (or empty spacer) ── */}
       {isMobile ? (
         <div className="header-mobile-brand">
           <span className="header-mobile-brand-icon">T</span>
           <span className="header-mobile-brand-text">TeamHub</span>
         </div>
       ) : (
-        <div className={`header-search-wrap ${searchFocus ? 'header-search-wrap--focused' : ''}`}>
-          <MdSearch className="header-search-icon" />
-          <input
-            className="header-search-input"
-            placeholder="Search employees, projects, modules..."
-            value={searchVal}
-            onFocus={() => setFocus(true)}
-            onBlur={() => setFocus(false)}
-            onChange={e => setSearchVal(e.target.value)}
-          />
-          <span className="header-search-kbd">/</span>
-        </div>
+        <div className="header-left-spacer" />
       )}
 
-      {/* ── Right: Organization, Branch Switcher, Notifications & Profile ── */}
+      {/* ── Right: Branch Switcher, Notifications & Profile ── */}
       <div className="header-right-actions">
-        {/* Organization Indicator */}
-        {organization && (
-          <div
-            className="header-org-chip"
-            onClick={() => (isSystemAdmin || user?.roleCode === 'OWNER') && navigate('/organisation')}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                if (isSystemAdmin || user?.roleCode === 'OWNER') navigate('/organisation');
-              }
-            }}
-            title={`Organization: ${orgDisplayName}`}
-            role="button"
-            tabIndex={0}
-          >
-            <div className="header-org-icon-wrap">
-              <FaBuilding size={12} />
-            </div>
-            {!isMobile && (
-              <div className="header-org-info">
-                <span className="header-org-name">{orgDisplayName}</span>
-                {organization.organizationCode && (
-                  <span className="header-org-code">{organization.organizationCode}</span>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Dynamic Branch Selector Dropdown */}
         {branches.length > 0 && (
           <div className="header-menu-anchor" ref={branchMenuRef}>

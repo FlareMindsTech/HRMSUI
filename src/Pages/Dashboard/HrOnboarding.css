@@ -996,17 +996,18 @@
 }
 
 .onboarding-step-badge {
-  background: var(--color-sidebar, #1C1D1D) !important;
-  color: var(--color-primary-light, #E2C278) !important;
-  border: 1px solid rgba(196, 154, 85, 0.4) !important;
+  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 100%) !important;
+  color: var(--color-text, #1C1D1D) !important;
+  border: 1px solid rgba(196, 154, 85, 0.6) !important;
   font-size: 11px !important;
   font-weight: 700 !important;
   letter-spacing: 0.6px !important;
-  padding: 6px 14px !important;
-  border-radius: var(--radius-xl, 20px) !important;
-  font-family: var(--bs-font-monospace) !important;
+  padding: 5px 14px !important;
+  border-radius: 9999px !important;
   text-transform: uppercase !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  box-shadow: 0 2px 8px rgba(196, 154, 85, 0.25) !important;
 }
 
 .onboarding-employer-badge {
@@ -1349,29 +1350,98 @@
   align-items: center !important;
 }
 
+/* ── HRMS Themed Stepper & Step Tabs Navigation ── */
+.onboarding-step-tabs-container {
+  width: 100%;
+}
+
+.onboarding-step-tabs-nav {
+  background: var(--color-background, #FAF7F0) !important;
+  border: 1px solid var(--color-border, #E5E0D7) !important;
+  border-radius: 14px !important;
+  padding: 6px !important;
+  display: flex !important;
+  width: 100% !important;
+  gap: 8px !important;
+  align-items: center !important;
+}
+
+.onboarding-step-tabs-nav::-webkit-scrollbar {
+  display: none !important;
+}
+
+.onboarding-step-tabs-nav .nav-item {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  display: flex !important;
+  margin: 0 2px !important;
+}
+
 .onboarding-step-nav-link {
-  font-size: 12px !important;
-  font-weight: 600 !important;
-  padding: 8px 14px !important;
+  width: 100% !important;
+  padding: 9px 10px !important;
   border-radius: 10px !important;
+  background: transparent !important;
   color: var(--color-secondary-text, #77736B) !important;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
   text-decoration: none !important;
   border: 1px solid transparent !important;
   cursor: pointer !important;
+  white-space: nowrap !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  position: relative !important;
+  user-select: none !important;
 }
 
+.onboarding-step-nav-link .onboarding-tab-icon {
+  font-size: 13px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  color: var(--color-secondary-text, #77736B) !important;
+  transition: all 0.2s ease !important;
+  flex-shrink: 0 !important;
+}
+
+.onboarding-step-nav-link .onboarding-tab-label {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+  color: inherit !important;
+  white-space: nowrap !important;
+}
+
+/* Hover State */
 .onboarding-step-nav-link:hover:not(.active) {
-  background: rgba(196, 154, 85, 0.08) !important;
+  background: rgba(196, 154, 85, 0.14) !important;
   color: var(--color-text, #1C1D1D) !important;
 }
 
-.onboarding-step-nav-link.active {
-  background: var(--color-sidebar, #1C1D1D) !important;
-  color: var(--color-primary-light, #E2C278) !important;
-  border: 1px solid rgba(196, 154, 85, 0.5) !important;
+.onboarding-step-nav-link:hover:not(.active) .onboarding-tab-icon {
+  color: var(--color-primary, #C49A55) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Active State (HRMS Official Gold Gradient Theme) */
+.onboarding-step-nav-link.active,
+.nav-pills .nav-link.onboarding-step-nav-link.active {
+  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%) !important;
+  color: var(--color-text, #1C1D1D) !important;
+  border: 1px solid rgba(196, 154, 85, 0.6) !important;
   font-weight: 700 !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 4px 14px rgba(196, 154, 85, 0.35) !important;
+}
+
+.onboarding-step-nav-link.active .onboarding-tab-icon {
+  color: var(--color-text, #1C1D1D) !important;
+  transform: scale(1.08) !important;
+}
+
+.onboarding-step-nav-link.active .onboarding-tab-label {
+  color: var(--color-text, #1C1D1D) !important;
+  font-weight: 700 !important;
 }
 
 .onboarding-checklist-row {
@@ -2036,10 +2106,42 @@
   opacity: 0.45 !important;
 }
 
+/* ── Date Picker Input Polish ── */
+.onboarding-container input[type="date"],
+.onboarding-form input[type="date"] {
+  position: relative;
+  cursor: pointer;
+  padding-right: 10px;
+  color: var(--color-text, #1C1D1D);
+}
 
+.onboarding-container input[type="date"]::-webkit-calendar-picker-indicator,
+.onboarding-form input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.65;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
+.onboarding-container input[type="date"]::-webkit-calendar-picker-indicator:hover,
+.onboarding-form input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  background-color: rgba(196, 154, 85, 0.15);
+  transform: scale(1.1);
+}
 
-
+/* ── Remove Bootstrap's overlapping red validation circle icon from date inputs ── */
+.onboarding-container input[type="date"].is-invalid,
+.onboarding-form input[type="date"].is-invalid,
+.onboarding-container .form-control[type="date"].is-invalid,
+.onboarding-form .form-control[type="date"].is-invalid,
+input[type="date"].is-invalid,
+.form-control[type="date"].is-invalid,
+.was-validated .form-control[type="date"]:invalid {
+  background-image: none !important;
+  padding-right: 10px !important;
+}
 
 
 

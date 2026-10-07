@@ -6,6 +6,7 @@ import directoryReducer from './slices/directorySlice';
 import organizationReducer from './slices/organizationSlice';
 import assetsReducer from './slices/assetsSlice';
 import onboardingReducer from './slices/onboardingSlice';
+import tasksReducer from './slices/tasksSlice';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     organization: organizationReducer,
     assets: assetsReducer,
     onboarding: onboardingReducer,
+    tasks: tasksReducer,
   },
 });
 

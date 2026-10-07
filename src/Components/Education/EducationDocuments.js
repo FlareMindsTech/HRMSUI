@@ -141,17 +141,35 @@ function EducationDocuments({
             return (
               <Col lg={4} md={6} xs={12} key={item.id}>
                 <div
-                  className={`p-3 rounded-3 border h-100 d-flex flex-column justify-content-between ${
-                    hasDoc ? "bg-white border-success-subtle shadow-xs" : "bg-light border-secondary-subtle opacity-75"
-                  }`}
+                  className="p-3 rounded-3 border h-100 d-flex flex-column justify-content-between transition-all"
+                  style={{
+                    background: hasDoc
+                      ? "linear-gradient(135deg, #FFFFFF 0%, #FAF7F0 100%)"
+                      : "#FFFFFF",
+                    borderColor: hasDoc ? "rgba(196, 154, 85, 0.35)" : "rgba(0, 0, 0, 0.1)",
+                    boxShadow: hasDoc ? "0 2px 8px rgba(196, 154, 85, 0.08)" : "none",
+                  }}
                 >
                   <div>
                     <div className="d-flex align-items-center justify-content-between mb-2">
                       <span className="extra-small fw-bold text-muted text-uppercase">{item.level}</span>
                       {hasDoc ? (
-                        <Badge bg="success-subtle" className="text-success border border-success-subtle extra-small rounded-pill">
-                          <FaCheckCircle className="me-1" /> {item.file ? "Ready to Upload" : "Attached"}
-                        </Badge>
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            color: item.file ? "#9B7229" : "#166534",
+                            background: item.file ? "rgba(196, 154, 85, 0.14)" : "rgba(22, 101, 52, 0.09)",
+                            border: `1px solid ${item.file ? "rgba(196, 154, 85, 0.35)" : "rgba(22, 101, 52, 0.25)"}`,
+                            padding: "2px 9px",
+                            borderRadius: "9999px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <FaCheckCircle size={10} color={item.file ? "#9B7229" : "#166534"} /> {item.file ? "Ready to Upload" : "Attached"}
+                        </span>
                       ) : item.mandatory ? (
                         <Badge bg="danger-subtle" className="text-danger border border-danger-subtle extra-small rounded-pill">
                           <FaExclamationCircle className="me-1" /> Required
@@ -164,7 +182,17 @@ function EducationDocuments({
                     </div>
 
                     <div className="d-flex align-items-center gap-2.5 my-2">
-                      {getDocIcon(item.file?.name || item.docUrl || "")}
+                      <div
+                        className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                        style={{
+                          width: "36px",
+                          height: "36px",
+                          background: "rgba(196, 154, 85, 0.12)",
+                          border: "1px solid rgba(196, 154, 85, 0.25)",
+                        }}
+                      >
+                        {getDocIcon(item.file?.name || item.docUrl || "")}
+                      </div>
                       <div className="text-truncate">
                         <div className="small fw-bold text-dark text-truncate">{item.title}</div>
                         <span className="extra-small text-muted text-truncate d-block">
@@ -176,23 +204,27 @@ function EducationDocuments({
 
                   {hasDoc && (
                     <div className="d-flex align-items-center gap-2 pt-2 border-top mt-2">
-                      <Button
-                        variant="outline-primary"
-                        size="sm"
-                        className="py-0 px-2 extra-small rounded-pill flex-grow-1"
+                      <button
+                        type="button"
+                        className="btn btn-sm py-1 px-2 extra-small rounded-pill flex-grow-1 d-inline-flex align-items-center justify-content-center gap-1 fw-semibold"
+                        style={{
+                          background: "linear-gradient(135deg, #E2C278 0%, #C49A55 100%)",
+                          color: "#1C1D1D",
+                          border: "1px solid #C49A55",
+                        }}
                         onClick={() => handlePreview(item)}
                       >
-                        <FaEye className="me-1" /> View
-                      </Button>
+                        <FaEye size={11} /> View
+                      </button>
                       {fullUrl && (
                         <a
                           href={fullUrl}
                           download
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="btn btn-outline-secondary btn-sm py-0 px-2 extra-small rounded-pill"
+                          className="btn btn-outline-secondary btn-sm py-1 px-2 extra-small rounded-pill"
                         >
-                          <FaDownload />
+                          <FaDownload size={11} />
                         </a>
                       )}
                     </div>
