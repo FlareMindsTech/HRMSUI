@@ -9418,7 +9418,7 @@ function HrOnboarding() {
                                         <Row className="g-3 mb-2">
                                           <Col md={4} sm={6}>
                                             <Form.Group>
-                                              <Form.Label className="extra-small fw-bold">JOINING DATE</Form.Label>
+                                              <Form.Label className="extra-small fw-bold">JOINING DATE <span className="text-danger">*</span></Form.Label>
                                               <Form.Control
                                                 size="sm"
                                                 type="date"
@@ -9483,7 +9483,7 @@ function HrOnboarding() {
                                         <Row className="g-2 mb-2">
                                           <Col md={4}>
                                             <Form.Group>
-                                              <Form.Label className="extra-small fw-bold">COMPANY NAME</Form.Label>
+                                              <Form.Label className="extra-small fw-bold">COMPANY NAME <span className="text-danger">*</span></Form.Label>
                                               <Form.Control
                                                 size="sm"
                                                 placeholder="Company Name (e.g. FlareMinds Tech)"
@@ -9498,7 +9498,7 @@ function HrOnboarding() {
                                           </Col>
                                           <Col md={4}>
                                             <Form.Group>
-                                              <Form.Label className="extra-small fw-bold">COMPANY WEBSITE / LINKEDIN</Form.Label>
+                                              <Form.Label className="extra-small fw-bold">COMPANY WEBSITE / LINKEDIN <span className="text-danger">*</span></Form.Label>
                                               <Form.Control
                                                 size="sm"
                                                 placeholder="https://..."
@@ -9532,7 +9532,7 @@ function HrOnboarding() {
                                         <Row className="g-2 mb-2">
                                           <Col md={4}>
                                             <Form.Group>
-                                              <Form.Label className="extra-small fw-bold">DEPARTMENT</Form.Label>
+                                              <Form.Label className="extra-small fw-bold">DEPARTMENT <span className="text-danger">*</span></Form.Label>
                                               <Form.Select
                                                 size="sm"
                                                 value={prof.department || ""}
@@ -9559,7 +9559,7 @@ function HrOnboarding() {
                                           </Col>
                                           <Col md={4}>
                                             <Form.Group>
-                                              <Form.Label className="extra-small fw-bold">DESIGNATION</Form.Label>
+                                              <Form.Label className="extra-small fw-bold">DESIGNATION <span className="text-danger">*</span></Form.Label>
                                               <Form.Select
                                                 size="sm"
                                                 value={prof.designation || ""}
@@ -9586,7 +9586,7 @@ function HrOnboarding() {
                                           </Col>
                                           <Col md={4}>
                                             <Form.Group>
-                                              <Form.Label className="extra-small fw-bold">ROLE / POSITION</Form.Label>
+                                              <Form.Label className="extra-small fw-bold">ROLE / POSITION <span className="text-danger">*</span></Form.Label>
                                               <Form.Control
                                                 size="sm"
                                                 placeholder="e.g. Full Stack Lead"
@@ -9645,7 +9645,7 @@ function HrOnboarding() {
                                         <Row className="g-2 mb-2">
                                           <Col md={6}>
                                             <Form.Group>
-                                              <Form.Label className="extra-small fw-bold">JOINING DATE</Form.Label>
+                                              <Form.Label className="extra-small fw-bold">JOINING DATE <span className="text-danger">*</span></Form.Label>
                                               <Form.Control
                                                 size="sm"
                                                 type="date"
@@ -9686,7 +9686,7 @@ function HrOnboarding() {
                                         <Row className="g-2 mb-2">
                                           <Col md={4}>
                                             <Form.Group>
-                                              <Form.Label className="extra-small fw-bold">NOTICE PERIOD</Form.Label>
+                                              <Form.Label className="extra-small fw-bold">NOTICE PERIOD <span className="text-danger">*</span></Form.Label>
                                               <Form.Select
                                                 size="sm"
                                                 value={prof.noticePeriod || ""}
@@ -9707,7 +9707,7 @@ function HrOnboarding() {
                                           </Col>
                                           <Col md={4}>
                                             <Form.Group>
-                                              <Form.Label className="extra-small fw-bold">EXPECTED LAST WORKING DATE</Form.Label>
+                                              <Form.Label className="extra-small fw-bold">EXPECTED LAST WORKING DATE <span className="text-danger">*</span></Form.Label>
                                               <Form.Control
                                                 size="sm"
                                                 type="date"
