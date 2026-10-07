@@ -39,11 +39,13 @@ function AttendanceCard() {
   const hasPermission = useHasPermission();
   const roleCode = (user?.roleCode || user?.roleName || '').toUpperCase();
   const isAdminOrOwner = roleCode.includes('ADMIN') || roleCode.includes('OWNER') || user?.priority === 1;
-  const canPunchIn = !isAdminOrOwner && (hasPermission('attendance.punch_in') || roleCode.includes('EMPLOYEE') || roleCode.includes('HR'));
-  const canPunchOut = !isAdminOrOwner && (hasPermission('attendance.punch_out') || roleCode.includes('EMPLOYEE') || roleCode.includes('HR'));
 
   const [attendance, setAttendance] = useState(null);
   const [attendanceMode, setAttendanceMode] = useState('GEOFENCE');
+  const isManualMode = String(attendanceMode || '').toUpperCase() === 'MANUAL';
+  const canPunchIn = !isAdminOrOwner && !isManualMode && (hasPermission('attendance.punch_in') || roleCode.includes('EMPLOYEE') || roleCode.includes('HR'));
+  const canPunchOut = !isAdminOrOwner && !isManualMode && (hasPermission('attendance.punch_out') || roleCode.includes('EMPLOYEE') || roleCode.includes('HR'));
+
   const [loading, setLoading] = useState(true);
   const [actionInProgress, setActionInProgress] = useState(false);
   const [actionStageText, setActionStageText] = useState('');
@@ -77,8 +79,8 @@ function AttendanceCard() {
   const isPingingRef = useRef(false);
 
   useEffect(() => {
-    // Only active if employee has punched in, not punched out, is not Admin/Owner, and requires Geofence
-    const hasActiveAttendance = Boolean(attendance?._id && !attendance?.logoutTime && !isAdminOrOwner && attendanceMode !== 'STATIC_IP');
+    // Only active if employee has punched in, not punched out, is not Admin/Owner, and requires Geofence (not STATIC_IP or MANUAL)
+    const hasActiveAttendance = Boolean(attendance?._id && !attendance?.logoutTime && !isAdminOrOwner && attendanceMode !== 'STATIC_IP' && !isManualMode);
     if (!hasActiveAttendance) {
       return;
     }
@@ -131,11 +133,11 @@ function AttendanceCard() {
       isMounted = false;
       clearInterval(intervalId);
     };
-  }, [attendance?._id, attendance?.logoutTime, isAdminOrOwner, attendanceMode]);
+  }, [attendance?._id, attendance?.logoutTime, isAdminOrOwner, attendanceMode, isManualMode]);
 
   // ── Handle Punch In Action ──
   const handlePunchIn = async () => {
-    if (actionInProgress || !canPunchIn) return;
+    if (actionInProgress || !canPunchIn || isManualMode) return;
 
     setActionInProgress(true);
     setErrorMessage('');
@@ -205,7 +207,7 @@ function AttendanceCard() {
 
   // ── Handle Punch Out Action ──
   const handlePunchOut = async () => {
-    if (actionInProgress || !canPunchOut) return;
+    if (actionInProgress || !canPunchOut || isManualMode) return;
 
     setActionInProgress(true);
     setErrorMessage('');
@@ -348,8 +350,27 @@ function AttendanceCard() {
             <div className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 att-card-state1-icon">
               <FaClock size={30} />
             </div>
-            <h6 className="fw-bold text-dark mb-1">Ready to start your day?</h6>
-            {attendanceMode === 'STATIC_IP' ? (
+            {isManualMode ? (
+              <div>
+                <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-1 rounded-pill mb-2 d-inline-flex align-items-center gap-1 fw-semibold extra-small">
+                  <FaShieldAlt /> Manual Override Only
+                </span>
+                <h6 className="fw-bold text-dark mb-1">Attendance Managed by HR</h6>
+                <p className="text-muted small mb-3 mx-auto att-card-state1-desc">
+                  Direct attendance punch is disabled for this organization/branch. Attendance records are recorded and managed manually by HR/Admin.
+                </p>
+                <div className="d-flex align-items-center justify-content-center gap-2">
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    className="rounded-pill px-3 py-1 fw-semibold"
+                    onClick={() => navigate('/attendance')}
+                  >
+                    View Attendance Records
+                  </Button>
+                </div>
+              </div>
+            ) : attendanceMode === 'STATIC_IP' ? (
               <div>
                 <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 rounded-pill mb-2 d-inline-flex align-items-center gap-1 fw-semibold extra-small">
                   <FaWifi /> Office Network Attendance
@@ -368,36 +389,41 @@ function AttendanceCard() {
                 </p>
               </div>
             ) : (
-              <p className="text-muted small mb-4 mx-auto att-card-state1-desc">
-                You have not punched in for today yet. Record your start time with verified location.
-              </p>
+              <div>
+                <h6 className="fw-bold text-dark mb-1">Ready to start your day?</h6>
+                <p className="text-muted small mb-4 mx-auto att-card-state1-desc">
+                  You have not punched in for today yet. Record your start time with verified location.
+                </p>
+              </div>
             )}
-            <div>
-              {canPunchIn ? (
-                <Button
-                  variant="success"
-                  className="btn-punch-in px-4 py-2 rounded-pill fw-bold shadow-sm"
-                  onClick={handlePunchIn}
-                  disabled={actionInProgress}
-                >
-                  {actionInProgress ? (
-                    <span className="d-inline-flex align-items-center gap-2">
-                      <LoadingSpinner variant="button" size="sm" />
-                      <span>{actionStageText || 'Processing...'}</span>
-                    </span>
-                  ) : (
-                    <span className="d-inline-flex align-items-center gap-2">
-                      <FaSignInAlt />
-                      <span>Punch In Now</span>
-                    </span>
-                  )}
-                </Button>
-              ) : (
-                <div className="text-muted small py-2 px-3 bg-light rounded-pill d-inline-block fw-semibold border">
-                  {isAdminOrOwner ? 'Management user — shift punch not required' : 'Punch actions not enabled for this account'}
-                </div>
-              )}
-            </div>
+            {!isManualMode && (
+              <div>
+                {canPunchIn ? (
+                  <Button
+                    variant="success"
+                    className="btn-punch-in px-4 py-2 rounded-pill fw-bold shadow-sm"
+                    onClick={handlePunchIn}
+                    disabled={actionInProgress}
+                  >
+                    {actionInProgress ? (
+                      <span className="d-inline-flex align-items-center gap-2">
+                        <LoadingSpinner variant="button" size="sm" />
+                        <span>{actionStageText || 'Processing...'}</span>
+                      </span>
+                    ) : (
+                      <span className="d-inline-flex align-items-center gap-2">
+                        <FaSignInAlt />
+                        <span>Punch In Now</span>
+                      </span>
+                    )}
+                  </Button>
+                ) : (
+                  <div className="text-muted small py-2 px-3 bg-light rounded-pill d-inline-block fw-semibold border">
+                    {isAdminOrOwner ? 'Management user — shift punch not required' : 'Punch actions not enabled for this account'}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : !attendance.logoutTime ? (
           /* ======================================================
@@ -444,7 +470,7 @@ function AttendanceCard() {
               </div>
             </div>
 
-            {canPunchOut && (
+            {canPunchOut ? (
               <div className="text-center">
                 <Button
                   variant="danger"
@@ -465,7 +491,13 @@ function AttendanceCard() {
                   )}
                 </Button>
               </div>
-            )}
+            ) : isManualMode ? (
+              <div className="text-center">
+                <div className="text-muted small py-2 px-3 bg-light rounded-pill d-inline-block fw-semibold border">
+                  Punch Out is managed manually by HR/Admin
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : (
           /* ======================================================

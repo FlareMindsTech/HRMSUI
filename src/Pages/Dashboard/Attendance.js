@@ -7,7 +7,7 @@ import {
   FaSearch, FaEdit, FaHistory, FaUser, FaChevronLeft, FaChevronRight,
   FaUsers, FaChartLine, FaMapMarkerAlt, FaExclamationCircle, FaArrowLeft, FaPlus,
   FaCalendarPlus, FaShieldAlt, FaInfoCircle, FaBuilding, FaSitemap, FaFileAlt,
-  FaFileContract, FaCheck, FaTimes, FaFilter, FaDownload, FaCrosshairs, FaCheckDouble, FaCog
+  FaFileContract, FaCheck, FaTimes, FaFilter, FaDownload, FaCrosshairs, FaCheckDouble, FaUmbrellaBeach
 } from 'react-icons/fa';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectAuthUser } from '../../redux/slices/authSlice';
@@ -37,18 +37,16 @@ import {
   submitRegularizationRequest,
   reviewRegularizationRequest,
   fetchMyTeamAttendance,
-  fetchAttendanceSettings,
-  updateAttendanceSettings,
   formatAttendanceError
 } from '../../Api/Attendance/attendance';
-import { fetchBranchesDropdown, fetchMyOrganizationsList } from '../../services/organizationService';
+import { fetchBranchesDropdown } from '../../services/organizationService';
 import {
   fetchOrgResource,
-  invalidateOrgResource,
   selectAttendancePolicy,
   selectDepartmentsDropdown,
 } from '../../redux/slices/organizationSlice';
 import { formatTime, formatFullDate } from '../../utils/dateFormatter';
+import OptionalHolidays from './OptionalHolidays';
 import './Attendance.css';
 
 // ── Calendar Helper Utilities ──
@@ -360,104 +358,26 @@ function Attendance() {
   const [exceptionsLoading, setExceptionsLoading] = useState(false);
   const [overtimeList, setOvertimeList] = useState([]);
   const [overtimeLoading, setOvertimeLoading] = useState(false);
+  const [overtimePage, setOvertimePage] = useState(1);
+  const [overtimeTotalPages, setOvertimeTotalPages] = useState(1);
+  const [overtimeTotal, setOvertimeTotal] = useState(0);
   const [auditLogList, setAuditLogList] = useState([]);
   const [auditLogLoading, setAuditLogLoading] = useState(false);
+  const [auditLogPage, setAuditLogPage] = useState(1);
+  const [auditLogTotalPages, setAuditLogTotalPages] = useState(1);
+  const [auditLogTotal, setAuditLogTotal] = useState(0);
   const [regularizationList, setRegularizationList] = useState([]);
   const [regularizationLoading, setRegularizationLoading] = useState(false);
   const [attendancePolicy, setAttendancePolicy] = useState(null);
+  const [effectiveAttendanceMode, setEffectiveAttendanceMode] = useState('');
+  const isManualMode = (effectiveAttendanceMode || attendancePolicy?.attendanceMode || '').toUpperCase() === 'MANUAL';
   const dispatch = useDispatch();
   // Shared default-scope attendance policy + departments (single guarded
   // fetches); scoped per-org policy reads stay direct service calls.
   const attendancePolicyBody = useSelector(selectAttendancePolicy);
   const departmentsShared = useSelector(selectDepartmentsDropdown);
 
-  // ── Multi-Organization Policy States (Phase 4A) ──
-  const [organizationsList, setOrganizationsList] = useState([]);
-  const [selectedOrgId, setSelectedOrgId] = useState('');
-  const [settingsForm, setSettingsForm] = useState({
-    timeZone: 'Asia/Kolkata',
-    standardWorkingMinutes: 510,
-    halfDayMinutes: 270,
-    lateCutoff: '09:15 AM',
-    gracePeriodMinutes: 15,
-    overtimeEnabled: true,
-    overtimeStartAfterMinutes: 510,
-    minimumOvertimeMinutes: 30,
-    maximumOvertimeMinutes: 240,
-    autoCloseEnabled: true,
-    autoCloseCutoffHours: 12,
-    attendanceMode: 'GEOFENCE',
-    weekStartDay: 'Monday',
-  });
-  const [settingsSubmitting, setSettingsSubmitting] = useState(false);
-  const [settingsSuccessMsg, setSettingsSuccessMsg] = useState('');
-  const [settingsErrMsg, setSettingsErrMsg] = useState('');
-
-  // Fetch Organizations List for Owner
-  useEffect(() => {
-    if (isOwner) {
-      fetchMyOrganizationsList()
-        .then((list) => {
-          setOrganizationsList(list || []);
-          if (list && list.length > 0 && !selectedOrgId) {
-            setSelectedOrgId(list[0]._id);
-          }
-        })
-        .catch((err) => console.warn('Failed to load organizations list:', err.message));
-    }
-  }, [isOwner, selectedOrgId]);
-
-  const loadPolicySettings = useCallback(async (orgId) => {
-    const targetId = orgId || selectedOrgId || '';
-    try {
-      const res = await fetchAttendanceSettings(targetId);
-      if (res?.success && res.data) {
-        setAttendancePolicy(res.data);
-        setSettingsForm({
-          timeZone: res.data.timeZone || 'Asia/Kolkata',
-          standardWorkingMinutes: res.data.standardWorkingMinutes ?? 510,
-          halfDayMinutes: res.data.halfDayMinutes ?? 270,
-          lateCutoff: res.data.lateCutoff || '09:15 AM',
-          gracePeriodMinutes: res.data.gracePeriodMinutes ?? 15,
-          overtimeEnabled: res.data.overtimeEnabled ?? true,
-          overtimeStartAfterMinutes: res.data.overtimeStartAfterMinutes ?? 510,
-          minimumOvertimeMinutes: res.data.minimumOvertimeMinutes ?? 30,
-          maximumOvertimeMinutes: res.data.maximumOvertimeMinutes ?? 240,
-          autoCloseEnabled: res.data.autoCloseEnabled ?? true,
-          autoCloseCutoffHours: res.data.autoCloseCutoffHours ?? 12,
-          attendanceMode: res.data.attendanceMode || 'GEOFENCE',
-          weekStartDay: res.data.weekStartDay || 'Monday',
-        });
-      }
-    } catch (err) { console.warn("Settings load error:", err.message); }
-  }, [selectedOrgId]);
-
-  const handleSavePolicySettings = async (e) => {
-    e.preventDefault();
-    setSettingsSubmitting(true);
-    setSettingsSuccessMsg('');
-    setSettingsErrMsg('');
-    try {
-      const payload = {
-        ...(isOwner && selectedOrgId ? { organizationId: selectedOrgId } : {}),
-        ...settingsForm,
-      };
-      const res = await updateAttendanceSettings(payload);
-      if (res?.success) {
-        setSettingsSuccessMsg(res.message || 'Attendance policy updated successfully.');
-        if (res.data) setAttendancePolicy(res.data);
-        // The saved policy changed shared data: invalidate so other
-        // consumers (and the next guarded read) fetch fresh.
-        dispatch(invalidateOrgResource("attendancePolicy"));
-      }
-    } catch (err) {
-      setSettingsErrMsg(err.message || 'Failed to update attendance policy.');
-    } finally {
-      setSettingsSubmitting(false);
-    }
-  };
-
-  // Load organization attendance policy for punch action context (shared slice).
+  // Load organization attendance policy for operational punch context (consumed from shared Org slice).
   useEffect(() => {
     dispatch(fetchOrgResource({ key: "attendancePolicy" })).catch(() => null);
   }, [dispatch]);
@@ -530,7 +450,12 @@ function Attendance() {
   const loadTodayData = useCallback(async () => {
     try {
       const res = await fetchTodayAttendance();
-      if (res?.success) setTodayRecord(res.data);
+      if (res?.success) {
+        setTodayRecord(res.data);
+        if (res.attendanceMode) {
+          setEffectiveAttendanceMode(String(res.attendanceMode).toUpperCase());
+        }
+      }
     } catch (err) { console.warn("Today attendance load:", err.message); }
   }, []);
 
@@ -548,12 +473,12 @@ function Attendance() {
     setAnalyticsLoading(true);
     try {
       const res = await fetchAttendanceAnalytics({
-        branchId: branchFilter, departmentId: departmentFilter, locationId: locationFilter
+        branchId: branchFilter, departmentId: departmentFilter, locationId: locationFilter, date: dateFilter
       });
       if (res?.success) setAnalyticsData(res.data);
     } catch (err) { console.warn("Analytics load error:", err.message); }
     finally { setAnalyticsLoading(false); }
-  }, [branchFilter, departmentFilter, locationFilter]);
+  }, [branchFilter, departmentFilter, locationFilter, dateFilter]);
 
   const loadTeamRecords = useCallback(async () => {
     setTeamLoading(true);
@@ -602,21 +527,40 @@ function Attendance() {
     setOvertimeLoading(true);
     try {
       const res = await fetchOvertimeReport({
-        branchId: branchFilter, departmentId: departmentFilter
+        branchId: branchFilter,
+        departmentId: departmentFilter,
+        date: dateFilter,
+        search: debouncedSearch,
+        page: overtimePage,
+        limit: 15
       });
-      if (res?.success) setOvertimeList(res.data || []);
+      if (res?.success) {
+        setOvertimeList(res.data || []);
+        setOvertimeTotal(res.total || (res.data || []).length);
+        setOvertimeTotalPages(res.totalPages || 1);
+      }
     } catch (err) { console.warn("Overtime load error:", err.message); }
     finally { setOvertimeLoading(false); }
-  }, [branchFilter, departmentFilter]);
+  }, [branchFilter, departmentFilter, dateFilter, debouncedSearch, overtimePage]);
 
   const loadAuditLog = useCallback(async () => {
     setAuditLogLoading(true);
     try {
-      const res = await fetchAttendanceAuditLog({ search: debouncedSearch });
-      if (res?.success) setAuditLogList(res.data || []);
+      const res = await fetchAttendanceAuditLog({
+        search: debouncedSearch,
+        branchId: branchFilter,
+        departmentId: departmentFilter,
+        page: auditLogPage,
+        limit: 15
+      });
+      if (res?.success) {
+        setAuditLogList(res.data || []);
+        setAuditLogTotal(res.total || (res.data || []).length);
+        setAuditLogTotalPages(res.totalPages || 1);
+      }
     } catch (err) { console.warn("Audit log load error:", err.message); }
     finally { setAuditLogLoading(false); }
-  }, [debouncedSearch]);
+  }, [debouncedSearch, branchFilter, departmentFilter, auditLogPage]);
 
   const loadRegularization = useCallback(async () => {
     setRegularizationLoading(true);
@@ -652,6 +596,13 @@ function Attendance() {
 
   // Handle Punch In / Punch Out Action
   const handlePunchAction = async () => {
+    if (isManualMode) {
+      setFeedbackMessage({
+        type: 'warning',
+        text: 'Direct attendance punch is disabled for this organization/branch. Please contact HR or use the regularization process.',
+      });
+      return;
+    }
     setPunchLoading(true);
     try {
       let coords = null;
@@ -812,6 +763,11 @@ function Attendance() {
               <FaShieldAlt className="me-1.5 text-info" /> Audit Log
             </Nav.Link>
           </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'optional-holidays'} onClick={() => setActiveTab('optional-holidays')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaUmbrellaBeach className="me-1.5 text-warning" /> Optional Holidays
+            </Nav.Link>
+          </Nav.Item>
         </Nav>
       )}
 
@@ -841,6 +797,16 @@ function Attendance() {
           <Nav.Item>
             <Nav.Link active={activeTab === 'overtime'} onClick={() => setActiveTab('overtime')} className="rounded-3 px-3 py-2 small fw-bold">
               <FaClock className="me-1.5" /> Overtime
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaShieldAlt className="me-1.5 text-info" /> Audit Log
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'optional-holidays'} onClick={() => setActiveTab('optional-holidays')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaUmbrellaBeach className="me-1.5 text-warning" /> Optional Holidays
             </Nav.Link>
           </Nav.Item>
         </Nav>
@@ -879,6 +845,11 @@ function Attendance() {
               <FaShieldAlt className="me-1.5 text-info" /> Audit Log
             </Nav.Link>
           </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'optional-holidays'} onClick={() => setActiveTab('optional-holidays')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaUmbrellaBeach className="me-1.5 text-warning" /> Optional Holidays
+            </Nav.Link>
+          </Nav.Item>
         </Nav>
       )}
 
@@ -903,6 +874,11 @@ function Attendance() {
           <Nav.Item>
             <Nav.Link active={activeTab === 'regularization'} onClick={() => setActiveTab('regularization')} className="rounded-3 px-3 py-2 small fw-bold">
               <FaFileContract className="me-1.5" /> Requests
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'optional-holidays'} onClick={() => setActiveTab('optional-holidays')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaUmbrellaBeach className="me-1.5 text-warning" /> Optional Holidays
             </Nav.Link>
           </Nav.Item>
         </Nav>
@@ -931,11 +907,16 @@ function Attendance() {
               <FaFileContract className="me-1.5" /> Regularization
             </Nav.Link>
           </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'optional-holidays'} onClick={() => setActiveTab('optional-holidays')} className="rounded-3 px-3 py-2 small fw-bold">
+              <FaUmbrellaBeach className="me-1.5 text-warning" /> Optional Holidays
+            </Nav.Link>
+          </Nav.Item>
         </Nav>
       )}
 
       {/* ── Organizational Scope Filter Bar (For Owner, Admin, HR) ── */}
-      {(isOwner || isAdmin || isHR) && (activeTab === 'overview' || activeTab === 'daily' || activeTab === 'exceptions') && (
+      {(isOwner || isAdmin || isHR) && (activeTab === 'overview' || activeTab === 'daily' || activeTab === 'exceptions' || activeTab === 'overtime' || activeTab === 'audit') && (
         <Card className="border-0 shadow-sm rounded-4 p-3 mb-3 bg-white">
           <Row className="g-2 align-items-center">
             {isOwner && (
@@ -1030,51 +1011,59 @@ function Attendance() {
         <>
           {/* Top KPI Cards (7 Cards Grid as specified by prompt) */}
           <Row className="g-3 mb-3">
-            <Col lg={2} md={4} sm={6}>
-              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center">
+            <Col xs={6} sm={4} md={3} lg>
+              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center h-100">
                 <div className="text-muted extra-small fw-bold text-uppercase">Employees</div>
                 <div className="h3 fw-bold text-dark my-1">{analyticsData?.totalEmployees || 0}</div>
                 <div className="extra-small text-muted">In Scope</div>
               </Card>
             </Col>
 
-            <Col lg={2} md={4} sm={6}>
-              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-success border-4">
+            <Col xs={6} sm={4} md={3} lg>
+              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-success border-4 h-100">
                 <div className="text-success extra-small fw-bold text-uppercase">Present</div>
                 <div className="h3 fw-bold text-success my-1">{analyticsData?.presentToday || 0}</div>
                 <div className="extra-small text-muted">Checked In</div>
               </Card>
             </Col>
 
-            <Col lg={2} md={4} sm={6}>
-              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-info border-4">
+            <Col xs={6} sm={4} md={3} lg>
+              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-info border-4 h-100">
                 <div className="text-info extra-small fw-bold text-uppercase">Working</div>
                 <div className="h3 fw-bold text-info my-1">{analyticsData?.currentlyWorking || 0}</div>
                 <div className="extra-small text-muted">Currently Active</div>
               </Card>
             </Col>
 
-            <Col lg={2} md={4} sm={6}>
-              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-danger border-4">
+            <Col xs={6} sm={4} md={3} lg>
+              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-danger border-4 h-100">
                 <div className="text-danger extra-small fw-bold text-uppercase">Absent</div>
                 <div className="h3 fw-bold text-danger my-1">{analyticsData?.absentToday || 0}</div>
                 <div className="extra-small text-muted">Not Checked In</div>
               </Card>
             </Col>
 
-            <Col lg={2} md={4} sm={6}>
-              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-warning border-4">
+            <Col xs={6} sm={4} md={3} lg>
+              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-warning border-4 h-100">
                 <div className="text-warning extra-small fw-bold text-uppercase">Late</div>
                 <div className="h3 fw-bold text-warning my-1">{analyticsData?.lateToday || 0}</div>
-                <div className="extra-small text-muted">&gt; 15m Cutoff</div>
+                <div className="extra-small text-muted">After Cutoff</div>
               </Card>
             </Col>
 
-            <Col lg={2} md={4} sm={6}>
-              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-purple border-4">
+            <Col xs={6} sm={4} md={3} lg>
+              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-purple border-4 h-100">
                 <div className="text-purple extra-small fw-bold text-uppercase">Half Day</div>
                 <div className="h3 fw-bold text-purple my-1">{analyticsData?.halfDayToday || 0}</div>
-                <div className="extra-small text-muted">&lt; 8.5 Hours</div>
+                <div className="extra-small text-muted">Below Threshold</div>
+              </Card>
+            </Col>
+
+            <Col xs={6} sm={4} md={3} lg>
+              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-primary border-4 h-100">
+                <div className="text-primary extra-small fw-bold text-uppercase">Attendance %</div>
+                <div className="h3 fw-bold text-primary my-1">{analyticsData?.attendancePercentage ?? 0}%</div>
+                <div className="extra-small text-muted">Effective Rate</div>
               </Card>
             </Col>
           </Row>
@@ -1314,6 +1303,9 @@ function Attendance() {
                         size="sm"
                         onClick={() => {
                           setRegForm({
+                            employeeId: ex.employeeId,
+                            employeeName: ex.employeeName,
+                            employeeCode: ex.employeeCode,
                             date: ex.date,
                             requestType: ex.exceptionType === 'MISSING_PUNCH_OUT' ? 'MISSED_PUNCH_OUT' : 'STATUS_CORRECTION',
                             requestedStatus: 'Present',
@@ -1399,280 +1391,165 @@ function Attendance() {
       {/* ── TAB CONTENT 6: OVERTIME REPORT ── */}
       {activeTab === 'overtime' && (
         <Card className="border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
-          <h6 className="fw-bold mb-3 text-dark d-flex align-items-center gap-2">
-            <FaClock /> Overtime Hours Report
-          </h6>
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h6 className="fw-bold text-dark d-flex align-items-center gap-2 mb-0">
+              <FaClock /> Overtime Hours Report
+            </h6>
+            <Badge bg="primary-subtle" text="primary" className="px-2.5 py-1">
+              {overtimeTotal} Total OT Records
+            </Badge>
+          </div>
 
           {overtimeLoading ? (
             <div className="text-center py-4"><LoadingSpinner size="sm" /></div>
+          ) : overtimeList.length === 0 ? (
+            <div className="text-center py-5 text-muted">
+              <FaClock size={32} className="text-secondary opacity-50 mb-2" />
+              <p className="mb-0 fw-semibold">No Overtime Records Found</p>
+              <small className="text-muted">No overtime entries recorded matching the selected filter criteria.</small>
+            </div>
           ) : (
-            <Table hover responsive className="align-middle small">
-              <thead className="bg-light">
-                <tr>
-                  <th>Employee</th>
-                  <th>Department</th>
-                  <th>Date</th>
-                  <th>Regular Hours</th>
-                  <th>OT Hours</th>
-                  <th>Total Hours</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {overtimeList.map((ot) => (
-                  <tr key={ot.id}>
-                    <td className="fw-bold">{ot.employeeName} <span className="text-muted">({ot.employeeCode})</span></td>
-                    <td>{ot.department}</td>
-                    <td>{ot.date}</td>
-                    <td>{ot.regularHours} hrs</td>
-                    <td className="text-success fw-bold">+{ot.otHours} hrs ({ot.otMinutes} mins)</td>
-                    <td className="fw-bold">{ot.totalHours} hrs</td>
-                    <td>{renderStatusBadgeStatic(ot.status)}</td>
+            <>
+              <Table hover responsive className="align-middle small">
+                <thead className="bg-light">
+                  <tr>
+                    <th>Employee</th>
+                    <th>Department</th>
+                    <th>Date</th>
+                    <th>Regular Hours</th>
+                    <th>OT Hours</th>
+                    <th>Total Hours</th>
+                    <th>Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </Table>
+                </thead>
+                <tbody>
+                  {overtimeList.map((ot) => (
+                    <tr key={ot.id}>
+                      <td className="fw-bold">{ot.employeeName} <span className="text-muted">({ot.employeeCode})</span></td>
+                      <td>{ot.department}</td>
+                      <td>{ot.date}</td>
+                      <td>{ot.regularHours} hrs</td>
+                      <td className="text-success fw-bold">+{ot.otHours} hrs ({ot.otMinutes} mins)</td>
+                      <td className="fw-bold">{ot.totalHours} hrs</td>
+                      <td>{renderStatusBadgeStatic(ot.status)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+              {overtimeTotalPages > 1 && (
+                <div className="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                  <span className="small text-muted">
+                    Showing page {overtimePage} of {overtimeTotalPages} ({overtimeTotal} total records)
+                  </span>
+                  <div className="d-flex gap-2">
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      disabled={overtimePage <= 1}
+                      onClick={() => setOvertimePage((p) => Math.max(1, p - 1))}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      disabled={overtimePage >= overtimeTotalPages}
+                      onClick={() => setOvertimePage((p) => p + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </Card>
       )}
 
-      {/* ── TAB CONTENT 7: AUDIT LOG (OWNER ONLY) ── */}
-      {activeTab === 'audit' && (isOwner || isHR) && (
+      {/* ── TAB CONTENT 7: AUDIT LOG (OWNER, ADMIN & HR) ── */}
+      {activeTab === 'audit' && (isOwner || isAdmin || isHR) && (
         <Card className="border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
-          <h6 className="fw-bold mb-3 text-info d-flex align-items-center gap-2">
-            <FaShieldAlt /> Attendance Manual Correction Audit Trail
-          </h6>
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h6 className="fw-bold text-info d-flex align-items-center gap-2 mb-0">
+              <FaShieldAlt /> Attendance Manual Correction Audit Trail
+            </h6>
+            <Badge bg="info-subtle" text="info" className="px-2.5 py-1">
+              {auditLogTotal} Total Audit Entries
+            </Badge>
+          </div>
 
           {auditLogLoading ? (
             <div className="text-center py-4"><LoadingSpinner size="sm" /></div>
+          ) : auditLogList.length === 0 ? (
+            <div className="text-center py-5 text-muted">
+              <FaShieldAlt size={32} className="text-secondary opacity-50 mb-2" />
+              <p className="mb-0 fw-semibold">No Audit Entries Found</p>
+              <small className="text-muted">No attendance manual override changes match the current search or scope criteria.</small>
+            </div>
           ) : (
-            <Table hover responsive className="align-middle small">
-              <thead className="bg-light">
-                <tr>
-                  <th>Employee</th>
-                  <th>Date</th>
-                  <th>Modified By</th>
-                  <th>Field</th>
-                  <th>Old Value</th>
-                  <th>New Value</th>
-                  <th>Reason</th>
-                  <th>Timestamp</th>
-                </tr>
-              </thead>
-              <tbody>
-                {auditLogList.map((a, idx) => (
-                  <tr key={idx}>
-                    <td className="fw-bold">{a.employeeName}</td>
-                    <td>{a.date}</td>
-                    <td><Badge bg="secondary-subtle" text="dark">{a.modifiedByName}</Badge></td>
-                    <td>{a.field}</td>
-                    <td className="text-danger">{a.oldValue || '—'}</td>
-                    <td className="text-success fw-bold">{a.newValue || '—'}</td>
-                    <td className="text-muted">{a.reason}</td>
-                    <td className="extra-small text-muted">{new Date(a.modifiedAt).toLocaleString()}</td>
+            <>
+              <Table hover responsive className="align-middle small">
+                <thead className="bg-light">
+                  <tr>
+                    <th>Employee</th>
+                    <th>Date</th>
+                    <th>Modified By</th>
+                    <th>Field</th>
+                    <th>Old Value</th>
+                    <th>New Value</th>
+                    <th>Reason</th>
+                    <th>Timestamp</th>
                   </tr>
-                ))}
-              </tbody>
-            </Table>
+                </thead>
+                <tbody>
+                  {auditLogList.map((a, idx) => (
+                    <tr key={idx}>
+                      <td className="fw-bold">{a.employeeName}</td>
+                      <td>{a.date}</td>
+                      <td><Badge bg="secondary-subtle" text="dark">{a.modifiedByName}</Badge></td>
+                      <td>{a.field}</td>
+                      <td className="text-danger">{a.oldValue || '—'}</td>
+                      <td className="text-success fw-bold">{a.newValue || '—'}</td>
+                      <td className="text-muted">{a.reason}</td>
+                      <td className="extra-small text-muted">{new Date(a.modifiedAt).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+              {auditLogTotalPages > 1 && (
+                <div className="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                  <span className="small text-muted">
+                    Showing page {auditLogPage} of {auditLogTotalPages} ({auditLogTotal} total entries)
+                  </span>
+                  <div className="d-flex gap-2">
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      disabled={auditLogPage <= 1}
+                      onClick={() => setAuditLogPage((p) => Math.max(1, p - 1))}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      disabled={auditLogPage >= auditLogTotalPages}
+                      onClick={() => setAuditLogPage((p) => p + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </Card>
       )}
 
-      {/* ── TAB CONTENT 8: SETTINGS & POLICIES (OWNER / ADMIN / HR) ── */}
-      {activeTab === 'settings' && (isOwner || isAdmin || isHR) && (
-        <div>
-          {/* Organization Switcher (Owner Only) */}
-          {isOwner && organizationsList.length > 0 && (
-            <Card className="border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
-              <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
-                <div>
-                  <div className="fw-bold text-dark d-flex align-items-center gap-2">
-                    <FaBuilding className="text-primary" /> Target Organization Selection
-                  </div>
-                  <div className="extra-small text-muted">
-                    Select company organization to configure independent Attendance Policy parameters.
-                  </div>
-                </div>
-                <Form.Select
-                  size="sm"
-                  className="w-auto fw-bold text-primary border-primary rounded-3"
-                  value={selectedOrgId}
-                  onChange={(e) => {
-                    const newOrgId = e.target.value;
-                    setSelectedOrgId(newOrgId);
-                    setSettingsSuccessMsg('');
-                    setSettingsErrMsg('');
-                    loadPolicySettings(newOrgId);
-                  }}
-                >
-                  {organizationsList.map((org) => (
-                    <option key={org._id} value={org._id}>
-                      🏢 {org.organizationName} ({org.organizationCode})
-                    </option>
-                  ))}
-                </Form.Select>
-              </div>
-            </Card>
-          )}
+      {/* ── TAB CONTENT: OPTIONAL HOLIDAYS (ALL ROLES — EMPLOYEE SELF-SERVICE) ── */}
+      {activeTab === 'optional-holidays' && <OptionalHolidays />}
 
-          <Card className="border-0 shadow-sm rounded-4 p-4 bg-white mb-3">
-            <h6 className="fw-bold mb-3 d-flex align-items-center gap-2 text-dark">
-              <FaCog className="text-primary" /> Attendance Policy & Operational Configuration
-            </h6>
 
-            {settingsSuccessMsg && (
-              <FeedbackAlert variant="success" dismissible onClose={() => setSettingsSuccessMsg('')} className="py-2 small" message={<><FaCheckCircle className="me-2" /> {settingsSuccessMsg}</>} />
-            )}
-
-            {settingsErrMsg && (
-              <FeedbackAlert variant="danger" dismissible onClose={() => setSettingsErrMsg('')} className="py-2 small" message={<><FaExclamationTriangle className="me-2" /> {settingsErrMsg}</>} />
-            )}
-
-            <Form onSubmit={handleSavePolicySettings}>
-              <Row className="g-3 mb-4">
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label className="small fw-bold text-dark">Timezone</Form.Label>
-                    <Form.Select
-                      size="sm"
-                      value={settingsForm.timeZone}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, timeZone: e.target.value })}
-                    >
-                      <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
-                      <option value="UTC">UTC</option>
-                      <option value="America/New_York">America/New_York (EST)</option>
-                      <option value="Europe/London">Europe/London (GMT)</option>
-                      <option value="Asia/Dubai">Asia/Dubai (GST)</option>
-                      <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
-                    </Form.Select>
-                  </Form.Group>
-                </Col>
-
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label className="small fw-bold text-dark">Standard Working Minutes</Form.Label>
-                    <Form.Control
-                      type="number"
-                      size="sm"
-                      value={settingsForm.standardWorkingMinutes}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, standardWorkingMinutes: Number(e.target.value) })}
-                    />
-                    <Form.Text className="extra-small text-muted">
-                      Full-day target (e.g. 510 mins = 8.5 hours).
-                    </Form.Text>
-                  </Form.Group>
-                </Col>
-
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label className="small fw-bold text-dark">Half-Day Threshold Minutes</Form.Label>
-                    <Form.Control
-                      type="number"
-                      size="sm"
-                      value={settingsForm.halfDayMinutes}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, halfDayMinutes: Number(e.target.value) })}
-                    />
-                    <Form.Text className="extra-small text-muted">
-                      Minimum threshold for half-day (e.g. 270 mins = 4.5 hours).
-                    </Form.Text>
-                  </Form.Group>
-                </Col>
-
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label className="small fw-bold text-dark">Late Cutoff Time</Form.Label>
-                    <Form.Control
-                      type="text"
-                      size="sm"
-                      value={settingsForm.lateCutoff}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, lateCutoff: e.target.value })}
-                      placeholder="e.g. 09:15 AM"
-                    />
-                  </Form.Group>
-                </Col>
-
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label className="small fw-bold text-dark">Grace Period (Minutes)</Form.Label>
-                    <Form.Control
-                      type="number"
-                      size="sm"
-                      value={settingsForm.gracePeriodMinutes}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, gracePeriodMinutes: Number(e.target.value) })}
-                    />
-                  </Form.Group>
-                </Col>
-
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label className="small fw-bold text-dark">Attendance Verification Mode</Form.Label>
-                    <Form.Select
-                      size="sm"
-                      value={settingsForm.attendanceMode}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, attendanceMode: e.target.value })}
-                    >
-                      <option value="GEOFENCE">GEOFENCE (Location Radius)</option>
-                      <option value="GPS">GPS (Coordinates Only)</option>
-                      <option value="MANUAL">MANUAL Override Only</option>
-                      <option value="BIOMETRIC">BIOMETRIC Machine Integration</option>
-                      <option value="ANY">ANY (Unrestricted)</option>
-                    </Form.Select>
-                  </Form.Group>
-                </Col>
-
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label className="small fw-bold text-dark">Auto-Close Cutoff (Hours)</Form.Label>
-                    <Form.Control
-                      type="number"
-                      size="sm"
-                      value={settingsForm.autoCloseCutoffHours}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, autoCloseCutoffHours: Number(e.target.value) })}
-                    />
-                    <Form.Text className="extra-small text-muted">
-                      Unclosed session sweep threshold (default: 12h).
-                    </Form.Text>
-                  </Form.Group>
-                </Col>
-
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label className="small fw-bold text-dark">Overtime Policy Enabled</Form.Label>
-                    <Form.Check
-                      type="switch"
-                      id="ot-switch"
-                      label={settingsForm.overtimeEnabled ? 'Enabled' : 'Disabled'}
-                      checked={settingsForm.overtimeEnabled}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, overtimeEnabled: e.target.checked })}
-                      className="mt-1 fw-semibold"
-                    />
-                  </Form.Group>
-                </Col>
-
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label className="small fw-bold text-dark">Auto-Close Policy Enabled</Form.Label>
-                    <Form.Check
-                      type="switch"
-                      id="autoclose-switch"
-                      label={settingsForm.autoCloseEnabled ? 'Enabled' : 'Disabled'}
-                      checked={settingsForm.autoCloseEnabled}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, autoCloseEnabled: e.target.checked })}
-                      className="mt-1 fw-semibold"
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
-
-              <div className="d-flex justify-content-end">
-                <Button type="submit" variant="primary" size="sm" disabled={settingsSubmitting} className="rounded-3 px-4 fw-bold">
-                  {settingsSubmitting ? <LoadingSpinner size="sm" /> : <><FaCheck className="me-1" /> Save Attendance Policy</>}
-                </Button>
-              </div>
-            </Form>
-          </Card>
-        </div>
-      )}
 
       {/* ── TAB CONTENT 9: MY TODAY / MY CALENDAR (EMPLOYEE & INTERN / PM) ── */}
       {(activeTab === 'my-today' || activeTab === 'my-calendar') && (
@@ -1682,30 +1559,54 @@ function Attendance() {
             <Card className="border-0 shadow-sm rounded-4 p-4 bg-white text-center mb-3">
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <span className="small fw-bold text-muted d-flex align-items-center gap-1">
-                  <FaBuilding className="text-primary" /> Coimbatore Office
+                  <FaBuilding className="text-primary" /> {todayRecord?.branchId?.branchName || user?.branchId?.branchName || user?.branchName || 'Office'}
                 </span>
-                <Badge bg="success-subtle" text="success" className="rounded-pill px-2.5 py-1">
-                  ● Within Office Location
+                <Badge
+                  bg={todayRecord?.loginTime && !todayRecord?.logoutTime ? "success-subtle" : "secondary-subtle"}
+                  text={todayRecord?.loginTime && !todayRecord?.logoutTime ? "success" : "secondary"}
+                  className="rounded-pill px-2.5 py-1"
+                >
+                  ● {todayRecord?.locationType || (todayRecord?.loginTime ? 'Verified Punch' : 'Location Pending')}
                 </Badge>
               </div>
 
               <div className="py-3">
                 <div className="extra-small text-muted text-uppercase mb-1">Status: {todayRecord?.status || 'Not Checked In'}</div>
-                <Button
-                  variant={todayRecord?.loginTime && !todayRecord?.logoutTime ? 'danger' : 'success'}
-                  size="lg"
-                  className="rounded-circle shadow p-4 fw-bold mb-3"
-                  style={{ width: 140, height: 140 }}
-                  onClick={handlePunchAction}
-                  disabled={punchLoading}
-                >
-                  {punchLoading ? <LoadingSpinner variant="button" size="sm" /> : (
-                    <div>
-                      <FaClock size={24} className="mb-1 d-block mx-auto" />
-                      {todayRecord?.loginTime && !todayRecord?.logoutTime ? 'PUNCH OUT' : 'PUNCH IN'}
-                    </div>
-                  )}
-                </Button>
+                {isManualMode ? (
+                  <div className="p-3 my-3 rounded-3 bg-light border text-center">
+                    <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-1 rounded-pill mb-2 d-inline-flex align-items-center gap-1 fw-semibold extra-small">
+                      <FaShieldAlt /> Manual Override Only
+                    </span>
+                    <h6 className="fw-bold text-dark mb-1">Attendance Managed by HR</h6>
+                    <p className="text-muted extra-small mb-3 mx-auto" style={{ maxWidth: 300 }}>
+                      Direct attendance punch is disabled for this organization/branch. Attendance records are recorded and managed manually by HR/Admin.
+                    </p>
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      className="rounded-pill px-3 py-1 fw-semibold extra-small"
+                      onClick={() => setActiveTab('regularization')}
+                    >
+                      Request Regularization
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant={todayRecord?.loginTime && !todayRecord?.logoutTime ? 'danger' : 'success'}
+                    size="lg"
+                    className="rounded-circle shadow p-4 fw-bold mb-3"
+                    style={{ width: 140, height: 140 }}
+                    onClick={handlePunchAction}
+                    disabled={punchLoading}
+                  >
+                    {punchLoading ? <LoadingSpinner variant="button" size="sm" /> : (
+                      <div>
+                        <FaClock size={24} className="mb-1 d-block mx-auto" />
+                        {todayRecord?.loginTime && !todayRecord?.logoutTime ? 'PUNCH OUT' : 'PUNCH IN'}
+                      </div>
+                    )}
+                  </Button>
+                )}
                 <div className="small fw-bold text-dark mb-1">
                   Punch In: <span className="text-success">{todayRecord?.loginTime ? formatTime(todayRecord.loginTime) : '—'}</span>
                 </div>
@@ -1719,22 +1620,43 @@ function Attendance() {
             <Card className="border-0 shadow-sm rounded-4 p-3 bg-white">
               <h6 className="fw-bold mb-3 extra-small text-uppercase text-muted">Today's Timeline</h6>
               <div className="timeline-list small">
-                <div className="d-flex align-items-center gap-2 mb-2">
-                  <div className="badge rounded-circle bg-success p-1"><FaCheck size={10} /></div>
-                  <div><strong>09:08 AM</strong> — Punch In (Verified GPS)</div>
-                </div>
-                <div className="d-flex align-items-center gap-2 mb-2">
-                  <div className="badge rounded-circle bg-warning p-1"><FaClock size={10} /></div>
-                  <div><strong>12:30 PM</strong> — Break / Geofence Exit</div>
-                </div>
-                <div className="d-flex align-items-center gap-2 mb-2">
-                  <div className="badge rounded-circle bg-info p-1"><FaCheck size={10} /></div>
-                  <div><strong>01:15 PM</strong> — Resumed Working Session</div>
-                </div>
-                <div className="d-flex align-items-center gap-2">
-                  <div className="badge rounded-circle bg-secondary p-1"><FaClock size={10} /></div>
-                  <div><strong>06:00 PM</strong> — Expected Punch Out</div>
-                </div>
+                {todayRecord?.loginTime ? (
+                  <>
+                    <div className="d-flex align-items-center gap-2 mb-2">
+                      <div className="badge rounded-circle bg-success p-1"><FaCheck size={10} /></div>
+                      <div>
+                        <strong>{formatTime(todayRecord.loginTime)}</strong> — Punch In ({todayRecord.attendanceSource || todayRecord.locationType || 'Verified'})
+                      </div>
+                    </div>
+                    {Array.isArray(todayRecord?.workingSessions) && todayRecord.workingSessions.map((session, sIdx) => (
+                      <div key={sIdx} className="d-flex align-items-center gap-2 mb-2">
+                        <div className={`badge rounded-circle p-1 ${session.isGeofenceViolation ? 'bg-danger' : 'bg-info'}`}>
+                          <FaClock size={10} />
+                        </div>
+                        <div>
+                          <strong>{session.inTime ? formatTime(session.inTime) : '—'} - {session.outTime ? formatTime(session.outTime) : 'Active'}</strong> — Session ({session.durationMinutes || 0}m)
+                        </div>
+                      </div>
+                    ))}
+                    {todayRecord?.logoutTime ? (
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="badge rounded-circle bg-secondary p-1"><FaCheck size={10} /></div>
+                        <div>
+                          <strong>{formatTime(todayRecord.logoutTime)}</strong> — Punch Out ({todayRecord.logoutType || 'Manual'})
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="badge rounded-circle bg-primary p-1"><FaClock size={10} /></div>
+                        <div className="text-primary fw-semibold">Currently Active Session</div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-muted extra-small text-center py-3">
+                    No punch activity recorded for today.
+                  </div>
+                )}
               </div>
             </Card>
           </Col>
@@ -1843,6 +1765,12 @@ function Attendance() {
             <Modal.Title className="h6 fw-bold">Submit Attendance Regularization</Modal.Title>
           </Modal.Header>
           <Modal.Body className="small">
+            {regForm.employeeName && (
+              <div className="alert alert-info py-2 px-3 mb-3 small d-flex align-items-center justify-content-between">
+                <span>Target Employee: <strong>{regForm.employeeName}</strong> {regForm.employeeCode ? `(${regForm.employeeCode})` : ''}</span>
+                <Badge bg="primary">Target</Badge>
+              </div>
+            )}
             <Form.Group className="mb-3">
               <Form.Label className="fw-bold">Date *</Form.Label>
               <Form.Control

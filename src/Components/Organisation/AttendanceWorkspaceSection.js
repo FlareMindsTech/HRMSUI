@@ -84,7 +84,7 @@ const VERIFICATION_OPTIONS = [
     title: "Manual Override Only",
     badgeText: "Admin Regularized",
     icon: FaUserEdit,
-    description: "Self punch-in is restricted. Attendance records require manual entry by HR or manager.",
+    description: "Self punch-in and punch-out are disabled. Attendance records require manual entry or regularization by HR/Admin.",
     category: "manual",
   },
   {
@@ -116,6 +116,61 @@ const getCanonicalMode = (val) => {
   }
   if (upper === "FLEXIBLE" || upper === "ANY") return "GEOFENCE";
   return upper;
+};
+
+// Helper to normalize any incoming staticIp value (string, object, array, null/undefined) to a display string
+export const normalizeStaticIpDisplay = (val) => {
+  if (val === null || val === undefined) return "";
+  if (typeof val === "string") return val.trim();
+  if (Array.isArray(val)) {
+    return val.map((s) => String(s || "").trim()).filter(Boolean).join(", ");
+  }
+  if (typeof val === "object") {
+    if (Array.isArray(val.allowedIps)) {
+      return val.allowedIps.map((s) => String(s || "").trim()).filter(Boolean).join(", ");
+    }
+    if (typeof val.staticIp === "string") {
+      return val.staticIp.trim();
+    }
+    if (typeof val.ip === "string") {
+      return val.ip.trim();
+    }
+  }
+  return "";
+};
+
+// Helper to convert any staticIp input (string, object, array, null/undefined) to clean array of unique IP strings
+export const normalizeAllowedIpsArray = (val) => {
+  if (val === null || val === undefined) return [];
+  if (Array.isArray(val)) {
+    return Array.from(new Set(val.map((s) => String(s || "").trim()).filter(Boolean)));
+  }
+  let strToProcess = "";
+  if (typeof val === "string") {
+    strToProcess = val;
+  } else if (typeof val === "object") {
+    if (Array.isArray(val.allowedIps)) {
+      return Array.from(new Set(val.allowedIps.map((s) => String(s || "").trim()).filter(Boolean)));
+    }
+    if (typeof val.staticIp === "string") {
+      strToProcess = val.staticIp;
+    } else if (typeof val.ip === "string") {
+      strToProcess = val.ip;
+    } else {
+      return [];
+    }
+  } else {
+    strToProcess = String(val || "");
+  }
+
+  return Array.from(
+    new Set(
+      strToProcess
+        .split(",")
+        .map((s) => String(s || "").trim())
+        .filter(Boolean)
+    )
+  );
 };
 
 export default function AttendanceWorkspaceSection({ onNavigateTab }) {
@@ -274,7 +329,8 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
 
   const branchIpsList = useMemo(() => {
     if (!branchAllowedIps) return [];
-    return branchAllowedIps
+    const safeStr = typeof branchAllowedIps === "string" ? branchAllowedIps : normalizeStaticIpDisplay(branchAllowedIps);
+    return safeStr
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
@@ -302,7 +358,8 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
         const pol = d.policies || {};
 
         setOrgAttendanceMode(getCanonicalMode(att.attendanceMode || "GEOFENCE"));
-        setOrgStaticIp(att.staticIp || "");
+        const rawOrgIp = att.staticIp !== undefined ? att.staticIp : (att.allowedIps !== undefined ? att.allowedIps : d.staticIp);
+        setOrgStaticIp(normalizeStaticIpDisplay(rawOrgIp));
         setStandardWorkingMinutes(att.standardWorkingMinutes ?? 480);
         setHalfDayMinutes(att.halfDayMinutes ?? 240);
         setLateCutoff(att.lateCutoff || "");
@@ -329,8 +386,10 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
         if (attSettings.attendanceMode) {
           setOrgAttendanceMode(getCanonicalMode(attSettings.attendanceMode));
         }
-        if (attSettings.staticIp) {
-          setOrgStaticIp(attSettings.staticIp);
+        if (attSettings.staticIp !== undefined) {
+          setOrgStaticIp(normalizeStaticIpDisplay(attSettings.staticIp));
+        } else if (attSettings.allowedIps !== undefined) {
+          setOrgStaticIp(normalizeStaticIpDisplay(attSettings.allowedIps));
         }
       }
       setOrgDirty(false);
@@ -356,10 +415,17 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
     setOrgSaving(true);
     setOrgAlert({ type: "", message: "" });
     try {
+      // Guarantee string before calling .trim() or parsing to array
+      const safeIpInput = typeof orgStaticIp === "string" 
+        ? orgStaticIp.trim() 
+        : normalizeStaticIpDisplay(orgStaticIp);
+      const allowedIpsArray = normalizeAllowedIpsArray(safeIpInput);
+
       const orgPayload = {
         attendance: {
           attendanceMode: orgAttendanceMode,
-          staticIp: orgStaticIp.trim(),
+          staticIp: allowedIpsArray[0] || "",
+          allowedIps: allowedIpsArray,
           standardWorkingMinutes: Number(standardWorkingMinutes) || 480,
           halfDayMinutes: Number(halfDayMinutes) || 240,
           lateCutoff: lateCutoff || undefined,
@@ -384,7 +450,10 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
 
       const attendancePayload = {
         attendanceMode: orgAttendanceMode,
-        staticIp: orgStaticIp.trim(),
+        staticIp: {
+          enabled: allowedIpsArray.length > 0,
+          allowedIps: allowedIpsArray,
+        },
       };
 
       const [resOrg, resAtt] = await Promise.all([
@@ -398,6 +467,7 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
           message: "Organization attendance defaults saved successfully.",
         });
         setOrgDirty(false);
+        setOrgStaticIp(allowedIpsArray.join(", "));
         setTimeout(() => setOrgAlert({ type: "", message: "" }), 4000);
       } else {
         throw new Error(resOrg?.message || resAtt?.message || "Update failed");
@@ -431,11 +501,7 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
           setBranchLatitude(b.latitude ?? "");
           setBranchLongitude(b.longitude ?? "");
           setBranchAllowedIps(
-            Array.isArray(b.allowedIps)
-              ? b.allowedIps.join(", ")
-              : typeof b.staticIp === "object" && b.staticIp?.allowedIps
-              ? b.staticIp.allowedIps.join(", ")
-              : b.staticIp || ""
+            normalizeStaticIpDisplay(b.allowedIps || b.staticIp)
           );
           setBranchTimeZone(b.timeZone || "");
           setBranchShiftId(b.defaultShiftId?._id || b.defaultShiftId || "");
@@ -473,12 +539,10 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
     setBranchSaving(true);
     setBranchAlert({ type: "", message: "" });
     try {
-      const allowedIpsArray = branchAllowedIps
-        ? branchAllowedIps
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : [];
+      const safeBranchIpInput = typeof branchAllowedIps === "string" 
+        ? branchAllowedIps.trim() 
+        : normalizeStaticIpDisplay(branchAllowedIps);
+      const allowedIpsArray = normalizeAllowedIpsArray(safeBranchIpInput);
 
       const payload = {
         attendanceMode: branchAttendanceMode,
@@ -486,7 +550,10 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
         latitude: branchLatitude !== "" ? Number(branchLatitude) : null,
         longitude: branchLongitude !== "" ? Number(branchLongitude) : null,
         allowedIps: allowedIpsArray,
-        staticIp: allowedIpsArray[0] || "",
+        staticIp: {
+          enabled: allowedIpsArray.length > 0,
+          allowedIps: allowedIpsArray,
+        },
         ...(branchTimeZone ? { timeZone: branchTimeZone } : {}),
         ...(branchShiftId ? { defaultShiftId: branchShiftId } : {}),
         ...(branchCalendarId ? { defaultWorkCalendarId: branchCalendarId } : {}),
@@ -709,32 +776,28 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                   })}
                 </div>
 
-                {/* Biometric Integration (Fifth card / hardware option) */}
+                {/* Biometric Integration (Fifth card / hardware option — disabled until hardware integration exists) */}
                 {BIOMETRIC_OPTION && (
                   <div
-                    className={`attendance-biometric-tile ${orgAttendanceMode === "BIOMETRIC" ? "selected" : ""}`}
-                    onClick={() => {
-                      if (!canEditOrg) return;
-                      setOrgAttendanceMode("BIOMETRIC");
-                      setOrgDirty(true);
-                    }}
+                    className="attendance-biometric-tile"
+                    style={{ opacity: 0.65, cursor: "not-allowed", borderStyle: "dashed" }}
+                    title="Biometric terminal hardware synchronization is not configured. Direct activation is unavailable."
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <FaFingerprint style={{ color: orgAttendanceMode === "BIOMETRIC" ? "var(--color-primary, #C49A55)" : "#6B7280", fontSize: "16px" }} />
+                      <FaFingerprint style={{ color: "#9CA3AF", fontSize: "16px" }} />
                       <div>
-                        <span style={{ fontWeight: "700", fontSize: "0.82rem", color: orgAttendanceMode === "BIOMETRIC" ? "#92400E" : "#374151" }}>
+                        <span style={{ fontWeight: "700", fontSize: "0.82rem", color: "#6B7280" }}>
                           Biometric Integration
                         </span>
-                        <span style={{ fontSize: "0.74rem", color: "#6B7280", marginLeft: "8px" }}>
-                          Hardware machine synchronization (fingerprint / facial scan terminals)
+                        <span style={{ fontSize: "0.74rem", color: "#9CA3AF", marginLeft: "8px" }}>
+                          Hardware machine synchronization (integration not configured)
                         </span>
                       </div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span style={{ fontSize: "0.68rem", fontWeight: "700", background: "#E5E7EB", color: "#4B5563", padding: "2px 7px", borderRadius: "4px" }}>
-                        Hardware Machine
+                      <span style={{ fontSize: "0.68rem", fontWeight: "700", background: "#FEE2E2", color: "#DC2626", padding: "2px 7px", borderRadius: "4px" }}>
+                        Hardware Unavailable
                       </span>
-                      {orgAttendanceMode === "BIOMETRIC" && <FaCheckCircle style={{ color: "var(--color-primary, #C49A55)" }} />}
                     </div>
                   </div>
                 )}
@@ -743,7 +806,7 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                 {orgAttendanceMode === "MANUAL" && (
                   <div className="attendance-mode-explainer" style={{ marginTop: "12px", padding: "8px 12px" }}>
                     <FaInfoCircle className="me-2 text-warning" />
-                    <strong>Manual Override Active:</strong> Location and IP network restrictions are bypassed. Punches are regularized or logged manually by authorized HR managers.
+                    <strong>Manual Override Active:</strong> Direct employee attendance punch is disabled. Attendance records are created, regularized, or logged manually by authorized HR managers.
                   </div>
                 )}
                 {orgAttendanceMode === "BIOMETRIC" && (
@@ -786,9 +849,9 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                         type="text"
                         className="attendance-form-control"
                         placeholder="e.g. 203.0.113.195"
-                        value={orgStaticIp}
+                        value={typeof orgStaticIp === "string" ? orgStaticIp : normalizeStaticIpDisplay(orgStaticIp)}
                         onChange={(e) => {
-                          setOrgStaticIp(e.target.value);
+                          setOrgStaticIp(String(e.target.value ?? ""));
                           setOrgDirty(true);
                         }}
                         disabled={!canEditOrg}
@@ -1238,32 +1301,28 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                   })}
                 </div>
 
-                {/* Biometric Integration (Fifth card / future integration option) */}
+                {/* Biometric Integration (Fifth card / future integration option — disabled until hardware integration exists) */}
                 {BIOMETRIC_OPTION && (
                   <div
-                    className={`attendance-biometric-tile ${branchAttendanceMode === "BIOMETRIC" ? "selected" : ""}`}
-                    onClick={() => {
-                      if (!canEditBranch) return;
-                      setBranchAttendanceMode("BIOMETRIC");
-                      setBranchDirty(true);
-                    }}
+                    className="attendance-biometric-tile"
+                    style={{ opacity: 0.65, cursor: "not-allowed", borderStyle: "dashed" }}
+                    title="Biometric terminal hardware synchronization is not configured for this branch."
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <FaFingerprint style={{ color: branchAttendanceMode === "BIOMETRIC" ? "var(--color-primary, #C49A55)" : "#6B7280", fontSize: "16px" }} />
+                      <FaFingerprint style={{ color: "#9CA3AF", fontSize: "16px" }} />
                       <div>
-                        <span style={{ fontWeight: "700", fontSize: "0.82rem", color: branchAttendanceMode === "BIOMETRIC" ? "#92400E" : "#374151" }}>
+                        <span style={{ fontWeight: "700", fontSize: "0.82rem", color: "#6B7280" }}>
                           Biometric Integration
                         </span>
-                        <span style={{ fontSize: "0.74rem", color: "#6B7280", marginLeft: "8px" }}>
-                          Hardware machine sync registered for this branch
+                        <span style={{ fontSize: "0.74rem", color: "#9CA3AF", marginLeft: "8px" }}>
+                          Hardware machine sync registered for this branch (integration not configured)
                         </span>
                       </div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span style={{ fontSize: "0.68rem", fontWeight: "700", background: "#E5E7EB", color: "#4B5563", padding: "2px 7px", borderRadius: "4px" }}>
-                        Hardware Machine
+                      <span style={{ fontSize: "0.68rem", fontWeight: "700", background: "#FEE2E2", color: "#DC2626", padding: "2px 7px", borderRadius: "4px" }}>
+                        Hardware Unavailable
                       </span>
-                      {branchAttendanceMode === "BIOMETRIC" && <FaCheckCircle style={{ color: "var(--color-primary, #C49A55)" }} />}
                     </div>
                   </div>
                 )}
@@ -1271,7 +1330,7 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                 {branchAttendanceMode === "MANUAL" && (
                   <div className="attendance-mode-explainer" style={{ marginTop: "12px", padding: "8px 12px" }}>
                     <FaInfoCircle className="me-2 text-warning" />
-                    <strong>Manual Attendance Configured:</strong> Employees at this branch are not subjected to location or Wi-Fi perimeter restrictions.
+                    <strong>Manual Attendance Configured:</strong> Direct employee self-service punches are disabled for this branch. Attendance is managed manually by authorized HR managers.
                   </div>
                 )}
 
@@ -1409,9 +1468,9 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                         type="text"
                         className="attendance-form-control"
                         placeholder="e.g. 103.21.244.2, 103.21.244.3"
-                        value={branchAllowedIps}
+                        value={typeof branchAllowedIps === "string" ? branchAllowedIps : normalizeStaticIpDisplay(branchAllowedIps)}
                         onChange={(e) => {
-                          setBranchAllowedIps(e.target.value);
+                          setBranchAllowedIps(String(e.target.value ?? ""));
                           setBranchDirty(true);
                         }}
                         disabled={!canEditBranch}
@@ -1549,9 +1608,9 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                       type="text"
                       className="attendance-form-control"
                       placeholder="e.g. 103.21.244.2, 103.21.244.3"
-                      value={branchAllowedIps}
+                      value={typeof branchAllowedIps === "string" ? branchAllowedIps : normalizeStaticIpDisplay(branchAllowedIps)}
                       onChange={(e) => {
-                        setBranchAllowedIps(e.target.value);
+                        setBranchAllowedIps(String(e.target.value ?? ""));
                         setBranchDirty(true);
                       }}
                       disabled={!canEditBranch}

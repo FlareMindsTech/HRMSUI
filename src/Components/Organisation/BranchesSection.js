@@ -28,6 +28,7 @@ import {
   FaArrowLeft,
   FaArrowRight,
   FaCalendarAlt,
+  FaCalendarCheck,
   FaSitemap,
   FaCalendarWeek,
   FaUmbrellaBeach,
@@ -93,6 +94,7 @@ import WorkCalendarsSection from "./WorkCalendarsSection";
 import ShiftsSection from "./ShiftsSection";
 import HolidayCalendarsSection from "./HolidayCalendarsSection";
 import FinancialYearsSection from "./FinancialYearsSection";
+import LeaveSettingsSection from "./LeaveSettingsSection";
 import BranchSettingsSection from "./BranchSettingsSection";
 
 const BRANCH_TYPES = [
@@ -144,6 +146,7 @@ const BRANCH_DETAIL_NAV_GROUPS = [
       { key: "job-grades", label: "Job Grades", icon: FaShieldAlt },
       { key: "cost-centers", label: "Cost Centers", icon: FaMoneyCheckAlt },
       { key: "financial-years", label: "Financial Years", icon: FaCalendarAlt },
+      { key: "leave-settings", label: "Leave Settings", icon: FaCalendarCheck },
     ],
   },
   {
@@ -2153,6 +2156,7 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
           {detailActiveTab === "work-calendars" && <WorkCalendarsSection lockedBranchId={lockedBId} />}
           {detailActiveTab === "shifts" && <ShiftsSection lockedBranchId={lockedBId} />}
           {detailActiveTab === "holidays" && <HolidayCalendarsSection lockedBranchId={lockedBId} />}
+          {detailActiveTab === "leave-settings" && <LeaveSettingsSection lockedBranchId={lockedBId} />}
           {detailActiveTab === "financial-years" && <FinancialYearsSection lockedBranchId={lockedBId} />}
           {detailActiveTab === "settings" && <BranchSettingsSection lockedBranchId={lockedBId} />}
         </div>

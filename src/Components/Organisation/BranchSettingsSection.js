@@ -1,15 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Row, Col, Card, Form, Button, Spinner, Alert, Badge } from "react-bootstrap";
+import { Row, Col, Card, Form, Button, Spinner } from "react-bootstrap";
 import {
   FaCodeBranch,
   FaSave,
-  FaCalendarCheck,
   FaClock,
-  FaBell,
-  FaIdCard,
-  FaMapMarkerAlt,
-  FaShieldAlt,
-  FaArrowRight,
+  FaBuilding,
 } from "react-icons/fa";
 
 import {
@@ -18,7 +13,7 @@ import {
   updateBranch,
 } from "../../services/organizationService";
 import { useSelector, useDispatch } from "react-redux";
-import { useHasPermission, selectIsSystemAdmin } from "../../redux/slices/authSlice";
+import { useHasPermission } from "../../redux/slices/authSlice";
 import {
   fetchOrgResource,
   selectShiftsDropdown,
@@ -33,6 +28,7 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
   const hasPermission = useHasPermission();
   const { branches: contextBranches, selectedBranchId, refreshBranches } = useBranch();
   const dispatch = useDispatch();
+
   // Shared shift/calendar dropdowns (single guarded fetches); branch data
   // stays Context-owned and the settings form stays local.
   const cachedShifts = useSelector(selectShiftsDropdown);
@@ -56,7 +52,7 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [activeTab, setActiveTab] = useState("attendance");
+  const [activeTab, setActiveTab] = useState("schedules");
 
   const canUpdate = Boolean(
     hasPermission &&
@@ -64,23 +60,15 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
   );
 
   const [formData, setFormData] = useState({
-    attendanceMode: "GEOFENCE",
-    staticIp: {
-      enabled: false,
-      allowedIps: [],
-    },
-    officeRadiusMeters: 200,
-    latitude: "",
-    longitude: "",
     timeZone: "Asia/Kolkata",
     defaultShiftId: "",
     defaultWorkCalendarId: "",
     defaultHolidayCalendarId: "",
-    allowOvertime: false,
-    overtimeRateMultiplier: 1.5,
-    emailNotificationEnabled: true,
-    smsNotificationEnabled: false,
-    status: "ACTIVE",
+    branchName: "",
+    branchCode: "",
+    branchType: "",
+    city: "",
+    state: "",
   });
 
   // Load Dropdowns
@@ -114,20 +102,15 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
       const data = await fetchBranchById(bId);
       if (data) {
         setFormData({
-          attendanceMode: data.attendanceMode || "GEOFENCE",
-          staticIp: data.staticIp || { enabled: false, allowedIps: [] },
-          officeRadiusMeters: data.officeRadiusMeters || 200,
-          latitude: data.latitude !== undefined && data.latitude !== null ? data.latitude : "",
-          longitude: data.longitude !== undefined && data.longitude !== null ? data.longitude : "",
           timeZone: data.timeZone || "Asia/Kolkata",
           defaultShiftId: data.defaultShiftId?._id || data.defaultShiftId || "",
           defaultWorkCalendarId: data.defaultWorkCalendarId?._id || data.defaultWorkCalendarId || "",
           defaultHolidayCalendarId: data.defaultHolidayCalendarId?._id || data.defaultHolidayCalendarId || "",
-          allowOvertime: data.allowOvertime || false,
-          overtimeRateMultiplier: data.overtimeRateMultiplier || 1.5,
-          emailNotificationEnabled: data.emailNotificationEnabled !== undefined ? data.emailNotificationEnabled : true,
-          smsNotificationEnabled: data.smsNotificationEnabled || false,
-          status: data.status || "ACTIVE",
+          branchName: data.branchName || "",
+          branchCode: data.branchCode || "",
+          branchType: data.branchType || "",
+          city: data.city || "",
+          state: data.state || "",
         });
       }
     } catch (err) {
@@ -156,26 +139,8 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
       setError("");
       setSuccess("");
 
-      // Validation: If STATIC_IP or BOTH, require at least one static public IP
-      if (formData.attendanceMode === "STATIC_IP" || formData.attendanceMode === "BOTH") {
-        const ips = formData.staticIp?.allowedIps || [];
-        if (!Array.isArray(ips) || ips.length === 0) {
-          setError("At least one valid static public IP is required for Wi-Fi / Office Network or Both mode.");
-          setSaving(false);
-          return;
-        }
-      }
-
       const payload = {
-        ...formData,
-        officeRadiusMeters: Number(formData.officeRadiusMeters) || 200,
-        latitude: formData.latitude !== "" && formData.latitude !== null ? Number(formData.latitude) : null,
-        longitude: formData.longitude !== "" && formData.longitude !== null ? Number(formData.longitude) : null,
-        staticIp: {
-          enabled: formData.attendanceMode === "STATIC_IP" || formData.attendanceMode === "BOTH",
-          allowedIps: formData.staticIp?.allowedIps || [],
-        },
-        overtimeRateMultiplier: Number(formData.overtimeRateMultiplier) || 1.5,
+        timeZone: formData.timeZone,
         defaultShiftId: formData.defaultShiftId || null,
         defaultWorkCalendarId: formData.defaultWorkCalendarId || null,
         defaultHolidayCalendarId: formData.defaultHolidayCalendarId || null,
@@ -202,7 +167,7 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
             <FaCodeBranch className="text-success" /> Branch Settings
           </h3>
           <p className="text-muted small mb-0">
-            Configure branch-specific rules, attendance geofence radius, default shift schedules, and notification preferences.
+            Configure default work shift schedules, work calendars, holiday catalogs, and operational time zone.
           </p>
         </div>
 
@@ -240,117 +205,30 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
             <div className="d-flex border-bottom flex-wrap">
               <button
                 type="button"
-                className={`btn btn-link text-decoration-none py-3 px-4 border-0 rounded-0 fw-semibold ${activeTab === "attendance" ? "text-success border-bottom border-success border-2 bg-light" : "text-secondary"}`}
-                onClick={() => setActiveTab("attendance")}
-              >
-                <FaCalendarCheck className="me-2" /> Attendance & Geofence
-              </button>
-              <button
-                type="button"
                 className={`btn btn-link text-decoration-none py-3 px-4 border-0 rounded-0 fw-semibold ${activeTab === "schedules" ? "text-success border-bottom border-success border-2 bg-light" : "text-secondary"}`}
                 onClick={() => setActiveTab("schedules")}
               >
-                <FaClock className="me-2" /> Schedules & Calendars
+                <FaClock className="me-2" /> Schedules &amp; Calendars
               </button>
               <button
                 type="button"
-                className={`btn btn-link text-decoration-none py-3 px-4 border-0 rounded-0 fw-semibold ${activeTab === "payroll" ? "text-success border-bottom border-success border-2 bg-light" : "text-secondary"}`}
-                onClick={() => setActiveTab("payroll")}
+                className={`btn btn-link text-decoration-none py-3 px-4 border-0 rounded-0 fw-semibold ${activeTab === "profile" ? "text-success border-bottom border-success border-2 bg-light" : "text-secondary"}`}
+                onClick={() => setActiveTab("profile")}
               >
-                <FaIdCard className="me-2" /> Payroll & Overtime
-              </button>
-              <button
-                type="button"
-                className={`btn btn-link text-decoration-none py-3 px-4 border-0 rounded-0 fw-semibold ${activeTab === "notifications" ? "text-success border-bottom border-success border-2 bg-light" : "text-secondary"}`}
-                onClick={() => setActiveTab("notifications")}
-              >
-                <FaBell className="me-2" /> Notifications
+                <FaBuilding className="me-2" /> Branch Profile / Timezone
               </button>
             </div>
           </Card.Header>
 
           <Card.Body className="p-4">
             <Form onSubmit={handleSave}>
-              {/* TAB 1: Attendance & Geofence (Redirect to Dedicated Attendance Workspace) */}
-              {activeTab === "attendance" && (
-                <div>
-                  <div className="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                      <h6 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
-                        <FaShieldAlt className="text-primary" /> Branch Attendance &amp; Geofence Management
-                      </h6>
-                      <p className="text-muted extra-small mb-0">
-                        Branch-specific attendance overrides have moved to the dedicated Workplace Attendance workspace.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      background: "var(--color-background, #FDFBF7)",
-                      border: "1px solid #EAE0D0",
-                      borderRadius: "12px",
-                      padding: "32px 24px",
-                      textAlign: "center",
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "60px",
-                        height: "60px",
-                        borderRadius: "50%",
-                        background: "#FEF3C7",
-                        color: "#92400E",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "26px",
-                        margin: "0 auto 16px auto",
-                      }}
-                    >
-                      <FaMapMarkerAlt />
-                    </div>
-                    <h4 style={{ fontWeight: "700", color: "#111827", marginBottom: "8px" }}>
-                      Branch Attendance &amp; Geofencing
-                    </h4>
-                    <p style={{ color: "#6B7280", maxWidth: "560px", margin: "0 auto 24px auto", fontSize: "14px", lineHeight: "1.6" }}>
-                      Branch verification modes, GPS geofence coordinates, perimeter radius, and static office IP allowlists are now managed centrally in the <strong>Workplace &rarr; Attendance &rarr; Branch Configuration</strong> tab.
-                    </p>
-                    <div>
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          if (onNavigateTab) {
-                            onNavigateTab("attendance");
-                          } else {
-                            window.location.href = "/organisation/attendance";
-                          }
-                        }}
-                        style={{
-                          background: "var(--color-primary, #C49A55)",
-                          borderColor: "var(--color-primary, #C49A55)",
-                          color: "#FFFFFF",
-                          fontWeight: "600",
-                          padding: "10px 24px",
-                          borderRadius: "8px",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          boxShadow: "0 2px 4px rgba(196,154,85,0.25)",
-                        }}
-                      >
-                        <FaCalendarCheck /> Manage Branch Attendance <FaArrowRight size={12} />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2: Schedules & Calendars */}
+              {/* TAB 1: Schedules & Calendars */}
               {activeTab === "schedules" && (
                 <div>
-                  <h6 className="fw-bold text-dark mb-3">Branch Schedules & Default Catalogs</h6>
+                  <h6 className="fw-bold text-dark mb-1">Branch Schedules &amp; Default Catalogs</h6>
+                  <p className="text-muted small mb-3">
+                    Assign the default work shift and calendars for employees belonging to this branch.
+                  </p>
                   <Row className="g-3">
                     <Col md={6}>
                       <Form.Group>
@@ -401,6 +279,69 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
                         </Form.Select>
                       </Form.Group>
                     </Col>
+                  </Row>
+                </div>
+              )}
+
+              {/* TAB 2: Branch Profile / Timezone */}
+              {activeTab === "profile" && (
+                <div>
+                  <h6 className="fw-bold text-dark mb-1">Branch Profile &amp; Timezone Configuration</h6>
+                  <p className="text-muted small mb-3">
+                    View branch information and configure the operational time zone for schedule calculations.
+                  </p>
+                  <Row className="g-3">
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="small fw-semibold">Branch Name</Form.Label>
+                        <Form.Control
+                          type="text"
+                          value={formData.branchName}
+                          disabled
+                          readOnly
+                          className="bg-light"
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="small fw-semibold">Branch Code</Form.Label>
+                        <Form.Control
+                          type="text"
+                          value={formData.branchCode}
+                          disabled
+                          readOnly
+                          className="bg-light"
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="small fw-semibold">Branch Type</Form.Label>
+                        <Form.Control
+                          type="text"
+                          value={formData.branchType}
+                          disabled
+                          readOnly
+                          className="bg-light"
+                        />
+                      </Form.Group>
+                    </Col>
+
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="small fw-semibold">Location (City / State)</Form.Label>
+                        <Form.Control
+                          type="text"
+                          value={[formData.city, formData.state].filter(Boolean).join(", ") || "N/A"}
+                          disabled
+                          readOnly
+                          className="bg-light"
+                        />
+                      </Form.Group>
+                    </Col>
 
                     <Col md={6}>
                       <Form.Group>
@@ -415,70 +356,17 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
                           <option value="Asia/Singapore">Asia/Singapore (SGT +08:00)</option>
                           <option value="Europe/London">Europe/London (GMT)</option>
                           <option value="America/New_York">America/New_York (EST)</option>
+                          <option value="America/Chicago">America/Chicago (CST)</option>
+                          <option value="America/Denver">America/Denver (MST)</option>
+                          <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
+                          <option value="UTC">UTC (+00:00)</option>
                         </Form.Select>
+                        <Form.Text className="text-muted">
+                          Shift schedules and attendance punch time stamps are evaluated in this branch time zone.
+                        </Form.Text>
                       </Form.Group>
                     </Col>
                   </Row>
-                </div>
-              )}
-
-              {/* TAB 3: Payroll & Overtime */}
-              {activeTab === "payroll" && (
-                <div>
-                  <h6 className="fw-bold text-dark mb-3">Branch Payroll & Overtime Overrides</h6>
-                  <Row className="g-3">
-                    <Col md={12}>
-                      <div className="p-3 bg-light rounded border">
-                        <Form.Check
-                          type="checkbox"
-                          id="branchOtCheck"
-                          label="Enable Overtime (OT) Rate Calculation for this Branch"
-                          checked={formData.allowOvertime}
-                          onChange={(e) => setFormData({ ...formData, allowOvertime: e.target.checked })}
-                          disabled={!canUpdate}
-                        />
-                        {formData.allowOvertime && (
-                          <div className="mt-3" style={{ maxWidth: "250px" }}>
-                            <Form.Label className="small fw-semibold">Branch OT Multiplier</Form.Label>
-                            <Form.Control
-                              type="number"
-                              step="0.1"
-                              min="1"
-                              max="3"
-                              value={formData.overtimeRateMultiplier}
-                              onChange={(e) => setFormData({ ...formData, overtimeRateMultiplier: e.target.value })}
-                              disabled={!canUpdate}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </Col>
-                  </Row>
-                </div>
-              )}
-
-              {/* TAB 4: Notifications */}
-              {activeTab === "notifications" && (
-                <div>
-                  <h6 className="fw-bold text-dark mb-3">Automated Communications for Branch Staff</h6>
-                  <div className="p-3 bg-light rounded border d-flex flex-column gap-3">
-                    <Form.Check
-                      type="switch"
-                      id="branchEmailCheck"
-                      label="Dispatch Email Notifications (Leave approvals, Attendance irregularities)"
-                      checked={formData.emailNotificationEnabled}
-                      onChange={(e) => setFormData({ ...formData, emailNotificationEnabled: e.target.checked })}
-                      disabled={!canUpdate}
-                    />
-                    <Form.Check
-                      type="switch"
-                      id="branchSmsCheck"
-                      label="Dispatch SMS Alerts for Emergency & Security Shifts"
-                      checked={formData.smsNotificationEnabled}
-                      onChange={(e) => setFormData({ ...formData, smsNotificationEnabled: e.target.checked })}
-                      disabled={!canUpdate}
-                    />
-                  </div>
                 </div>
               )}
 

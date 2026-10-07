@@ -24,7 +24,9 @@ import {
   cancelLeaveApi,
   approveLeaveApi,
   rejectLeaveApi,
-  fetchLeaveAuditApi
+  fetchLeaveAuditApi,
+  fetchLeaveTypesApi,
+  calculateLeaveDaysApi
 } from "../../Api/leave/leave";
 import "./LeaveRequest.css";
 
@@ -48,6 +50,7 @@ function LeaveRequest() {
 
   // Data States
   const [balance, setBalance] = useState(null);
+  const [dynamicBalancesList, setDynamicBalancesList] = useState([]);
   const [myLeaves, setMyLeaves] = useState([]);
   const [teamLeaves, setTeamLeaves] = useState([]);
   const [allLeaves, setAllLeaves] = useState([]);
@@ -58,13 +61,18 @@ function LeaveRequest() {
 
   // Form State
   const todayStr = new Date().toISOString().split("T")[0];
+  const [availableLeaveTypes, setAvailableLeaveTypes] = useState([]);
   const [formData, setFormData] = useState({
-    leaveType: "SL",
-    date: todayStr,
+    leaveType: "",
+    leaveTypeId: null,
+    startDate: todayStr,
+    endDate: todayStr,
     isHalfDay: false,
     halfDayPeriod: "Morning",
     reason: ""
   });
+  const [calculationPreview, setCalculationPreview] = useState(null);
+  const [calculatingDays, setCalculatingDays] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formValidationErr, setFormValidationErr] = useState("");
 
@@ -116,6 +124,37 @@ function LeaveRequest() {
     setCurrentPage(1);
   };
 
+  const formatLeaveDateRange = (item) => {
+    if (!item?.startDate) return "-";
+    const startStr = new Date(item.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    if (!item.endDate) return startStr;
+    const endStr = new Date(item.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    return startStr === endStr ? startStr : `${startStr} - ${endStr}`;
+  };
+
+  const formatLeaveDuration = (item) => {
+    if (!item) return "-";
+    const days = item.totalDays ?? (item.isHalfDay ? 0.5 : 1.0);
+    return item.isHalfDay ? `Half Day (${item.halfDayPeriod || "0.5d"})` : `${days} Day${days === 1 ? "" : "s"}`;
+  };
+
+  // Load Dynamic Leave Types
+  useEffect(() => {
+    fetchLeaveTypesApi({ activeOnly: "true" })
+      .then((res) => {
+        const list = Array.isArray(res) ? res : res?.data || [];
+        if (list.length > 0) {
+          setAvailableLeaveTypes(list);
+          setFormData((prev) => ({
+            ...prev,
+            leaveType: list[0].code,
+            leaveTypeId: list[0]._id,
+          }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Load Balance
   const loadBalance = useCallback(async () => {
     if (!canReadOwn) return;
@@ -124,6 +163,9 @@ function LeaveRequest() {
       const res = await fetchLeaveBalanceApi();
       if (res?.data?.balance) {
         setBalance(res.data.balance);
+      }
+      if (res?.data?.balances) {
+        setDynamicBalancesList(res.data.balances);
       }
     } catch (err) {
       console.warn("Balance load warning:", err.message);
@@ -194,20 +236,74 @@ function LeaveRequest() {
     }
   }, [activeTab, loadBalance, loadMyLeaves, loadTeamLeaves, loadAllLeaves, canReadAll, canReadTeam]);
 
+  // Live Working Days Calculation Preview
+  useEffect(() => {
+    if (!formData.startDate) return;
+
+    let isMounted = true;
+    const timer = setTimeout(async () => {
+      try {
+        setCalculatingDays(true);
+        const res = await calculateLeaveDaysApi({
+          startDate: formData.startDate,
+          endDate: formData.endDate || formData.startDate,
+          isHalfDay: formData.isHalfDay,
+          halfDayPeriod: formData.halfDayPeriod,
+          leaveTypeId: formData.leaveTypeId || undefined,
+        });
+        if (isMounted && res?.data) {
+          setCalculationPreview(res.data);
+          if (res.data.totalDays === 0) {
+            setFormValidationErr("Selected date range has no working days (all days are weekly offs or holidays).");
+          } else {
+            setFormValidationErr("");
+          }
+        }
+      } catch (err) {
+        if (isMounted) {
+          setCalculationPreview(null);
+          setFormValidationErr(err.message || "Failed to calculate working days");
+        }
+      } finally {
+        if (isMounted) setCalculatingDays(false);
+      }
+    }, 250);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [formData.startDate, formData.endDate, formData.isHalfDay, formData.halfDayPeriod, formData.leaveTypeId]);
+
   // Form Input Change Handler
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     const val = type === "checkbox" ? checked : value;
 
+    if (name === "leaveType") {
+      const selectedLt = availableLeaveTypes.find((lt) => lt.code === value);
+      setFormData((prev) => ({
+        ...prev,
+        leaveType: value,
+        leaveTypeId: selectedLt?._id || null,
+      }));
+      return;
+    }
+
     setFormData((prev) => {
       const updated = { ...prev, [name]: val };
-      // Real-time Sunday Check
-      if (name === "date") {
-        const d = new Date(`${val}T00:00:00`);
-        if (d.getDay() === 0) {
-          setFormValidationErr("Sunday is a non-working day. Leave cannot be requested on Sundays.");
-        } else if (val < todayStr) {
+      if (name === "startDate") {
+        if (val < todayStr) {
           setFormValidationErr("Self-service leave cannot be requested for past dates.");
+        } else {
+          setFormValidationErr("");
+        }
+        if (updated.endDate && updated.endDate < val) {
+          updated.endDate = val;
+        }
+      } else if (name === "endDate") {
+        if (val < updated.startDate) {
+          setFormValidationErr("End date must be greater than or equal to start date.");
         } else {
           setFormValidationErr("");
         }
@@ -234,14 +330,18 @@ function LeaveRequest() {
       return;
     }
 
-    const selectedDate = new Date(`${formData.date}T00:00:00`);
-    if (selectedDate.getDay() === 0) {
-      setFormValidationErr("Sunday is a non-working day. Leave cannot be requested on Sundays.");
+    if (formData.startDate < todayStr) {
+      setFormValidationErr("Self-service leave cannot be requested for past dates.");
       return;
     }
 
-    if (formData.date < todayStr) {
-      setFormValidationErr("Self-service leave cannot be requested for past dates.");
+    if (formData.endDate < formData.startDate) {
+      setFormValidationErr("End date must be greater than or equal to start date.");
+      return;
+    }
+
+    if (calculationPreview && calculationPreview.totalDays <= 0) {
+      setFormValidationErr("Selected date range contains no working days (all dates are weekly offs or holidays).");
       return;
     }
 
@@ -249,7 +349,9 @@ function LeaveRequest() {
       setSubmitting(true);
       const payload = {
         leaveType: formData.leaveType,
-        date: formData.date,
+        leaveTypeId: formData.leaveTypeId || undefined,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
         isHalfDay: formData.isHalfDay,
         halfDayPeriod: formData.isHalfDay ? formData.halfDayPeriod : undefined,
         reason: formData.reason.trim()
@@ -257,17 +359,19 @@ function LeaveRequest() {
 
       await applyLeaveApi(payload);
       setSuccessMsg("Leave application submitted successfully!");
-      setFormData({
-        leaveType: "SL",
-        date: todayStr,
+      setFormData((prev) => ({
+        ...prev,
+        startDate: todayStr,
+        endDate: todayStr,
         isHalfDay: false,
         halfDayPeriod: "Morning",
         reason: ""
-      });
+      }));
+      setCalculationPreview(null);
       loadBalance();
       loadMyLeaves();
     } catch (err) {
-      setErrorMsg(err.message);
+      setErrorMsg(err.message || "Failed to submit leave application.");
     } finally {
       setSubmitting(false);
     }
@@ -477,96 +581,100 @@ function LeaveRequest() {
       {/* Balance Summary Header Cards (Hidden for Owner) */}
       {canReadOwn && (
         <Row className="g-2 mb-3">
-          <Col md={4}>
-            <Card className="leave-balance-card sl">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <span className="leave-balance-label">
-                    Sick Leave (SL)
-                  </span>
-                  <h5 className="leave-balance-value">
-                    {balanceLoading ? (
-                      <LoadingSpinner variant="inline" size="sm" color="info" />
-                    ) : (
-                      `${balance?.SL?.remaining ?? 2.0} / ${balance?.SL?.allocated ?? 2.0} Days`
-                    )}
-                  </h5>
-                  <span className="extra-small text-muted">2 days/month allocation</span>
-                </div>
-                <div className="leave-balance-tag sl">
-                  SL
-                </div>
+          {dynamicBalancesList.length > 0 ? (
+            dynamicBalancesList.map((item) => {
+              const code = item.leaveType?.code || "LEAVE";
+              const name = item.leaveType?.name || code;
+              const allocated = item.balance?.allocated ?? 0;
+              const remaining = item.balance?.available ?? 0;
+              const used = item.balance?.used ?? 0;
+              const color = item.leaveType?.color || "#3B82F6";
+              const pct = allocated > 0 ? Math.min(100, Math.max(0, (remaining / allocated) * 100)) : 0;
+              return (
+                <Col md={4} sm={6} xs={12} key={item.leaveType?._id || code}>
+                  <Card className="leave-balance-card shadow-xs">
+                    <div className="d-flex justify-content-between align-items-center">
+                      <div>
+                        <span className="leave-balance-label">
+                          {name} ({code})
+                        </span>
+                        <h5 className="leave-balance-value">
+                          {balanceLoading ? (
+                            <LoadingSpinner variant="inline" size="sm" color="info" />
+                          ) : (
+                            `${remaining} / ${allocated} Days`
+                          )}
+                        </h5>
+                        <span className="extra-small text-muted">{used} day(s) used</span>
+                      </div>
+                      <div
+                        className="leave-balance-tag"
+                        style={{
+                          backgroundColor: `${color}18`,
+                          color: color,
+                          border: `1px solid ${color}40`,
+                        }}
+                      >
+                        {code}
+                      </div>
+                    </div>
+                    <div className="leave-progress-track">
+                      <div
+                        className="leave-progress-bar"
+                        style={{
+                          width: `${pct}%`,
+                          backgroundColor: color,
+                        }}
+                      />
+                    </div>
+                  </Card>
+                </Col>
+              );
+            })
+          ) : balance && Object.keys(balance).length > 0 ? (
+            Object.entries(balance).map(([code, val]) => {
+              const allocated = val?.allocated ?? 0;
+              const remaining = val?.remaining ?? 0;
+              const used = val?.used ?? 0;
+              const pct = allocated > 0 ? Math.min(100, Math.max(0, (remaining / allocated) * 100)) : 0;
+              return (
+                <Col md={4} sm={6} xs={12} key={code}>
+                  <Card className="leave-balance-card shadow-xs">
+                    <div className="d-flex justify-content-between align-items-center">
+                      <div>
+                        <span className="leave-balance-label">
+                          {code}
+                        </span>
+                        <h5 className="leave-balance-value">
+                          {balanceLoading ? (
+                            <LoadingSpinner variant="inline" size="sm" color="info" />
+                          ) : (
+                            `${remaining} / ${allocated} Days`
+                          )}
+                        </h5>
+                        <span className="extra-small text-muted">{used} day(s) used</span>
+                      </div>
+                      <div className="leave-balance-tag">
+                        {code}
+                      </div>
+                    </div>
+                    <div className="leave-progress-track">
+                      <div
+                        className="leave-progress-bar"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </Card>
+                </Col>
+              );
+            })
+          ) : (
+            <Col xs={12}>
+              <div className="text-muted small py-2 px-3 border rounded bg-light">
+                {balanceLoading ? "Loading leave balances..." : "No active leave policy balances configured."}
               </div>
-              <div className="leave-progress-track">
-                <div
-                  className="leave-progress-bar sl"
-                  style={{
-                    width: `${Math.min(100, Math.max(0, ((balance?.SL?.remaining ?? 2.0) / (balance?.SL?.allocated ?? 2.0)) * 100))}%`
-                  }}
-                />
-              </div>
-            </Card>
-          </Col>
-          <Col md={4}>
-            <Card className="leave-balance-card cl">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <span className="leave-balance-label">
-                    Casual Leave (CL)
-                  </span>
-                  <h5 className="leave-balance-value">
-                    {balanceLoading ? (
-                      <LoadingSpinner variant="inline" size="sm" color="warning" />
-                    ) : (
-                      `${balance?.CL?.remaining ?? 1.0} / ${balance?.CL?.allocated ?? 1.0} Days`
-                    )}
-                  </h5>
-                  <span className="extra-small text-muted">1 day/month allocation</span>
-                </div>
-                <div className="leave-balance-tag cl">
-                  CL
-                </div>
-              </div>
-              <div className="leave-progress-track">
-                <div
-                  className="leave-progress-bar cl"
-                  style={{
-                    width: `${Math.min(100, Math.max(0, ((balance?.CL?.remaining ?? 1.0) / (balance?.CL?.allocated ?? 1.0)) * 100))}%`
-                  }}
-                />
-              </div>
-            </Card>
-          </Col>
-          <Col md={4}>
-            <Card className="leave-balance-card lop">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <span className="leave-balance-label">
-                    Unpaid Leave (LOP)
-                  </span>
-                  <h5 className="leave-balance-value">
-                    {balanceLoading ? (
-                      <LoadingSpinner variant="inline" size="sm" color="secondary" />
-                    ) : (
-                      `${balance?.LOP?.used ?? 0} Days Used`
-                    )}
-                  </h5>
-                  <span className="extra-small text-muted">Subject to supervisor approval</span>
-                </div>
-                <div className="leave-balance-tag lop">
-                  LOP
-                </div>
-              </div>
-              <div className="leave-progress-track">
-                <div
-                  className="leave-progress-bar lop"
-                  style={{
-                    width: `${Math.min(100, (balance?.LOP?.used ?? 0) * 15)}%`
-                  }}
-                />
-              </div>
-            </Card>
-          </Col>
+            </Col>
+          )}
         </Row>
       )}
 
@@ -651,27 +759,83 @@ function LeaveRequest() {
                                 onChange={handleInputChange}
                                 className="form-select-sm shadow-none border"
                               >
-                                <option value="SL">Sick Leave (SL) — 2.0 days/mo</option>
-                                <option value="CL">Casual Leave (CL) — 1.0 day/mo</option>
-                                <option value="LOP">Unpaid Leave (LOP) — Subject to approval</option>
+                                {availableLeaveTypes.length > 0 ? (
+                                  availableLeaveTypes.map((lt) => (
+                                    <option key={lt._id} value={lt.code}>
+                                      {lt.name} ({lt.code})
+                                    </option>
+                                  ))
+                                ) : (
+                                  <option value="">No configured leave types available</option>
+                                )}
                               </Form.Select>
                             </Form.Group>
 
-                            <Form.Group className="mb-2">
-                              <Form.Label className="small fw-bold text-dark mb-1">Requested Date</Form.Label>
-                              <Form.Control
-                                type="date"
-                                name="date"
-                                min={todayStr}
-                                value={formData.date}
-                                onChange={handleInputChange}
-                                className="form-control-sm shadow-none border"
-                                required
-                              />
-                              <Form.Text className="text-muted extra-small">
-                                One working calendar date. Sundays are non-working.
-                              </Form.Text>
-                            </Form.Group>
+                            <Row className="g-2 mb-2">
+                              <Col sm={6}>
+                                <Form.Group>
+                                  <Form.Label className="small fw-bold text-dark mb-1">Start Date</Form.Label>
+                                  <Form.Control
+                                    type="date"
+                                    name="startDate"
+                                    min={todayStr}
+                                    value={formData.startDate}
+                                    onChange={handleInputChange}
+                                    className="form-control-sm shadow-none border"
+                                    required
+                                  />
+                                </Form.Group>
+                              </Col>
+                              <Col sm={6}>
+                                <Form.Group>
+                                  <Form.Label className="small fw-bold text-dark mb-1">End Date</Form.Label>
+                                  <Form.Control
+                                    type="date"
+                                    name="endDate"
+                                    min={formData.startDate || todayStr}
+                                    value={formData.endDate}
+                                    onChange={handleInputChange}
+                                    className="form-control-sm shadow-none border"
+                                    required
+                                  />
+                                </Form.Group>
+                              </Col>
+                            </Row>
+
+                            {/* Working Days & Exclusions Preview */}
+                            {calculationPreview && (
+                              <div className="p-2 mb-2 bg-light border rounded small">
+                                <div className="d-flex justify-content-between align-items-center mb-1">
+                                  <span className="text-muted">Working Days:</span>
+                                  <strong className="text-primary">
+                                    {calculationPreview.totalDays} day{calculationPreview.totalDays === 1 ? "" : "s"}
+                                    {calculatingDays && " (updating...)"}
+                                  </strong>
+                                </div>
+                                <div className="d-flex justify-content-between align-items-center mb-1 extra-small text-muted">
+                                  <span>Date Range:</span>
+                                  <span>{calculationPreview.startDate} → {calculationPreview.endDate} ({calculationPreview.totalCalendarDays} cal days)</span>
+                                </div>
+                                {calculationPreview.excludedWeeklyOffs?.length > 0 && (
+                                  <div className="extra-small text-secondary mb-1">
+                                    Weekly Offs ({calculationPreview.excludedWeeklyOffs.length}):{" "}
+                                    {calculationPreview.excludedWeeklyOffs.map((o) => `${o.date} (${o.dayName})`).join(", ")}
+                                  </div>
+                                )}
+                                {calculationPreview.excludedHolidays?.length > 0 && (
+                                  <div className="extra-small text-success mb-1">
+                                    Holidays ({calculationPreview.excludedHolidays.length}):{" "}
+                                    {calculationPreview.excludedHolidays.map((h) => `${h.date} (${h.title})`).join(", ")}
+                                  </div>
+                                )}
+                                {calculationPreview.balance && (
+                                  <div className="d-flex justify-content-between align-items-center pt-1 border-top extra-small">
+                                    <span className="text-muted">Available: {calculationPreview.balance.available}d</span>
+                                    <span className="fw-semibold text-info">Projected Remaining: {calculationPreview.balance.projectedRemaining}d</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
 
                             <Form.Group className="mb-2">
                               <div className="leave-halfday-box">
@@ -775,8 +939,8 @@ function LeaveRequest() {
                               cellClassName: "py-2 px-2",
                               render: (item) => (
                                 <>
-                                  <div className="fw-semibold text-dark leave-date-text">{new Date(item.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                                  <small className="text-muted extra-small">{item.isHalfDay ? `Half Day (${item.halfDayPeriod})` : "Full Day (1.0 Day)"}</small>
+                                  <div className="fw-semibold text-dark leave-date-text">{formatLeaveDateRange(item)}</div>
+                                  <small className="text-muted extra-small">{formatLeaveDuration(item)}</small>
                                 </>
                               ),
                             },
@@ -946,10 +1110,10 @@ function LeaveRequest() {
                                       </span>
                                     </td>
                                     <td className="py-2 px-3 fw-semibold text-dark leave-date-text">
-                                      {new Date(item.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                      {formatLeaveDateRange(item)}
                                     </td>
                                     <td className="py-2 px-3 extra-small text-muted">
-                                      {item.isHalfDay ? `Half Day (${item.halfDayPeriod})` : "Full Day (1.0 Day)"}
+                                      {formatLeaveDuration(item)}
                                     </td>
                                     <td className="py-2 px-3 leave-reason-cell-wide">
                                       <span className="leave-reason-text" title={item.reason}>{item.reason}</span>
@@ -1110,8 +1274,8 @@ function LeaveRequest() {
                                 </span>
                               </td>
                               <td className="py-2 px-3">
-                                <div className="fw-semibold text-dark leave-date-text">{new Date(item.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                                <small className="text-muted extra-small">{item.isHalfDay ? `Half Day (${item.halfDayPeriod})` : "Full Day"}</small>
+                                <div className="fw-semibold text-dark leave-date-text">{formatLeaveDateRange(item)}</div>
+                                <small className="text-muted extra-small">{formatLeaveDuration(item)}</small>
                               </td>
                               <td className="py-2 px-3 leave-reason-cell">
                                 <span className="leave-reason-text" title={item.reason}>{item.reason}</span>
@@ -1244,8 +1408,8 @@ function LeaveRequest() {
                                 </span>
                               </td>
                               <td className="py-2 px-3">
-                                <div className="fw-semibold text-dark leave-date-text">{new Date(item.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                                <small className="text-muted extra-small">{item.isHalfDay ? `Half Day (${item.halfDayPeriod})` : "Full Day"}</small>
+                                <div className="fw-semibold text-dark leave-date-text">{formatLeaveDateRange(item)}</div>
+                                <small className="text-muted extra-small">{formatLeaveDuration(item)}</small>
                               </td>
                               <td className="py-2 px-3 leave-reason-cell">
                                 <span className="leave-reason-text" title={item.reason}>{item.reason}</span>

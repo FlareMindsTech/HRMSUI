@@ -51,6 +51,7 @@ import AttendanceWorkspaceSection from "../../Components/Organisation/Attendance
 import ShiftsSection from "../../Components/Organisation/ShiftsSection";
 import FinancialYearsSection from "../../Components/Organisation/FinancialYearsSection";
 import HolidayCalendarsSection from "../../Components/Organisation/HolidayCalendarsSection";
+import LeaveSettingsSection from "../../Components/Organisation/LeaveSettingsSection";
 import OrganizationSettingsSection from "../../Components/Organisation/OrganizationSettingsSection";
 import BranchSettingsSection from "../../Components/Organisation/BranchSettingsSection";
 import SubscriptionSection from "../../Components/Organisation/SubscriptionSection";
@@ -108,6 +109,7 @@ const ORG_NAV_GROUPS = [
       { key: "job-grades", label: "Job Grades", icon: FaLayerGroup, perm: "jobGrade.view" },
       { key: "shifts", label: "Shifts", icon: FaClock, perm: "shift.view" },
       { key: "holiday-calendars", label: "Holiday Calendars", icon: FaUmbrellaBeach, perm: "holidayCalendar.view" },
+      { key: "leave-settings", label: "Leave Settings", icon: FaCalendarCheck, perm: "leave.policy.manage" },
       { key: "financial-years", label: "Financial Years", icon: FaCalendarAlt, perm: "financialYear.view" },
       { key: "cost-centers", label: "Cost Centers", icon: FaMoneyCheckAlt, perm: "costCenter.view" },
     ],
@@ -391,6 +393,8 @@ function Organisation() {
         return <ShiftsSection />;
       case "holiday-calendars":
         return <HolidayCalendarsSection />;
+      case "leave-settings":
+        return <LeaveSettingsSection />;
       case "financial-years":
         return <FinancialYearsSection />;
       case "users":
