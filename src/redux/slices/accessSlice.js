@@ -74,6 +74,27 @@ export const fetchAccessMasters = createAsyncThunk(
   }
 );
 
+// Server-filtered roles fetch (spec E): GET /role supports search,
+// isActive, isSystemRole, priority, accessLevel, page, limit (cap 100).
+// Replaces `roles` with the server-filtered list; callers restore the full
+// list via fetchAccessMasters({ force: true }) when filters clear. No TTL —
+// filter changes always hit the server. Client-side filtering stays as a
+// second pass in components.
+export const fetchRolesFiltered = createAsyncThunk(
+  'access/fetchRolesFiltered',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const list = await fetchAllRoles({ limit: 100, ...params });
+      return {
+        roles: Array.isArray(list) ? list : [],
+        fetchedAt: Date.now(),
+      };
+    } catch (err) {
+      return rejectWithValue(err.message || 'Failed to load roles');
+    }
+  }
+);
+
 export const accessSlice = createSlice({
   name: 'access',
   initialState,
@@ -113,6 +134,27 @@ export const accessSlice = createSlice({
         state.activeRequest = null;
         state.status = 'failed';
         state.error = action.payload || 'Failed to load access data';
+      })
+      .addCase(fetchRolesFiltered.pending, (state, action) => {
+        state.status = 'loading';
+        state.error = null;
+        state.activeRequest = action.meta.requestId;
+      })
+      .addCase(fetchRolesFiltered.fulfilled, (state, action) => {
+        if (state.activeRequest !== action.meta.requestId) return;
+        state.activeRequest = null;
+        state.status = 'succeeded';
+        state.roles = action.payload.roles;
+        state.error = null;
+        if (action.payload.fetchedAt !== undefined) {
+          state.lastFetched = action.payload.fetchedAt;
+        }
+      })
+      .addCase(fetchRolesFiltered.rejected, (state, action) => {
+        if (state.activeRequest && state.activeRequest !== action.meta.requestId) return;
+        state.activeRequest = null;
+        state.status = 'failed';
+        state.error = action.payload || 'Failed to load roles';
       });
   },
 });

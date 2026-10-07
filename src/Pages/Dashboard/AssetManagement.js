@@ -7,7 +7,6 @@ import {
   Button,
   Modal,
   Form,
-  Alert,
   InputGroup,
 } from "react-bootstrap";
 import {
@@ -479,16 +478,13 @@ function AssetManagement() {
 
       {/* ── Alerts & Feedback ── */}
       {successMessage && (
-        <Alert
+        <FeedbackAlert
           variant="success"
           dismissible
           onClose={() => setSuccessMessage(null)}
-          className="d-flex align-items-center gap-2 shadow-xs border-0 rounded-3 mb-3 py-2 px-3 small"
-          style={{ backgroundColor: "rgba(45, 197, 138, 0.12)", color: "#065f46" }}
-        >
-          <FaCheckCircle className="flex-shrink-0 text-success" />
-          <div>{successMessage}</div>
-        </Alert>
+          className="mb-3"
+          message={successMessage}
+        />
       )}
 
       {error && (
@@ -496,8 +492,8 @@ function AssetManagement() {
           variant="danger"
           dismissible
           onClose={() => setError(null)}
-          className="d-flex align-items-center gap-2 shadow-xs border-0 rounded-3 mb-3 py-2 px-3 small"
-          message={<><FaExclamationTriangle className="flex-shrink-0" /><div>{error}</div></>}
+          className="mb-3"
+          message={error}
         />
       )}
 
@@ -868,7 +864,7 @@ function AssetManagement() {
         <Form onSubmit={handleCreateSubmit}>
           <Modal.Body className="pt-3">
             {createError && (
-              <FeedbackAlert variant="danger" className="py-2 px-3 small rounded-3 mb-3" message={<><FaExclamationTriangle className="me-2" />{createError}</>} />
+              <FeedbackAlert variant="danger" className="mb-3" message={createError} />
             )}
 
             <Row className="g-3">
@@ -1027,7 +1023,7 @@ function AssetManagement() {
         <Form onSubmit={handleAssignSubmit}>
           <Modal.Body className="pt-3">
             {assignError && (
-              <FeedbackAlert variant="danger" className="py-2 px-3 small rounded-3 mb-3" message={<><FaExclamationTriangle className="me-2" />{assignError}</>} />
+              <FeedbackAlert variant="danger" className="mb-3" message={assignError} />
             )}
 
             {selectedAssetForAssign && (
@@ -1141,7 +1137,7 @@ function AssetManagement() {
         <Form onSubmit={handleReturnSubmit}>
           <Modal.Body className="pt-3">
             {returnError && (
-              <FeedbackAlert variant="danger" className="py-2 px-3 small rounded-3 mb-3" message={<><FaExclamationTriangle className="me-2" />{returnError}</>} />
+              <FeedbackAlert variant="danger" className="mb-3" message={returnError} />
             )}
 
             {selectedAssetForReturn && (

@@ -5,20 +5,15 @@ import {
   MdPendingActions,
   MdAddCircle,
   MdRefresh,
-  MdCheckCircle,
-  MdCancel,
-  MdSettings,
   MdLayers
 } from 'react-icons/md';
 import { useSelector } from 'react-redux';
-import { selectAuthUser, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import { selectAuthUser, selectIsSystemAdmin, useHasPermission } from '../../redux/slices/authSlice';
 import DataTable from '../../Components/Common/DataTable';
 import StatusBadge from '../../Components/Common/StatusBadge';
 import LoadingSpinner from '../../Components/Common/LoadingSpinner';
 import EmptyState from '../../Components/Common/EmptyState';
 import FeedbackAlert from '../../Components/Common/FeedbackAlert';
-import PaginationBar from '../../Components/Common/PaginationBar';
-import SearchInput from '../../Components/Common/SearchInput';
 import {
   configureWorkflow,
   getWorkflows,
@@ -38,8 +33,15 @@ const WORKFLOW_MODULES = [
 function ApprovalWorkflows() {
   const currentUser = useSelector(selectAuthUser);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useHasPermission();
   const userRole = currentUser?.roleCode || currentUser?.role?.roleCode || '';
-  const isAdmin = isSystemAdmin || ['OWNER', 'ADMIN', 'HR_MANAGER'].includes(userRole);
+  // Backend gates: workflows/pending need approval.read, process-action needs
+  // approval.process, configure needs isAdmin. Role-code fallback kept for
+  // pre-seed backends without the APPROVAL module.
+  const canRead = hasPermission('approval.read') || hasPermission('approval.process') || isSystemAdmin || ['OWNER', 'ADMIN', 'HR_MANAGER', 'HR', 'PROJECT_MANAGER'].includes(userRole);
+  const canProcess = hasPermission('approval.process') || isSystemAdmin || ['OWNER', 'ADMIN', 'HR_MANAGER', 'HR'].includes(userRole);
+  const canConfigure = isSystemAdmin || ['OWNER', 'ADMIN'].includes(userRole) || hasPermission('approval.configure');
+  const isAdmin = canConfigure;
 
   const [activeTab, setActiveTab] = useState(isAdmin ? 'workflows' : 'pending-approvals');
   const [workflows, setWorkflows] = useState([]);
@@ -72,21 +74,31 @@ function ApprovalWorkflows() {
   });
 
   const loadData = useCallback(async () => {
+    // Route gates mirror the backend: workflows need approval.configure
+    // (isAdmin), pending queue needs approval.read. Without read rights the
+    // page shows an access note instead of firing a 403 fetch.
+    if (!canRead && !isAdmin) {
+      setAlert({ type: 'warning', message: 'You do not have approval queue access (requires approval.read).' });
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       if (isAdmin) {
         const wfRes = await getWorkflows();
         setWorkflows(wfRes.data || []);
       }
-      const pendingRes = await getPendingApprovals();
-      const pList = Array.isArray(pendingRes.data) ? pendingRes.data : pendingRes.data?.data || [];
-      setPendingRequests(pList);
+      if (canRead) {
+        const pendingRes = await getPendingApprovals();
+        const pList = Array.isArray(pendingRes.data) ? pendingRes.data : pendingRes.data?.data || [];
+        setPendingRequests(pList);
+      }
     } catch (err) {
       setAlert({ type: 'danger', message: err.message || 'Failed to load workflow data.' });
     } finally {
       setLoading(false);
     }
-  }, [isAdmin]);
+  }, [isAdmin, canRead]);
 
   useEffect(() => {
     loadData();
@@ -102,6 +114,10 @@ function ApprovalWorkflows() {
 
   const handleSaveWorkflow = async (e) => {
     e.preventDefault();
+    if (!isAdmin) {
+      setAlert({ type: 'warning', message: 'Workflow configuration requires admin authority.' });
+      return;
+    }
     if (!configForm.module || !configForm.title) {
       setAlert({ type: 'warning', message: 'Module and title are required.' });
       return;
@@ -109,7 +125,7 @@ function ApprovalWorkflows() {
     try {
       const sanitizedLevels = (configForm.approvalLevels || []).map((lvl, index) => {
         const lvlNum = lvl.level || index + 1;
-        const matchedRole = roles.find((r) => String(r._id || r.id) === String(lvl.roleId));
+        const matchedRole = roles.find((r) => String(r._id) === String(lvl.roleId));
         const roleTitle = lvl.roleName || matchedRole?.roleName || matchedRole?.name || '';
         return {
           level: lvlNum,
@@ -138,6 +154,10 @@ function ApprovalWorkflows() {
   const handleProcessAction = async (e) => {
     e.preventDefault();
     if (!selectedRequest) return;
+    if (!canProcess) {
+      setAlert({ type: 'warning', message: 'Processing approvals requires approval.process authority.' });
+      return;
+    }
     try {
       await processApprovalAction({
         requestId: selectedRequest._id,
@@ -298,17 +318,21 @@ function ApprovalWorkflows() {
       key: 'actions',
       header: 'Actions',
       render: (row) => (
-        <Button
-          size="sm"
-          variant="primary"
-          onClick={() => {
-            setSelectedRequest(row);
-            setActionForm({ action: 'APPROVED', comments: '' });
-            setShowActionModal(true);
-          }}
-        >
-          Review & Decide
-        </Button>
+        canProcess ? (
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => {
+              setSelectedRequest(row);
+              setActionForm({ action: 'APPROVED', comments: '' });
+              setShowActionModal(true);
+            }}
+          >
+            Review & Decide
+          </Button>
+        ) : (
+          <span className="text-muted extra-small">No authority</span>
+        )
       ),
     },
   ];

@@ -174,6 +174,7 @@ export const fetchTeamAttendance = async (params = {}) => {
  */
 export const fetchAttendanceAnalytics = async (params = {}) => {
   const queryParams = new URLSearchParams();
+  if (params.date) queryParams.append("date", params.date);
   if (params.branchId) queryParams.append("branchId", params.branchId);
   if (params.departmentId) queryParams.append("departmentId", params.departmentId);
   if (params.locationId) queryParams.append("locationId", params.locationId);
@@ -255,6 +256,8 @@ export const fetchAttendanceExceptions = async (params = {}) => {
  */
 export const fetchOvertimeReport = async (params = {}) => {
   const queryParams = new URLSearchParams();
+  if (params.date) queryParams.append("date", params.date);
+  if (params.search) queryParams.append("search", params.search);
   if (params.branchId) queryParams.append("branchId", params.branchId);
   if (params.departmentId) queryParams.append("departmentId", params.departmentId);
   if (params.startDate) queryParams.append("startDate", params.startDate);
@@ -481,6 +484,75 @@ export const deleteDeclaredHoliday = async (id) => {
 
   if (!result.ok) {
     throw apiError(result, "Failed to cancel holiday.");
+  }
+  return result.data;
+};
+
+// =========================================================================
+// Phase 9D — Employee Optional Holiday Self-Service
+// =========================================================================
+
+/**
+ * Fetch the optional holiday catalog eligible for the authenticated employee.
+ * @param {{ year?: string|number }} params
+ */
+export const fetchOptionalHolidayCatalog = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  if (params?.year) queryParams.append("year", params.year);
+  const qs = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  const result = await apiFetch(`/attendance/holidays/optional-catalog${qs}`, { method: "GET" });
+
+  if (!result.ok) {
+    throw apiError(result, "Failed to fetch optional holiday catalog.");
+  }
+  return result.data;
+};
+
+/**
+ * Opt the authenticated employee into an optional holiday.
+ * @param {string} holidayId
+ */
+export const optInOptionalHoliday = async (holidayId) => {
+  const result = await apiFetch("/attendance/holidays/opt-in", {
+    method: "POST",
+    body: JSON.stringify({ holidayId }),
+  });
+
+  if (!result.ok) {
+    throw apiError(result, "Failed to opt into holiday.");
+  }
+  return result.data;
+};
+
+/**
+ * Opt the authenticated employee out of an optional holiday.
+ * @param {string} holidayId
+ */
+export const optOutOptionalHoliday = async (holidayId) => {
+  const result = await apiFetch("/attendance/holidays/opt-out", {
+    method: "POST",
+    body: JSON.stringify({ holidayId }),
+  });
+
+  if (!result.ok) {
+    throw apiError(result, "Failed to opt out of holiday.");
+  }
+  return result.data;
+};
+
+/**
+ * Fetch the authenticated employee's own optional holiday opt-ins.
+ * @param {{ year?: string|number, status?: string }} params
+ */
+export const fetchMyOptionalHolidayOptIns = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  if (params?.year) queryParams.append("year", params.year);
+  if (params?.status) queryParams.append("status", params.status);
+  const qs = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  const result = await apiFetch(`/attendance/holidays/my-opt-ins${qs}`, { method: "GET" });
+
+  if (!result.ok) {
+    throw apiError(result, "Failed to fetch your holiday opt-ins.");
   }
   return result.data;
 };

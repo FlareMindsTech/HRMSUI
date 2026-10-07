@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Row, Col, Form, Button, InputGroup, Card, Alert, Spinner } from "react-bootstrap";
+import { Row, Col, Form, Button, InputGroup, Card, Spinner } from "react-bootstrap";
 import {
   FaBuilding,
   FaShieldAlt,
@@ -752,22 +752,12 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
 
             {/* Error Alert */}
             {error && (
-              <Alert variant="danger" dismissible onClose={() => setError("")} className="mb-4 shadow-sm">
-                <div className="d-flex align-items-center gap-2">
-                  <FaExclamationTriangle className="text-danger flex-shrink-0" />
-                  <span><strong>Action Required:</strong> {error}</span>
-                </div>
-              </Alert>
+              <FeedbackAlert variant="danger" dismissible onClose={() => setError("")} className="mb-4" message={error} />
             )}
 
             {/* Success Alert */}
             {successMessage && (
-              <Alert variant="success" className="mb-4 shadow-sm">
-                <div className="d-flex align-items-center gap-2">
-                  <FaCheckCircle className="text-success flex-shrink-0" />
-                  <span>{successMessage}</span>
-                </div>
-              </Alert>
+              <FeedbackAlert variant="success" className="mb-4" message={successMessage} />
             )}
 
         {/* ── STEP 1: ENTITY & IDENTITY ── */}

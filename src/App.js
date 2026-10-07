@@ -32,11 +32,22 @@ import AuditLogs from './Pages/Dashboard/AuditLogs';
 import PlatformAdmin from './Pages/Dashboard/PlatformAdmin';
 import { fetchSystemSetupStatus } from './services/organizationService';
 
-const isAuthError = (msg) =>
-  typeof msg === 'string' &&
-  (msg.includes('User account not found') ||
-    msg.includes('token') ||
-    msg.includes('Authentication'));
+const isAuthError = (payload) => {
+  // 401 only — a 403 (AccessDenied with required* keys) must never bounce to
+  // login. Legacy string payloads ('No token') still count as auth errors.
+  if (typeof payload === 'string') return true;
+  if (payload && typeof payload === 'object') {
+    if (payload.status && payload.status !== 401) return false;
+    const msg = payload.message;
+    return (
+      typeof msg === 'string' &&
+      (msg.includes('User account not found') ||
+        msg.includes('token') ||
+        msg.includes('Authentication'))
+    );
+  }
+  return false;
+};
 
 function App() {
   const dispatch = useDispatch();
