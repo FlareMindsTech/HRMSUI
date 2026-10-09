@@ -138,6 +138,44 @@ function LeaveRequest() {
     return item.isHalfDay ? `Half Day (${item.halfDayPeriod || "0.5d"})` : `${days} Day${days === 1 ? "" : "s"}`;
   };
 
+  const getLeaveTypeName = useCallback((item) => {
+    if (!item) return "-";
+    if (item.leaveTypeId?.name) return item.leaveTypeId.name;
+    if (typeof item.leaveTypeId === "string") {
+      const found = availableLeaveTypes.find((lt) => lt._id === item.leaveTypeId);
+      if (found?.name) return found.name;
+    }
+    if (item.leaveType) {
+      const found = availableLeaveTypes.find((lt) => lt.code === item.leaveType);
+      if (found?.name) return found.name;
+      return item.leaveType;
+    }
+    return "Leave";
+  }, [availableLeaveTypes]);
+
+  const renderLeaveTypeBadge = useCallback((item, extraText = "") => {
+    const name = getLeaveTypeName(item);
+    const code = item.leaveTypeId?.code || item.leaveType;
+    const leaveTypeObj = (item.leaveTypeId && typeof item.leaveTypeId === "object")
+      ? item.leaveTypeId
+      : availableLeaveTypes.find((lt) => lt.code === code || lt._id === item.leaveTypeId);
+
+    const badgeClass = code === "SL" ? "sl" : code === "CL" ? "cl" : code === "LOP" ? "lop" : "custom";
+    const customStyle = leaveTypeObj?.color && badgeClass === "custom"
+      ? {
+          backgroundColor: `${leaveTypeObj.color}1a`,
+          color: leaveTypeObj.color,
+          border: `1px solid ${leaveTypeObj.color}40`,
+        }
+      : undefined;
+
+    return (
+      <span className={`leave-type-badge ${badgeClass}`} style={customStyle}>
+        {name}{extraText ? ` ${extraText}` : ""}
+      </span>
+    );
+  }, [getLeaveTypeName, availableLeaveTypes]);
+
   // Load Dynamic Leave Types
   useEffect(() => {
     fetchLeaveTypesApi({ activeOnly: "true" })
@@ -242,6 +280,15 @@ function LeaveRequest() {
 
     let isMounted = true;
     const timer = setTimeout(async () => {
+      if (formData.isHalfDay && formData.endDate && formData.startDate !== formData.endDate) {
+        if (isMounted) {
+          setCalculationPreview(null);
+          setFormValidationErr("Half-day leave can only be applied for a single working day.");
+          setCalculatingDays(false);
+        }
+        return;
+      }
+
       try {
         setCalculatingDays(true);
         const res = await calculateLeaveDaysApi({
@@ -253,7 +300,9 @@ function LeaveRequest() {
         });
         if (isMounted && res?.data) {
           setCalculationPreview(res.data);
-          if (res.data.totalDays === 0) {
+          if (res.data.isHalfDay && res.data.totalWorkingDays !== 1) {
+            setFormValidationErr("Half-day leave can only be applied for a single working day.");
+          } else if (res.data.totalDays === 0) {
             setFormValidationErr("Selected date range has no working days (all days are weekly offs or holidays).");
           } else {
             setFormValidationErr("");
@@ -292,17 +341,27 @@ function LeaveRequest() {
 
     setFormData((prev) => {
       const updated = { ...prev, [name]: val };
+      if (name === "isHalfDay") {
+        if (val) {
+          updated.endDate = updated.startDate;
+          setFormValidationErr("");
+        }
+      }
       if (name === "startDate") {
+        if (updated.isHalfDay) {
+          updated.endDate = val;
+        } else if (updated.endDate && updated.endDate < val) {
+          updated.endDate = val;
+        }
         if (val < todayStr) {
           setFormValidationErr("Self-service leave cannot be requested for past dates.");
         } else {
           setFormValidationErr("");
         }
-        if (updated.endDate && updated.endDate < val) {
-          updated.endDate = val;
-        }
       } else if (name === "endDate") {
-        if (val < updated.startDate) {
+        if (updated.isHalfDay && val !== updated.startDate) {
+          setFormValidationErr("Half-day leave can only be applied for a single working day.");
+        } else if (val < updated.startDate) {
           setFormValidationErr("End date must be greater than or equal to start date.");
         } else {
           setFormValidationErr("");
@@ -337,6 +396,11 @@ function LeaveRequest() {
 
     if (formData.endDate < formData.startDate) {
       setFormValidationErr("End date must be greater than or equal to start date.");
+      return;
+    }
+
+    if (formData.isHalfDay && (formData.startDate !== formData.endDate || calculationPreview?.totalWorkingDays !== 1)) {
+      setFormValidationErr("Half-day leave can only be applied for a single working day.");
       return;
     }
 
@@ -496,15 +560,22 @@ function LeaveRequest() {
   const filterList = (list) => {
     return (list || []).filter((item) => {
       const matchesStatus = statusFilter === "ALL" || item.status === statusFilter;
-      const matchesType = typeFilter === "ALL" || item.leaveType === typeFilter;
+      const itemCode = item.leaveTypeId?.code || item.leaveType;
+      const matchesType =
+        typeFilter === "ALL" ||
+        itemCode === typeFilter ||
+        item.leaveTypeId?._id === typeFilter ||
+        item.leaveType === typeFilter;
       const empName = item.employeeId
         ? `${item.employeeId.firstName || ""} ${item.employeeId.lastName || ""} ${item.employeeId.employeeCode || ""}`
         : "";
+      const leaveTypeName = getLeaveTypeName(item);
       const matchesSearch =
         !searchQuery ||
         empName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (item.reason || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (item.leaveType || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        leaveTypeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (item.title || "").toLowerCase().includes(searchQuery.toLowerCase());
       return matchesStatus && matchesType && matchesSearch;
     });
@@ -927,7 +998,7 @@ function LeaveRequest() {
                               cellClassName: "py-2 px-2",
                               render: (item) => (
                                 <>
-                                  <div className="fw-bold text-dark leave-emp-name">{item.leaveType === "SL" ? "Sick Leave" : item.leaveType === "CL" ? "Casual Leave" : "Unpaid Leave"}</div>
+                                  <div className="fw-bold text-dark leave-emp-name">{getLeaveTypeName(item)}</div>
                                   <small className="text-muted extra-small">{item.title}</small>
                                 </>
                               ),
@@ -1045,9 +1116,11 @@ function LeaveRequest() {
                           className="leave-type-select shadow-none"
                         >
                           <option value="ALL">All Types</option>
-                          <option value="SL">Sick (SL)</option>
-                          <option value="CL">Casual (CL)</option>
-                          <option value="LOP">Unpaid (LOP)</option>
+                          {availableLeaveTypes.map((lt) => (
+                            <option key={lt._id || lt.code} value={lt.code}>
+                              {lt.name} ({lt.code})
+                            </option>
+                          ))}
                         </Form.Select>
 
                         {(searchQuery || typeFilter !== "ALL") && (
@@ -1105,9 +1178,7 @@ function LeaveRequest() {
                                       </div>
                                     </td>
                                     <td className="py-2 px-3">
-                                      <span className={`leave-type-badge ${item.leaveType === "SL" ? "sl" : item.leaveType === "CL" ? "cl" : "lop"}`}>
-                                        {item.leaveType === "SL" ? "Sick Leave" : item.leaveType === "CL" ? "Casual Leave" : "Unpaid Leave"}
-                                      </span>
+                                      {renderLeaveTypeBadge(item)}
                                     </td>
                                     <td className="py-2 px-3 fw-semibold text-dark leave-date-text">
                                       {formatLeaveDateRange(item)}
@@ -1218,9 +1289,11 @@ function LeaveRequest() {
                         className="leave-type-select shadow-none"
                       >
                         <option value="ALL">All Types</option>
-                        <option value="SL">Sick (SL)</option>
-                        <option value="CL">Casual (CL)</option>
-                        <option value="LOP">Unpaid (LOP)</option>
+                        {availableLeaveTypes.map((lt) => (
+                          <option key={lt._id || lt.code} value={lt.code}>
+                            {lt.name} ({lt.code})
+                          </option>
+                        ))}
                       </Form.Select>
 
                       {(searchQuery || statusFilter !== "ALL" || typeFilter !== "ALL") && (
@@ -1269,9 +1342,7 @@ function LeaveRequest() {
                                 </div>
                               </td>
                               <td className="py-2 px-3">
-                                <span className={`leave-type-badge ${item.leaveType === "SL" ? "sl" : item.leaveType === "CL" ? "cl" : "lop"}`}>
-                                  {item.leaveType === "SL" ? "Sick Leave" : item.leaveType === "CL" ? "Casual Leave" : "Unpaid Leave"}
-                                </span>
+                                {renderLeaveTypeBadge(item)}
                               </td>
                               <td className="py-2 px-3">
                                 <div className="fw-semibold text-dark leave-date-text">{formatLeaveDateRange(item)}</div>
@@ -1351,9 +1422,11 @@ function LeaveRequest() {
                         className="leave-type-select shadow-none"
                       >
                         <option value="ALL">All Types</option>
-                        <option value="SL">Sick (SL)</option>
-                        <option value="CL">Casual (CL)</option>
-                        <option value="LOP">Unpaid (LOP)</option>
+                        {availableLeaveTypes.map((lt) => (
+                          <option key={lt._id || lt.code} value={lt.code}>
+                            {lt.name} ({lt.code})
+                          </option>
+                        ))}
                       </Form.Select>
 
                       {(searchQuery || statusFilter !== "ALL" || typeFilter !== "ALL") && (
@@ -1403,9 +1476,7 @@ function LeaveRequest() {
                                 </div>
                               </td>
                               <td className="py-2 px-3">
-                                <span className={`leave-type-badge ${item.leaveType === "SL" ? "sl" : item.leaveType === "CL" ? "cl" : "lop"}`}>
-                                  {item.leaveType}
-                                </span>
+                                {renderLeaveTypeBadge(item)}
                               </td>
                               <td className="py-2 px-3">
                                 <div className="fw-semibold text-dark leave-date-text">{formatLeaveDateRange(item)}</div>
@@ -1459,9 +1530,7 @@ function LeaveRequest() {
                             <div className="fw-bold text-dark small">{item.employeeId?.firstName} {item.employeeId?.lastName}</div>
                             <small className="text-muted extra-small">{new Date(item.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</small>
                             <div className="mt-1">
-                              <span className={`leave-type-badge ${item.leaveType === "SL" ? "sl" : item.leaveType === "CL" ? "cl" : "lop"}`}>
-                                {item.leaveType === "SL" ? "Sick Leave" : item.leaveType === "CL" ? "Casual Leave" : "Unpaid Leave"} ({item.isHalfDay ? "0.5 Day" : "1.0 Day"})
-                              </span>
+                              {renderLeaveTypeBadge(item, `(${item.isHalfDay ? "0.5 Day" : "1.0 Day"})`)}
                             </div>
                           </div>
                         ))}
