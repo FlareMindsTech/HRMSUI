@@ -36,6 +36,7 @@ import {
 import { useSelector, useDispatch } from 'react-redux';
 import { invalidateOrgResource } from '../../redux/slices/organizationSlice';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import { useBranch } from '../../context/BranchContext';
 import FeedbackAlert from "../Common/FeedbackAlert";
 import EmptyState from "../Common/EmptyState";
 import DataTable from "../Common/DataTable";
@@ -158,9 +159,16 @@ function DeptTreeNode({ node, level = 0, onEdit, onDelete, canUpdate, canDelete 
 }
 
 function DepartmentsSection({ lockedBranchId }) {
-  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin); const dispatch = useDispatch();
+  const hasPermission = useHasPermission();
+  const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const dispatch = useDispatch();
+  const { selectedBranchId, accessLevel } = useBranch();
+  const isBranchScoped = accessLevel === "BRANCH" || Boolean(lockedBranchId);
+
   const [viewMode, setViewMode] = useState("table"); // "table" | "tree"
   const [departments, setDepartments] = useState([]);
+  const [treeDepartments, setTreeDepartments] = useState([]);
+  const [treeLoading, setTreeLoading] = useState(false);
   const [parentDepts, setParentDepts] = useState([]);
   const [branches, setBranches] = useState([]);
   const [costCenters, setCostCenters] = useState([]);
@@ -184,7 +192,7 @@ function DepartmentsSection({ lockedBranchId }) {
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState("");
 
-  // Delete Confirm Modal
+  // Deactivate Confirm Modal
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [deletingName, setDeletingName] = useState("");
@@ -194,7 +202,7 @@ function DepartmentsSection({ lockedBranchId }) {
     departmentCode: "",
     parentDepartmentId: "",
     departmentHeadId: "",
-    branchId: lockedBranchId || "",
+    branchId: lockedBranchId || (isBranchScoped ? (selectedBranchId || "") : ""),
     costCenterId: "",
     description: "",
     status: "ACTIVE",
@@ -238,13 +246,14 @@ function DepartmentsSection({ lockedBranchId }) {
     }
   }, [page, search, filterBranch, filterStatus, lockedBranchId]);
 
-  const loadAuxiliaryData = async () => {
+  const loadAuxiliaryData = useCallback(async (scopedBranchId) => {
     try {
+      const activeBranch = scopedBranchId !== undefined ? scopedBranchId : (lockedBranchId || (isBranchScoped ? selectedBranchId : ""));
       const [deptList, brList, ccList, empList] = await Promise.all([
-        fetchDepartmentsDropdown(lockedBranchId ? { branchId: lockedBranchId } : {}).catch(() => []),
+        fetchDepartmentsDropdown(activeBranch ? { branchId: activeBranch } : {}).catch(() => []),
         fetchBranchesDropdown().catch(() => []),
-        fetchCostCentersDropdown(lockedBranchId ? { branchId: lockedBranchId } : {}).catch(() => []),
-        fetchEmployeesDropdown(lockedBranchId ? { branchId: lockedBranchId } : {}).catch(() => []),
+        fetchCostCentersDropdown(activeBranch ? { branchId: activeBranch } : {}).catch(() => []),
+        fetchEmployeesDropdown(activeBranch ? { branchId: activeBranch } : {}).catch(() => []),
       ]);
       setParentDepts(deptList);
       setBranches(brList);
@@ -253,38 +262,91 @@ function DepartmentsSection({ lockedBranchId }) {
     } catch (err) {
       console.warn("Error loading auxiliary dropdown data:", err);
     }
-  };
+  }, [lockedBranchId, isBranchScoped, selectedBranchId]);
+
+  const loadTreeDepartments = useCallback(async () => {
+    try {
+      setTreeLoading(true);
+      const params = {
+        page: 1,
+        limit: 1000,
+        status: filterStatus || undefined,
+        branchId: lockedBranchId || filterBranch || undefined,
+        search: search || undefined,
+      };
+      const res = await fetchDepartments(params);
+      if (res && res.success) {
+        setTreeDepartments(res.data || []);
+      }
+    } catch (err) {
+      console.warn("Error loading tree departments:", err);
+    } finally {
+      setTreeLoading(false);
+    }
+  }, [lockedBranchId, filterBranch, filterStatus, search]);
 
   useEffect(() => {
     loadDepartments();
   }, [loadDepartments]);
 
   useEffect(() => {
+    if (viewMode === "tree") {
+      loadTreeDepartments();
+    }
+  }, [viewMode, loadTreeDepartments]);
+
+  useEffect(() => {
     loadAuxiliaryData();
-  }, [lockedBranchId]);
+  }, [loadAuxiliaryData]);
+
+  // When form branch selection changes, reload scoped dependents and clear
+  // stale selections so an option from the previous scope cannot be submitted.
+  const handleFormBranchChange = async (selectedBranchId) => {
+    setFormData((prev) => ({
+      ...prev,
+      branchId: selectedBranchId,
+      parentDepartmentId: "",
+      departmentHeadId: "",
+      costCenterId: "",
+    }));
+    try {
+      const [deptList, ccList, empList] = await Promise.all([
+        fetchDepartmentsDropdown(selectedBranchId ? { branchId: selectedBranchId } : {}).catch(() => []),
+        fetchCostCentersDropdown(selectedBranchId ? { branchId: selectedBranchId } : {}).catch(() => []),
+        fetchEmployeesDropdown(selectedBranchId ? { branchId: selectedBranchId } : {}).catch(() => []),
+      ]);
+      setParentDepts(deptList);
+      setCostCenters(ccList);
+      setEmployees(empList);
+    } catch (err) {
+      console.warn("Failed to reload branch-scoped data:", err);
+    }
+  };
 
   const handleOpenCreate = () => {
     setEditingDept(null);
-    setFormData({ ...initialForm, branchId: lockedBranchId || "" });
+    const defaultBranch = lockedBranchId || (isBranchScoped ? (selectedBranchId || "") : "");
+    setFormData({ ...initialForm, branchId: defaultBranch });
     setModalError("");
-    loadAuxiliaryData();
+    loadAuxiliaryData(defaultBranch);
     setShowModal(true);
   };
 
   const handleOpenEdit = (dept) => {
     setEditingDept(dept);
+    const targetBranch = dept.branchId?._id || dept.branchId || lockedBranchId || "";
     setFormData({
       departmentName: dept.departmentName || "",
       departmentCode: dept.departmentCode || "",
       parentDepartmentId: dept.parentDepartmentId?._id || dept.parentDepartmentId || "",
       departmentHeadId: dept.departmentHeadId?._id || dept.departmentHeadId || "",
-      branchId: dept.branchId?._id || dept.branchId || "",
+      branchId: targetBranch,
       costCenterId: dept.costCenterId?._id || dept.costCenterId || "",
       description: dept.description || "",
       status: dept.status || "ACTIVE",
     });
     setModalError("");
-    loadAuxiliaryData();
+    loadAuxiliaryData(targetBranch);
     setShowModal(true);
   };
 
@@ -293,6 +355,12 @@ function DepartmentsSection({ lockedBranchId }) {
     try {
       setModalLoading(true);
       setModalError("");
+
+      if (isBranchScoped && !formData.branchId) {
+        setModalError("Branch is required for branch-scoped users.");
+        setModalLoading(false);
+        return;
+      }
 
       const payload = {
         departmentName: formData.departmentName.trim(),
@@ -313,11 +381,15 @@ function DepartmentsSection({ lockedBranchId }) {
         setSuccess(res.message || "Department created successfully");
       }
       setShowModal(false);
-      dispatch(invalidateOrgResource("departments"));
+      dispatch(invalidateOrgResource(["departments", "structure", "profile"]));
       loadDepartments();
+      if (viewMode === "tree") {
+        loadTreeDepartments();
+      }
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
-      setModalError(err.message || "Failed to save department");
+      const errorMsg = err.mapped?.message || err.message || "Failed to save department";
+      setModalError(errorMsg);
     } finally {
       setModalLoading(false);
     }
@@ -327,13 +399,17 @@ function DepartmentsSection({ lockedBranchId }) {
     try {
       setModalLoading(true);
       const res = await deleteDepartment(deletingId);
-      setSuccess(res.message || "Department deleted successfully");
+      setSuccess(res.message || "Department deactivated successfully");
       setShowDeleteModal(false);
-      dispatch(invalidateOrgResource("departments"));
+      dispatch(invalidateOrgResource(["departments", "structure", "profile"]));
       loadDepartments();
+      if (viewMode === "tree") {
+        loadTreeDepartments();
+      }
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
-      setError(err.message || "Failed to delete department");
+      const displayMsg = err.mapped?.message || err.message || "Failed to deactivate department";
+      setError(displayMsg);
       setShowDeleteModal(false);
     } finally {
       setModalLoading(false);
@@ -342,13 +418,14 @@ function DepartmentsSection({ lockedBranchId }) {
 
   // Build hierarchical department tree from department list
   const treeData = useMemo(() => {
-    if (!departments || departments.length === 0) return [];
+    const list = treeDepartments.length > 0 ? treeDepartments : departments;
+    if (!list || list.length === 0) return [];
     const map = {};
-    departments.forEach((d) => {
+    list.forEach((d) => {
       map[d._id] = { ...d, children: [] };
     });
     const roots = [];
-    departments.forEach((d) => {
+    list.forEach((d) => {
       const parentId = typeof d.parentDepartmentId === "object" && d.parentDepartmentId ? d.parentDepartmentId._id : d.parentDepartmentId;
       if (parentId && map[parentId]) {
         map[parentId].children.push(map[d._id]);
@@ -357,7 +434,7 @@ function DepartmentsSection({ lockedBranchId }) {
       }
     });
     return roots;
-  }, [departments]);
+  }, [treeDepartments, departments]);
 
   return (
     <div className="org-section-container">
@@ -453,14 +530,14 @@ function DepartmentsSection({ lockedBranchId }) {
               Visualizing parent &rarr; child department structure across organization
             </div>
             <Badge bg="light" className="text-dark border">
-              {departments.length} Departments Loaded
+              {(treeDepartments.length || departments.length)} Departments Loaded
             </Badge>
           </div>
 
-          {loading ? (
+          {(treeLoading || (loading && treeDepartments.length === 0)) ? (
             <div className="text-center py-5 text-muted">
               <Spinner animation="border" size="sm" variant="success" className="me-2" />
-              Loading department hierarchy...
+              Loading complete department hierarchy...
             </div>
           ) : treeData.length === 0 ? (
             <div className="text-center py-5 text-muted">
@@ -707,14 +784,14 @@ function DepartmentsSection({ lockedBranchId }) {
               <Col md={6}>
                 <Form.Group>
                   <Form.Label>
-                    Associated Branch {lockedBranchId && <span className="badge bg-secondary ms-1">Locked to current branch</span>}
+                    Associated Branch {isBranchScoped && <span className="badge bg-secondary ms-1">Required</span>}
                   </Form.Label>
                   <Form.Select
                     value={formData.branchId}
                     disabled={Boolean(lockedBranchId)}
-                    onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
+                    onChange={(e) => handleFormBranchChange(e.target.value)}
                   >
-                    {!lockedBranchId && <option value="">-- All Branches / Global --</option>}
+                    {!isBranchScoped && <option value="">-- All Branches / Global --</option>}
                     {branches.map((b) => (
                       <option key={b._id} value={b._id}>
                         {b.branchName} ({b.branchCode})
@@ -768,12 +845,20 @@ function DepartmentsSection({ lockedBranchId }) {
             </Row>
       </CrudModal>
 
-      {/* ── Delete Confirmation Modal ── */}
+      {/* ── Deactivate Confirmation Modal ── */}
       <ConfirmModal
         show={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
-        title={<><FaTrash /> Delete Department</>}
-        message={<>Are you sure you want to delete department <strong>{deletingName}</strong>?<p className="text-muted small mt-2">Warning: Sub-departments and designations assigned to this department should be re-mapped first.</p></>}
+        title={<><FaTrash /> Deactivate Department</>}
+        message={
+          <>
+            Are you sure you want to deactivate department <strong>{deletingName}</strong>?
+            <p className="text-muted small mt-2">
+              Note: Backend guards will block deactivation if active employees, teams, designations, or child sub-departments are still linked.
+            </p>
+          </>
+        }
+        confirmLabel="Deactivate Department"
         onConfirm={handleDelete}
         loading={modalLoading}
       />
