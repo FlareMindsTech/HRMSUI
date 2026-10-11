@@ -363,14 +363,14 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
       if (refreshBranches) await refreshBranches();
       // The saved profile changed shared data: invalidate so the next
       // guarded read refetches instead of serving the stale cache.
-      dispatch(invalidateOrgResource("profile"));
+      dispatch(invalidateOrgResource(["profile", "structure"]));
       if (onOrgUpdated) onOrgUpdated(savedOrg);
 
       setTimeout(() => {
         if (onBack) onBack();
       }, 1200);
     } catch (err) {
-      setError(err.message || "Failed to save organization profile. Please verify your inputs.");
+      setError(err.mapped?.message || err.message || "Failed to save organization profile. Please verify your inputs.");
     } finally {
       setSaving(false);
     }
@@ -569,6 +569,7 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
                         </Form.Label>
                         <Form.Control
                           required
+                          disabled={!isCreateMode}
                           className="edit-org-input font-monospace text-uppercase"
                           maxLength={30}
                           placeholder="e.g. FLMT"
@@ -580,7 +581,11 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
                             })
                           }
                         />
-                        <span className="edit-org-helper-text">Unique uppercase identifier code (used in employee IDs & branches)</span>
+                        <span className="edit-org-helper-text">
+                          {!isCreateMode
+                            ? "Organization Code is immutable and assigned permanently upon creation."
+                            : "Unique uppercase identifier code (used in employee IDs & branches)"}
+                        </span>
                       </Form.Group>
                     </Col>
 

@@ -140,6 +140,27 @@ function CostCentersSection({ lockedBranchId }) {
     loadAuxiliaryData();
   }, [lockedBranchId, filterBranch]);
 
+  // When form branch selection changes, reload scoped dependents and clear
+  // stale selections so an option from the previous scope cannot be submitted.
+  const handleFormBranchChange = async (selectedBranchId) => {
+    setFormData((prev) => ({
+      ...prev,
+      branchId: selectedBranchId,
+      departmentId: "",
+      managerId: "",
+    }));
+    try {
+      const [deptList, empList] = await Promise.all([
+        fetchDepartmentsDropdown(selectedBranchId ? { branchId: selectedBranchId } : {}).catch(() => []),
+        fetchEmployeesDropdown(selectedBranchId ? { branchId: selectedBranchId } : {}).catch(() => []),
+      ]);
+      setDepartments(deptList);
+      setEmployees(empList);
+    } catch (err) {
+      console.warn("Failed to reload branch-scoped data:", err);
+    }
+  };
+
   const handleOpenCreate = () => {
     setEditingCC(null);
     setFormData({ ...initialForm, branchId: lockedBranchId || "" });
@@ -491,7 +512,7 @@ function CostCentersSection({ lockedBranchId }) {
                   <Form.Label>Branch</Form.Label>
                   <Form.Select
                     value={formData.branchId}
-                    onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
+                    onChange={(e) => handleFormBranchChange(e.target.value)}
                   >
                     <option value="">-- All Branches --</option>
                     {branches.map((b) => (

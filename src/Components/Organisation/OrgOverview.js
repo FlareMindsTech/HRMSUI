@@ -415,14 +415,14 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
 
       setShowModal(false);
       // The saved profile changed shared data: invalidate so loadData refetches.
-      dispatch(invalidateOrgResource("profile"));
+      dispatch(invalidateOrgResource(["profile", "structure"]));
       await loadData();
       refreshOrganization();
       refreshBranches();
       if (onOrgUpdated) onOrgUpdated();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
-      setModalError(err.message || `Failed to ${modalMode} organization`);
+      setModalError(err.mapped?.message || err.message || `Failed to ${modalMode} organization`);
     } finally {
       setModalLoading(false);
     }
@@ -1361,6 +1361,7 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                         </Form.Label>
                         <Form.Control
                           required
+                          disabled={modalMode !== "create"}
                           maxLength={30}
                           placeholder="e.g. FLMT"
                           value={formData.organizationCode}
@@ -1371,7 +1372,11 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                             })
                           }
                         />
-                        <Form.Text className="text-muted">Unique corporate ID code in uppercase</Form.Text>
+                        <Form.Text className="text-muted">
+                          {modalMode !== "create"
+                            ? "Organization Code is immutable and assigned permanently upon creation."
+                            : "Unique corporate ID code in uppercase"}
+                        </Form.Text>
                       </Form.Group>
                     </Col>
 

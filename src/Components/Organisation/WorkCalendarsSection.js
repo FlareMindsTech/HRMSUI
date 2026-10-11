@@ -147,6 +147,22 @@ function WorkCalendarsSection({ lockedBranchId }) {
     loadAuxiliaryData();
   }, [lockedBranchId, filterBranch]);
 
+  // When form branch selection changes, reload scoped shifts and clear a
+  // stale shift selection so an option from the previous scope cannot be submitted.
+  const handleFormBranchChange = async (selectedBranchId) => {
+    setFormData((prev) => ({
+      ...prev,
+      branchId: selectedBranchId,
+      defaultShiftId: "",
+    }));
+    try {
+      const shList = await fetchShiftsDropdown(selectedBranchId ? { branchId: selectedBranchId } : {}).catch(() => []);
+      setShifts(shList);
+    } catch (err) {
+      console.warn("Failed to reload branch-scoped data:", err);
+    }
+  };
+
   const handleOpenCreate = () => {
     setEditingCal(null);
     setFormData({ ...initialForm, branchId: lockedBranchId || "" });
@@ -503,7 +519,7 @@ function WorkCalendarsSection({ lockedBranchId }) {
                   <Form.Label>Branch</Form.Label>
                   <Form.Select
                     value={formData.branchId}
-                    onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
+                    onChange={(e) => handleFormBranchChange(e.target.value)}
                   >
                     <option value="">-- All Branches / Global --</option>
                     {branches.map((b) => (
