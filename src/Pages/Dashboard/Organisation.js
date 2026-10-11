@@ -677,17 +677,6 @@ function Organisation() {
                   <span className="org-hero-meta-val">{getStr(orgData.timeZone, "Asia/Kolkata")}</span>
                 </div>
               </div>
-              <div className="d-flex align-items-center gap-2 mt-2">
-                {canEdit && (
-                  <Button
-                    className="org-hero-btn-edit"
-                    size="sm"
-                    onClick={() => handleTabSelect("edit-profile")}
-                  >
-                    <FaEdit className="me-1" /> Edit Profile
-                  </Button>
-                )}
-              </div>
             </div>
           </div>
         </div>
