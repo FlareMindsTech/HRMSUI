@@ -36,7 +36,7 @@ import {
   selectOrgProfile,
 } from '../../redux/slices/organizationSlice';
 import { useBranch } from "../../context/BranchContext";
-import { normalizeOrganization } from "../../services/organizationService";
+import { normalizeOrganization, resolveMediaUrl } from "../../services/organizationService";
 import OrgOverview from "../../Components/Organisation/OrgOverview";
 import OrganizationProfileView from "../../Components/Organisation/OrganizationProfileView";
 import BranchesSection from "../../Components/Organisation/BranchesSection";
@@ -136,7 +136,7 @@ const ORG_NAV_GROUPS = [
   },
 ];
 
-const STANDALONE_SECTIONS = ["branches", "edit-profile"];
+const STANDALONE_SECTIONS = ["branches", "departments", "edit-profile"];
 
 const ALL_TABS = ORG_NAV_GROUPS.flatMap((g) => g.tabs);
 
@@ -475,6 +475,18 @@ function Organisation() {
     );
   }
 
+  // Dedicated Full Page Departments Workspace
+  if (activeTab === "departments") {
+    return (
+      <div className="org-dashboard-container p-0">
+        <DepartmentsSection
+          isStandaloneView={true}
+          onBackToOrg={() => handleTabSelect("overview")}
+        />
+      </div>
+    );
+  }
+
   // Full Page Wizard Mode (takes entire viewport next to the sidebar)
   if (isFullView) {
     return (
@@ -579,9 +591,10 @@ function Organisation() {
           <div className="org-hero-content-wrapper">
             <div className="org-hero-main-section">
               <div className="org-hero-logo-box">
-                {getStr(orgData.logo) ? (
+                {Boolean(resolveMediaUrl(getStr(orgData.logo))) ? (
                   <img
-                    src={getStr(orgData.logo)}
+                    key={resolveMediaUrl(getStr(orgData.logo))}
+                    src={resolveMediaUrl(getStr(orgData.logo))}
                     alt="Logo"
                     className="org-hero-logo-image"
                     onError={(e) => {
@@ -594,7 +607,7 @@ function Organisation() {
                 ) : null}
                 <div
                   className="org-hero-logo-monogram"
-                  style={{ display: getStr(orgData.logo) ? "none" : "flex" }}
+                  style={{ display: resolveMediaUrl(getStr(orgData.logo)) ? "none" : "flex" }}
                 >
                   {orgInitials}
                 </div>

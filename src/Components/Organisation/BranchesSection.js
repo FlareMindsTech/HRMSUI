@@ -66,6 +66,7 @@ import {
   assignEmployeesToBranch,
   removeEmployeeFromBranch,
   fetchFinancialYearsDropdown,
+  fetchDepartments,
 } from "../../services/organizationService";
 import { useSelector, useDispatch } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
@@ -297,16 +298,19 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
     }
   }, [page, search, filterType, filterStatus, filterCity]);
 
+  const [allDepartments, setAllDepartments] = useState([]);
+
   // Load Auxiliary Dropdowns
   const loadAuxData = useCallback(async () => {
     try {
-      const [dropdownList, fullStaff, shRes, wcRes, holRes, fyList] = await Promise.all([
+      const [dropdownList, fullStaff, shRes, wcRes, holRes, fyList, deptsRes] = await Promise.all([
         fetchEmployeesDropdown().catch(() => []),
         fetchOnboardedEmployees().catch(() => []),
         dispatch(fetchOrgResource({ key: "shifts" })).catch(() => null),
         dispatch(fetchOrgResource({ key: "workCalendars" })).catch(() => null),
         dispatch(fetchOrgResource({ key: "holidayCalendars" })).catch(() => null),
         fetchFinancialYearsDropdown().catch(() => []),
+        fetchDepartments({ page: 1, limit: 1000 }).catch(() => ({ data: [] })),
       ]);
       setEmployees(dropdownList || []);
       setOnboardedStaff(fullStaff || []);
@@ -314,10 +318,28 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
       setWorkCalendars(wcRes?.payload?.data ?? auxCacheRef.current?.wc ?? []);
       setHolidayCalendars(holRes?.payload?.data ?? auxCacheRef.current?.hol ?? []);
       setFinancialYears(fyList || []);
+      const depts = deptsRes?.data || (Array.isArray(deptsRes) ? deptsRes : []);
+      setAllDepartments(depts);
     } catch (e) {
       console.warn("Failed to load aux data for branches:", e);
     }
   }, [dispatch]);
+
+  const getBranchDepartments = useCallback(
+    (branchId) => {
+      if (!branchId) return [];
+      return allDepartments.filter((d) => {
+        const bId = d.branchId?._id || d.branchId;
+        return String(bId) === String(branchId);
+      });
+    },
+    [allDepartments]
+  );
+
+  const handleOpenBranchDepartments = (branch) => {
+    setSelectedBranchDetail(branch);
+    setDetailActiveTab("departments");
+  };
 
   useEffect(() => {
     loadBranches();
@@ -1984,6 +2006,84 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                   </div>
                 </Col>
               </Row>
+
+              {/* ── ROW 3: Branch Departments Spotlight ── */}
+              <Row className="g-4 mt-1">
+                <Col lg={12}>
+                  <div className="branch-info-card">
+                    <div className="branch-info-card-header">
+                      <div className="d-flex align-items-center gap-2">
+                        <FaSitemap className="text-success" />
+                        <h5 className="branch-info-card-title mb-0">Branch Departments & Functional Units</h5>
+                        <Badge bg="success-subtle" className="text-success border border-success-subtle rounded-pill px-3 py-1">
+                          {getBranchDepartments(lockedBId).length} Active Departments
+                        </Badge>
+                      </div>
+                      <div className="d-flex align-items-center gap-2">
+                        <button
+                          type="button"
+                          className="branches-btn-secondary btn-sm"
+                          onClick={() => setDetailActiveTab("departments")}
+                        >
+                          Manage Departments <FaArrowRight size={10} className="ms-1" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="branch-info-card-body">
+                      {getBranchDepartments(lockedBId).length === 0 ? (
+                        <div className="text-center py-4 text-muted">
+                          <FaSitemap size={28} className="text-muted opacity-50 mb-2" />
+                          <p className="mb-2">No functional departments have been assigned to <strong>{b.branchName}</strong> yet.</p>
+                          <Button
+                            variant="outline-success"
+                            size="sm"
+                            onClick={() => setDetailActiveTab("departments")}
+                          >
+                            <FaPlus className="me-1" /> Create First Department for this Branch
+                          </Button>
+                        </div>
+                      ) : (
+                        <Row className="g-3">
+                          {getBranchDepartments(lockedBId).map((dept) => (
+                            <Col md={4} key={dept._id}>
+                              <div className="p-3 rounded-3 border bg-light h-100 d-flex flex-column justify-content-between">
+                                <div>
+                                  <div className="d-flex align-items-center justify-content-between mb-1">
+                                    <h6 className="fw-bold text-dark mb-0">{dept.departmentName}</h6>
+                                    <span className="badge bg-light text-dark border font-monospace small">
+                                      {dept.departmentCode}
+                                    </span>
+                                  </div>
+                                  <div className="text-muted extra-small">
+                                    {dept.departmentHeadId ? (
+                                      <span>Head: {dept.departmentHeadId.firstName} {dept.departmentHeadId.lastName}</span>
+                                    ) : (
+                                      <span>No HOD assigned</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="mt-2 pt-2 border-top d-flex align-items-center justify-content-between">
+                                  <span className={`badge ${dept.status === 'ACTIVE' ? 'bg-success' : 'bg-secondary'}`} style={{ fontSize: '0.65rem' }}>
+                                    {dept.status || 'ACTIVE'}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="btn btn-link p-0 text-success text-decoration-none extra-small fw-semibold"
+                                    onClick={() => setDetailActiveTab("departments")}
+                                  >
+                                    Manage in Branch Hub &rarr;
+                                  </button>
+                                </div>
+                              </div>
+                            </Col>
+                          ))}
+                        </Row>
+                      )}
+                    </div>
+                  </div>
+                </Col>
+              </Row>
             </div>
           )}
 
@@ -2831,6 +2931,17 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                         <FaUsers className="me-1 text-muted" size={12} /> {membersCount} Team Members
                       </span>
                     </div>
+                    <div
+                      className="branch-stat-mini-item"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => handleOpenBranchDepartments(b)}
+                      title="Click to view and manage departments for this branch"
+                    >
+                      <span className="branch-stat-mini-label">Departments</span>
+                      <span className="branch-stat-mini-value text-success fw-semibold">
+                        <FaSitemap className="me-1 text-success" size={12} /> {getBranchDepartments(bId).length} Departments
+                      </span>
+                    </div>
                     <div className="branch-stat-mini-item">
                       <span className="branch-stat-mini-label">GPS Geofence</span>
                       <span className="branch-stat-mini-value">
@@ -2852,6 +2963,15 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                   </button>
 
                   <div className="branch-card-action-group">
+                    <button
+                      type="button"
+                      className="branch-card-action-btn"
+                      onClick={() => handleOpenBranchDepartments(b)}
+                      title="Manage Branch Departments"
+                    >
+                      <FaSitemap />
+                    </button>
+
                     {canUpdate && (
                       <button
                         type="button"
@@ -2905,6 +3025,7 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                 <th>Location / City</th>
                 <th>Branch Head</th>
                 <th>Staff</th>
+                <th>Departments</th>
                 <th>Status</th>
                 <th className="text-end">Actions</th>
               </tr>
@@ -2913,6 +3034,7 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
               {branches.map((b) => {
                 const bId = b._id || b.id;
                 const membersCount = getBranchMembers(bId).length;
+                const deptsCount = getBranchDepartments(bId).length;
                 const headObj = employees.find(
                   (e) => String(e._id || e.id) === String(b.branchHeadId?._id || b.branchHeadId)
                 );
@@ -2980,6 +3102,19 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                     </td>
 
                     <td>
+                      <Badge
+                        bg="light"
+                        text="dark"
+                        className="border px-2 py-1 text-success fw-semibold"
+                        style={{ cursor: "pointer" }}
+                        onClick={() => handleOpenBranchDepartments(b)}
+                        title="Click to view and manage departments for this branch"
+                      >
+                        <FaSitemap className="me-1 text-success" /> {deptsCount}
+                      </Badge>
+                    </td>
+
+                    <td>
                       <span
                         className={`branch-status-indicator ${
                           b.status === "ACTIVE" ? "active" : "inactive"
@@ -2991,6 +3126,14 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
 
                     <td className="text-end">
                       <div className="d-flex align-items-center justify-content-end gap-1">
+                        <button
+                          type="button"
+                          className="branch-card-action-btn"
+                          onClick={() => handleOpenBranchDepartments(b)}
+                          title="Manage Branch Departments"
+                        >
+                          <FaSitemap />
+                        </button>
                         <button
                           type="button"
                           className="branch-card-action-btn"

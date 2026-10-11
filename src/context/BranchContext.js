@@ -161,7 +161,7 @@ export const BranchProvider = ({ children }) => {
         if (accessLevel === "BRANCH" && branches.length === 1) {
           // If only 1 branch, keep that branch
           const singleId = String(branches[0]._id || branches[0].id);
-          setSelectedBranchIdState(singleId);
+           setSelectedBranchIdState(singleId);
           localStorage.setItem("selectedBranchId", singleId);
           return;
         }

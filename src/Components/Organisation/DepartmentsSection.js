@@ -325,7 +325,7 @@ function DepartmentsSection({ lockedBranchId }) {
 
   const handleOpenCreate = () => {
     setEditingDept(null);
-    const defaultBranch = lockedBranchId || (isBranchScoped ? (selectedBranchId || "") : "");
+    const defaultBranch = lockedBranchId || filterBranch || (isBranchScoped ? (selectedBranchId || "") : "");
     setFormData({ ...initialForm, branchId: defaultBranch });
     setModalError("");
     loadAuxiliaryData(defaultBranch);
@@ -477,6 +477,55 @@ function DepartmentsSection({ lockedBranchId }) {
       <FeedbackAlert variant="danger" dismissible onClose={() => setError("")} message={error} />
       <FeedbackAlert variant="success" dismissible onClose={() => setSuccess("")} message={success} />
 
+      {/* ── Branch-Scoped Notice Banner (when locked to a specific branch) ── */}
+      {lockedBranchId && (
+        <div className="p-3 mb-3 rounded-3 border bg-success-subtle text-success-emphasis d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <div className="d-flex align-items-center gap-2">
+            <FaCodeBranch size={16} className="text-success" />
+            <div>
+              <strong>Branch-Scoped View:</strong> Viewing & managing departments exclusively for{" "}
+              <strong>{branches.find((b) => String(b._id) === String(lockedBranchId))?.branchName || "Current Branch"}</strong>
+              {branches.find((b) => String(b._id) === String(lockedBranchId))?.branchCode
+                ? ` (${branches.find((b) => String(b._id) === String(lockedBranchId))?.branchCode})`
+                : ""}
+            </div>
+          </div>
+          <Badge bg="success" className="px-2 py-1">Branch Locked</Badge>
+        </div>
+      )}
+
+      {/* ── Track By Branch Pills (when not locked to a single branch) ── */}
+      {!lockedBranchId && branches.length > 0 && (
+        <div className="d-flex align-items-center gap-2 flex-wrap mb-3 p-2 bg-light rounded-3 border">
+          <span className="text-muted small fw-semibold me-1 d-flex align-items-center gap-1">
+            <FaCodeBranch className="text-secondary" /> Track by Branch:
+          </span>
+          <button
+            type="button"
+            className={`btn btn-sm ${!filterBranch ? "btn-success text-white fw-bold shadow-sm" : "btn-outline-secondary"} rounded-pill px-3 py-1`}
+            onClick={() => {
+              setFilterBranch("");
+              setPage(1);
+            }}
+          >
+            🏢 All Branches ({totalRecords})
+          </button>
+          {branches.map((b) => (
+            <button
+              key={b._id}
+              type="button"
+              className={`btn btn-sm ${filterBranch === b._id ? "btn-success text-white fw-bold shadow-sm" : "btn-outline-secondary"} rounded-pill px-3 py-1`}
+              onClick={() => {
+                setFilterBranch(b._id);
+                setPage(1);
+              }}
+            >
+              {b.branchName}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ── Filters & Search ── */}
       <Card className="org-filter-card mb-3">
         <Card.Body className="py-2">
@@ -495,10 +544,11 @@ function DepartmentsSection({ lockedBranchId }) {
             <Col md={3}>
               <Form.Select
                 size="sm"
-                value={filterBranch}
+                value={lockedBranchId || filterBranch}
+                disabled={Boolean(lockedBranchId)}
                 onChange={(e) => { setFilterBranch(e.target.value); setPage(1); }}
               >
-                <option value="">All Branches</option>
+                {!lockedBranchId && <option value="">All Branches</option>}
                 {branches.map((b) => (
                   <option key={b._id} value={b._id}>{b.branchName}</option>
                 ))}

@@ -35,6 +35,8 @@ import {
   createOrganization,
   fetchSystemSetupStatus,
   registerSystemOwner,
+  resolveMediaUrl,
+  compressImageFile,
 } from "../../services/organizationService";
 import { useDispatch } from "react-redux";
 import { authSynced } from "../../redux/slices/authSlice";
@@ -226,19 +228,24 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
     sessionStorage.setItem("org_setup_step", String(newStep));
   };
 
-  const handleLogoFileChange = (e) => {
+  const handleLogoFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        setLogoError("Logo image size must be less than 2MB");
+      if (file.size > 5 * 1024 * 1024) {
+        setLogoError("Logo image size must be less than 5MB");
         return;
       }
       setLogoError("");
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        updateField("logo", reader.result);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImageFile(file);
+        updateField("logo", compressed);
+      } catch (err) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          updateField("logo", reader.result);
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -982,7 +989,15 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
                   {formData.logo ? (
                     <div className="p-3 border rounded-3 bg-light d-flex align-items-center justify-content-between">
                       <div className="d-flex align-items-center gap-3">
-                        <img src={formData.logo} alt="Logo" style={{ height: 48, width: 48, objectFit: "contain", borderRadius: 8 }} />
+                        <img
+                          key={resolveMediaUrl(formData.logo)}
+                          src={resolveMediaUrl(formData.logo)}
+                          alt="Logo"
+                          style={{ height: 48, width: 48, objectFit: "contain", borderRadius: 8 }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
                         <div>
                           <div className="fw-bold text-dark small">Logo Photo Uploaded</div>
                           <div className="text-muted extra-small">Ready for navigation headers and corporate payslips.</div>

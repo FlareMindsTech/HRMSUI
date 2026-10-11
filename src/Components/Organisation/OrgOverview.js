@@ -45,6 +45,8 @@ import {
   createOrganization,
   updateMyOrganization,
   normalizeOrganization,
+  resolveMediaUrl,
+  compressImageFile,
 } from "../../services/organizationService";
 import { useSelector, useDispatch } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin, selectAuthUser } from '../../redux/slices/authSlice';
@@ -217,7 +219,7 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
       website: getStr(norm.website),
       email: getStr(norm.email),
       phone: getStr(norm.phone),
-      logo: getStr(typeof norm.logo === "object" && norm.logo !== null ? norm.logo.url || norm.logo.path : norm.logo),
+      logo: resolveMediaUrl(getStr(typeof norm.logo === "object" && norm.logo !== null ? norm.logo.url || norm.logo.path : norm.logo)),
       address: getStr(typeof norm.address === "string" ? norm.address : addrObj.street || addrObj.addressLine1 || ""),
       country: getStr(typeof norm.country === "string" ? norm.country : addrObj.country || "India"),
       state: getStr(norm.state || addrObj.state || ""),
@@ -348,18 +350,25 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
     setShowModal(true);
   };
 
-  const handleLogoChange = (e) => {
+  const handleLogoChange = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        setModalError("Logo file size must be less than 2MB");
+      if (file.size > 5 * 1024 * 1024) {
+        setModalError("Logo file size must be less than 5MB");
         return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, logo: reader.result }));
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImageFile(file);
+        setFormData((prev) => ({ ...prev, logo: compressed }));
+        setModalError("");
+      } catch (err) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFormData((prev) => ({ ...prev, logo: reader.result }));
+          setModalError("");
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -844,11 +853,6 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                       <div className="org-bento-sub">Registration, branding & corporate type</div>
                     </div>
                   </div>
-                  {canEdit && (
-                    <Button variant="light" size="sm" className="org-bento-edit-btn" onClick={handleOpenEditModal} title="Edit Corporate Details">
-                      <FaEdit />
-                    </Button>
-                  )}
                 </div>
 
                 <div className="org-data-grid">
@@ -922,11 +926,6 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                       <div className="org-bento-sub">CIN, PAN, TAN, GSTIN & incorporation</div>
                     </div>
                   </div>
-                  {canEdit && (
-                    <Button variant="light" size="sm" className="org-bento-edit-btn" onClick={handleOpenEditModal} title="Edit Compliance Details">
-                      <FaEdit />
-                    </Button>
-                  )}
                 </div>
 
                 <div className="org-data-grid">
@@ -1477,13 +1476,17 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                             style={{ maxWidth: "220px" }}
                           />
                         </div>
-                        {formData.logo && (
+                        {resolveMediaUrl(formData.logo) && (
                           <div className="mt-2 d-flex align-items-center gap-2">
                             <span className="text-muted small">Preview:</span>
                             <img
-                              src={formData.logo}
+                              key={resolveMediaUrl(formData.logo)}
+                              src={resolveMediaUrl(formData.logo)}
                               alt="Logo Preview"
                               style={{ height: "40px", maxWidth: "120px", objectFit: "contain", borderRadius: "6px" }}
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
                             />
                           </div>
                         )}

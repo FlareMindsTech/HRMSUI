@@ -31,6 +31,8 @@ import {
   updateMyOrganization,
   createOrganization,
   normalizeOrganization,
+  resolveMediaUrl,
+  compressImageFile,
 } from "../../services/organizationService";
 import { useSelector, useDispatch } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin, selectAuthUser } from '../../redux/slices/authSlice';
@@ -210,7 +212,7 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
       email: getStr(norm.email),
       phone: getStr(norm.phone),
       altPhone: getStr(norm.altPhone),
-      logo: getStr(typeof norm.logo === "object" && norm.logo !== null ? norm.logo.url || norm.logo.path : norm.logo),
+      logo: resolveMediaUrl(typeof norm.logo === "object" && norm.logo !== null ? norm.logo.url || norm.logo.path || norm.logo.secure_url : norm.logo),
       registrationNumber: getStr(norm.registrationNumber),
       pan: getStr(norm.pan),
       tan: getStr(norm.tan),
@@ -267,21 +269,20 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
     loadFreshOrg();
   }, [loadFreshOrg]);
 
-  // Handle Logo file selection
-  const handleLogoUpload = (e) => {
+  // Handle Logo file selection with automatic in-browser canvas compression
+  const handleLogoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2.5 * 1024 * 1024) {
-        setError("Logo file size must be less than 2.5MB.");
-        return;
+      try {
+        const compressed = await compressImageFile(file);
+        if (compressed) {
+          setFormData((prev) => ({ ...prev, logo: compressed }));
+          setLogoPreviewError(false);
+          setError("");
+        }
+      } catch (err) {
+        console.warn("Logo compression error:", err);
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, logo: reader.result }));
-        setLogoPreviewError(false);
-        setError("");
-      };
-      reader.readAsDataURL(file);
     }
   };
 
@@ -496,9 +497,10 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
                   <span className="edit-org-preview-badge">{formData.status || "ACTIVE"}</span>
                 </div>
                 <div className="edit-org-preview-logo-name">
-                  {formData.logo && !logoPreviewError ? (
+                  {resolveMediaUrl(formData.logo) && !logoPreviewError ? (
                     <img
-                      src={formData.logo}
+                      key={resolveMediaUrl(formData.logo)}
+                      src={resolveMediaUrl(formData.logo)}
                       alt="Logo"
                       className="edit-org-preview-logo"
                       onError={() => setLogoPreviewError(true)}
@@ -700,9 +702,10 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
                         </Form.Label>
                         <div className="edit-org-logo-zone">
                           <div className="edit-org-logo-preview-box">
-                            {formData.logo && !logoPreviewError ? (
+                            {resolveMediaUrl(formData.logo) && !logoPreviewError ? (
                               <img
-                                src={formData.logo}
+                                key={resolveMediaUrl(formData.logo)}
+                                src={resolveMediaUrl(formData.logo)}
                                 alt="Organization Logo"
                                 className="edit-org-logo-img"
                                 onError={() => setLogoPreviewError(true)}

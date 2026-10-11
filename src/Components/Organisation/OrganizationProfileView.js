@@ -17,6 +17,8 @@ import {
 import {
   updateMyOrganization,
   normalizeOrganization,
+  resolveMediaUrl,
+  compressImageFile,
 } from "../../services/organizationService";
 import { useSelector, useDispatch } from "react-redux";
 import { selectAuthUser, useHasPermission, selectIsSystemAdmin } from "../../redux/slices/authSlice";
@@ -176,7 +178,7 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
       currency: norm.currency || "INR",
       timeZone: norm.timeZone || "Asia/Kolkata",
       financialYearStart: norm.financialYearStart || "04-01",
-      logo: typeof norm.logo === "object" && norm.logo !== null ? norm.logo.url || "" : norm.logo || "",
+      logo: resolveMediaUrl(typeof norm.logo === "object" && norm.logo !== null ? norm.logo.url || "" : norm.logo || ""),
       status: norm.status || "ACTIVE",
     });
   }, []);
@@ -223,19 +225,25 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
     setTimeout(() => setCopiedField(""), 2000);
   };
 
-  const handleLogoUpload = (e) => {
+  const handleLogoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2.5 * 1024 * 1024) {
-        setError("Logo file size must be less than 2.5MB.");
+      if (file.size > 5 * 1024 * 1024) {
+        setError("Logo file size must be less than 5MB.");
         return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, logo: reader.result }));
+      try {
+        const compressedBase64 = await compressImageFile(file);
+        setFormData((prev) => ({ ...prev, logo: compressedBase64 }));
         setError("");
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFormData((prev) => ({ ...prev, logo: reader.result }));
+          setError("");
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -418,10 +426,11 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
                   boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
                 }}
               >
-                {formData.logo ? (
+                {resolveMediaUrl(formData.logo) ? (
                   <img
-                    src={formData.logo}
-                    alt="Logo"
+                    key={resolveMediaUrl(formData.logo)}
+                    src={resolveMediaUrl(formData.logo)}
+                    alt={formData.displayName || formData.organizationName || "Logo"}
                     style={{ maxWidth: "100%", maxHeight: "100%", width: "auto", height: "auto", objectFit: "contain", objectPosition: "center", display: "block" }}
                     onError={(e) => {
                       e.currentTarget.style.display = "none";
@@ -433,7 +442,7 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
                 ) : null}
                 <FaBuilding
                   className="text-secondary fs-2"
-                  style={{ display: formData.logo ? "none" : "block" }}
+                  style={{ display: resolveMediaUrl(formData.logo) ? "none" : "block" }}
                 />
               </div>
 
