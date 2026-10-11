@@ -1,3 +1,5 @@
+import { mapApiError } from "../utils/apiErrorMapper";
+
 // ============================================================
 // Central API config — every page should import from here
 // Connected to the live AWS backend API.
@@ -16,33 +18,13 @@ export const setAuthToken = (token) => localStorage.setItem(TOKEN_KEY, token);
 
 export const clearAuthToken = () => localStorage.removeItem(TOKEN_KEY);
 
-// Standard Authorization & Tenant header for authenticated requests.
+// Standard Authorization header for authenticated requests.
+// Tenant is strictly derived on backend from the Bearer JWT token.
 export const authHeaders = (path = "") => {
   const token = getAuthToken();
   const headers = {};
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  // Multi-tenant SaaS support: attach x-tenant-id and x-organization-id if present
-  const explicitTenant = localStorage.getItem("tenantId") || localStorage.getItem("organizationId");
-  if (explicitTenant) {
-    headers["x-tenant-id"] = explicitTenant;
-    headers["x-organization-id"] = explicitTenant;
-  } else {
-    try {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        const parsed = JSON.parse(storedUser);
-        const tid = parsed.tenantId || parsed.organizationId || parsed.tenant?._id || parsed.tenant;
-        if (tid && typeof tid === "string") {
-          headers["x-tenant-id"] = tid;
-          headers["x-organization-id"] = tid;
-        }
-      }
-    } catch (e) {
-      // Ignore JSON parse errors
-    }
   }
 
   // Organization-level root endpoints should not be scoped to a specific branch
@@ -235,7 +217,7 @@ export const buildQuery = (params = {}) => {
 };
 
 /**
- * Consistent API error carrying HTTP status + response payload.
+ * Consistent API error carrying HTTP status + response payload and central mapped details.
  * Backend 403s carry additive machine-readable keys alongside the message:
  * requiredPermission (requirePermission), requiredPriority (isAdmin → 2),
  * requiredMenu (checkMenuAccess), requiredAnyPermission + requiredPermission
@@ -243,10 +225,13 @@ export const buildQuery = (params = {}) => {
  * 401 = re-login; 403 = AccessDenied with key — never redirect to login.
  */
 export const apiError = (res, fallbackMessage = "Request failed") => {
-  const message = res?.data?.message || res?.data?.error || fallbackMessage;
+  const mapped = mapApiError(res, fallbackMessage);
+  const message = mapped.message || res?.data?.message || res?.data?.error || fallbackMessage;
   const err = new Error(message);
   err.status = res?.status;
   err.data = res?.data;
+  err.mapped = mapped;
+  err.blockers = res?.data?.blockers || null;
   err.requiredPermission = res?.data?.requiredPermission;
   err.requiredPriority = res?.data?.requiredPriority;
   err.requiredMenu = res?.data?.requiredMenu;
