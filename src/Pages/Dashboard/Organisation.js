@@ -32,6 +32,7 @@ import { selectAuthUser, useHasPermission, selectIsSystemAdmin } from '../../red
 import {
   fetchOrgResource,
   invalidateOrgResource,
+  setOrgResource,
   selectOrgProfile,
 } from '../../redux/slices/organizationSlice';
 import { useBranch } from "../../context/BranchContext";
@@ -189,7 +190,7 @@ function Organisation() {
   // Fetch organization profile for the header banner (shared slice).
   const loadOrg = useCallback(async () => {
     try {
-      await dispatch(fetchOrgResource({ key: "profile" })).catch(() => null);
+      await dispatch(fetchOrgResource({ key: "profile", force: true })).catch(() => null);
     } catch (err) {
       console.warn("Could not load organization in parent header:", err);
     } finally {
@@ -220,16 +221,10 @@ function Organisation() {
     if (updated) {
       const norm = normalizeOrganization(updated) || updated;
       setOrgData(norm);
+      dispatch(setOrgResource({ key: "profile", data: norm }));
     }
     loadOrg();
-  }, [loadOrg]);
-
-  useEffect(() => {
-    if (organization) {
-      setOrgData(normalizeOrganization(organization) || organization);
-      setLoadingOrg(false);
-    }
-  }, [organization]);
+  }, [dispatch, loadOrg]);
 
   useEffect(() => {
     loadOrg();
@@ -574,7 +569,7 @@ function Organisation() {
       </div>
 
       {/* ── 2. EXECUTIVE HERO BANNER CARD ── */}
-      {orgData && (
+      {orgData && activeTab !== "edit-profile" && (
         <div className="org-hero-card-exact mb-4">
           <div className="org-hero-bg-glow" />
           <svg className="org-hero-bg-waves" viewBox="0 0 1000 200" preserveAspectRatio="none">
@@ -687,7 +682,7 @@ function Organisation() {
                   <Button
                     className="org-hero-btn-edit"
                     size="sm"
-                    onClick={() => handleTabSelect("profile")}
+                    onClick={() => handleTabSelect("edit-profile")}
                   >
                     <FaEdit className="me-1" /> Edit Profile
                   </Button>

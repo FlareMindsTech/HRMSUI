@@ -37,6 +37,7 @@ import { useHasPermission, selectIsSystemAdmin, selectAuthUser } from '../../red
 import {
   fetchOrgResource,
   invalidateOrgResource,
+  setOrgResource,
   selectOrgProfile,
 } from '../../redux/slices/organizationSlice';
 import FeedbackAlert from "../Common/FeedbackAlert";
@@ -359,12 +360,15 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
         setSuccess("Organization details saved & synchronized successfully!");
       }
 
+      const normalizedSaved = normalizeOrganization(savedOrg) || savedOrg;
+
+      // Update Redux state immediately so all header banners and profile views reflect updates with zero lag
+      dispatch(setOrgResource({ key: "profile", data: normalizedSaved }));
+      dispatch(invalidateOrgResource("structure"));
+
       if (refreshOrganization) await refreshOrganization();
       if (refreshBranches) await refreshBranches();
-      // The saved profile changed shared data: invalidate so the next
-      // guarded read refetches instead of serving the stale cache.
-      dispatch(invalidateOrgResource(["profile", "structure"]));
-      if (onOrgUpdated) onOrgUpdated(savedOrg);
+      if (onOrgUpdated) onOrgUpdated(normalizedSaved);
 
       setTimeout(() => {
         if (onBack) onBack();

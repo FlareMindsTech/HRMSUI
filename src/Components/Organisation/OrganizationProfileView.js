@@ -23,6 +23,7 @@ import { selectAuthUser, useHasPermission, selectIsSystemAdmin } from "../../red
 import {
   fetchOrgResource,
   invalidateOrgResource,
+  setOrgResource,
   selectOrgProfile,
   selectOrgStructure,
 } from "../../redux/slices/organizationSlice";
@@ -269,14 +270,16 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
       };
 
       const res = await updateMyOrganization(payload);
-      setSuccess(res?.message || "Organization profile saved successfully!");
+      const normalizedSaved = normalizeOrganization(res) || res;
+      setOrgData(normalizedSaved);
+      populateForm(normalizedSaved);
+      setSuccess("Organization profile saved successfully!");
       setIsEditing(false);
-      // The saved profile changed shared data: invalidate so loadData refetches.
-      dispatch(invalidateOrgResource("profile"));
-      await loadData();
+      dispatch(setOrgResource({ key: "profile", data: normalizedSaved }));
+      dispatch(invalidateOrgResource("structure"));
       if (refreshOrganization) await refreshOrganization();
       if (refreshBranches) await refreshBranches();
-      if (onOrgUpdated) onOrgUpdated(res);
+      if (onOrgUpdated) onOrgUpdated(normalizedSaved);
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
       setError(err.message || "Failed to save organization profile");
@@ -319,9 +322,15 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
               <Button
                 variant="success"
                 className="d-flex align-items-center gap-2 fw-semibold shadow-sm"
-                onClick={() => setIsEditing(true)}
+                onClick={() => {
+                  if (onNavigateTab) {
+                    onNavigateTab("edit-profile");
+                  } else {
+                    setIsEditing(true);
+                  }
+                }}
               >
-                <FaEdit /> Edit Organization
+                <FaEdit /> Edit Profile
               </Button>
             )
           ) : (

@@ -115,6 +115,15 @@ export const organizationSlice = createSlice({
         state.resources[key].error = null;
       }
     },
+    setOrgResource: (state, action) => {
+      const { key, data } = action.payload || {};
+      if (!key) return;
+      if (!state.resources[key]) state.resources[key] = emptyResource();
+      state.resources[key].status = 'succeeded';
+      state.resources[key].data = data;
+      state.resources[key].lastFetched = Date.now();
+      state.resources[key].error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -168,7 +177,7 @@ export const organizationSlice = createSlice({
   },
 });
 
-export const { clearOrganizationError } = organizationSlice.actions;
+export const { clearOrganizationError, setOrgResource } = organizationSlice.actions;
 
 // ---- Selectors (per-key inputs: each selector recomputes ONLY when its
 // own resource changes, never when an unrelated resource loads) ----
