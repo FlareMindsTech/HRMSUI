@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
-import { selectAuthUser, selectIsSystemAdmin, selectAuthStatus } from "../redux/slices/authSlice";
+import { selectAuthUser, selectIsSystemAdmin, selectAuthStatus, selectAuthAccessLevel } from "../redux/slices/authSlice";
 import { setBranchMismatchHandler } from "../config/api";
 import { fetchMyOrganization, fetchBranchesDropdown, fetchBranches } from "../services/organizationService";
 
@@ -10,6 +10,7 @@ export const BranchProvider = ({ children }) => {
   const user = useSelector(selectAuthUser);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const authStatus = useSelector(selectAuthStatus);
+  const authAccessLevel = useSelector(selectAuthAccessLevel);
 
   const [organization, setOrganization] = useState(null);
   const [branches, setBranches] = useState([]);
@@ -29,11 +30,8 @@ export const BranchProvider = ({ children }) => {
   const orgLoadedForRef = useRef(null);
   const branchesLoadedForRef = useRef(null);
   const isOwner = user?.roleCode === "OWNER" || user?.priority === 1;
-  // Locked /auth/me keys: user.branchId (single, null for Owner) +
-  // user.assignedBranchIds[]. Never read branchIds/primaryBranchId aliases.
-  const assignedIds = Array.isArray(user?.assignedBranchIds) ? user.assignedBranchIds : [];
-  const rawAccessLevel = user?.accessLevel || (user?.branchId || assignedIds.length > 0 ? "BRANCH" : "ORGANIZATION");
-  const accessLevel = isOwner ? "ORGANIZATION" : rawAccessLevel;
+  // Authoritative scope from backend context
+  const accessLevel = isOwner ? "ORGANIZATION" : (authAccessLevel || "BRANCH");
 
   const primaryBranchId = user?.branchId || null;
   const userBranchIds = useMemo(() => {

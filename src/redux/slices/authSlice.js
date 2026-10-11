@@ -40,6 +40,7 @@ const initialUser = getInitialUser();
 const initialState = {
   user: initialUser,
   role: initialUser?.roleCode || initialUser?.roleName || null,
+  tenant: null,
   menus: [],
   permissions: [],
   tokenPresent: Boolean(getAuthToken()),
@@ -128,22 +129,27 @@ export const login = createAsyncThunk(
       if (!res.ok || !data.success) {
         return rejectWithValue(data.message || 'Login failed. Please check your credentials.');
       }
-      if (data.token) setAuthToken(data.token);
+      const rawToken = data.token || data.data?.token || null;
+      if (rawToken) setAuthToken(rawToken);
+      const rawUser = data.data?.user || data.user || null;
       try {
-        if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
+        if (rawUser) localStorage.setItem('user', JSON.stringify(rawUser));
         const tid =
-          data.tenantId || data.user?.tenantId || data.user?.organizationId || data.user?.tenant?._id;
-        if (tid) localStorage.setItem('tenantId', tid);
+          data.tenantId || rawUser?.tenantId || rawUser?.organizationId || data.data?.organization?._id || rawUser?.tenant?._id;
+        if (tid) {
+          localStorage.setItem('tenantId', tid);
+          localStorage.setItem('organizationId', tid);
+        }
       } catch {
         // ignore storage errors — never block login
       }
       // Pass menus/permissions through when the login response already
       // includes them so callers don't need a second GET /auth/me trip.
       return {
-        user: data.user || null,
-        token: data.token || null,
-        menus: data.menus || data.user?.menus || [],
-        permissions: data.permissions || data.user?.permissions || [],
+        user: rawUser,
+        token: rawToken,
+        menus: data.menus || rawUser?.menus || [],
+        permissions: data.permissions || rawUser?.permissions || [],
         // Timestamp is produced here in the thunk (side-effect-capable layer)
         // so the reducer stays a pure state transition.
         fetchedAt: Date.now(),
@@ -223,6 +229,7 @@ export const authSlice = createSlice({
       .addCase(fetchAuth.fulfilled, (state, action) => {
         state.status = 'succeeded';
         state.user = action.payload.user;
+        state.tenant = action.payload.tenant || null;
         state.role = action.payload.user?.roleCode || action.payload.user?.roleName || null;
         state.menus = action.payload.menus;
         state.permissions = action.payload.permissions;
@@ -334,12 +341,22 @@ export const selectIsSystemAdmin = createSelector(
     );
   }
 );
+// Permission codes are matched case-insensitively: the backend catalog
+// stores lowercase codes (schema enforces lowercase:true) while some call
+// sites use the historical camelCase form (e.g. "costCenter.view"). The
+// catalog contains no two codes differing only by case, so this is exact.
+const permEquals = (stored, wanted) =>
+  typeof stored === "string" && typeof wanted === "string"
+    ? stored.toLowerCase() === wanted.toLowerCase()
+    : stored === wanted;
+const hasPermCode = (permissions, permCode) =>
+  (permissions || []).some((p) => permEquals(p, permCode));
 export const selectHasPermission = (state, permCode) => {
   const s = state.auth;
   if (!s?.user) return false;
   if (s.user.priority === 1 || s.user.roleCode === 'OWNER' || (s.permissions || []).includes('*'))
     return true;
-  return (s.permissions || []).includes(permCode);
+  return hasPermCode(s.permissions, permCode);
 };
 export const selectHasMenu = (state, menuCode) => {
   const s = state.auth;
@@ -363,7 +380,7 @@ export const useHasPermission = () => {
       if (!user) return false;
       if (user.priority === 1 || user.roleCode === 'OWNER' || (permissions || []).includes('*'))
         return true;
-      return (permissions || []).includes(permCode);
+      return hasPermCode(permissions, permCode);
     },
     [user, permissions]
   );
@@ -383,5 +400,15 @@ export const useHasMenu = () => {
     [user, permissions, menus]
   );
 };
+
+export const selectAuthTenant = (state) => state.auth?.tenant;
+export const selectAuthScope = (state) =>
+  state.auth?.user?.scope || (state.auth?.user?.priority === 1 || state.auth?.user?.roleCode === 'OWNER' ? 'ORGANIZATION' : 'BRANCH');
+export const selectAuthAccessLevel = (state) =>
+  state.auth?.tenant?.accessLevel || state.auth?.user?.scope || (state.auth?.user?.priority === 1 || state.auth?.user?.roleCode === 'OWNER' ? 'ORGANIZATION' : 'BRANCH');
+
+// Canonical permission check alias
+export const can = selectHasPermission;
+export const useCan = useHasPermission;
 
 export default authSlice.reducer;
