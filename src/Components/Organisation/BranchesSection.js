@@ -60,6 +60,7 @@ import {
   fetchBranches,
   createBranch,
   updateBranch,
+  deleteBranch,
   fetchEmployeesDropdown,
   fetchOnboardedEmployees,
   assignEmployeesToBranch,
@@ -70,6 +71,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import {
   fetchOrgResource,
+  invalidateOrgResource,
   selectShiftsDropdown,
   selectWorkCalendarsDropdown,
   selectHolidayCalendarsDropdown,
@@ -98,12 +100,10 @@ import LeaveSettingsSection from "./LeaveSettingsSection";
 import BranchSettingsSection from "./BranchSettingsSection";
 
 const BRANCH_TYPES = [
-  { value: "HEADQUARTERS", label: "Headquarters (HQ)" },
-  { value: "BRANCH_OFFICE", label: "Regional Branch Office" },
-  { value: "DEVELOPMENT_CENTER", label: "R&D / Development Center" },
-  { value: "SALES_OFFICE", label: "Sales & Client Office" },
-  { value: "OPERATIONS_HUB", label: "Operations & Logistics Hub" },
-  { value: "OTHER", label: "Other Campus Facility" },
+  { value: "HEAD_OFFICE", label: "Head Office (HQ)" },
+  { value: "REGIONAL_OFFICE", label: "Regional Office" },
+  { value: "BRANCH_OFFICE", label: "Branch Office" },
+  { value: "VIRTUAL", label: "Virtual / Remote Office" },
 ];
 
 const BRANCH_DETAIL_NAV_GROUPS = [
@@ -502,12 +502,14 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
         setSuccess(res?.message || "Branch created successfully!");
       }
 
+      dispatch(invalidateOrgResource(["structure", "profile"]));
       handleCloseWizard();
       await loadBranches();
       if (refreshBranches) refreshBranches();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
-      setModalError(err.message || "Failed to save branch");
+      const mapped = err.mapped;
+      setModalError(mapped?.message || err.message || "Failed to save branch");
     } finally {
       setModalLoading(false);
     }
@@ -611,24 +613,29 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
     }
   };
 
-  // ── Soft Deactivate / Delete Handler ──
+  // ── Soft Deactivate Handler (Backend DELETE /api/branch/:id) ──
   const handleConfirmDeactivate = async () => {
     if (!deactivatingBranch) return;
     try {
       setDeactivatingLoading(true);
       const bId = deactivatingBranch._id || deactivatingBranch.id;
-      // Soft toggle to INACTIVE
-      await updateBranch(bId, { status: "INACTIVE" });
-      setSuccess(`Branch ${deactivatingBranch.branchName} deactivated.`);
+      // Soft deactivation via authoritative DELETE endpoint
+      const res = await deleteBranch(bId);
+      setSuccess(res?.message || `Branch ${deactivatingBranch.branchName} deactivated successfully.`);
       setShowDeactivateModal(false);
       if (selectedBranchDetail && (selectedBranchDetail._id === bId || selectedBranchDetail.id === bId)) {
         setSelectedBranchDetail(null);
       }
+      dispatch(invalidateOrgResource(["structure", "profile"]));
       await loadBranches();
       if (refreshBranches) refreshBranches();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
-      setError(err.message || "Failed to deactivate branch");
+      const mapped = err.mapped;
+      const msg = mapped?.message || err.message || "Failed to deactivate branch";
+      setError(msg);
+      setShowDeactivateModal(false);
+      setTimeout(() => setError(""), 6000);
     } finally {
       setDeactivatingLoading(false);
     }

@@ -268,25 +268,25 @@ export const fetchReportingTree = async () => {
 // ─── 2. BRANCHES ──────────────────────────────────────────────────
 
 export const fetchBranches = async (params = {}) => {
-  const res = await apiFetch(`/branches${buildQuery(params)}`, { method: "GET" });
+  const res = await apiFetch(`/branch${buildQuery(params)}`, { method: "GET" });
   if (!res.ok) throw apiError(res, "Failed to fetch branches");
   return res.data;
 };
 
 export const fetchBranchesDropdown = async () => {
-  const res = await apiFetch("/branches/dropdown", { method: "GET" });
+  const res = await apiFetch("/branch/dropdown", { method: "GET" });
   if (!res.ok) throw apiError(res, "Failed to fetch branch dropdown");
   return res.data?.data || [];
 };
 
 export const fetchBranchById = async (id) => {
-  const res = await apiFetch(`/branches/${id}`, { method: "GET" });
+  const res = await apiFetch(`/branch/${id}`, { method: "GET" });
   if (!res.ok) throw apiError(res, "Failed to fetch branch");
   return res.data?.data;
 };
 
 export const createBranch = async (payload) => {
-  const res = await apiFetch("/branches", {
+  const res = await apiFetch("/branch", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -295,7 +295,7 @@ export const createBranch = async (payload) => {
 };
 
 export const updateBranch = async (id, payload) => {
-  const res = await apiFetch(`/branches/${id}`, {
+  const res = await apiFetch(`/branch/${id}`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
@@ -304,10 +304,12 @@ export const updateBranch = async (id, payload) => {
 };
 
 export const deleteBranch = async (id) => {
-  const res = await apiFetch(`/branches/${id}`, { method: "DELETE" });
-  if (!res.ok) throw apiError(res, "Failed to delete branch");
+  const res = await apiFetch(`/branch/${id}`, { method: "DELETE" });
+  if (!res.ok) throw apiError(res, "Failed to deactivate branch");
   return res.data;
 };
+
+export const deactivateBranch = deleteBranch;
 
 // ─── 3. DEPARTMENTS ───────────────────────────────────────────────
 
