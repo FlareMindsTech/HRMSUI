@@ -159,6 +159,22 @@ function HolidayCalendarsSection({ lockedBranchId }) {
     loadAuxiliaryData();
   }, [lockedBranchId]);
 
+  // When the holiday form branch changes, reload scoped departments and clear
+  // a stale department selection so a previous scope's option cannot be submitted.
+  const handleHolidayBranchChange = async (selectedBranchId) => {
+    setHolidayFormData((prev) => ({
+      ...prev,
+      branchId: selectedBranchId,
+      targetDepartment: "",
+    }));
+    try {
+      const deptList = await fetchDepartmentsDropdown(selectedBranchId ? { branchId: selectedBranchId } : {}).catch(() => []);
+      setDepartments(deptList);
+    } catch (err) {
+      console.warn("Failed to reload branch-scoped data:", err);
+    }
+  };
+
   // Open Calendar Form
   const handleOpenCalendarCreate = () => {
     setEditingCal(null);
@@ -675,7 +691,7 @@ function HolidayCalendarsSection({ lockedBranchId }) {
                     <Form.Select
                       required
                       value={holidayFormData.branchId}
-                      onChange={(e) => setHolidayFormData({ ...holidayFormData, branchId: e.target.value })}
+                      onChange={(e) => handleHolidayBranchChange(e.target.value)}
                     >
                       <option value="">-- Choose Branch --</option>
                       {branches.map((b) => (

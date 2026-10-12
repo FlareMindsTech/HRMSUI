@@ -17,12 +17,15 @@ import {
 import {
   updateMyOrganization,
   normalizeOrganization,
+  resolveMediaUrl,
+  compressImageFile,
 } from "../../services/organizationService";
 import { useSelector, useDispatch } from "react-redux";
-import { selectAuthUser, useHasPermission, selectIsSystemAdmin } from "../../redux/slices/authSlice";
+import { selectAuthUser, useHasPermission } from "../../redux/slices/authSlice";
 import {
   fetchOrgResource,
   invalidateOrgResource,
+  setOrgResource,
   selectOrgProfile,
   selectOrgStructure,
 } from "../../redux/slices/organizationSlice";
@@ -62,7 +65,6 @@ const TIMEZONES = [
 ];
 
 export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = null }) {
-  const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const hasPermission = useHasPermission();
   const user = useSelector(selectAuthUser);
   const { organization, refreshOrganization, refreshBranches } = useBranch();
@@ -175,7 +177,7 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
       currency: norm.currency || "INR",
       timeZone: norm.timeZone || "Asia/Kolkata",
       financialYearStart: norm.financialYearStart || "04-01",
-      logo: typeof norm.logo === "object" && norm.logo !== null ? norm.logo.url || "" : norm.logo || "",
+      logo: resolveMediaUrl(typeof norm.logo === "object" && norm.logo !== null ? norm.logo.url || "" : norm.logo || ""),
       status: norm.status || "ACTIVE",
     });
   }, []);
@@ -222,19 +224,25 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
     setTimeout(() => setCopiedField(""), 2000);
   };
 
-  const handleLogoUpload = (e) => {
+  const handleLogoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2.5 * 1024 * 1024) {
-        setError("Logo file size must be less than 2.5MB.");
+      if (file.size > 5 * 1024 * 1024) {
+        setError("Logo file size must be less than 5MB.");
         return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, logo: reader.result }));
+      try {
+        const compressedBase64 = await compressImageFile(file);
+        setFormData((prev) => ({ ...prev, logo: compressedBase64 }));
         setError("");
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFormData((prev) => ({ ...prev, logo: reader.result }));
+          setError("");
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -269,14 +277,16 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
       };
 
       const res = await updateMyOrganization(payload);
-      setSuccess(res?.message || "Organization profile saved successfully!");
+      const normalizedSaved = normalizeOrganization(res) || res;
+      setOrgData(normalizedSaved);
+      populateForm(normalizedSaved);
+      setSuccess("Organization profile saved successfully!");
       setIsEditing(false);
-      // The saved profile changed shared data: invalidate so loadData refetches.
-      dispatch(invalidateOrgResource("profile"));
-      await loadData();
+      dispatch(setOrgResource({ key: "profile", data: normalizedSaved }));
+      dispatch(invalidateOrgResource("structure"));
       if (refreshOrganization) await refreshOrganization();
       if (refreshBranches) await refreshBranches();
-      if (onOrgUpdated) onOrgUpdated(res);
+      if (onOrgUpdated) onOrgUpdated(normalizedSaved);
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
       setError(err.message || "Failed to save organization profile");
@@ -319,9 +329,15 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
               <Button
                 variant="success"
                 className="d-flex align-items-center gap-2 fw-semibold shadow-sm"
-                onClick={() => setIsEditing(true)}
+                onClick={() => {
+                  if (onNavigateTab) {
+                    onNavigateTab("edit-profile");
+                  } else {
+                    setIsEditing(true);
+                  }
+                }}
               >
-                <FaEdit /> Edit Organization
+                <FaEdit /> Edit Profile
               </Button>
             )
           ) : (
@@ -409,10 +425,11 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
                   boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
                 }}
               >
-                {formData.logo ? (
+                {resolveMediaUrl(formData.logo) ? (
                   <img
-                    src={formData.logo}
-                    alt="Logo"
+                    key={resolveMediaUrl(formData.logo)}
+                    src={resolveMediaUrl(formData.logo)}
+                    alt={formData.displayName || formData.organizationName || "Logo"}
                     style={{ maxWidth: "100%", maxHeight: "100%", width: "auto", height: "auto", objectFit: "contain", objectPosition: "center", display: "block" }}
                     onError={(e) => {
                       e.currentTarget.style.display = "none";
@@ -424,7 +441,7 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
                 ) : null}
                 <FaBuilding
                   className="text-secondary fs-2"
-                  style={{ display: formData.logo ? "none" : "block" }}
+                  style={{ display: resolveMediaUrl(formData.logo) ? "none" : "block" }}
                 />
               </div>
 

@@ -1,7 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
+<<<<<<< HEAD
 import { selectAuthUser, selectIsSystemAdmin, selectAuthStatus, selectIsAuthenticated, selectAuthNextAction } from "../redux/slices/authSlice";
 import { setBranchMismatchHandler, getAuthToken } from "../config/api";
+=======
+import { selectAuthUser, selectIsSystemAdmin, selectAuthStatus, selectAuthAccessLevel } from "../redux/slices/authSlice";
+import { setBranchMismatchHandler } from "../config/api";
+>>>>>>> 92a651b84a3d098c2bba34b3fdd5d66e104349af
 import { fetchMyOrganization, fetchBranchesDropdown, fetchBranches } from "../services/organizationService";
 
 const BranchContext = createContext(null);
@@ -10,8 +15,12 @@ export const BranchProvider = ({ children }) => {
   const user = useSelector(selectAuthUser);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const authStatus = useSelector(selectAuthStatus);
+<<<<<<< HEAD
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const nextAction = useSelector(selectAuthNextAction);
+=======
+  const authAccessLevel = useSelector(selectAuthAccessLevel);
+>>>>>>> 92a651b84a3d098c2bba34b3fdd5d66e104349af
 
   const [organization, setOrganization] = useState(null);
   const [branches, setBranches] = useState([]);
@@ -31,11 +40,8 @@ export const BranchProvider = ({ children }) => {
   const orgLoadedForRef = useRef(null);
   const branchesLoadedForRef = useRef(null);
   const isOwner = user?.roleCode === "OWNER" || user?.priority === 1;
-  // Locked /auth/me keys: user.branchId (single, null for Owner) +
-  // user.assignedBranchIds[]. Never read branchIds/primaryBranchId aliases.
-  const assignedIds = Array.isArray(user?.assignedBranchIds) ? user.assignedBranchIds : [];
-  const rawAccessLevel = user?.accessLevel || (user?.branchId || assignedIds.length > 0 ? "BRANCH" : "ORGANIZATION");
-  const accessLevel = isOwner ? "ORGANIZATION" : rawAccessLevel;
+  // Authoritative scope from backend context
+  const accessLevel = isOwner ? "ORGANIZATION" : (authAccessLevel || "BRANCH");
 
   const primaryBranchId = user?.branchId || null;
   const userBranchIds = useMemo(() => {
@@ -182,7 +188,7 @@ export const BranchProvider = ({ children }) => {
         if (accessLevel === "BRANCH" && branches.length === 1) {
           // If only 1 branch, keep that branch
           const singleId = String(branches[0]._id || branches[0].id);
-          setSelectedBranchIdState(singleId);
+           setSelectedBranchIdState(singleId);
           localStorage.setItem("selectedBranchId", singleId);
           return;
         }

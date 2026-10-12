@@ -470,6 +470,37 @@
   margin-left: auto;
 }
 
+/* ── Nested 3rd-Tier Submenu (e.g. Branches -> Departments) ── */
+.sidebar-sub-nested {
+  margin: 2px 0 4px 14px !important;
+  padding: 2px 0 2px 8px !important;
+  border-left: 1.5px dashed rgba(196, 154, 85, 0.4) !important;
+  gap: 2px !important;
+}
+
+.sidebar-nested-item {
+  font-size: 12px !important;
+  padding: 5px 9px !important;
+  min-height: 28px !important;
+  color: #a3a097 !important;
+}
+
+.sidebar-nested-item .sidebar-submenu-icon-wrap {
+  font-size: 14px !important;
+}
+
+.sidebar-nested-item:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  transform: translateX(2px) !important;
+}
+
+.sidebar-nested-item.active {
+  background: linear-gradient(135deg, rgba(196, 154, 85, 0.28) 0%, rgba(196, 154, 85, 0.1) 100%) !important;
+  border-color: rgba(196, 154, 85, 0.45) !important;
+  color: #F8E3B6 !important;
+}
+
 /* ── User Row Footer ── */
 .sidebar-footer {
   display: flex;

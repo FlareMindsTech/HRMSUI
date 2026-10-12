@@ -31,12 +31,15 @@ import {
   updateMyOrganization,
   createOrganization,
   normalizeOrganization,
+  resolveMediaUrl,
+  compressImageFile,
 } from "../../services/organizationService";
 import { useSelector, useDispatch } from 'react-redux';
-import { useHasPermission, selectIsSystemAdmin, selectAuthUser } from '../../redux/slices/authSlice';
+import { useHasPermission, selectAuthUser } from '../../redux/slices/authSlice';
 import {
   fetchOrgResource,
   invalidateOrgResource,
+  setOrgResource,
   selectOrgProfile,
 } from '../../redux/slices/organizationSlice';
 import FeedbackAlert from "../Common/FeedbackAlert";
@@ -151,7 +154,8 @@ const getStr = (val, fallback = "") => {
 };
 
 export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, onOrgUpdated }) {
-  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin); const user = useSelector(selectAuthUser);
+  const hasPermission = useHasPermission();
+  const user = useSelector(selectAuthUser);
   const { organization, refreshOrganization, refreshBranches } = useBranch();
   const dispatch = useDispatch();
   // Shared profile (single guarded fetch); the edit form stays local.
@@ -209,7 +213,7 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
       email: getStr(norm.email),
       phone: getStr(norm.phone),
       altPhone: getStr(norm.altPhone),
-      logo: getStr(typeof norm.logo === "object" && norm.logo !== null ? norm.logo.url || norm.logo.path : norm.logo),
+      logo: resolveMediaUrl(typeof norm.logo === "object" && norm.logo !== null ? norm.logo.url || norm.logo.path || norm.logo.secure_url : norm.logo),
       registrationNumber: getStr(norm.registrationNumber),
       pan: getStr(norm.pan),
       tan: getStr(norm.tan),
@@ -266,21 +270,20 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
     loadFreshOrg();
   }, [loadFreshOrg]);
 
-  // Handle Logo file selection
-  const handleLogoUpload = (e) => {
+  // Handle Logo file selection with automatic in-browser canvas compression
+  const handleLogoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2.5 * 1024 * 1024) {
-        setError("Logo file size must be less than 2.5MB.");
-        return;
+      try {
+        const compressed = await compressImageFile(file);
+        if (compressed) {
+          setFormData((prev) => ({ ...prev, logo: compressed }));
+          setLogoPreviewError(false);
+          setError("");
+        }
+      } catch (err) {
+        console.warn("Logo compression error:", err);
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, logo: reader.result }));
-        setLogoPreviewError(false);
-        setError("");
-      };
-      reader.readAsDataURL(file);
     }
   };
 
@@ -359,18 +362,21 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
         setSuccess("Organization details saved & synchronized successfully!");
       }
 
+      const normalizedSaved = normalizeOrganization(savedOrg) || savedOrg;
+
+      // Update Redux state immediately so all header banners and profile views reflect updates with zero lag
+      dispatch(setOrgResource({ key: "profile", data: normalizedSaved }));
+      dispatch(invalidateOrgResource("structure"));
+
       if (refreshOrganization) await refreshOrganization();
       if (refreshBranches) await refreshBranches();
-      // The saved profile changed shared data: invalidate so the next
-      // guarded read refetches instead of serving the stale cache.
-      dispatch(invalidateOrgResource("profile"));
-      if (onOrgUpdated) onOrgUpdated(savedOrg);
+      if (onOrgUpdated) onOrgUpdated(normalizedSaved);
 
       setTimeout(() => {
         if (onBack) onBack();
       }, 1200);
     } catch (err) {
-      setError(err.message || "Failed to save organization profile. Please verify your inputs.");
+      setError(err.mapped?.message || err.message || "Failed to save organization profile. Please verify your inputs.");
     } finally {
       setSaving(false);
     }
@@ -492,9 +498,10 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
                   <span className="edit-org-preview-badge">{formData.status || "ACTIVE"}</span>
                 </div>
                 <div className="edit-org-preview-logo-name">
-                  {formData.logo && !logoPreviewError ? (
+                  {resolveMediaUrl(formData.logo) && !logoPreviewError ? (
                     <img
-                      src={formData.logo}
+                      key={resolveMediaUrl(formData.logo)}
+                      src={resolveMediaUrl(formData.logo)}
                       alt="Logo"
                       className="edit-org-preview-logo"
                       onError={() => setLogoPreviewError(true)}
@@ -569,6 +576,7 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
                         </Form.Label>
                         <Form.Control
                           required
+                          disabled={!isCreateMode}
                           className="edit-org-input font-monospace text-uppercase"
                           maxLength={30}
                           placeholder="e.g. FLMT"
@@ -580,7 +588,11 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
                             })
                           }
                         />
-                        <span className="edit-org-helper-text">Unique uppercase identifier code (used in employee IDs & branches)</span>
+                        <span className="edit-org-helper-text">
+                          {!isCreateMode
+                            ? "Organization Code is immutable and assigned permanently upon creation."
+                            : "Unique uppercase identifier code (used in employee IDs & branches)"}
+                        </span>
                       </Form.Group>
                     </Col>
 
@@ -691,9 +703,10 @@ export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, on
                         </Form.Label>
                         <div className="edit-org-logo-zone">
                           <div className="edit-org-logo-preview-box">
-                            {formData.logo && !logoPreviewError ? (
+                            {resolveMediaUrl(formData.logo) && !logoPreviewError ? (
                               <img
-                                src={formData.logo}
+                                key={resolveMediaUrl(formData.logo)}
+                                src={resolveMediaUrl(formData.logo)}
                                 alt="Organization Logo"
                                 className="edit-org-logo-img"
                                 onError={() => setLogoPreviewError(true)}

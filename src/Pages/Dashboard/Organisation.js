@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Nav, Dropdown, Button } from "react-bootstrap";
+import { useParams, useNavigate, useLocation, Navigate } from "react-router-dom";
+import { Nav, Dropdown } from "react-bootstrap";
 import {
   FaBuilding,
   FaSitemap,
@@ -28,17 +28,17 @@ import {
   FaCalendarCheck,
 } from "react-icons/fa";
 import { useSelector, useDispatch } from 'react-redux';
-import { selectAuthUser, useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import { selectAuthUser, useHasPermission } from '../../redux/slices/authSlice';
 import {
   fetchOrgResource,
   invalidateOrgResource,
+  setOrgResource,
   selectOrgProfile,
 } from '../../redux/slices/organizationSlice';
 import { useBranch } from "../../context/BranchContext";
-import { normalizeOrganization } from "../../services/organizationService";
+import { normalizeOrganization, resolveMediaUrl } from "../../services/organizationService";
 import OrgOverview from "../../Components/Organisation/OrgOverview";
 import OrganizationProfileView from "../../Components/Organisation/OrganizationProfileView";
-import BranchesSection from "../../Components/Organisation/BranchesSection";
 import DepartmentsSection from "../../Components/Organisation/DepartmentsSection";
 import DesignationsSection from "../../Components/Organisation/DesignationsSection";
 import TeamsSection from "../../Components/Organisation/TeamsSection";
@@ -135,7 +135,7 @@ const ORG_NAV_GROUPS = [
   },
 ];
 
-const STANDALONE_SECTIONS = ["branches", "edit-profile"];
+const STANDALONE_SECTIONS = ["edit-profile"];
 
 const ALL_TABS = ORG_NAV_GROUPS.flatMap((g) => g.tabs);
 
@@ -174,7 +174,6 @@ function Organisation() {
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [copiedField, setCopiedField] = useState("");
   const [activeCategory, setActiveCategory] = useState("Overview");
-  const [isFullView, setIsFullView] = useState(false);
 
   // Determine active tab from URL parameter or default to "overview"
   const currentTabKey = isKnownSection(section) ? section : "overview";
@@ -189,7 +188,7 @@ function Organisation() {
   // Fetch organization profile for the header banner (shared slice).
   const loadOrg = useCallback(async () => {
     try {
-      await dispatch(fetchOrgResource({ key: "profile" })).catch(() => null);
+      await dispatch(fetchOrgResource({ key: "profile", force: true })).catch(() => null);
     } catch (err) {
       console.warn("Could not load organization in parent header:", err);
     } finally {
@@ -220,16 +219,10 @@ function Organisation() {
     if (updated) {
       const norm = normalizeOrganization(updated) || updated;
       setOrgData(norm);
+      dispatch(setOrgResource({ key: "profile", data: norm }));
     }
     loadOrg();
-  }, [loadOrg]);
-
-  useEffect(() => {
-    if (organization) {
-      setOrgData(normalizeOrganization(organization) || organization);
-      setLoadingOrg(false);
-    }
-  }, [organization]);
+  }, [dispatch, loadOrg]);
 
   useEffect(() => {
     loadOrg();
@@ -247,6 +240,10 @@ function Organisation() {
   }, [section, location.pathname]);
 
   const handleTabSelect = (tabKey) => {
+    if (tabKey === "branches") {
+      navigate("/organisation/branches");
+      return;
+    }
     setActiveTab(tabKey);
     const foundGroup = ORG_NAV_GROUPS.find((g) => g.tabs.some((t) => t.key === tabKey));
     if (foundGroup) setActiveCategory(foundGroup.groupTitle);
@@ -368,11 +365,16 @@ function Organisation() {
           />
         );
       case "branches":
-        return <BranchesSection onToggleFullView={setIsFullView} />;
+        return <Navigate to="/organisation/branches" replace />;
       case "subscription":
         return <SubscriptionSection />;
       case "departments":
-        return <DepartmentsSection />;
+        return (
+          <DepartmentsSection
+            onBackToOrg={() => handleTabSelect("overview")}
+            onNavigateTab={handleTabSelect}
+          />
+        );
       case "designations":
         return <DesignationsSection />;
       case "teams":
@@ -467,27 +469,6 @@ function Organisation() {
     );
   }
 
-  // Dedicated Full Page Branches Workspace
-  if (activeTab === "branches") {
-    return (
-      <div className="org-dashboard-container p-0">
-        <BranchesSection
-          onToggleFullView={setIsFullView}
-          isStandaloneView={true}
-          onBackToOrg={() => handleTabSelect("overview")}
-        />
-      </div>
-    );
-  }
-
-  // Full Page Wizard Mode (takes entire viewport next to the sidebar)
-  if (isFullView) {
-    return (
-      <div className="org-dashboard-container p-3 p-md-4">
-        {renderActiveSection()}
-      </div>
-    );
-  }
 
   const activeTabObj = ALL_TABS.find((t) => t.key === activeTab) || null;
   const currentCategoryGroup = ORG_NAV_GROUPS.find((g) => g.groupTitle === activeCategory) || ORG_NAV_GROUPS[0];
@@ -547,7 +528,7 @@ function Organisation() {
               <Dropdown.Item onClick={() => handleTabSelect("departments")}>
                 <FaPlus className="me-2 text-primary" /> Add Department
               </Dropdown.Item>
-              <Dropdown.Item onClick={() => handleTabSelect("branches")}>
+              <Dropdown.Item onClick={() => navigate("/organisation/branches?action=create")}>
                 <FaPlus className="me-2 text-success" /> Add Branch
               </Dropdown.Item>
               <Dropdown.Item onClick={() => handleTabSelect("reporting-hierarchy")}>
@@ -574,7 +555,7 @@ function Organisation() {
       </div>
 
       {/* ── 2. EXECUTIVE HERO BANNER CARD ── */}
-      {orgData && (
+      {orgData && activeTab !== "edit-profile" && (
         <div className="org-hero-card-exact mb-4">
           <div className="org-hero-bg-glow" />
           <svg className="org-hero-bg-waves" viewBox="0 0 1000 200" preserveAspectRatio="none">
@@ -584,9 +565,10 @@ function Organisation() {
           <div className="org-hero-content-wrapper">
             <div className="org-hero-main-section">
               <div className="org-hero-logo-box">
-                {getStr(orgData.logo) ? (
+                {Boolean(resolveMediaUrl(getStr(orgData.logo))) ? (
                   <img
-                    src={getStr(orgData.logo)}
+                    key={resolveMediaUrl(getStr(orgData.logo))}
+                    src={resolveMediaUrl(getStr(orgData.logo))}
                     alt="Logo"
                     className="org-hero-logo-image"
                     onError={(e) => {
@@ -599,7 +581,7 @@ function Organisation() {
                 ) : null}
                 <div
                   className="org-hero-logo-monogram"
-                  style={{ display: getStr(orgData.logo) ? "none" : "flex" }}
+                  style={{ display: resolveMediaUrl(getStr(orgData.logo)) ? "none" : "flex" }}
                 >
                   {orgInitials}
                 </div>
@@ -681,17 +663,6 @@ function Organisation() {
                   <span className="org-hero-meta-label">Timezone</span>
                   <span className="org-hero-meta-val">{getStr(orgData.timeZone, "Asia/Kolkata")}</span>
                 </div>
-              </div>
-              <div className="d-flex align-items-center gap-2 mt-2">
-                {canEdit && (
-                  <Button
-                    className="org-hero-btn-edit"
-                    size="sm"
-                    onClick={() => handleTabSelect("profile")}
-                  >
-                    <FaEdit className="me-1" /> Edit Profile
-                  </Button>
-                )}
               </div>
             </div>
           </div>

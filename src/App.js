@@ -14,6 +14,7 @@ import { store } from './redux/store';
 import Layout from './Layout/Layout';
 import Dashboard from './Pages/Dashboard/Dashboard';
 import Organisation from './Pages/Dashboard/Organisation';
+import BranchesPage from './Pages/Dashboard/BranchesPage';
 import HrOnboarding from './Pages/Dashboard/HrOnboarding';
 import LeaveRequest from './Pages/Dashboard/LeaveRequest';
 import Mis from './Pages/Dashboard/Mis';
@@ -188,42 +189,35 @@ function App() {
 
           {/* Protected Dashboard Routes */}
           {isAuthenticated ? (
-            nextAction === 'SETUP_ORGANIZATION' ? (
-              <Route path="*" element={<Navigate to="/setup" replace />} />
-            ) : nextAction === 'RENEW_SUBSCRIPTION' ? (
-              <Route path="*" element={<Navigate to="/subscription-renewal" replace />} />
-            ) : (
-              <Route path="/" element={<Layout />}>
-                <Route index element={<Navigate to="/dashboard" replace />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/organisation" element={<Organisation />} />
-                <Route path="/organisation/:section" element={<Organisation />} />
-                <Route path="/onboarding" element={<HrOnboarding />} />
-                <Route path="/leave" element={<LeaveRequest />} />
-                <Route path="/mis" element={<Mis />} />
-                <Route path="/payslip" element={<Payslip />} />
-                <Route path="/users" element={<UserManagement />} />
-                <Route path="/roles" element={<UserManagement />} />
-                <Route path="/assets" element={<AssetManagement />} />
-                <Route path="/attendance" element={<Attendance />} />
-                <Route path="/projects" element={<ProjectManagement />} />
-                <Route path="/projects/tasks" element={<TasksPage />} />
-                <Route path="/tasks" element={<TasksPage />} />
-                <Route path="/epfo" element={<Epfo />} />
-                <Route path="/lifecycle" element={<LifecycleManagement />} />
-                <Route path="/resignation" element={<LifecycleManagement />} />
-                <Route path="/offboarding" element={<LifecycleManagement />} />
-                <Route path="/reimbursement" element={<ReimbursementManagement />} />
-                <Route path="/reimbursements" element={<ReimbursementManagement />} />
-                <Route path="/approval-workflows" element={<ApprovalWorkflows />} />
-                <Route path="/approvals" element={<ApprovalWorkflows />} />
-                <Route path="/audit-logs" element={<AuditLogs />} />
-                <Route path="/audit" element={<AuditLogs />} />
-                <Route path="/platform" element={<PlatformAdmin />} />
-                <Route path="/platform/*" element={<PlatformAdmin />} />
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
-              </Route>
-            )
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/organisation" element={<Organisation />} />
+              <Route path="/organisation/:section" element={<Organisation />} />
+              <Route path="/onboarding" element={<HrOnboarding />} />
+              <Route path="/leave" element={<LeaveRequest />} />
+              <Route path="/mis" element={<Mis />} />
+              <Route path="/payslip" element={<Payslip />} />
+              <Route path="/users" element={<UserManagement />} />
+              <Route path="/roles" element={<UserManagement />} />
+              <Route path="/assets" element={<AssetManagement />} />
+              <Route path="/attendance" element={<Attendance />} />
+              <Route path="/projects" element={<ProjectManagement />} />
+              <Route path="/projects/tasks" element={<TasksPage />} />
+              <Route path="/tasks" element={<TasksPage />} />
+              <Route path="/epfo" element={<Epfo />} />
+              <Route path="/lifecycle" element={<LifecycleManagement />} />
+              <Route path="/resignation" element={<LifecycleManagement />} />
+              <Route path="/offboarding" element={<LifecycleManagement />} />
+              <Route path="/reimbursement" element={<ReimbursementManagement />} />
+              <Route path="/reimbursements" element={<ReimbursementManagement />} />
+              <Route path="/approval-workflows" element={<ApprovalWorkflows />} />
+              <Route path="/approvals" element={<ApprovalWorkflows />} />
+              <Route path="/audit-logs" element={<AuditLogs />} />
+              <Route path="/audit" element={<AuditLogs />} />
+              <Route path="/platform" element={<PlatformAdmin />} />
+              <Route path="/platform/*" element={<PlatformAdmin />} />
+            </Route>
           ) : (
             <Route path="*" element={<Navigate to="/login" replace />} />
           )}

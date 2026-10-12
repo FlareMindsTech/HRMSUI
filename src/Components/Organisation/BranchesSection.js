@@ -51,29 +51,30 @@ import {
   FaProjectDiagram,
   FaLayerGroup,
   FaMoneyCheckAlt,
-  FaExchangeAlt,
   FaUserMinus,
-  FaUserCheck,
-  FaFilter,
 } from "react-icons/fa";
 import {
   fetchBranches,
   createBranch,
   updateBranch,
+  deleteBranch,
   fetchEmployeesDropdown,
   fetchOnboardedEmployees,
   assignEmployeesToBranch,
   removeEmployeeFromBranch,
   fetchFinancialYearsDropdown,
+  fetchDepartments,
 } from "../../services/organizationService";
 import { useSelector, useDispatch } from 'react-redux';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import {
   fetchOrgResource,
+  invalidateOrgResource,
   selectShiftsDropdown,
   selectWorkCalendarsDropdown,
   selectHolidayCalendarsDropdown,
 } from '../../redux/slices/organizationSlice';
+import { useSearchParams, useNavigate } from "react-router-dom";
 import SearchInput from "../Common/SearchInput";
 import PaginationBar from "../Common/PaginationBar";
 import FeedbackAlert from "../Common/FeedbackAlert";
@@ -98,12 +99,10 @@ import LeaveSettingsSection from "./LeaveSettingsSection";
 import BranchSettingsSection from "./BranchSettingsSection";
 
 const BRANCH_TYPES = [
-  { value: "HEADQUARTERS", label: "Headquarters (HQ)" },
-  { value: "BRANCH_OFFICE", label: "Regional Branch Office" },
-  { value: "DEVELOPMENT_CENTER", label: "R&D / Development Center" },
-  { value: "SALES_OFFICE", label: "Sales & Client Office" },
-  { value: "OPERATIONS_HUB", label: "Operations & Logistics Hub" },
-  { value: "OTHER", label: "Other Campus Facility" },
+  { value: "HEAD_OFFICE", label: "Head Office (HQ)" },
+  { value: "REGIONAL_OFFICE", label: "Regional Office" },
+  { value: "BRANCH_OFFICE", label: "Branch Office" },
+  { value: "VIRTUAL", label: "Virtual / Remote Office" },
 ];
 
 const BRANCH_DETAIL_NAV_GROUPS = [
@@ -159,9 +158,18 @@ const BRANCH_DETAIL_NAV_GROUPS = [
   },
 ];
 
-export default function BranchesSection({ onSelectBranch = null, onToggleFullView = null, onBackToOrg = null, isStandaloneView = false }) {
-  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
-  const { organization, refreshBranches } = useBranch();
+export default function BranchesSection({
+  onSelectBranch = null,
+  onToggleFullView = null,
+  onBackToOrg = null,
+  isStandaloneView = false,
+  onNavigateTab = null,
+}) {
+  const hasPermission = useHasPermission();
+  const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const { organization, refreshBranches, setSelectedBranchId, branches: contextBranches } = useBranch();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   // Shared shift/calendar dropdowns (single guarded fetches); branch-scoped
   // employee lists and the financial-years picker stay local/direct.
@@ -175,6 +183,7 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
     hol: cachedHolidayCalendars,
   };
   const [branches, setBranches] = useState([]);
+  const [allOrgBranches, setAllOrgBranches] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [onboardedStaff, setOnboardedStaff] = useState([]);
   const [shifts, setShifts] = useState([]);
@@ -208,6 +217,8 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
   const [modalError, setModalError] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const [locating, setLocating] = useState(false);
+  const [showPostCreateModal, setShowPostCreateModal] = useState(false);
+  const [postCreatedBranch, setPostCreatedBranch] = useState(null);
 
   // Assign Members Modal State
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -289,6 +300,9 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
           setTotalPages(res.pagination.totalPages || 1);
           setTotalRecords(res.pagination.totalRecords || 0);
         }
+        if (!filterType && !filterStatus && !filterCity && !search && Array.isArray(res.data)) {
+          setAllOrgBranches(res.data);
+        }
       }
     } catch (err) {
       setError(err.message || "Failed to load branches");
@@ -297,16 +311,31 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
     }
   }, [page, search, filterType, filterStatus, filterCity]);
 
+  // Load complete tenant branches list to power accurate dynamic filters without dead options
+  const loadAllOrgBranches = useCallback(async () => {
+    try {
+      const res = await fetchBranches({ page: 1, limit: 1000 });
+      if (res?.success && Array.isArray(res.data)) {
+        setAllOrgBranches(res.data);
+      }
+    } catch (e) {
+      console.warn("Could not load full branches list for dynamic filters:", e);
+    }
+  }, []);
+
+  const [allDepartments, setAllDepartments] = useState([]);
+
   // Load Auxiliary Dropdowns
   const loadAuxData = useCallback(async () => {
     try {
-      const [dropdownList, fullStaff, shRes, wcRes, holRes, fyList] = await Promise.all([
+      const [dropdownList, fullStaff, shRes, wcRes, holRes, fyList, deptsRes] = await Promise.all([
         fetchEmployeesDropdown().catch(() => []),
         fetchOnboardedEmployees().catch(() => []),
         dispatch(fetchOrgResource({ key: "shifts" })).catch(() => null),
         dispatch(fetchOrgResource({ key: "workCalendars" })).catch(() => null),
         dispatch(fetchOrgResource({ key: "holidayCalendars" })).catch(() => null),
         fetchFinancialYearsDropdown().catch(() => []),
+        fetchDepartments({ page: 1, limit: 1000 }).catch(() => ({ data: [] })),
       ]);
       setEmployees(dropdownList || []);
       setOnboardedStaff(fullStaff || []);
@@ -314,18 +343,119 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
       setWorkCalendars(wcRes?.payload?.data ?? auxCacheRef.current?.wc ?? []);
       setHolidayCalendars(holRes?.payload?.data ?? auxCacheRef.current?.hol ?? []);
       setFinancialYears(fyList || []);
+      const depts = deptsRes?.data || (Array.isArray(deptsRes) ? deptsRes : []);
+      setAllDepartments(depts);
     } catch (e) {
       console.warn("Failed to load aux data for branches:", e);
     }
   }, [dispatch]);
+
+  const getBranchDepartments = useCallback(
+    (branchId) => {
+      if (!branchId) return [];
+      return allDepartments.filter((d) => {
+        const bId = d.branchId?._id || d.branchId;
+        return String(bId) === String(branchId);
+      });
+    },
+    [allDepartments]
+  );
+
+  const handleSelectBranch = useCallback((branch, defaultTab = "overview") => {
+    if (!branch) return;
+    setSelectedBranchDetail(branch);
+    setDetailActiveTab(defaultTab);
+    const bId = branch._id || branch.id;
+    if (setSelectedBranchId) setSelectedBranchId(bId);
+    if (onSelectBranch) onSelectBranch(branch);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("branchId", bId);
+        if (defaultTab && defaultTab !== "overview") {
+          next.set("tab", defaultTab);
+        } else {
+          next.delete("tab");
+        }
+        next.delete("action");
+        return next;
+      },
+      { replace: true }
+    );
+  }, [setSelectedBranchId, onSelectBranch, setSearchParams]);
+
+  const handleBackToAllBranches = useCallback(() => {
+    setSelectedBranchDetail(null);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("branchId");
+        next.delete("tab");
+        next.delete("action");
+        return next;
+      },
+      { replace: true }
+    );
+  }, [setSearchParams]);
+
+  const handleOpenBranchDepartments = useCallback((branch) => {
+    handleSelectBranch(branch, "departments");
+  }, [handleSelectBranch]);
+
+  const handleDetailTabChange = useCallback((tabKey) => {
+    setDetailActiveTab(tabKey);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (tabKey && tabKey !== "overview") {
+          next.set("tab", tabKey);
+        } else {
+          next.delete("tab");
+        }
+        return next;
+      },
+      { replace: true }
+    );
+  }, [setSearchParams]);
 
   useEffect(() => {
     loadBranches();
   }, [loadBranches]);
 
   useEffect(() => {
+    loadAllOrgBranches();
+  }, [loadAllOrgBranches]);
+
+  useEffect(() => {
     loadAuxData();
   }, [loadAuxData]);
+
+  // URL Deep-linking initialization & sync
+  useEffect(() => {
+    const bIdParam = searchParams.get("branchId");
+    const tabParam = searchParams.get("tab");
+    const actionParam = searchParams.get("action");
+
+    if (actionParam === "new" || actionParam === "create") {
+      if (!showAddModal) {
+        handleOpenAddBranch();
+      }
+    }
+
+    if (bIdParam && branches.length > 0) {
+      const match = branches.find((b) => String(b._id || b.id) === String(bIdParam));
+      if (match) {
+        if (!selectedBranchDetail || String(selectedBranchDetail._id || selectedBranchDetail.id) !== String(bIdParam)) {
+          setSelectedBranchDetail(match);
+          if (setSelectedBranchId) setSelectedBranchId(bIdParam);
+        }
+        if (tabParam && tabParam !== detailActiveTab) {
+          setDetailActiveTab(tabParam);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branches, searchParams, setSelectedBranchId]);
 
   // Compute members assigned to branch
   const getBranchMembers = useCallback(
@@ -341,14 +471,77 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
     [onboardedStaff]
   );
 
-  // Unique Cities list for filter
-  const cityOptions = useMemo(() => {
-    const set = new Set();
-    branches.forEach((b) => {
-      if (b.city) set.add(b.city);
+  // Consolidated master list of all tenant branches (full models)
+  const masterBranchList = useMemo(() => {
+    if (allOrgBranches.length > 0) return allOrgBranches;
+    if (branches.length > 0) return branches;
+    return [];
+  }, [allOrgBranches, branches]);
+
+  // Available Branch Types actually existing in this organization
+  const availableBranchTypes = useMemo(() => {
+    const typeMap = new Map();
+    masterBranchList.forEach((b) => {
+      const rawType = (b.branchType || "").toUpperCase();
+      if (rawType) {
+        typeMap.set(rawType, (typeMap.get(rawType) || 0) + 1);
+      }
     });
-    return Array.from(set);
-  }, [branches]);
+
+    // ONLY return types that actually exist in the data — never show unwanted/dead types
+    return BRANCH_TYPES.filter((t) => typeMap.has(t.value)).map((t) => ({
+      ...t,
+      count: typeMap.get(t.value) || 0,
+    }));
+  }, [masterBranchList]);
+
+  // Unique Cities list with branch count (only existing cities)
+  const cityOptions = useMemo(() => {
+    const cityMap = new Map();
+    masterBranchList.forEach((b) => {
+      const c = (b.city || "").trim();
+      if (c) {
+        cityMap.set(c, (cityMap.get(c) || 0) + 1);
+      }
+    });
+    return Array.from(cityMap.entries())
+      .map(([city, count]) => ({ city, count }))
+      .sort((a, b) => a.city.localeCompare(b.city));
+  }, [masterBranchList]);
+
+  // Available Statuses actually existing in this organization
+  const availableStatuses = useMemo(() => {
+    const activeCount = masterBranchList.filter((b) => b.status === "ACTIVE").length;
+    const inactiveCount = masterBranchList.filter((b) => b.status === "INACTIVE").length;
+    const list = [];
+    if (activeCount > 0) list.push({ value: "ACTIVE", label: `Active (${activeCount})` });
+    if (inactiveCount > 0) list.push({ value: "INACTIVE", label: `Inactive (${inactiveCount})` });
+    return list;
+  }, [masterBranchList]);
+
+  // Guaranteed Client-Side Filter: prevents unwanted branches from ever leaking into view
+  const displayedBranches = useMemo(() => {
+    let list = Array.isArray(branches) ? [...branches] : [];
+    if (filterType) {
+      list = list.filter((b) => (b.branchType || "").toUpperCase() === filterType.toUpperCase());
+    }
+    if (filterCity) {
+      list = list.filter((b) => (b.city || "").trim().toLowerCase() === filterCity.trim().toLowerCase());
+    }
+    if (filterStatus) {
+      list = list.filter((b) => (b.status || "").toUpperCase() === filterStatus.toUpperCase());
+    }
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter((b) =>
+        (b.branchName || "").toLowerCase().includes(q) ||
+        (b.branchCode || "").toLowerCase().includes(q) ||
+        (b.city || "").toLowerCase().includes(q) ||
+        (b.address || "").toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [branches, filterType, filterCity, filterStatus, search]);
 
   // ── 5-Step Create / Edit Modal Openers ──
   const handleOpenAddBranch = () => {
@@ -394,6 +587,14 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
     setShowAddModal(false);
     setModalError("");
     if (onToggleFullView) onToggleFullView(false);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("action");
+        return next;
+      },
+      { replace: true }
+    );
   };
 
   // GPS Auto-Fetch
@@ -499,15 +700,23 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
         }
       } else {
         const res = await createBranch(payload);
+        const createdBranch = res?.data || res?.branch || {
+          ...payload,
+          _id: res?._id || res?.id || `branch-${Date.now()}`,
+        };
         setSuccess(res?.message || "Branch created successfully!");
+        setPostCreatedBranch(createdBranch);
+        setShowPostCreateModal(true);
       }
 
+      dispatch(invalidateOrgResource(["structure", "profile"]));
       handleCloseWizard();
-      await loadBranches();
+      await Promise.all([loadBranches(), loadAllOrgBranches()]);
       if (refreshBranches) refreshBranches();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
-      setModalError(err.message || "Failed to save branch");
+      const mapped = err.mapped;
+      setModalError(mapped?.message || err.message || "Failed to save branch");
     } finally {
       setModalLoading(false);
     }
@@ -611,24 +820,29 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
     }
   };
 
-  // ── Soft Deactivate / Delete Handler ──
+  // ── Soft Deactivate Handler (Backend DELETE /api/branch/:id) ──
   const handleConfirmDeactivate = async () => {
     if (!deactivatingBranch) return;
     try {
       setDeactivatingLoading(true);
       const bId = deactivatingBranch._id || deactivatingBranch.id;
-      // Soft toggle to INACTIVE
-      await updateBranch(bId, { status: "INACTIVE" });
-      setSuccess(`Branch ${deactivatingBranch.branchName} deactivated.`);
+      // Soft deactivation via authoritative DELETE endpoint
+      const res = await deleteBranch(bId);
+      setSuccess(res?.message || `Branch ${deactivatingBranch.branchName} deactivated successfully.`);
       setShowDeactivateModal(false);
       if (selectedBranchDetail && (selectedBranchDetail._id === bId || selectedBranchDetail.id === bId)) {
         setSelectedBranchDetail(null);
       }
-      await loadBranches();
+      dispatch(invalidateOrgResource(["structure", "profile"]));
+      await Promise.all([loadBranches(), loadAllOrgBranches()]);
       if (refreshBranches) refreshBranches();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
-      setError(err.message || "Failed to deactivate branch");
+      const mapped = err.mapped;
+      const msg = mapped?.message || err.message || "Failed to deactivate branch";
+      setError(msg);
+      setShowDeactivateModal(false);
+      setTimeout(() => setError(""), 6000);
     } finally {
       setDeactivatingLoading(false);
     }
@@ -1280,6 +1494,18 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                         </div>
                       </Col>
                     </Row>
+
+                    <div className="mt-3.5 p-3 rounded-3 border bg-success-subtle border-success-subtle d-flex align-items-center gap-3">
+                      <FaSitemap className="text-success fs-4 flex-shrink-0" />
+                      <div>
+                        <div className="fw-bold text-success-emphasis small">
+                          Next Step in Flow: Configure Branch Departments & Staff
+                        </div>
+                        <div className="text-muted extra-small">
+                          Once created, you will be prompted to set up departments (e.g. IT, Sales, HR) and assign personnel specifically to this regional facility.
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1462,19 +1688,48 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
 
     const handleCategoryClick = (group) => {
       if (!group.tabs.some((t) => t.key === detailActiveTab)) {
-        setDetailActiveTab(group.tabs[0].key);
+        handleDetailTabChange(group.tabs[0].key);
       }
     };
 
     return (
       <div className="branch-detail-workspace">
+        {/* ── 0. Breadcrumb Trail ── */}
+        <div className="branches-breadcrumbs mb-3">
+          <span
+            className="branches-breadcrumb-link"
+            onClick={onBackToOrg ? onBackToOrg : () => navigate("/organisation")}
+            role="link"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (onBackToOrg) onBackToOrg(); else navigate("/organisation"); } }}
+          >
+            Organization Hub
+          </span>
+          <span>/</span>
+          <span
+            className="branches-breadcrumb-link"
+            onClick={handleBackToAllBranches}
+            role="link"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleBackToAllBranches(); } }}
+          >
+            Branches Directory
+          </span>
+          <span>/</span>
+          <span className="branches-breadcrumb-current">{b.branchName}</span>
+          <span>/</span>
+          <span className="text-secondary fw-bold text-capitalize">
+            {detailActiveTab.replace(/-/g, " ")}
+          </span>
+        </div>
+
         {/* ── 1. Top Action Bar & Navigation ── */}
         <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
           <div className="d-flex align-items-center gap-3 flex-wrap">
             <button
               type="button"
               className="branches-btn-secondary"
-              onClick={() => setSelectedBranchDetail(null)}
+              onClick={handleBackToAllBranches}
             >
               <FaArrowLeft /> Back to All Branches
             </button>
@@ -1487,7 +1742,7 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                   value={lockedBId}
                   onChange={(e) => {
                     const targetB = branches.find((br) => String(br._id || br.id) === e.target.value);
-                    if (targetB) setSelectedBranchDetail(targetB);
+                    if (targetB) handleSelectBranch(targetB, detailActiveTab);
                   }}
                   style={{ width: "auto", minWidth: 200, fontWeight: 600, borderColor: "rgba(196, 154, 85, 0.4)" }}
                 >
@@ -1595,6 +1850,84 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
           </div>
         </div>
 
+        {/* ── Branch Lifecycle & Setup Guided Flow Pipeline ── */}
+        <div className="branch-flow-pipeline-bar mb-4 p-2.5 bg-white rounded-3 border shadow-sm">
+          <div className="d-flex align-items-center justify-content-between px-2 mb-2 flex-wrap gap-2">
+            <span className="extra-small fw-bold text-uppercase tracking-wider text-muted d-flex align-items-center gap-1.5">
+              <FaProjectDiagram className="text-warning" /> Branch Configuration & Governance Flow
+            </span>
+            <span className="badge bg-light text-secondary border extra-small">
+              Facility: {b.branchName}
+            </span>
+          </div>
+          <div className="d-flex align-items-center gap-1 flex-wrap">
+            <button
+              type="button"
+              className={`branch-flow-step-btn ${detailActiveTab === "overview" ? "active" : ""}`}
+              onClick={() => handleDetailTabChange("overview")}
+            >
+              <span className="branch-flow-step-num">1</span>
+              <FaBuilding size={12} />
+              <span>Identity & GPS</span>
+              <FaCheckCircle size={11} className="text-success ms-1" />
+            </button>
+            <span className="branch-flow-step-arrow">➔</span>
+
+            <button
+              type="button"
+              className={`branch-flow-step-btn ${detailActiveTab === "departments" ? "active" : ""}`}
+              onClick={() => handleDetailTabChange("departments")}
+            >
+              <span className="branch-flow-step-num">2</span>
+              <FaSitemap size={12} />
+              <span>Departments ({getBranchDepartments(lockedBId).length})</span>
+              {getBranchDepartments(lockedBId).length > 0 ? (
+                <FaCheckCircle size={11} className="text-success ms-1" />
+              ) : (
+                <span className="badge bg-warning text-dark extra-small ms-1">Required</span>
+              )}
+            </button>
+            <span className="branch-flow-step-arrow">➔</span>
+
+            <button
+              type="button"
+              className={`branch-flow-step-btn ${detailActiveTab === "members" ? "active" : ""}`}
+              onClick={() => handleDetailTabChange("members")}
+            >
+              <span className="branch-flow-step-num">3</span>
+              <FaUsers size={12} />
+              <span>Staff & Members ({branchMembers.length})</span>
+              {branchMembers.length > 0 ? (
+                <FaCheckCircle size={11} className="text-success ms-1" />
+              ) : (
+                <span className="badge bg-warning text-dark extra-small ms-1">Pending</span>
+              )}
+            </button>
+            <span className="branch-flow-step-arrow">➔</span>
+
+            <button
+              type="button"
+              className={`branch-flow-step-btn ${detailActiveTab === "shifts" ? "active" : ""}`}
+              onClick={() => handleDetailTabChange("shifts")}
+            >
+              <span className="branch-flow-step-num">4</span>
+              <FaClock size={12} />
+              <span>Shifts & Calendars</span>
+            </button>
+            <span className="branch-flow-step-arrow">➔</span>
+
+            <button
+              type="button"
+              className={`branch-flow-step-btn ${detailActiveTab === "settings" ? "active" : ""}`}
+              onClick={() => handleDetailTabChange("settings")}
+            >
+              <span className="branch-flow-step-num">5</span>
+              <FaCog size={12} />
+              <span>Branch Settings</span>
+            </button>
+          </div>
+        </div>
+
         {/* ── 3. KPI Summary Metric Cards ── */}
         <div className="branches-kpi-grid">
           <div className="branches-kpi-card">
@@ -1675,7 +2008,7 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
               <select
                 className="form-select form-select-sm branch-quick-jump-select"
                 value={detailActiveTab}
-                onChange={(e) => setDetailActiveTab(e.target.value)}
+                onChange={(e) => handleDetailTabChange(e.target.value)}
                 aria-label="Direct module navigation"
               >
                 {BRANCH_DETAIL_NAV_GROUPS.map((group) => (
@@ -1704,7 +2037,7 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                     role="tab"
                     aria-selected={isTabActive}
                     className={`branch-subtab-pill ${isTabActive ? "active" : ""}`}
-                    onClick={() => setDetailActiveTab(tab.key)}
+                    onClick={() => handleDetailTabChange(tab.key)}
                   >
                     <TabIcon className="branch-subtab-icon" />
                     <span>{tab.label}</span>
@@ -1977,6 +2310,112 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                   </div>
                 </Col>
               </Row>
+
+              {/* ── ROW 3: Branch Departments Spotlight ── */}
+              <Row className="g-4 mt-1">
+                <Col lg={12}>
+                  <div className="branch-info-card">
+                    <div className="branch-info-card-header">
+                      <div className="d-flex align-items-center gap-2">
+                        <FaSitemap className="text-success" />
+                        <h5 className="branch-info-card-title mb-0">Branch Departments & Functional Units</h5>
+                        <Badge bg="success-subtle" className="text-success border border-success-subtle rounded-pill px-3 py-1">
+                          {getBranchDepartments(lockedBId).length} Active Departments
+                        </Badge>
+                      </div>
+                      <div className="d-flex align-items-center gap-2 flex-wrap">
+                        {canUpdate && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-success text-white fw-bold shadow-sm d-flex align-items-center gap-1.5"
+                            onClick={() => {
+                              handleDetailTabChange("departments");
+                              setSearchParams((prev) => {
+                                const next = new URLSearchParams(prev);
+                                next.set("branchId", lockedBId);
+                                next.set("tab", "departments");
+                                next.set("action", "new-dept");
+                                return next;
+                              }, { replace: true });
+                            }}
+                          >
+                            <FaPlus size={11} /> Add Branch Department
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="branches-btn-secondary btn-sm"
+                          onClick={() => handleDetailTabChange("departments")}
+                        >
+                          Manage Departments ({getBranchDepartments(lockedBId).length}) <FaArrowRight size={10} className="ms-1" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="branch-info-card-body">
+                      {getBranchDepartments(lockedBId).length === 0 ? (
+                        <div className="text-center py-4 text-muted">
+                          <FaSitemap size={28} className="text-muted opacity-50 mb-2" />
+                          <p className="mb-2">No functional departments have been assigned to <strong>{b.branchName}</strong> yet.</p>
+                          <Button
+                            variant="success"
+                            size="sm"
+                            className="fw-bold"
+                            onClick={() => {
+                              handleDetailTabChange("departments");
+                              setSearchParams((prev) => {
+                                const next = new URLSearchParams(prev);
+                                next.set("branchId", lockedBId);
+                                next.set("tab", "departments");
+                                next.set("action", "new-dept");
+                                return next;
+                              }, { replace: true });
+                            }}
+                          >
+                            <FaPlus className="me-1" /> Create First Department for this Branch
+                          </Button>
+                        </div>
+                      ) : (
+                        <Row className="g-3">
+                          {getBranchDepartments(lockedBId).map((dept) => (
+                            <Col md={4} key={dept._id}>
+                              <div className="p-3 rounded-3 border bg-light h-100 d-flex flex-column justify-content-between">
+                                <div>
+                                  <div className="d-flex align-items-center justify-content-between mb-1">
+                                    <h6 className="fw-bold text-dark mb-0">{dept.departmentName}</h6>
+                                    <span className="badge bg-light text-dark border font-monospace small">
+                                      {dept.departmentCode}
+                                    </span>
+                                  </div>
+                                  <div className="text-muted extra-small">
+                                    {dept.departmentHeadId ? (
+                                      <span>Head: {dept.departmentHeadId.firstName} {dept.departmentHeadId.lastName}</span>
+                                    ) : (
+                                      <span>No HOD assigned</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="mt-2 pt-2 border-top d-flex align-items-center justify-content-between">
+                                  <span className={`badge ${dept.status === 'ACTIVE' ? 'bg-success' : 'bg-secondary'}`} style={{ fontSize: '0.65rem' }}>
+                                    {dept.status || 'ACTIVE'}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="btn btn-link p-0 text-success text-decoration-none extra-small fw-semibold"
+                                    onClick={() => setDetailActiveTab("departments")}
+                                  >
+                                    Manage in Branch Hub &rarr;
+                                  </button>
+                                </div>
+                              </div>
+                            </Col>
+                          ))}
+                        </Row>
+                      )}
+                    </div>
+                  </div>
+                </Col>
+              </Row>
             </div>
           )}
 
@@ -2144,9 +2583,67 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                   </Table>
                 </div>
               )}
+
+              {/* Flow Next Step Card in Members pane */}
+              <div className="p-3.5 mt-4 rounded-3 border bg-white shadow-sm d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div className="d-flex align-items-center gap-3">
+                  <div
+                    style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 12,
+                      background: "linear-gradient(135deg, rgba(139, 92, 246, 0.18) 0%, rgba(139, 92, 246, 0.06) 100%)",
+                      color: "#7c3aed",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 18,
+                      border: "1px solid rgba(139, 92, 246, 0.25)",
+                    }}
+                  >
+                    <FaClock />
+                  </div>
+                  <div>
+                    <div className="fw-bold text-dark" style={{ fontSize: "0.95rem" }}>
+                      Next Step in Flow: Configure Shifts & Work Calendars
+                    </div>
+                    <div className="text-muted small">
+                      Assign branch shifts, rotational schedules, and working day calendars to personnel.
+                    </div>
+                  </div>
+                </div>
+                <div className="d-flex align-items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => handleDetailTabChange("departments")}
+                  >
+                    &larr; Branch Departments
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm fw-bold shadow-sm"
+                    style={{
+                      background: "var(--org-gold-btn-gradient, linear-gradient(135deg, #E2C278 0%, #C49A55 100%))",
+                      color: "#1C1D1D",
+                      border: "none",
+                      padding: "7px 16px",
+                      borderRadius: 8,
+                    }}
+                    onClick={() => handleDetailTabChange("shifts")}
+                  >
+                    Configure Shifts &rarr;
+                  </button>
+                </div>
+              </div>
             </div>
           )}
-          {detailActiveTab === "departments" && <DepartmentsSection lockedBranchId={lockedBId} />}
+          {detailActiveTab === "departments" && (
+            <DepartmentsSection
+              lockedBranchId={lockedBId}
+              onNavigateBranchTab={handleDetailTabChange}
+            />
+          )}
           {detailActiveTab === "designations" && <DesignationsSection lockedBranchId={lockedBId} />}
           {detailActiveTab === "teams" && <TeamsSection lockedBranchId={lockedBId} />}
           {detailActiveTab === "locations" && <LocationsSection lockedBranchId={lockedBId} />}
@@ -2482,11 +2979,11 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
   }
 
   // Computed metrics for KPI stats cards
-  const totalBranchesCount = totalRecords || branches.length;
-  const activeBranchesCount = branches.filter((b) => b.status === "ACTIVE").length;
-  const inactiveBranchesCount = branches.filter((b) => b.status === "INACTIVE").length;
+  const totalBranchesCount = totalRecords || masterBranchList.length || branches.length;
+  const activeBranchesCount = (masterBranchList.length > 0 ? masterBranchList : branches).filter((b) => b.status === "ACTIVE").length;
+  const inactiveBranchesCount = (masterBranchList.length > 0 ? masterBranchList : branches).filter((b) => b.status === "INACTIVE").length;
   const totalStaffCount = onboardedStaff.length;
-  const geofencedBranchesCount = branches.filter((b) => b.latitude && b.longitude).length;
+  const geofencedBranchesCount = (masterBranchList.length > 0 ? masterBranchList : branches).filter((b) => b.latitude && b.longitude).length;
   const citiesCount = cityOptions.length;
 
   // =========================================================================
@@ -2526,6 +3023,7 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
             className="branches-btn-secondary"
             onClick={() => {
               loadBranches();
+              loadAllOrgBranches();
               loadAuxData();
             }}
             title="Refresh Branch Records"
@@ -2650,9 +3148,15 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                 setPage(1);
               }}
             >
-              <option value="">All Branch Types</option>
-              {BRANCH_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
+              <option value="">
+                {masterBranchList.length > 0
+                  ? `All Branch Types (${masterBranchList.length})`
+                  : "All Branch Types"}
+              </option>
+              {availableBranchTypes.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label} ({t.count})
+                </option>
               ))}
             </select>
 
@@ -2665,8 +3169,10 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
               }}
             >
               <option value="">All Cities ({cityOptions.length})</option>
-              {cityOptions.map((c) => (
-                <option key={c} value={c}>{c}</option>
+              {cityOptions.map(({ city, count }) => (
+                <option key={city} value={city}>
+                  {city} ({count})
+                </option>
               ))}
             </select>
 
@@ -2679,8 +3185,18 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
               }}
             >
               <option value="">All Statuses</option>
-              <option value="ACTIVE">Active Only</option>
-              <option value="INACTIVE">Inactive Only</option>
+              {availableStatuses.length > 0 ? (
+                availableStatuses.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                </>
+              )}
             </select>
 
             <div className="branches-view-toggle">
@@ -2703,6 +3219,78 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
             </div>
           </div>
         </div>
+
+        {/* ── Active Filters Indicators Bar ── */}
+        {(Boolean(filterType) || Boolean(filterCity) || Boolean(filterStatus) || Boolean(search)) && (
+          <div className="d-flex align-items-center gap-2 mt-3 px-1 flex-wrap pt-2 border-top">
+            <span className="extra-small text-muted fw-bold text-uppercase">Active:</span>
+            {filterType && (
+              <span className="badge bg-warning-subtle text-dark border extra-small d-inline-flex align-items-center gap-1 py-1 px-2">
+                Type: {availableBranchTypes.find((t) => t.value === filterType)?.label || filterType}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className="ms-1 fw-bold text-muted cursor-pointer"
+                  onClick={() => { setFilterType(""); setPage(1); }}
+                >
+                  &times;
+                </span>
+              </span>
+            )}
+            {filterCity && (
+              <span className="badge bg-info-subtle text-dark border extra-small d-inline-flex align-items-center gap-1 py-1 px-2">
+                City: {filterCity}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className="ms-1 fw-bold text-muted cursor-pointer"
+                  onClick={() => { setFilterCity(""); setPage(1); }}
+                >
+                  &times;
+                </span>
+              </span>
+            )}
+            {filterStatus && (
+              <span className="badge bg-success-subtle text-dark border extra-small d-inline-flex align-items-center gap-1 py-1 px-2">
+                Status: {filterStatus}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className="ms-1 fw-bold text-muted cursor-pointer"
+                  onClick={() => { setFilterStatus(""); setPage(1); }}
+                >
+                  &times;
+                </span>
+              </span>
+            )}
+            {search && (
+              <span className="badge bg-light text-dark border extra-small d-inline-flex align-items-center gap-1 py-1 px-2">
+                Search: "{search}"
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className="ms-1 fw-bold text-muted cursor-pointer"
+                  onClick={() => { setSearch(""); setPage(1); }}
+                >
+                  &times;
+                </span>
+              </span>
+            )}
+            <button
+              type="button"
+              className="btn btn-link btn-sm p-0 extra-small text-danger text-decoration-none ms-1 fw-semibold"
+              onClick={() => {
+                setFilterType("");
+                setFilterCity("");
+                setFilterStatus("");
+                setSearch("");
+                setPage(1);
+              }}
+            >
+              Clear All Filters
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── 4. Main Branches List / Cards ── */}
@@ -2711,31 +3299,47 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
           <Spinner animation="border" style={{ color: "var(--color-primary, #C49A55)" }} />
           <p className="mt-3 text-muted fw-semibold">Loading enterprise branch directory...</p>
         </div>
-      ) : branches.length === 0 ? (
+      ) : displayedBranches.length === 0 ? (
         <div className="branches-empty-state">
           <div className="branches-empty-icon">
             <FaBuilding />
           </div>
-          <h4 className="branches-empty-title">No Branches Found</h4>
+          <h4 className="branches-empty-title">No Matching Branches Found</h4>
           <p className="branches-empty-text">
             {search || filterType || filterCity || filterStatus
               ? "No branches match your current search and filter criteria. Try resetting your filters."
               : "Create your first regional branch facility to organize physical locations, geofenced mobile attendance, and departmental staff."}
           </p>
-          {canCreate && (
+          {(search || filterType || filterCity || filterStatus) ? (
             <button
               type="button"
-              className="branches-btn-add"
-              onClick={handleOpenAddBranch}
+              className="btn btn-outline-secondary px-3 py-2 fw-semibold rounded-3 extra-small"
+              onClick={() => {
+                setFilterType("");
+                setFilterCity("");
+                setFilterStatus("");
+                setSearch("");
+                setPage(1);
+              }}
             >
-              <FaPlus /> Add Your First Branch
+              Reset Filters
             </button>
+          ) : (
+            canCreate && (
+              <button
+                type="button"
+                className="branches-btn-add"
+                onClick={handleOpenAddBranch}
+              >
+                <FaPlus /> Add Your First Branch
+              </button>
+            )
           )}
         </div>
       ) : viewMode === "grid" ? (
         /* ── GRID CARDS VIEW ── */
         <div className="branches-grid">
-          {branches.map((b) => {
+          {displayedBranches.map((b) => {
             const bId = b._id || b.id;
             const membersCount = getBranchMembers(bId).length;
             const headObj = employees.find(
@@ -2757,7 +3361,7 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                     <div className="branch-card-title-box">
                       <h4
                         className="branch-card-name"
-                        onClick={() => setSelectedBranchDetail(b)}
+                        onClick={() => handleSelectBranch(b)}
                         title="Click to open full branch workspace"
                       >
                         {b.branchName}
@@ -2824,6 +3428,17 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                         <FaUsers className="me-1 text-muted" size={12} /> {membersCount} Team Members
                       </span>
                     </div>
+                    <div
+                      className="branch-stat-mini-item"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => handleOpenBranchDepartments(b)}
+                      title="Click to view and manage departments for this branch"
+                    >
+                      <span className="branch-stat-mini-label">Departments</span>
+                      <span className="branch-stat-mini-value text-success fw-semibold">
+                        <FaSitemap className="me-1 text-success" size={12} /> {getBranchDepartments(bId).length} Departments
+                      </span>
+                    </div>
                     <div className="branch-stat-mini-item">
                       <span className="branch-stat-mini-label">GPS Geofence</span>
                       <span className="branch-stat-mini-value">
@@ -2839,12 +3454,21 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                   <button
                     type="button"
                     className="branch-btn-hub"
-                    onClick={() => setSelectedBranchDetail(b)}
+                    onClick={() => handleSelectBranch(b)}
                   >
                     Open Branch Hub <FaArrowRight size={11} />
                   </button>
 
                   <div className="branch-card-action-group">
+                    <button
+                      type="button"
+                      className="branch-card-action-btn"
+                      onClick={() => handleOpenBranchDepartments(b)}
+                      title="Manage Branch Departments"
+                    >
+                      <FaSitemap />
+                    </button>
+
                     {canUpdate && (
                       <button
                         type="button"
@@ -2898,14 +3522,16 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                 <th>Location / City</th>
                 <th>Branch Head</th>
                 <th>Staff</th>
+                <th>Departments</th>
                 <th>Status</th>
                 <th className="text-end">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {branches.map((b) => {
+              {displayedBranches.map((b) => {
                 const bId = b._id || b.id;
                 const membersCount = getBranchMembers(bId).length;
+                const deptsCount = getBranchDepartments(bId).length;
                 const headObj = employees.find(
                   (e) => String(e._id || e.id) === String(b.branchHeadId?._id || b.branchHeadId)
                 );
@@ -2917,7 +3543,7 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                       <div
                         className="d-flex align-items-center gap-2 text-decoration-none fw-bold"
                         style={{ cursor: "pointer" }}
-                        onClick={() => setSelectedBranchDetail(b)}
+                        onClick={() => handleSelectBranch(b)}
                       >
                         <div
                           style={{
@@ -2973,6 +3599,19 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                     </td>
 
                     <td>
+                      <Badge
+                        bg="light"
+                        text="dark"
+                        className="border px-2 py-1 text-success fw-semibold"
+                        style={{ cursor: "pointer" }}
+                        onClick={() => handleOpenBranchDepartments(b)}
+                        title="Click to view and manage departments for this branch"
+                      >
+                        <FaSitemap className="me-1 text-success" /> {deptsCount}
+                      </Badge>
+                    </td>
+
+                    <td>
                       <span
                         className={`branch-status-indicator ${
                           b.status === "ACTIVE" ? "active" : "inactive"
@@ -2987,7 +3626,15 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
                         <button
                           type="button"
                           className="branch-card-action-btn"
-                          onClick={() => setSelectedBranchDetail(b)}
+                          onClick={() => handleOpenBranchDepartments(b)}
+                          title="Manage Branch Departments"
+                        >
+                          <FaSitemap />
+                        </button>
+                        <button
+                          type="button"
+                          className="branch-card-action-btn"
+                          onClick={() => handleSelectBranch(b)}
                           title="Open Branch Workspace"
                         >
                           <FaEye />
@@ -3263,6 +3910,134 @@ export default function BranchesSection({ onSelectBranch = null, onToggleFullVie
             {deactivatingLoading ? "Deactivating..." : "Deactivate Branch"}
           </Button>
         </Modal.Footer>
+      </Modal>
+
+      {/* ── Branch Onboarding Next Steps Modal ── */}
+      <Modal
+        show={showPostCreateModal}
+        onHide={() => setShowPostCreateModal(false)}
+        centered
+        backdrop="static"
+        className="luxury-confirm-modal"
+      >
+        <div className="p-4 bg-white rounded-4 shadow-lg border-0">
+          <div className="d-flex align-items-center gap-3 mb-3">
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 14,
+                background: "linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%)",
+                color: "#10b981",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 22,
+                border: "1px solid rgba(16, 185, 129, 0.25)",
+              }}
+            >
+              <FaCheckCircle />
+            </div>
+            <div>
+              <h5 className="fw-bold mb-0 text-dark">Branch Created Successfully!</h5>
+              <span className="extra-small text-muted">
+                Facility <strong>{postCreatedBranch?.branchName}</strong> ({postCreatedBranch?.branchCode}) is now initialized.
+              </span>
+            </div>
+          </div>
+
+          <p className="text-secondary small mb-3">
+            To make this branch operational, follow the recommended next steps in the organizational onboarding workflow:
+          </p>
+
+          <div className="d-flex flex-column gap-2.5 mb-4">
+            {/* Step 1: Add Departments */}
+            <div
+              className="p-3 rounded-3 border bg-light d-flex align-items-center justify-content-between gap-3"
+              style={{ cursor: "pointer", transition: "all 0.2s ease" }}
+              onClick={() => {
+                setShowPostCreateModal(false);
+                handleSelectBranch(postCreatedBranch, "departments");
+                setSearchParams((prev) => {
+                  const next = new URLSearchParams(prev);
+                  next.set("branchId", postCreatedBranch._id || postCreatedBranch.id);
+                  next.set("tab", "departments");
+                  next.set("action", "new-dept");
+                  return next;
+                }, { replace: true });
+              }}
+            >
+              <div className="d-flex align-items-center gap-3">
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(16, 185, 129, 0.15)", color: "#059669", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <FaSitemap />
+                </div>
+                <div>
+                  <div className="fw-bold text-dark small">1. Add Departments to this Branch</div>
+                  <div className="text-muted extra-small">Create functional units (IT, Sales, HR, Operations) for this facility.</div>
+                </div>
+              </div>
+              <Button variant="success" size="sm" className="fw-bold px-3">
+                + Add Dept
+              </Button>
+            </div>
+
+            {/* Step 2: Assign Staff */}
+            <div
+              className="p-3 rounded-3 border bg-light d-flex align-items-center justify-content-between gap-3"
+              style={{ cursor: "pointer", transition: "all 0.2s ease" }}
+              onClick={() => {
+                setShowPostCreateModal(false);
+                handleOpenAssignModal(postCreatedBranch);
+              }}
+            >
+              <div className="d-flex align-items-center gap-3">
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(59, 130, 246, 0.15)", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <FaUsers />
+                </div>
+                <div>
+                  <div className="fw-bold text-dark small">2. Assign Staff & Workforce</div>
+                  <div className="text-muted extra-small">Map personnel and primary branch placement.</div>
+                </div>
+              </div>
+              <Button variant="primary" size="sm" className="fw-bold px-3">
+                Manage Staff
+              </Button>
+            </div>
+
+            {/* Step 3: Branch Hub */}
+            <div
+              className="p-3 rounded-3 border bg-light d-flex align-items-center justify-content-between gap-3"
+              style={{ cursor: "pointer", transition: "all 0.2s ease" }}
+              onClick={() => {
+                setShowPostCreateModal(false);
+                handleSelectBranch(postCreatedBranch, "overview");
+              }}
+            >
+              <div className="d-flex align-items-center gap-3">
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(196, 154, 85, 0.15)", color: "var(--color-primary-dark, #9B7229)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <FaBuilding />
+                </div>
+                <div>
+                  <div className="fw-bold text-dark small">3. Open Full Branch Workspace</div>
+                  <div className="text-muted extra-small">Review GPS radar, operational shifts, work calendars, and settings.</div>
+                </div>
+              </div>
+              <Button variant="outline-dark" size="sm" className="fw-semibold px-3">
+                Open Hub
+              </Button>
+            </div>
+          </div>
+
+          <div className="d-flex justify-content-end">
+            <Button
+              variant="link"
+              className="text-muted text-decoration-none small"
+              onClick={() => setShowPostCreateModal(false)}
+            >
+              Dismiss and View Branches Directory
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

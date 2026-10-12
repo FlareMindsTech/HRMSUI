@@ -1403,5 +1403,71 @@
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
 }
 
+/* ── Branch Configuration & Governance Guided Flow Pipeline ── */
+.branch-flow-pipeline-bar {
+  background: var(--color-surface, #ffffff);
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-lg, 16px);
+  padding: 12px 18px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+  margin-bottom: 24px;
+}
 
+.branch-flow-step-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
 
+.branch-flow-step-btn:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+}
+
+.branch-flow-step-btn.active {
+  background: linear-gradient(135deg, rgba(196, 154, 85, 0.16) 0%, rgba(196, 154, 85, 0.06) 100%);
+  border-color: var(--color-primary, #C49A55);
+  color: #1e293b;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(196, 154, 85, 0.18);
+}
+
+.branch-flow-step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #475569;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.branch-flow-step-btn.active .branch-flow-step-num {
+  background: var(--color-primary, #C49A55);
+  color: #ffffff;
+}
+
+.branch-flow-step-arrow {
+  color: #cbd5e1;
+  font-size: 13px;
+  margin: 0 4px;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+}

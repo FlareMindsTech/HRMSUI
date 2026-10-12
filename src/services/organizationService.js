@@ -1,10 +1,72 @@
-import { apiFetch, apiError, buildQuery, setAuthToken } from "../config/api";
+import { apiFetch, apiError, buildQuery } from "../config/api";
 
 // ============================================================
 // Organization Service (Multi-Tenant SaaS HRMS)
 // ============================================================
 
 // ─── 1. ORGANIZATION OVERVIEW & PROFILE ───────────────────────────
+
+/**
+ * Resolves any media/image URL (base64 data URI, blob URI, absolute HTTP/HTTPS URL,
+ * or backend relative path) into a fully-qualified browser-loadable URL.
+ */
+export const resolveMediaUrl = (url) => {
+  if (!url) return "";
+  if (typeof url === "object" && url !== null) {
+    url = url.url || url.secure_url || url.path || url.src || url.location || "";
+  }
+  if (typeof url !== "string") return "";
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  if (
+    trimmed.startsWith("data:") ||
+    trimmed.startsWith("blob:") ||
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://")
+  ) {
+    return trimmed;
+  }
+  const backendBase = (API_BASE_URL || "").replace(/\/api\/?$/, "");
+  const cleanPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return `${backendBase}${cleanPath}`;
+};
+
+/**
+ * Compresses an image file in-browser using HTML5 Canvas before uploading or storing
+ * as base64, preventing HTTP 413 Payload Too Large errors and slow transfers.
+ */
+export const compressImageFile = (file, maxWidth = 512, maxHeight = 512, quality = 0.85) => {
+  return new Promise((resolve) => {
+    if (!file) return resolve("");
+    const reader = new FileReader();
+    reader.onerror = () => resolve("");
+    reader.onload = (e) => {
+      const rawResult = e.target.result;
+      if (!rawResult) return resolve("");
+      const img = new Image();
+      img.onerror = () => resolve(rawResult);
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        const mime = file.type === "image/png" ? "image/png" : "image/jpeg";
+        const compressed = canvas.toDataURL(mime, quality);
+        resolve(compressed);
+      };
+      img.src = rawResult;
+    };
+    reader.readAsDataURL(file);
+  });
+};
 
 /**
  * Normalizes any organization response object from the backend into a standardized schema
@@ -95,11 +157,7 @@ export const normalizeOrganization = (raw) => {
     contactPersonPhone: org.contactPersonPhone || org.contactPerson?.phone || org.primaryContact?.phone || "",
     logo: (() => {
       const rawLogo = org.logo ?? org.logoUrl ?? org.logo_url ?? org.companyLogo ?? org.company_logo ?? org.organizationLogo ?? org.orgLogo ?? org.profilePic ?? org.profilePhoto ?? org.image ?? org.avatar ?? org.picture ?? "";
-      if (typeof rawLogo === "string") return rawLogo.trim();
-      if (typeof rawLogo === "object" && rawLogo !== null) {
-        return rawLogo.url || rawLogo.secure_url || rawLogo.path || rawLogo.src || rawLogo.location || "";
-      }
-      return "";
+      return resolveMediaUrl(rawLogo);
     })(),
     stats: org.stats || {},
   };
@@ -334,34 +392,24 @@ export const fetchReportingTree = async () => {
 
 export const fetchBranches = async (params = {}) => {
   const res = await apiFetch(`/branches${buildQuery(params)}`, { method: "GET" });
-  if (!res.ok) {
-    if (res.status === 403 || res.status === 404 || res.status === 401) {
-      return { data: [] };
-    }
-    throw apiError(res, "Failed to fetch branches");
-  }
+  if (!res.ok) throw apiError(res, "Failed to fetch branches");
   return res.data;
 };
 
 export const fetchBranchesDropdown = async () => {
   const res = await apiFetch("/branches/dropdown", { method: "GET" });
-  if (!res.ok) {
-    if (res.status === 403 || res.status === 404 || res.status === 401) {
-      return [];
-    }
-    throw apiError(res, "Failed to fetch branch dropdown");
-  }
+  if (!res.ok) throw apiError(res, "Failed to fetch branch dropdown");
   return res.data?.data || [];
 };
 
 export const fetchBranchById = async (id) => {
-  const res = await apiFetch(`/branches/${id}`, { method: "GET" });
+  const res = await apiFetch(`/branch/${id}`, { method: "GET" });
   if (!res.ok) throw apiError(res, "Failed to fetch branch");
   return res.data?.data;
 };
 
 export const createBranch = async (payload) => {
-  const res = await apiFetch("/branches", {
+  const res = await apiFetch("/branch", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -370,7 +418,7 @@ export const createBranch = async (payload) => {
 };
 
 export const updateBranch = async (id, payload) => {
-  const res = await apiFetch(`/branches/${id}`, {
+  const res = await apiFetch(`/branch/${id}`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
@@ -379,10 +427,12 @@ export const updateBranch = async (id, payload) => {
 };
 
 export const deleteBranch = async (id) => {
-  const res = await apiFetch(`/branches/${id}`, { method: "DELETE" });
-  if (!res.ok) throw apiError(res, "Failed to delete branch");
+  const res = await apiFetch(`/branch/${id}`, { method: "DELETE" });
+  if (!res.ok) throw apiError(res, "Failed to deactivate branch");
   return res.data;
 };
+
+export const deactivateBranch = deleteBranch;
 
 // ─── 3. DEPARTMENTS ───────────────────────────────────────────────
 
