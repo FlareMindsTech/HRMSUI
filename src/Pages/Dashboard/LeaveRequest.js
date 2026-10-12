@@ -4,7 +4,7 @@ import {
 } from "react-bootstrap";
 import {
   FaCalendarAlt, FaClock, FaCheckCircle,
-  FaTimesCircle, FaPlus, FaBan, FaHistory, FaUserCheck, FaExclamationTriangle, FaUsers, FaUndo
+  FaTimesCircle, FaPlus, FaBan, FaHistory, FaUserCheck, FaExclamationTriangle, FaUsers, FaUndo, FaSitemap
 } from "react-icons/fa";
 import { useSelector } from 'react-redux';
 import { selectAuthUser, useHasPermission } from '../../redux/slices/authSlice';
@@ -15,6 +15,7 @@ import SearchInput from '../../Components/Common/SearchInput';
 import PaginationBar from '../../Components/Common/PaginationBar';
 import ConfirmModal from '../../Components/Common/ConfirmModal';
 import FeedbackAlert from '../../Components/Common/FeedbackAlert';
+import LeaveWorkflowBuilder from './LeaveWorkflowBuilder';
 import {
   applyLeaveApi,
   fetchLeaveBalanceApi,
@@ -44,8 +45,20 @@ function LeaveRequest() {
   const canReject = hasPermission("leave.reject");
   const canAudit = hasPermission("leave.audit");
 
+  const userRole = (user?.roleCode || user?.role?.roleCode || "").toUpperCase();
+  const isEmployee = userRole === "EMPLOYEE";
+  const hasWorkflowPermission =
+    hasPermission("approval.configure") ||
+    hasPermission("approval.manage") ||
+    hasPermission("workflow.manage") ||
+    hasPermission("workflow.configure") ||
+    hasPermission("leave.policy.manage");
+
+  // Owner may configure workflows; Admin, HR, Branch Head when explicitly authorized; Employees must not access
+  const canManageWorkflow = isOwner || (!isEmployee && hasWorkflowPermission);
+
   // Active Tab State
-  const defaultTab = canReadOwn ? "my-leave" : (canApprove || canReject) ? "approvals" : canReadTeam ? "team" : "all";
+  const defaultTab = canReadOwn ? "my-leave" : (canApprove || canReject) ? "approvals" : canReadTeam ? "team" : canReadAll ? "all" : canManageWorkflow ? "workflow" : "my-leave";
   const [activeTab, setActiveTab] = useState(defaultTab);
 
   // Data States
@@ -812,6 +825,15 @@ function LeaveRequest() {
               <FaCalendarAlt className="me-2" /> Leave Schedule
             </button>
           )}
+          {canManageWorkflow && (
+            <button
+              type="button"
+              className={`leave-nav-btn ${activeTab === "workflow" ? "active" : ""}`}
+              onClick={() => handleTabChange("workflow")}
+            >
+              <FaSitemap className="me-2" /> Workflow & Approvals
+            </button>
+          )}
         </div>
 
         <Card className="leave-main-card">
@@ -1548,6 +1570,12 @@ function LeaveRequest() {
                         ))}
                     </div>
                   </div>
+                </Tab.Pane>
+              )}
+              {/* TAB 5: WORKFLOW & APPROVAL FLOW BUILDER */}
+              {canManageWorkflow && (
+                <Tab.Pane eventKey="workflow">
+                  <LeaveWorkflowBuilder currentUser={user} isOwner={isOwner} />
                 </Tab.Pane>
               )}
             </Tab.Content>

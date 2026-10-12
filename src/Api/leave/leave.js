@@ -252,3 +252,39 @@ export const fetchEffectiveLeavePoliciesApi = async (params = {}) => {
   }
   return result.data;
 };
+
+/**
+ * ── Leave Approval Workflow Configuration APIs ──
+ */
+export const fetchLeaveWorkflowsApi = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append("module", "LEAVE");
+  if (params.branchId) queryParams.append("branchId", params.branchId);
+
+  const queryString = `?${queryParams.toString()}`;
+  const result = await apiFetch(`/approval-workflow/workflows${queryString}`, { method: "GET" });
+  if (!result.ok) {
+    throw apiError(result, "Failed to fetch leave approval workflows.");
+  }
+  return result.data;
+};
+
+export const configureLeaveWorkflowApi = async (workflowData) => {
+  const result = await apiFetch("/approval-workflow/configure", {
+    method: "POST",
+    body: JSON.stringify({ ...workflowData, module: "LEAVE" }),
+  });
+  if (!result.ok) {
+    throw apiError(result, "Failed to configure leave approval workflow.");
+  }
+  return result.data;
+};
+
+export const deleteLeaveWorkflowApi = async (id) => {
+  const result = await apiFetch(`/approval-workflow/workflows/${id}`, { method: "DELETE" });
+  if (!result.ok) {
+    throw apiError(result, "Failed to delete leave approval workflow.");
+  }
+  return result.data;
+};
+
