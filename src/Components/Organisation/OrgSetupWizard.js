@@ -42,7 +42,6 @@ import { useDispatch } from "react-redux";
 import { authSynced } from "../../redux/slices/authSlice";
 import { invalidateOrgResource } from "../../redux/slices/organizationSlice";
 import FeedbackAlert from "../Common/FeedbackAlert";
-import LoadingSpinner from "../Common/LoadingSpinner";
 import { useBranch } from "../../context/BranchContext";
 import { API_BASE_URL, setAuthToken } from "../../config/api";
 import "../../Pages/Dashboard/HrOnboarding.css";

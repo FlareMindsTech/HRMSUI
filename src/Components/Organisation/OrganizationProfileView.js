@@ -21,7 +21,7 @@ import {
   compressImageFile,
 } from "../../services/organizationService";
 import { useSelector, useDispatch } from "react-redux";
-import { selectAuthUser, useHasPermission, selectIsSystemAdmin } from "../../redux/slices/authSlice";
+import { selectAuthUser, useHasPermission } from "../../redux/slices/authSlice";
 import {
   fetchOrgResource,
   invalidateOrgResource,
@@ -65,7 +65,6 @@ const TIMEZONES = [
 ];
 
 export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = null }) {
-  const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const hasPermission = useHasPermission();
   const user = useSelector(selectAuthUser);
   const { organization, refreshOrganization, refreshBranches } = useBranch();

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Nav, Dropdown, Button } from "react-bootstrap";
+import { useParams, useNavigate, useLocation, Navigate } from "react-router-dom";
+import { Nav, Dropdown } from "react-bootstrap";
 import {
   FaBuilding,
   FaSitemap,
@@ -28,7 +28,7 @@ import {
   FaCalendarCheck,
 } from "react-icons/fa";
 import { useSelector, useDispatch } from 'react-redux';
-import { selectAuthUser, useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
+import { selectAuthUser, useHasPermission } from '../../redux/slices/authSlice';
 import {
   fetchOrgResource,
   invalidateOrgResource,
@@ -39,7 +39,6 @@ import { useBranch } from "../../context/BranchContext";
 import { normalizeOrganization, resolveMediaUrl } from "../../services/organizationService";
 import OrgOverview from "../../Components/Organisation/OrgOverview";
 import OrganizationProfileView from "../../Components/Organisation/OrganizationProfileView";
-import BranchesSection from "../../Components/Organisation/BranchesSection";
 import DepartmentsSection from "../../Components/Organisation/DepartmentsSection";
 import DesignationsSection from "../../Components/Organisation/DesignationsSection";
 import TeamsSection from "../../Components/Organisation/TeamsSection";
@@ -136,7 +135,7 @@ const ORG_NAV_GROUPS = [
   },
 ];
 
-const STANDALONE_SECTIONS = ["branches", "departments", "edit-profile"];
+const STANDALONE_SECTIONS = ["edit-profile"];
 
 const ALL_TABS = ORG_NAV_GROUPS.flatMap((g) => g.tabs);
 
@@ -175,7 +174,6 @@ function Organisation() {
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [copiedField, setCopiedField] = useState("");
   const [activeCategory, setActiveCategory] = useState("Overview");
-  const [isFullView, setIsFullView] = useState(false);
 
   // Determine active tab from URL parameter or default to "overview"
   const currentTabKey = isKnownSection(section) ? section : "overview";
@@ -242,6 +240,10 @@ function Organisation() {
   }, [section, location.pathname]);
 
   const handleTabSelect = (tabKey) => {
+    if (tabKey === "branches") {
+      navigate("/organisation/branches");
+      return;
+    }
     setActiveTab(tabKey);
     const foundGroup = ORG_NAV_GROUPS.find((g) => g.tabs.some((t) => t.key === tabKey));
     if (foundGroup) setActiveCategory(foundGroup.groupTitle);
@@ -363,11 +365,16 @@ function Organisation() {
           />
         );
       case "branches":
-        return <BranchesSection onToggleFullView={setIsFullView} />;
+        return <Navigate to="/organisation/branches" replace />;
       case "subscription":
         return <SubscriptionSection />;
       case "departments":
-        return <DepartmentsSection />;
+        return (
+          <DepartmentsSection
+            onBackToOrg={() => handleTabSelect("overview")}
+            onNavigateTab={handleTabSelect}
+          />
+        );
       case "designations":
         return <DesignationsSection />;
       case "teams":
@@ -462,39 +469,6 @@ function Organisation() {
     );
   }
 
-  // Dedicated Full Page Branches Workspace
-  if (activeTab === "branches") {
-    return (
-      <div className="org-dashboard-container p-0">
-        <BranchesSection
-          onToggleFullView={setIsFullView}
-          isStandaloneView={true}
-          onBackToOrg={() => handleTabSelect("overview")}
-        />
-      </div>
-    );
-  }
-
-  // Dedicated Full Page Departments Workspace
-  if (activeTab === "departments") {
-    return (
-      <div className="org-dashboard-container p-0">
-        <DepartmentsSection
-          isStandaloneView={true}
-          onBackToOrg={() => handleTabSelect("overview")}
-        />
-      </div>
-    );
-  }
-
-  // Full Page Wizard Mode (takes entire viewport next to the sidebar)
-  if (isFullView) {
-    return (
-      <div className="org-dashboard-container p-3 p-md-4">
-        {renderActiveSection()}
-      </div>
-    );
-  }
 
   const activeTabObj = ALL_TABS.find((t) => t.key === activeTab) || null;
   const currentCategoryGroup = ORG_NAV_GROUPS.find((g) => g.groupTitle === activeCategory) || ORG_NAV_GROUPS[0];
@@ -554,7 +528,7 @@ function Organisation() {
               <Dropdown.Item onClick={() => handleTabSelect("departments")}>
                 <FaPlus className="me-2 text-primary" /> Add Department
               </Dropdown.Item>
-              <Dropdown.Item onClick={() => handleTabSelect("branches")}>
+              <Dropdown.Item onClick={() => navigate("/organisation/branches?action=create")}>
                 <FaPlus className="me-2 text-success" /> Add Branch
               </Dropdown.Item>
               <Dropdown.Item onClick={() => handleTabSelect("reporting-hierarchy")}>

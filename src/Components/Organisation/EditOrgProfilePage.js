@@ -35,7 +35,7 @@ import {
   compressImageFile,
 } from "../../services/organizationService";
 import { useSelector, useDispatch } from 'react-redux';
-import { useHasPermission, selectIsSystemAdmin, selectAuthUser } from '../../redux/slices/authSlice';
+import { useHasPermission, selectAuthUser } from '../../redux/slices/authSlice';
 import {
   fetchOrgResource,
   invalidateOrgResource,
@@ -154,7 +154,8 @@ const getStr = (val, fallback = "") => {
 };
 
 export default function EditOrgProfilePage({ orgData: initialOrgData, onBack, onOrgUpdated }) {
-  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin); const user = useSelector(selectAuthUser);
+  const hasPermission = useHasPermission();
+  const user = useSelector(selectAuthUser);
   const { organization, refreshOrganization, refreshBranches } = useBranch();
   const dispatch = useDispatch();
   // Shared profile (single guarded fetch); the edit form stays local.

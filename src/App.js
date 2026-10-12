@@ -13,6 +13,7 @@ import { store } from './redux/store';
 import Layout from './Layout/Layout';
 import Dashboard from './Pages/Dashboard/Dashboard';
 import Organisation from './Pages/Dashboard/Organisation';
+import BranchesPage from './Pages/Dashboard/BranchesPage';
 import HrOnboarding from './Pages/Dashboard/HrOnboarding';
 import LeaveRequest from './Pages/Dashboard/LeaveRequest';
 import Mis from './Pages/Dashboard/Mis';
@@ -192,6 +193,8 @@ function App() {
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/organisation" element={<Organisation />} />
+              <Route path="/organisation/branches" element={<BranchesPage />} />
+              <Route path="/branches" element={<BranchesPage />} />
               <Route path="/organisation/:section" element={<Organisation />} />
               <Route path="/onboarding" element={<HrOnboarding />} />
               <Route path="/leave" element={<LeaveRequest />} />

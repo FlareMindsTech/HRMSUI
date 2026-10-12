@@ -22,6 +22,7 @@ import {
   FaChevronRight,
   FaFolder,
   FaFolderOpen,
+  FaUsers,
 } from "react-icons/fa";
 import {
   fetchDepartments,
@@ -37,6 +38,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { invalidateOrgResource } from '../../redux/slices/organizationSlice';
 import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import { useBranch } from '../../context/BranchContext';
+import { useSearchParams } from 'react-router-dom';
 import FeedbackAlert from "../Common/FeedbackAlert";
 import EmptyState from "../Common/EmptyState";
 import DataTable from "../Common/DataTable";
@@ -158,12 +160,17 @@ function DeptTreeNode({ node, level = 0, onEdit, onDelete, canUpdate, canDelete 
   );
 }
 
-function DepartmentsSection({ lockedBranchId }) {
+function DepartmentsSection({
+  lockedBranchId = null,
+  onNavigateBranchTab = null,
+  autoOpenCreate = false,
+}) {
   const hasPermission = useHasPermission();
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const dispatch = useDispatch();
   const { selectedBranchId, accessLevel } = useBranch();
   const isBranchScoped = accessLevel === "BRANCH" || Boolean(lockedBranchId);
+  const [searchParams] = useSearchParams();
 
   const [viewMode, setViewMode] = useState("table"); // "table" | "tree"
   const [departments, setDepartments] = useState([]);
@@ -332,6 +339,14 @@ function DepartmentsSection({ lockedBranchId }) {
     setShowModal(true);
   };
 
+  useEffect(() => {
+    const action = searchParams.get("action");
+    if (action === "new-dept" || action === "add-department" || autoOpenCreate) {
+      handleOpenCreate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, autoOpenCreate]);
+
   const handleOpenEdit = (dept) => {
     setEditingDept(dept);
     const targetBranch = dept.branchId?._id || dept.branchId || lockedBranchId || "";
@@ -490,7 +505,18 @@ function DepartmentsSection({ lockedBranchId }) {
                 : ""}
             </div>
           </div>
-          <Badge bg="success" className="px-2 py-1">Branch Locked</Badge>
+          <div className="d-flex align-items-center gap-2">
+            {canCreate && (
+              <button
+                type="button"
+                className="btn btn-sm btn-success text-white fw-bold shadow-sm d-flex align-items-center gap-1.5"
+                onClick={handleOpenCreate}
+              >
+                <FaPlus size={11} /> Add Department to Branch
+              </button>
+            )}
+            <Badge bg="success" className="px-2 py-1">Branch Locked</Badge>
+          </div>
         </div>
       )}
 
@@ -894,6 +920,61 @@ function DepartmentsSection({ lockedBranchId }) {
               </Col>
             </Row>
       </CrudModal>
+
+      {/* ── Branch Workflow Progress & Next Step Card (when locked to a specific branch) ── */}
+      {lockedBranchId && onNavigateBranchTab && (
+        <div className="p-3.5 mt-4 rounded-3 border bg-white shadow-sm d-flex align-items-center justify-content-between flex-wrap gap-3">
+          <div className="d-flex align-items-center gap-3">
+            <div
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 12,
+                background: "linear-gradient(135deg, rgba(196, 154, 85, 0.2) 0%, rgba(196, 154, 85, 0.08) 100%)",
+                color: "var(--color-primary-dark, #9B7229)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 20,
+                border: "1px solid rgba(196, 154, 85, 0.3)",
+              }}
+            >
+              <FaUsers />
+            </div>
+            <div>
+              <div className="fw-bold text-dark" style={{ fontSize: "0.95rem" }}>
+                Next Step in Branch Setup: Assign Staff & Members
+              </div>
+              <div className="text-muted small">
+                Place employees into these departments and configure branch workforce placements.
+              </div>
+            </div>
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary"
+              onClick={() => onNavigateBranchTab("overview")}
+            >
+              Branch Overview
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm fw-bold shadow-sm"
+              style={{
+                background: "var(--org-gold-btn-gradient, linear-gradient(135deg, #E2C278 0%, #C49A55 100%))",
+                color: "#1C1D1D",
+                border: "none",
+                padding: "7px 16px",
+                borderRadius: 8,
+              }}
+              onClick={() => onNavigateBranchTab("members")}
+            >
+              Continue to Staff & Members &rarr;
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Deactivate Confirmation Modal ── */}
       <ConfirmModal
