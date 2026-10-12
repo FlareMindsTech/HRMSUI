@@ -391,13 +391,13 @@ export const fetchReportingTree = async () => {
 // ─── 2. BRANCHES ──────────────────────────────────────────────────
 
 export const fetchBranches = async (params = {}) => {
-  const res = await apiFetch(`/branches${buildQuery(params)}`, { method: "GET" });
+  const res = await apiFetch(`/branch${buildQuery(params)}`, { method: "GET" });
   if (!res.ok) throw apiError(res, "Failed to fetch branches");
   return res.data;
 };
 
 export const fetchBranchesDropdown = async () => {
-  const res = await apiFetch("/branches/dropdown", { method: "GET" });
+  const res = await apiFetch("/branch/dropdown", { method: "GET" });
   if (!res.ok) throw apiError(res, "Failed to fetch branch dropdown");
   return res.data?.data || [];
 };
