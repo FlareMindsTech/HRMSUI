@@ -13,11 +13,20 @@ export const configureWorkflow = async (payload) => {
   return res.data;
 };
 
-export const getWorkflows = async () => {
-  const res = await apiFetch("/approval-workflow/workflows", {
+export const getWorkflows = async (params = {}) => {
+  const query = buildQuery(params);
+  const res = await apiFetch(`/approval-workflow/workflows${query}`, {
     method: "GET",
   });
   if (!res.ok) throw apiError(res, "Failed to fetch approval workflows.");
+  return res.data;
+};
+
+export const deleteWorkflow = async (id) => {
+  const res = await apiFetch(`/approval-workflow/workflows/${id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw apiError(res, "Failed to delete approval workflow.");
   return res.data;
 };
 
@@ -41,6 +50,7 @@ export const processApprovalAction = async (payload) => {
 const approvalWorkflowService = {
   configureWorkflow,
   getWorkflows,
+  deleteWorkflow,
   getPendingApprovals,
   processApprovalAction,
 };

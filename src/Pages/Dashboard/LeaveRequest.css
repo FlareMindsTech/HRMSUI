@@ -536,6 +536,147 @@
   border-left: 2px solid #2DC58A;
 }
 
+/* ── Workflow & Approval Flow Builder ── */
+.leave-workflow-card {
+  background: var(--color-surface, #FFFFFF);
+  border: 1px solid rgba(220, 235, 228, 0.9);
+  border-radius: var(--radius-md, 12px);
+  padding: 1.25rem;
+  box-shadow: 0 1px 4px rgba(0, 40, 20, 0.03);
+}
+
+.leave-workflow-scope-bar {
+  background: #f8faf9;
+  border: 1px solid rgba(220, 235, 228, 0.9);
+  border-radius: 10px;
+  padding: 0.9rem 1.15rem;
+  margin-bottom: 1.25rem;
+}
+
+.leave-workflow-scope-select {
+  border-color: #cbd5e1;
+  font-weight: 600;
+  color: #1a2e2a;
+}
+
+.leave-workflow-override-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  background: rgba(45, 197, 138, 0.12);
+  color: #15803d;
+  border: 1px solid rgba(45, 197, 138, 0.3);
+}
+
+.leave-workflow-override-badge.default {
+  background: rgba(199, 157, 88, 0.12);
+  color: #854d0e;
+  border: 1px solid rgba(199, 157, 88, 0.3);
+}
+
+.leave-workflow-stage-card {
+  background: var(--color-surface, #FFFFFF);
+  border: 1px solid #e2e8e5;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 0.85rem;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.leave-workflow-stage-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 6px rgba(0, 40, 20, 0.04);
+}
+
+.leave-workflow-stage-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #1a2e2a;
+  color: #FFFFFF;
+  font-size: 0.8rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.leave-workflow-reorder-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid #e2e8e5;
+  background: #f8fafc;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.leave-workflow-reorder-btn:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.leave-workflow-reorder-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.leave-workflow-add-btn {
+  border: 1.5px dashed #cbd5e1;
+  background: #f8faf9;
+  color: #1a2e2a;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  width: 100%;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.leave-workflow-add-btn:hover {
+  border-color: #2DC58A;
+  background: rgba(45, 197, 138, 0.06);
+  color: #059669;
+}
+
+.leave-workflow-save-btn {
+  background: #1a2e2a;
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.55rem 1.4rem;
+  border-radius: 8px;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.15s ease;
+}
+
+.leave-workflow-save-btn:hover:not(:disabled) {
+  background: #2DC58A;
+  color: #FFFFFF;
+}
+
+.leave-workflow-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* ── Responsive Behavior ── */
 @media (max-width: 992px) {
   .leave-search-group {
