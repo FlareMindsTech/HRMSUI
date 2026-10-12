@@ -26,7 +26,7 @@ export const authHeaders = (path = "") => {
 
   // Multi-tenant SaaS support: attach x-tenant-id and x-organization-id if present
   const explicitTenant = localStorage.getItem("tenantId") || localStorage.getItem("organizationId");
-  if (explicitTenant) {
+  if (explicitTenant && explicitTenant !== "null" && explicitTenant !== "undefined") {
     headers["x-tenant-id"] = explicitTenant;
     headers["x-organization-id"] = explicitTenant;
   } else {
@@ -35,7 +35,7 @@ export const authHeaders = (path = "") => {
       if (storedUser) {
         const parsed = JSON.parse(storedUser);
         const tid = parsed.tenantId || parsed.organizationId || parsed.tenant?._id || parsed.tenant;
-        if (tid && typeof tid === "string") {
+        if (tid && typeof tid === "string" && tid !== "null" && tid !== "undefined") {
           headers["x-tenant-id"] = tid;
           headers["x-organization-id"] = tid;
         }
@@ -46,29 +46,31 @@ export const authHeaders = (path = "") => {
   }
 
   // Organization-level root endpoints should not be scoped to a specific branch
+  const cleanP = path.startsWith("/api/") ? path.substring(4) : path.startsWith("/") ? path : `/${path}`;
   const isOrgRootPath =
-    path === "/organization" ||
-    path === "/organization/me" ||
-    path === "/organization/structure" ||
-    path === "/organization/create" ||
-    path === "/organization/update" ||
-    path === "/organizations" ||
-    (path.startsWith("/organization/") &&
-      !path.startsWith("/organization/branch") &&
-      !path.startsWith("/organization/department") &&
-      !path.startsWith("/organization/designation") &&
-      !path.startsWith("/organization/location") &&
-      !path.startsWith("/organization/team") &&
-      !path.startsWith("/organization/shift") &&
-      !path.startsWith("/organization/work-calendar") &&
-      !path.startsWith("/organization/cost-center") &&
-      !path.startsWith("/organization/job-grade") &&
-      !path.startsWith("/organization/holiday-calendar") &&
-      !path.startsWith("/organization/financial-year"));
+    cleanP === "/organization" ||
+    cleanP === "/organization/me" ||
+    cleanP === "/organization/list" ||
+    cleanP === "/organization/structure" ||
+    cleanP === "/organization/create" ||
+    cleanP === "/organization/update" ||
+    cleanP === "/organizations" ||
+    (cleanP.startsWith("/organization/") &&
+      !cleanP.startsWith("/organization/branch") &&
+      !cleanP.startsWith("/organization/department") &&
+      !cleanP.startsWith("/organization/designation") &&
+      !cleanP.startsWith("/organization/location") &&
+      !cleanP.startsWith("/organization/team") &&
+      !cleanP.startsWith("/organization/shift") &&
+      !cleanP.startsWith("/organization/work-calendar") &&
+      !cleanP.startsWith("/organization/cost-center") &&
+      !cleanP.startsWith("/organization/job-grade") &&
+      !cleanP.startsWith("/organization/holiday-calendar") &&
+      !cleanP.startsWith("/organization/financial-year"));
 
   // Branch context header if actively selected and not on an org-root endpoint
   const selectedBranch = localStorage.getItem("selectedBranchId");
-  if (!isOrgRootPath && selectedBranch && selectedBranch !== "all" && selectedBranch !== "null") {
+  if (!isOrgRootPath && selectedBranch && selectedBranch !== "all" && selectedBranch !== "null" && selectedBranch !== "undefined") {
     headers["x-branch-id"] = selectedBranch;
   }
 
@@ -138,11 +140,14 @@ export const apiFetch = async (path, options = {}, isRetry = false) => {
       }
     });
 
-    const cleanBase = (API_BASE_URL || "").replace(/\/+$/, "");
+    let cleanBase = (API_BASE_URL || "").replace(/\/+$/, "");
+    if (!cleanBase.endsWith("/api")) {
+      cleanBase = `${cleanBase}/api`;
+    }
     const cleanPath = path.startsWith("/") ? path : `/${path}`;
-    const finalPath = (cleanBase.endsWith("/api") && cleanPath.startsWith("/api/"))
+    const finalPath = cleanPath.startsWith("/api/")
       ? cleanPath.substring(4)
-      : (cleanBase.endsWith("/api") && cleanPath === "/api")
+      : cleanPath === "/api"
         ? ""
         : cleanPath;
     const url = `${cleanBase}${finalPath}`;

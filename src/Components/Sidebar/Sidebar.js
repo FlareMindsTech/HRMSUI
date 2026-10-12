@@ -256,13 +256,13 @@ function Sidebar({ isExpanded = false }) {
       {/* ── User Footer & Logout ── */}
       <div className="sidebar-footer">
         <div className="sidebar-user-avatar">
-          {user?.firstName ? user.firstName.charAt(0).toUpperCase() : 'U'}
+          {(user?.firstName?.charAt(0) || user?.name?.charAt(0) || user?.email?.charAt(0) || 'U').toUpperCase()}
         </div>
         <div className="sidebar-user-info">
           <div className="sidebar-user-name">
-            {user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Team Member'}
+            {user?.name || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : '') || user?.email?.split('@')[0] || 'User'}
           </div>
-          <div className="sidebar-user-role">{user?.roleName || 'Employee'}</div>
+          <div className="sidebar-user-role">{user?.roleName || user?.roleCode || (user?.isOwner ? 'Owner' : 'Employee')}</div>
         </div>
         <button
           className="sidebar-logout-button"

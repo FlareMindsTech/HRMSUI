@@ -23,6 +23,7 @@ import EmptyState from "../../Components/Common/EmptyState";
 import SearchInput from "../../Components/Common/SearchInput";
 import PaginationBar from "../../Components/Common/PaginationBar";
 import StatusBadge from "../../Components/Common/StatusBadge";
+import { apiFetch } from "../../config/api";
 import {
   FaUser,
   FaBriefcase,
@@ -114,6 +115,7 @@ import {
   fetchCandidateCompensation,
   updateCandidateCompensation,
   createCurrentCompanyApi,
+  updateCurrentCompanyApi,
   fetchCurrentCompanyByUserId,
   createAddressApi,
   fetchAddressByEmployeeId,
@@ -521,11 +523,11 @@ const parseEducationToQualificationList = (rawEdu, dbEduRecord = null) => {
 
   const getDocFromDb = (degName) => {
     if (!eduSource) return "";
-    const d = (degName || "").toLowerCase();
-    if (d.includes("sslc") || d.includes("10th")) {
+    const d = (degName || "").toLowerCase().trim();
+    if (d.includes("sslc") || d.includes("10th") || d.includes("10_")) {
       return eduSource.sslcDocumentUrl || eduSource.sslcDocument || eduSource.sslcDoc || eduSource.sslcCertificate || eduSource.sslcFile || eduSource.sslcFileUrl || "";
     }
-    if (d.includes("hsc") || d.includes("12th") || d.includes("+2")) {
+    if (d.includes("hsc") || d.includes("12th") || d.includes("+2") || d.includes("12_")) {
       return eduSource.hscDocumentUrl || eduSource.hscDocument || eduSource.hscDoc || eduSource.hscCertificate || eduSource.hscFile || eduSource.hscFileUrl || "";
     }
     if (d.includes("iti")) {
@@ -533,6 +535,12 @@ const parseEducationToQualificationList = (rawEdu, dbEduRecord = null) => {
     }
     if (d.includes("diploma")) {
       return eduSource.diplomaDocumentUrl || eduSource.diplomaDocument || eduSource.diplomaDoc || eduSource.diplomaCertificate || "";
+    }
+    if (eduSource.ugDegree && (d === eduSource.ugDegree.toLowerCase().trim() || eduSource.ugDegree.toLowerCase().includes(d) || d.includes(eduSource.ugDegree.toLowerCase()))) {
+      return eduSource.ugDocumentUrl || eduSource.ugDocument || eduSource.ugDoc || eduSource.ugCertificate || eduSource.ugFile || eduSource.ugFileUrl || "";
+    }
+    if (eduSource.pgDegree && (d === eduSource.pgDegree.toLowerCase().trim() || eduSource.pgDegree.toLowerCase().includes(d) || d.includes(eduSource.pgDegree.toLowerCase()))) {
+      return eduSource.pgDocumentUrl || eduSource.pgDocument || eduSource.pgDoc || eduSource.pgCertificate || eduSource.pgFile || eduSource.pgFileUrl || "";
     }
     if (d.includes("ug") || d.includes("bachelor") || d.includes("btech") || d.includes("b.") || d.includes("bsc") || d.includes("bca") || d.includes("bcom") || d.includes("be") || d.includes("engineering") || d.includes("degree")) {
       return eduSource.ugDocumentUrl || eduSource.ugDocument || eduSource.ugDoc || eduSource.ugCertificate || eduSource.ugFile || eduSource.ugFileUrl || "";
@@ -542,6 +550,17 @@ const parseEducationToQualificationList = (rawEdu, dbEduRecord = null) => {
     }
     if (d.includes("phd") || d.includes("doctor")) {
       return eduSource.phdDocumentUrl || eduSource.phdDocument || eduSource.phdDoc || eduSource.phdCertificate || eduSource.phdFile || "";
+    }
+    if (Array.isArray(eduSource.documents) && eduSource.documents.length > 0) {
+      const matchDoc = eduSource.documents.find((doc) => {
+        const qual = (doc.qualification || "").toLowerCase();
+        return qual === d || (d.includes(qual) && qual.length > 1) || (qual.includes(d) && d.length > 1);
+      });
+      if (matchDoc?.fileUrl) return matchDoc.fileUrl;
+    }
+    // Fallback for UG/higher education row
+    if (!d.includes("sslc") && !d.includes("10") && !d.includes("hsc") && !d.includes("12") && !d.includes("iti") && !d.includes("diploma")) {
+      return eduSource.ugDocumentUrl || eduSource.ugDocument || eduSource.ugDoc || eduSource.ugCertificate || "";
     }
     return "";
   };
@@ -1365,8 +1384,16 @@ function HrOnboarding() {
         }
         // Remove invalid fl_inline from Cloudinary raw/upload paths if present
         u = u.replace(/\/raw\/upload\/fl_inline\//g, "/raw/upload/");
-        previewUrl = u;
-        rawRemoteUrl = u;
+        
+        // If Cloudinary URL, route through secure streaming endpoint to prevent 401 ACL/delivery blocks
+        if (u.includes("res.cloudinary.com") || u.includes("api.cloudinary.com")) {
+          const streamUrl = `${API_BASE_URL}/document/view-file?url=${encodeURIComponent(u)}`;
+          previewUrl = streamUrl;
+          rawRemoteUrl = streamUrl;
+        } else {
+          previewUrl = u;
+          rawRemoteUrl = u;
+        }
       }
     } else if (urlOrFile instanceof File || urlOrFile instanceof Blob) {
       previewUrl = URL.createObjectURL(urlOrFile);
@@ -1532,14 +1559,18 @@ function HrOnboarding() {
     if (eduSource) {
       const deg = (eduItem.degree || "").toLowerCase().trim();
       let dbDoc = "";
-      if (deg.includes("sslc") || deg.includes("10th")) {
+      if (deg.includes("sslc") || deg.includes("10th") || deg.includes("10_")) {
         dbDoc = eduSource.sslcDocumentUrl || eduSource.sslcDocument || eduSource.sslcDoc || eduSource.sslcCertificate || eduSource.sslcFile || eduSource.sslcFileUrl || "";
-      } else if (deg.includes("hsc") || deg.includes("12th") || deg.includes("+2")) {
+      } else if (deg.includes("hsc") || deg.includes("12th") || deg.includes("+2") || deg.includes("12_")) {
         dbDoc = eduSource.hscDocumentUrl || eduSource.hscDocument || eduSource.hscDoc || eduSource.hscCertificate || eduSource.hscFile || eduSource.hscFileUrl || "";
       } else if (deg.includes("iti")) {
         dbDoc = eduSource.itiDocumentUrl || eduSource.itiDocument || eduSource.itiDoc || eduSource.itiCertificate || eduSource.itiFile || "";
       } else if (deg.includes("diploma")) {
         dbDoc = eduSource.diplomaDocumentUrl || eduSource.diplomaDocument || eduSource.diplomaDoc || eduSource.diplomaCertificate || "";
+      } else if (eduSource.ugDegree && (deg === eduSource.ugDegree.toLowerCase().trim() || eduSource.ugDegree.toLowerCase().includes(deg) || deg.includes(eduSource.ugDegree.toLowerCase()))) {
+        dbDoc = eduSource.ugDocumentUrl || eduSource.ugDocument || eduSource.ugDoc || eduSource.ugCertificate || eduSource.ugFile || eduSource.ugFileUrl || "";
+      } else if (eduSource.pgDegree && (deg === eduSource.pgDegree.toLowerCase().trim() || eduSource.pgDegree.toLowerCase().includes(deg) || deg.includes(eduSource.pgDegree.toLowerCase()))) {
+        dbDoc = eduSource.pgDocumentUrl || eduSource.pgDocument || eduSource.pgDoc || eduSource.pgCertificate || eduSource.pgFile || eduSource.pgFileUrl || "";
       } else if (deg.includes("ug") || deg.includes("bachelor") || deg.includes("btech") || deg.includes("b.") || deg.includes("bsc") || deg.includes("bca") || deg.includes("bcom") || deg.includes("be") || deg.includes("degree")) {
         dbDoc = eduSource.ugDocumentUrl || eduSource.ugDocument || eduSource.ugDoc || eduSource.ugCertificate || eduSource.ugFile || eduSource.ugFileUrl || "";
       } else if (deg.includes("pg") || deg.includes("master") || deg.includes("mtech") || deg.includes("m.") || deg.includes("mca") || deg.includes("mba") || deg.includes("msc") || deg.includes("me")) {
@@ -1547,6 +1578,19 @@ function HrOnboarding() {
       } else if (deg.includes("phd") || deg.includes("doctor")) {
         dbDoc = eduSource.phdDocumentUrl || eduSource.phdDocument || eduSource.phdDoc || eduSource.phdCertificate || eduSource.phdFile || "";
       }
+
+      if (!dbDoc && Array.isArray(eduSource.documents) && eduSource.documents.length > 0) {
+        const foundItem = eduSource.documents.find((d) => {
+          const qual = (d.qualification || "").toLowerCase();
+          return qual === deg || (deg.includes(qual) && qual.length > 1) || (qual.includes(deg) && deg.length > 1);
+        });
+        if (foundItem?.fileUrl) dbDoc = foundItem.fileUrl;
+      }
+
+      if (!dbDoc && !deg.includes("sslc") && !deg.includes("10") && !deg.includes("hsc") && !deg.includes("12") && !deg.includes("iti") && !deg.includes("diploma")) {
+        dbDoc = eduSource.ugDocumentUrl || eduSource.ugDocument || eduSource.ugDoc || eduSource.ugCertificate || "";
+      }
+
       if (dbDoc) {
         return {
           url: dbDoc,
@@ -1588,6 +1632,9 @@ function HrOnboarding() {
 
       if (deg && docTitle.includes(deg)) return true;
       if (stream && docTitle.includes(stream)) return true;
+      if (isEduType && !deg.includes("sslc") && !deg.includes("10") && !deg.includes("hsc") && !deg.includes("12") && !deg.includes("iti") && !deg.includes("diploma")) {
+        return true;
+      }
       return false;
     });
 
@@ -1999,12 +2046,16 @@ function HrOnboarding() {
         }
       }
 
-      if (!formData.department?.trim()) {
-        errors.department = "Department is required. Please select from dropdown";
+      if (!formData.gender) {
+        errors.gender = "Gender is required";
       }
 
-      if (!formData.designation?.trim()) {
-        errors.designation = "Designation is required. Please select from dropdown";
+      if (!formData.marriageStatus) {
+        errors.marriageStatus = "Marital Status is required";
+      }
+
+      if (!formData.bloodGroup) {
+        errors.bloodGroup = "Blood Group is required";
       }
     }
 
@@ -2053,8 +2104,8 @@ function HrOnboarding() {
                 errors[`prof_reportedTo_${idx}`] = `Company #${idx + 1}: Reporting Manager is required`;
               }
               if (prof.joiningDate && prof.expectedLastWorkingDate) {
-                if (new Date(prof.expectedLastWorkingDate) < new Date(prof.joiningDate)) {
-                  errors[`prof_dates_${idx}`] = `Company #${idx + 1}: Expected last working date cannot precede joining date`;
+                if (new Date(prof.joiningDate) < new Date(prof.expectedLastWorkingDate)) {
+                  errors[`prof_dates_${idx}`] = `Company #${idx + 1}: Joining date must be on or after the expected last working date`;
                 }
               }
             }
@@ -2156,9 +2207,9 @@ function HrOnboarding() {
 
     if (sectionId === "compensation") {
       const comp = formData.compensation || {};
-      const cType = comp.compensationType || formData.compensationType || (formData.isUnpaid ? "UNPAID" : "SALARY");
+      const cType = comp.compensationType || (formData.isUnpaid ? "UNPAID" : (formData.compensationType || "SALARY"));
       if (cType === "SALARY") {
-        const ctc = comp.annualCtc !== undefined && comp.annualCtc !== "" ? comp.annualCtc : formData.salary || formData.compensationAmount;
+        const ctc = comp.annualCtc !== undefined && comp.annualCtc !== "" ? comp.annualCtc : "";
         if (!ctc) {
           errors.annualCtc = "Annual CTC is required";
         } else {
@@ -2168,7 +2219,7 @@ function HrOnboarding() {
           }
         }
       } else if (cType === "STIPEND") {
-        const stipend = comp.stipendAmount !== undefined && comp.stipendAmount !== "" ? comp.stipendAmount : formData.compensationAmount;
+        const stipend = comp.stipendAmount !== undefined && comp.stipendAmount !== "" ? comp.stipendAmount : "";
         if (!stipend) {
           errors.stipendAmount = "Stipend amount is required";
         } else {
@@ -2177,8 +2228,8 @@ function HrOnboarding() {
             errors.stipendAmount = "Stipend amount must be a positive number";
           }
         }
-      } else if (cType === "CONTRACT") {
-        const rate = comp.contractRate !== undefined && comp.contractRate !== "" ? comp.contractRate : formData.compensationAmount;
+      } else if (cType === "CONTRACT" || cType === "CONTRACT_PAYMENT") {
+        const rate = comp.contractRate !== undefined && comp.contractRate !== "" ? comp.contractRate : "";
         if (!rate) {
           errors.contractRate = "Contract rate is required";
         } else {
@@ -2281,8 +2332,150 @@ function HrOnboarding() {
     };
   };
 
+  // ── Duplicate Identity Check (Personal Details) ──
+  const checkDuplicateCandidateIdentity = async () => {
+    const rawMobile = (formData.mobileNo || "").trim();
+    const cleanedMobile = rawMobile.replace(/\D/g, "").slice(-10);
+    const normalizedEmail = (formData.email || "").toLowerCase().trim();
+
+    // 1. Pipeline records check
+    const duplicateInPipeline = (onboardings || []).some((item) => {
+      const emp = item?.employeeId || {};
+      const itemMobile = (emp.mobileNo || emp.phone || item.mobileNo || item.phone || "").replace(/\D/g, "").slice(-10);
+      const itemEmail = (emp.email || item.email || "").toLowerCase().trim();
+      return (cleanedMobile && cleanedMobile.length >= 10 && itemMobile === cleanedMobile) ||
+             (normalizedEmail && itemEmail === normalizedEmail);
+    });
+
+    if (duplicateInPipeline) {
+      const msg = "An employee with this email or mobile number already exists in the system.";
+      setErrorMsg(msg);
+      setFormErrors((prev) => ({
+        ...prev,
+        mobileNo: "An employee with this email or mobile number already exists in the system.",
+      }));
+      return false;
+    }
+
+    // 2. Database User & SaaSAccount existence check via existing endpoints
+    try {
+      if (cleanedMobile && cleanedMobile.length === 10) {
+        const phoneRes = await apiFetch("/auth/check-phone", {
+          method: "POST",
+          body: JSON.stringify({ phone: cleanedMobile }),
+        });
+        if (phoneRes?.data?.exists || phoneRes?.exists) {
+          const msg = "An employee with this email or mobile number already exists in the system.";
+          setErrorMsg(msg);
+          setFormErrors((prev) => ({
+            ...prev,
+            mobileNo: "An employee with this email or mobile number already exists in the system.",
+          }));
+          return false;
+        }
+      }
+
+      if (normalizedEmail) {
+        const emailRes = await apiFetch("/auth/check-email", {
+          method: "POST",
+          body: JSON.stringify({ email: normalizedEmail }),
+        });
+        if (emailRes?.data?.exists || emailRes?.exists) {
+          const msg = "An employee with this email or mobile number already exists in the system.";
+          setErrorMsg(msg);
+          setFormErrors((prev) => ({
+            ...prev,
+            email: "An employee with this email or mobile number already exists in the system.",
+          }));
+          return false;
+        }
+      }
+    } catch (err) {
+      console.warn("Personal details duplicate check error:", err);
+    }
+
+    return true;
+  };
+
+  const handleMobileBlur = async () => {
+    const rawMobile = (formData.mobileNo || "").trim();
+    const cleanedMobile = rawMobile.replace(/\D/g, "").slice(-10);
+    if (!cleanedMobile || cleanedMobile.length !== 10) return;
+
+    const duplicateInPipeline = (onboardings || []).some((item) => {
+      const emp = item?.employeeId || {};
+      const itemMobile = (emp.mobileNo || emp.phone || item.mobileNo || item.phone || "").replace(/\D/g, "").slice(-10);
+      return itemMobile === cleanedMobile;
+    });
+
+    if (duplicateInPipeline) {
+      const msg = "An employee with this email or mobile number already exists in the system.";
+      setErrorMsg(msg);
+      setFormErrors((prev) => ({
+        ...prev,
+        mobileNo: "An employee with this email or mobile number already exists in the system.",
+      }));
+      return;
+    }
+
+    try {
+      const phoneRes = await apiFetch("/auth/check-phone", {
+        method: "POST",
+        body: JSON.stringify({ phone: cleanedMobile }),
+      });
+      if (phoneRes?.data?.exists || phoneRes?.exists) {
+        const msg = "An employee with this email or mobile number already exists in the system.";
+        setErrorMsg(msg);
+        setFormErrors((prev) => ({
+          ...prev,
+          mobileNo: "An employee with this email or mobile number already exists in the system.",
+        }));
+      }
+    } catch (err) {
+      console.warn("Mobile blur check error:", err);
+    }
+  };
+
+  const handleEmailBlur = async () => {
+    const normalizedEmail = (formData.email || "").toLowerCase().trim();
+    if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) return;
+
+    const duplicateInPipeline = (onboardings || []).some((item) => {
+      const emp = item?.employeeId || {};
+      const itemEmail = (emp.email || item.email || "").toLowerCase().trim();
+      return itemEmail === normalizedEmail;
+    });
+
+    if (duplicateInPipeline) {
+      const msg = "An employee with this email or mobile number already exists in the system.";
+      setErrorMsg(msg);
+      setFormErrors((prev) => ({
+        ...prev,
+        email: "An employee with this email or mobile number already exists in the system.",
+      }));
+      return;
+    }
+
+    try {
+      const emailRes = await apiFetch("/auth/check-email", {
+        method: "POST",
+        body: JSON.stringify({ email: normalizedEmail }),
+      });
+      if (emailRes?.data?.exists || emailRes?.exists) {
+        const msg = "An employee with this email or mobile number already exists in the system.";
+        setErrorMsg(msg);
+        setFormErrors((prev) => ({
+          ...prev,
+          email: "An employee with this email or mobile number already exists in the system.",
+        }));
+      }
+    } catch (err) {
+      console.warn("Email blur check error:", err);
+    }
+  };
+
   // ── Step Navigation Handlers with Per-Section Validation ──
-  const handleTabClick = (targetTabId) => {
+  const handleTabClick = async (targetTabId) => {
     const currentIdx = formTabs.findIndex((t) => t.id === activeFormTab);
     const targetIdx = formTabs.findIndex((t) => t.id === targetTabId);
     if (targetIdx > currentIdx) {
@@ -2292,8 +2485,16 @@ function HrOnboarding() {
         if (!isValid) {
           setFormErrors(errors);
           setActiveFormTab(tab.id);
-          setErrorMsg("");
+          const firstErr = Object.values(errors)[0];
+          if (firstErr) setErrorMsg(firstErr);
           return;
+        }
+        if (tab.id === "personal") {
+          const isUnique = await checkDuplicateCandidateIdentity();
+          if (!isUnique) {
+            setActiveFormTab("personal");
+            return;
+          }
         }
       }
     }
@@ -2302,13 +2503,22 @@ function HrOnboarding() {
     setActiveFormTab(targetTabId);
   };
 
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
     const { isValid, errors } = validateSection(activeFormTab);
     if (!isValid) {
       setFormErrors(errors);
-      setErrorMsg("");
+      const firstErr = Object.values(errors)[0];
+      if (firstErr) setErrorMsg(firstErr);
       return;
     }
+
+    if (activeFormTab === "personal") {
+      const isUnique = await checkDuplicateCandidateIdentity();
+      if (!isUnique) {
+        return;
+      }
+    }
+
     setErrorMsg("");
     setFormErrors({});
     const idx = formTabs.findIndex((t) => t.id === activeFormTab);
@@ -3097,6 +3307,20 @@ function HrOnboarding() {
   // ── Save Full Candidate Profile Updates (All Domains) ──
   const handleSaveCandidateProfile = async () => {
     if (!selectedOnboarding?._id || !candidateProfileData) return;
+
+    if (!candidateProfileData.gender) {
+      setErrorMsg("Gender is required");
+      return;
+    }
+    if (!candidateProfileData.marriageStatus) {
+      setErrorMsg("Marital Status is required");
+      return;
+    }
+    if (!candidateProfileData.bloodGroup) {
+      setErrorMsg("Blood Group is required");
+      return;
+    }
+
     setSavingProfile(true);
     setErrorMsg("");
     try {
@@ -3297,27 +3521,52 @@ function HrOnboarding() {
         try {
           const primaryComp = candidateProfileData.professional.find((p) => p.isCurrent) || candidateProfileData.professional[0];
           if (primaryComp && (primaryComp.companyName || primaryComp.isFresher)) {
-            const compPayload = {
-              userId: String(candidateUserId),
-              employeeId: String(candidateUserId),
-              companyName: primaryComp.companyName || (primaryComp.isFresher ? "Current Organization (Fresher)" : ""),
-              companyWebsite: primaryComp.companyWebsite || primaryComp.website || primaryComp.linkedin || "",
-              location: primaryComp.location || "",
-              department: primaryComp.department || candidateProfileData.department || "",
-              designation: primaryComp.designation || candidateProfileData.designation || "",
-              role: primaryComp.role || "",
-              salary: primaryComp.salary || "",
-              joiningDate: primaryComp.joiningDate || candidateProfileData.joiningDate || "",
-              reportedTo: primaryComp.reportedTo || candidateProfileData.reportingManager || "",
-              noticePeriod: primaryComp.noticePeriod || "",
-              expectedLastWorkingDate: primaryComp.expectedLastWorkingDate || "",
-              employmentStatus: primaryComp.employmentStatus || "CURRENTLY_EMPLOYED",
-              isCurrent: primaryComp.isCurrent !== false,
-              isFresher: primaryComp.isFresher || false,
-              documentType: primaryComp.documentType || "OFFER_LETTER",
-              documentUrl: primaryComp.documentUrl || "",
-            };
-            await createCurrentCompanyApi(compPayload).catch((e) => console.warn("createCurrentCompanyApi notice:", e.message));
+            if (primaryComp.docFile) {
+              const compFormData = new FormData();
+              compFormData.append("userId", String(candidateUserId));
+              compFormData.append("employeeId", String(candidateUserId));
+              compFormData.append("document", primaryComp.docFile);
+              compFormData.append("documentType", primaryComp.docType || primaryComp.documentType || "OFFER_LETTER");
+              compFormData.append("companyName", primaryComp.companyName || (primaryComp.isFresher ? "Current Organization (Fresher)" : ""));
+              compFormData.append("companyWebsite", primaryComp.companyWebsite || primaryComp.website || primaryComp.linkedin || "");
+              compFormData.append("location", primaryComp.location || "");
+              compFormData.append("department", primaryComp.department || candidateProfileData.department || "");
+              compFormData.append("designation", primaryComp.designation || candidateProfileData.designation || "");
+              compFormData.append("role", primaryComp.role || "");
+              compFormData.append("salary", String(primaryComp.salary || ""));
+              compFormData.append("joiningDate", primaryComp.joiningDate || candidateProfileData.joiningDate || "");
+              compFormData.append("reportedTo", primaryComp.reportedTo || candidateProfileData.reportingManager || "");
+              compFormData.append("noticePeriod", primaryComp.noticePeriod || "");
+              compFormData.append("expectedLastWorkingDate", primaryComp.expectedLastWorkingDate || "");
+              compFormData.append("employmentStatus", primaryComp.employmentStatus || "CURRENTLY_EMPLOYED");
+              compFormData.append("isFresher", String(primaryComp.isFresher || false));
+              await updateCurrentCompanyApi(String(candidateUserId), compFormData).catch((e) => console.warn("updateCurrentCompanyApi notice:", e.message));
+              if (selectedOnboarding?._id) {
+                await uploadProfessionalDocument(selectedOnboarding._id, primaryComp.docFile, primaryComp.companyName, primaryComp.docType || "OFFER_LETTER").catch((e) => console.warn("uploadProfessionalDocument notice:", e.message));
+              }
+            } else {
+              const compPayload = {
+                userId: String(candidateUserId),
+                employeeId: String(candidateUserId),
+                companyName: primaryComp.companyName || (primaryComp.isFresher ? "Current Organization (Fresher)" : ""),
+                companyWebsite: primaryComp.companyWebsite || primaryComp.website || primaryComp.linkedin || "",
+                location: primaryComp.location || "",
+                department: primaryComp.department || candidateProfileData.department || "",
+                designation: primaryComp.designation || candidateProfileData.designation || "",
+                role: primaryComp.role || "",
+                salary: primaryComp.salary || "",
+                joiningDate: primaryComp.joiningDate || candidateProfileData.joiningDate || "",
+                reportedTo: primaryComp.reportedTo || candidateProfileData.reportingManager || "",
+                noticePeriod: primaryComp.noticePeriod || "",
+                expectedLastWorkingDate: primaryComp.expectedLastWorkingDate || "",
+                employmentStatus: primaryComp.employmentStatus || "CURRENTLY_EMPLOYED",
+                isCurrent: primaryComp.isCurrent !== false,
+                isFresher: primaryComp.isFresher || false,
+                documentType: primaryComp.documentType || primaryComp.docType || "OFFER_LETTER",
+                documentUrl: primaryComp.documentUrl || primaryComp.docUrl || "",
+              };
+              await updateCurrentCompanyApi(String(candidateUserId), compPayload).catch((e) => console.warn("updateCurrentCompanyApi notice:", e.message));
+            }
           }
         } catch (compSyncErr) {
           console.warn("Company sync notice:", compSyncErr.message);
@@ -3347,6 +3596,10 @@ function HrOnboarding() {
           esiNo: (candidateProfileData.statutoryDetails?.esiNo || "").trim(),
         },
       });
+
+      if (candidateProfileData.passbookFile && selectedOnboarding?._id) {
+        await uploadBankPassbook(selectedOnboarding._id, candidateProfileData.passbookFile).catch((e) => console.warn("Bank passbook upload notice:", e.message));
+      }
 
       setSuccessMsg("Candidate profile and background records updated successfully!");
       setIsEditingCandidateProfile(false);
@@ -4382,6 +4635,8 @@ function HrOnboarding() {
           console.warn("Background domain persistence notice:", subSaveErr.message);
         }
 
+        const targetUserId = createdUser?._id || createdUser?.id || (typeof createdUser === "string" ? createdUser : null) || createdOnboarding?.employeeId?._id || createdOnboarding?.employeeId || createdOnboarding?.userId;
+
         // 3. Upload optional files concurrently if provided
         const uploadPromises = [];
 
@@ -4391,13 +4646,32 @@ function HrOnboarding() {
         }
 
         // Upload Professional Documents (Offer Letter / Relieving Letter / Payslip / Experience Letter)
-        formData.professional.forEach((prof) => {
+        formData.professional.forEach((prof, idx) => {
           if (prof.docFile) {
             uploadPromises.push(
               uploadProfessionalDocument(onboardingId, prof.docFile, prof.companyName, prof.docType || "OFFER_LETTER").catch((e) =>
                 console.warn("Professional doc upload:", e.message)
               )
             );
+
+            if (idx === 0 && targetUserId) {
+              const compFormData = new FormData();
+              compFormData.append("userId", String(targetUserId));
+              compFormData.append("employeeId", String(targetUserId));
+              compFormData.append("document", prof.docFile);
+              compFormData.append("documentType", prof.docType || "OFFER_LETTER");
+              if (prof.companyName) compFormData.append("companyName", prof.companyName);
+              if (prof.companyWebsite || prof.website) compFormData.append("companyWebsite", prof.companyWebsite || prof.website);
+              if (prof.department) compFormData.append("department", prof.department);
+              if (prof.designation) compFormData.append("designation", prof.designation);
+              if (prof.role) compFormData.append("role", prof.role);
+              if (prof.salary) compFormData.append("salary", String(prof.salary));
+              uploadPromises.push(
+                updateCurrentCompanyApi(String(targetUserId), compFormData).catch((e) =>
+                  console.warn("CurrentCompany upload notice:", e.message)
+                )
+              );
+            }
           }
         });
 
@@ -4446,7 +4720,6 @@ function HrOnboarding() {
         }
 
         // 4. Also persist full education record with files to Education schema
-        const targetUserId = createdUser?._id || createdUser?.id || (typeof createdUser === "string" ? createdUser : null) || createdOnboarding?.employeeId?._id || createdOnboarding?.employeeId || createdOnboarding?.userId;
         if (targetUserId) {
           const eduFormData = new FormData();
           eduFormData.append("userId", targetUserId);
@@ -4789,18 +5062,29 @@ function HrOnboarding() {
     address: Boolean(
       formData.addresses?.some((a) => a.addressLine1?.trim() || a.city?.trim() || a.state?.trim() || a.pincode?.trim())
     ),
-    compensation: Boolean(
-      formData.compensationType === "UNPAID" ||
-      formData.isUnpaid ||
-      formData.compensation?.compensationType === "UNPAID" ||
-      formData.compensation?.annualCtc ||
-      formData.compensation?.monthlyGross ||
-      formData.compensation?.basicSalary ||
-      formData.compensation?.stipendAmount ||
-      formData.compensation?.contractRate ||
-      formData.compensationAmount ||
-      formData.salary
-    ),
+    compensation: (() => {
+      const comp = formData.compensation || {};
+      const cType = comp.compensationType || (formData.isUnpaid ? "UNPAID" : (formData.compensationType || "SALARY"));
+      if (cType === "UNPAID" || formData.isUnpaid === true || comp.isUnpaid === true) {
+        return true;
+      }
+      if (cType === "SALARY") {
+        return Boolean(comp.annualCtc && Number(String(comp.annualCtc).replace(/[^0-9.]/g, "")) > 0);
+      }
+      if (cType === "STIPEND") {
+        return Boolean(comp.stipendAmount && Number(String(comp.stipendAmount).replace(/[^0-9.]/g, "")) > 0);
+      }
+      if (cType === "CONTRACT" || cType === "CONTRACT_PAYMENT") {
+        return Boolean(comp.contractRate && Number(String(comp.contractRate).replace(/[^0-9.]/g, "")) > 0);
+      }
+      return Boolean(
+        (comp.annualCtc && Number(String(comp.annualCtc).replace(/[^0-9.]/g, "")) > 0) ||
+        (comp.monthlyGross && Number(String(comp.monthlyGross).replace(/[^0-9.]/g, "")) > 0) ||
+        (comp.basicSalary && Number(String(comp.basicSalary).replace(/[^0-9.]/g, "")) > 0) ||
+        (comp.stipendAmount && Number(String(comp.stipendAmount).replace(/[^0-9.]/g, "")) > 0) ||
+        (comp.contractRate && Number(String(comp.contractRate).replace(/[^0-9.]/g, "")) > 0)
+      );
+    })(),
     documents: isCandidateUnpaidForm
       ? Boolean(
         formData.statutoryDetails?.panNo?.trim() ||
@@ -5082,7 +5366,7 @@ function HrOnboarding() {
     ...(!isFresher ? [{ id: "experience", label: "Experience", icon: <FaBriefcase /> }] : []),
     { id: "address", label: "Address", icon: <FaHome /> },
     { id: "compensation", label: "Compensation", icon: <FaMoneyBillWave /> },
-    { id: "documents", label: "Bank & Statutory", icon: <FaMoneyCheckAlt /> },
+    { id: "documents", label: "Bank & Statutory", icon: <FaUniversity /> },
     { id: "family", label: "Family", icon: <FaUsers /> },
     { id: "review", label: "Review", icon: <FaClipboardCheck /> },
   ];
@@ -5778,20 +6062,17 @@ function HrOnboarding() {
                 <div className="onboarding-step-tabs-container mb-4">
                   <Nav
                     variant="pills"
-                    fill
-                    justify
                     className="onboarding-step-tabs-nav p-1.5 rounded-3 w-100"
-                    style={{ gap: "8px" }}
                   >
                     {formTabs.map((tab) => {
                       const isActive = activeFormTab === tab.id;
                       const isComplete = Boolean(sectionStatus[tab.id]);
                       return (
-                        <Nav.Item key={tab.id} className="flex-fill" style={{ margin: "0 2px" }}>
+                        <Nav.Item key={tab.id} className="nav-item">
                           <Nav.Link
                             active={isActive}
                             onClick={() => handleTabClick(tab.id)}
-                            className={`onboarding-step-nav-link text-center w-100 ${isActive ? "active" : ""
+                            className={`onboarding-step-nav-link text-center ${isActive ? "active" : ""
                               } ${isComplete ? "completed" : ""}`}
                             title={`${tab.label}${isComplete ? " (Completed)" : ""}`}
                           >
@@ -6001,6 +6282,7 @@ function HrOnboarding() {
                                 setFormData({ ...formData, email: e.target.value });
                                 if (formErrors.email) setFormErrors((prev) => ({ ...prev, email: "" }));
                               }}
+                              onBlur={handleEmailBlur}
                             />
                             {formErrors.email && (
                               <Form.Control.Feedback type="invalid" className="d-block extra-small">
@@ -6041,6 +6323,7 @@ function HrOnboarding() {
                               maxLength={formData.countryIso2 === "IN" || !formData.countryIso2 ? 10 : 15}
                               isInvalid={!!formErrors.mobileNo}
                               onChange={handleMobileChange}
+                              onBlur={handleMobileBlur}
                             />
                             {formErrors.mobileNo && (
                               <Form.Control.Feedback type="invalid" className="d-block extra-small">
@@ -6078,37 +6361,65 @@ function HrOnboarding() {
                     <Row className="g-3 mb-3">
                       <Col md={4}>
                         <Form.Group>
-                          <Form.Label className="small fw-bold">Gender</Form.Label>
+                          <Form.Label className="small fw-bold">
+                            Gender <span className="text-danger">*</span>
+                          </Form.Label>
                           <Form.Select
                             value={formData.gender || ""}
-                            onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                            isInvalid={!!formErrors.gender}
+                            onChange={(e) => {
+                              setFormData({ ...formData, gender: e.target.value });
+                              if (formErrors.gender) setFormErrors((prev) => ({ ...prev, gender: "" }));
+                            }}
                           >
                             <option value="">Select Gender</option>
                             <option value="Male">Male</option>
                             <option value="Female">Female</option>
                             <option value="Others">Others</option>
                           </Form.Select>
+                          {formErrors.gender && (
+                            <Form.Control.Feedback type="invalid" className="d-block extra-small">
+                              {formErrors.gender}
+                            </Form.Control.Feedback>
+                          )}
                         </Form.Group>
                       </Col>
                       <Col md={4}>
                         <Form.Group>
-                          <Form.Label className="small fw-bold">Marital Status</Form.Label>
+                          <Form.Label className="small fw-bold">
+                            Marital Status <span className="text-danger">*</span>
+                          </Form.Label>
                           <Form.Select
                             value={formData.marriageStatus || ""}
-                            onChange={(e) => setFormData({ ...formData, marriageStatus: e.target.value })}
+                            isInvalid={!!formErrors.marriageStatus}
+                            onChange={(e) => {
+                              setFormData({ ...formData, marriageStatus: e.target.value });
+                              if (formErrors.marriageStatus) setFormErrors((prev) => ({ ...prev, marriageStatus: "" }));
+                            }}
                           >
                             <option value="">Select Marital Status</option>
                             <option value="Married">Married</option>
                             <option value="Unmarried">Unmarried</option>
                           </Form.Select>
+                          {formErrors.marriageStatus && (
+                            <Form.Control.Feedback type="invalid" className="d-block extra-small">
+                              {formErrors.marriageStatus}
+                            </Form.Control.Feedback>
+                          )}
                         </Form.Group>
                       </Col>
                       <Col md={4}>
                         <Form.Group>
-                          <Form.Label className="small fw-bold">Blood Group</Form.Label>
+                          <Form.Label className="small fw-bold">
+                            Blood Group <span className="text-danger">*</span>
+                          </Form.Label>
                           <Form.Select
                             value={formData.bloodGroup || ""}
-                            onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
+                            isInvalid={!!formErrors.bloodGroup}
+                            onChange={(e) => {
+                              setFormData({ ...formData, bloodGroup: e.target.value });
+                              if (formErrors.bloodGroup) setFormErrors((prev) => ({ ...prev, bloodGroup: "" }));
+                            }}
                           >
                             <option value="">Select Blood Group</option>
                             <option value="A+">A+</option>
@@ -6120,6 +6431,11 @@ function HrOnboarding() {
                             <option value="O+">O+</option>
                             <option value="O-">O-</option>
                           </Form.Select>
+                          {formErrors.bloodGroup && (
+                            <Form.Control.Feedback type="invalid" className="d-block extra-small">
+                              {formErrors.bloodGroup}
+                            </Form.Control.Feedback>
+                          )}
                         </Form.Group>
                       </Col>
                     </Row>
@@ -6129,7 +6445,7 @@ function HrOnboarding() {
                       <Col md={4}>
                         <Form.Group>
                           <Form.Label className="small fw-bold">
-                            Department <span className="text-danger">*</span>
+                            Department
                           </Form.Label>
                           <Form.Select
                             value={formData.department}
@@ -6162,7 +6478,7 @@ function HrOnboarding() {
                       <Col md={4}>
                         <Form.Group>
                           <Form.Label className="small fw-bold">
-                            Designation <span className="text-danger">*</span>
+                            Designation
                           </Form.Label>
                           <Form.Select
                             value={formData.designation}
@@ -6244,7 +6560,7 @@ function HrOnboarding() {
                         </div>
                       </div>
 
-                      <div className="d-flex align-items-center gap-2.5 flex-wrap">
+                      <div className="d-flex align-items-center gap-3 flex-wrap" style={{ gap: "12px" }}>
                         <button
                           type="button"
                           className="btn btn-sm d-inline-flex align-items-center gap-1.5 fw-bold transition-all"
@@ -6430,12 +6746,21 @@ function HrOnboarding() {
                                     size="sm"
                                     placeholder="Enter the company name "
                                     value={prof.companyName || ""}
+                                    isInvalid={Boolean(formErrors[`prof_companyName_${idx}`])}
                                     onChange={(e) => {
                                       const arr = [...formData.professional];
                                       arr[idx].companyName = e.target.value;
                                       setFormData({ ...formData, professional: arr });
+                                      if (formErrors[`prof_companyName_${idx}`]) {
+                                        setFormErrors((p) => ({ ...p, [`prof_companyName_${idx}`]: "" }));
+                                      }
                                     }}
                                   />
+                                  {formErrors[`prof_companyName_${idx}`] && (
+                                    <Form.Control.Feedback type="invalid" className="d-block extra-small">
+                                      {formErrors[`prof_companyName_${idx}`]}
+                                    </Form.Control.Feedback>
+                                  )}
                                 </Form.Group>
                               </Col>
                               <Col md={4}>
@@ -6447,13 +6772,22 @@ function HrOnboarding() {
                                     size="sm"
                                     placeholder="https://company.com or LinkedIn URL"
                                     value={prof.companyWebsite || prof.website || prof.linkedin || ""}
+                                    isInvalid={Boolean(formErrors[`prof_website_${idx}`])}
                                     onChange={(e) => {
                                       const arr = [...formData.professional];
                                       arr[idx].companyWebsite = e.target.value;
                                       arr[idx].website = e.target.value;
                                       setFormData({ ...formData, professional: arr });
+                                      if (formErrors[`prof_website_${idx}`]) {
+                                        setFormErrors((p) => ({ ...p, [`prof_website_${idx}`]: "" }));
+                                      }
                                     }}
                                   />
+                                  {formErrors[`prof_website_${idx}`] && (
+                                    <Form.Control.Feedback type="invalid" className="d-block extra-small">
+                                      {formErrors[`prof_website_${idx}`]}
+                                    </Form.Control.Feedback>
+                                  )}
                                 </Form.Group>
                               </Col>
                               <Col md={4}>
@@ -6480,28 +6814,25 @@ function HrOnboarding() {
                                   <Form.Label className="extra-small fw-bold">
                                     Department <span className="text-danger">*</span>
                                   </Form.Label>
-                                  <Form.Select
+                                  <Form.Control
                                     size="sm"
+                                    placeholder="Enter Department"
                                     value={prof.department || ""}
+                                    isInvalid={Boolean(formErrors[`prof_department_${idx}`])}
                                     onChange={(e) => {
                                       const arr = [...formData.professional];
                                       arr[idx].department = e.target.value;
                                       setFormData({ ...formData, professional: arr });
+                                      if (formErrors[`prof_department_${idx}`]) {
+                                        setFormErrors((p) => ({ ...p, [`prof_department_${idx}`]: "" }));
+                                      }
                                     }}
-                                  >
-                                    <option value="">Select Department</option>
-                                    {orgDepartments.map((dept) => {
-                                      const deptName = dept.departmentName || dept.name;
-                                      return (
-                                        <option key={dept._id || deptName} value={deptName}>
-                                          {deptName} {dept.departmentCode ? `(${dept.departmentCode})` : ""}
-                                        </option>
-                                      );
-                                    })}
-                                    {prof.department && !orgDepartments.some((d) => (d.departmentName || d.name) === prof.department) && (
-                                      <option value={prof.department}>{prof.department}</option>
-                                    )}
-                                  </Form.Select>
+                                  />
+                                  {formErrors[`prof_department_${idx}`] && (
+                                    <Form.Control.Feedback type="invalid" className="d-block extra-small">
+                                      {formErrors[`prof_department_${idx}`]}
+                                    </Form.Control.Feedback>
+                                  )}
                                 </Form.Group>
                               </Col>
                               <Col md={4}>
@@ -6509,28 +6840,25 @@ function HrOnboarding() {
                                   <Form.Label className="extra-small fw-bold">
                                     Designation <span className="text-danger">*</span>
                                   </Form.Label>
-                                  <Form.Select
+                                  <Form.Control
                                     size="sm"
+                                    placeholder="Enter Designation"
                                     value={prof.designation || ""}
+                                    isInvalid={Boolean(formErrors[`prof_designation_${idx}`])}
                                     onChange={(e) => {
                                       const arr = [...formData.professional];
                                       arr[idx].designation = e.target.value;
                                       setFormData({ ...formData, professional: arr });
+                                      if (formErrors[`prof_designation_${idx}`]) {
+                                        setFormErrors((p) => ({ ...p, [`prof_designation_${idx}`]: "" }));
+                                      }
                                     }}
-                                  >
-                                    <option value="">Select Designation</option>
-                                    {getFilteredDesignations(prof.department).map((des) => {
-                                      const desName = des.designationName || des.name;
-                                      return (
-                                        <option key={des._id || desName} value={desName}>
-                                          {desName} {des.designationCode ? `(${des.designationCode})` : ""}
-                                        </option>
-                                      );
-                                    })}
-                                    {prof.designation && !getFilteredDesignations(prof.department).some((d) => (d.designationName || d.name) === prof.designation) && (
-                                      <option value={prof.designation}>{prof.designation}</option>
-                                    )}
-                                  </Form.Select>
+                                  />
+                                  {formErrors[`prof_designation_${idx}`] && (
+                                    <Form.Control.Feedback type="invalid" className="d-block extra-small">
+                                      {formErrors[`prof_designation_${idx}`]}
+                                    </Form.Control.Feedback>
+                                  )}
                                 </Form.Group>
                               </Col>
                               <Col md={4}>
@@ -6542,12 +6870,21 @@ function HrOnboarding() {
                                     size="sm"
                                     placeholder="Enter The Role"
                                     value={prof.role || ""}
+                                    isInvalid={Boolean(formErrors[`prof_role_${idx}`])}
                                     onChange={(e) => {
                                       const arr = [...formData.professional];
                                       arr[idx].role = e.target.value;
                                       setFormData({ ...formData, professional: arr });
+                                      if (formErrors[`prof_role_${idx}`]) {
+                                        setFormErrors((p) => ({ ...p, [`prof_role_${idx}`]: "" }));
+                                      }
                                     }}
                                   />
+                                  {formErrors[`prof_role_${idx}`] && (
+                                    <Form.Control.Feedback type="invalid" className="d-block extra-small">
+                                      {formErrors[`prof_role_${idx}`]}
+                                    </Form.Control.Feedback>
+                                  )}
                                 </Form.Group>
                               </Col>
                             </Row>
@@ -6605,13 +6942,22 @@ function HrOnboarding() {
                                     size="sm"
                                     placeholder="e.g. ₹6,50,000 / 6.5 LPA"
                                     value={prof.salary !== undefined && prof.salary !== null ? prof.salary : ""}
+                                    isInvalid={Boolean(formErrors[`prof_salary_${idx}`])}
                                     onChange={(e) => {
                                       const val = e.target.value;
                                       const arr = [...formData.professional];
                                       arr[idx].salary = val;
                                       setFormData({ ...formData, salary: val, professional: arr });
+                                      if (formErrors[`prof_salary_${idx}`]) {
+                                        setFormErrors((p) => ({ ...p, [`prof_salary_${idx}`]: "" }));
+                                      }
                                     }}
                                   />
+                                  {formErrors[`prof_salary_${idx}`] && (
+                                    <Form.Control.Feedback type="invalid" className="d-block extra-small">
+                                      {formErrors[`prof_salary_${idx}`]}
+                                    </Form.Control.Feedback>
+                                  )}
                                 </Form.Group>
                               </Col>
                             </Row>
@@ -6627,12 +6973,21 @@ function HrOnboarding() {
                                     size="sm"
                                     type="date"
                                     value={prof.joiningDate ? new Date(prof.joiningDate).toISOString().split("T")[0] : ""}
+                                    isInvalid={Boolean(formErrors[`prof_joiningDate_${idx}`] || formErrors[`prof_dates_${idx}`])}
                                     onChange={(e) => {
                                       const arr = [...formData.professional];
                                       arr[idx].joiningDate = e.target.value;
                                       setFormData({ ...formData, professional: arr });
+                                      if (formErrors[`prof_joiningDate_${idx}`] || formErrors[`prof_dates_${idx}`]) {
+                                        setFormErrors((p) => ({ ...p, [`prof_joiningDate_${idx}`]: "", [`prof_dates_${idx}`]: "" }));
+                                      }
                                     }}
                                   />
+                                  {(formErrors[`prof_joiningDate_${idx}`] || formErrors[`prof_dates_${idx}`]) && (
+                                    <Form.Control.Feedback type="invalid" className="d-block extra-small">
+                                      {formErrors[`prof_joiningDate_${idx}`] || formErrors[`prof_dates_${idx}`]}
+                                    </Form.Control.Feedback>
+                                  )}
                                 </Form.Group>
                               </Col>
                               <Col md={4}>
@@ -6644,12 +6999,21 @@ function HrOnboarding() {
                                     size="sm"
                                     type="date"
                                     value={prof.expectedLastWorkingDate ? new Date(prof.expectedLastWorkingDate).toISOString().split("T")[0] : ""}
+                                    isInvalid={Boolean(formErrors[`prof_lastDate_${idx}`] || formErrors[`prof_dates_${idx}`])}
                                     onChange={(e) => {
                                       const arr = [...formData.professional];
                                       arr[idx].expectedLastWorkingDate = e.target.value;
                                       setFormData({ ...formData, professional: arr });
+                                      if (formErrors[`prof_lastDate_${idx}`] || formErrors[`prof_dates_${idx}`]) {
+                                        setFormErrors((p) => ({ ...p, [`prof_lastDate_${idx}`]: "", [`prof_dates_${idx}`]: "" }));
+                                      }
                                     }}
                                   />
+                                  {(formErrors[`prof_lastDate_${idx}`] || formErrors[`prof_dates_${idx}`]) && (
+                                    <Form.Control.Feedback type="invalid" className="d-block extra-small">
+                                      {formErrors[`prof_lastDate_${idx}`] || formErrors[`prof_dates_${idx}`]}
+                                    </Form.Control.Feedback>
+                                  )}
                                 </Form.Group>
                               </Col>
                               <Col md={4}>
@@ -6660,10 +7024,14 @@ function HrOnboarding() {
                                   <Form.Select
                                     size="sm"
                                     value={prof.noticePeriod || ""}
+                                    isInvalid={Boolean(formErrors[`prof_noticePeriod_${idx}`])}
                                     onChange={(e) => {
                                       const arr = [...formData.professional];
                                       arr[idx].noticePeriod = e.target.value;
                                       setFormData({ ...formData, professional: arr });
+                                      if (formErrors[`prof_noticePeriod_${idx}`]) {
+                                        setFormErrors((p) => ({ ...p, [`prof_noticePeriod_${idx}`]: "" }));
+                                      }
                                     }}
                                   >
                                     <option value="">Select Notice Period</option>
@@ -6673,6 +7041,11 @@ function HrOnboarding() {
                                     <option value="60 Days">60 Days</option>
                                     <option value="90 Days">90 Days</option>
                                   </Form.Select>
+                                  {formErrors[`prof_noticePeriod_${idx}`] && (
+                                    <Form.Control.Feedback type="invalid" className="d-block extra-small">
+                                      {formErrors[`prof_noticePeriod_${idx}`]}
+                                    </Form.Control.Feedback>
+                                  )}
                                 </Form.Group>
                               </Col>
                             </Row>
@@ -6687,10 +7060,14 @@ function HrOnboarding() {
                                   <Form.Select
                                     size="sm"
                                     value={prof.reportedTo || ""}
+                                    isInvalid={Boolean(formErrors[`prof_reportedTo_${idx}`])}
                                     onChange={(e) => {
                                       const arr = [...formData.professional];
                                       arr[idx].reportedTo = e.target.value;
                                       setFormData({ ...formData, professional: arr });
+                                      if (formErrors[`prof_reportedTo_${idx}`]) {
+                                        setFormErrors((p) => ({ ...p, [`prof_reportedTo_${idx}`]: "" }));
+                                      }
                                     }}
                                   >
                                     <option value="">Select Reporting Manager</option>
@@ -6700,6 +7077,11 @@ function HrOnboarding() {
                                       </option>
                                     ))}
                                   </Form.Select>
+                                  {formErrors[`prof_reportedTo_${idx}`] && (
+                                    <Form.Control.Feedback type="invalid" className="d-block extra-small">
+                                      {formErrors[`prof_reportedTo_${idx}`]}
+                                    </Form.Control.Feedback>
+                                  )}
                                 </Form.Group>
                               </Col>
                               <Col md={6}>
@@ -6727,7 +7109,6 @@ function HrOnboarding() {
                                 </Form.Group>
                               </Col>
                             </Row>
-
                             {/* Document Upload Box (Matching Education / SSLC Style) */}
                             <div className="mt-3 pt-3 border-top">
                               <DocumentUploadBox
@@ -6739,6 +7120,9 @@ function HrOnboarding() {
                                   arr[idx].docFile = file;
                                   arr[idx].docName = file.name;
                                   setFormData({ ...formData, professional: arr });
+                                  if (formErrors[`currentCompanyDoc_${idx}`]) {
+                                    setFormErrors((prev) => ({ ...prev, [`currentCompanyDoc_${idx}`]: "" }));
+                                  }
                                 }}
                                 onFileRemove={() => {
                                   const arr = [...formData.professional];
@@ -6749,6 +7133,7 @@ function HrOnboarding() {
                                 }}
                                 fieldName={`currentCompanyDoc_${idx}`}
                                 required={false}
+                                error={formErrors[`currentCompanyDoc_${idx}`] || formErrors[`prof_doc_${idx}`]}
                               />
                             </div>
                           </div>
@@ -7231,7 +7616,6 @@ function HrOnboarding() {
                               >
                                 <option value="Permanent">Permanent</option>
                                 <option value="Current">Current / Present</option>
-                                <option value="Official">Official</option>
                               </Form.Select>
                             </Form.Group>
                           </Col>
@@ -8234,7 +8618,7 @@ function HrOnboarding() {
                         {isCandidateUnpaidForm ? (
                           <div className="p-2.5 rounded bg-light border extra-small text-muted d-flex align-items-center gap-2">
                             <FaCheckCircle className="text-success" />
-                            <span>This candidate is registered under <strong>Unpaid / Volunteer Engagement</strong>. Payroll and salary deductions are exempted.</span>
+                            <span>This candidate is registered under <strong>Unpaid (Intern / Trainee) Engagement</strong>. Payroll and salary deductions are exempted.</span>
                           </div>
                         ) : (
                           <Row className="g-2 extra-small">
@@ -8370,63 +8754,117 @@ function HrOnboarding() {
                         </Button>
                       </Card.Header>
                       <Card.Body className="p-3">
-                        <Row className="g-2 extra-small">
-                          {formData.familyContacts?.map((contact, idx) => (
-                            <Col md={6} key={idx}>
-                              <div className="p-2.5 rounded bg-light border h-100">
-                                <div className="d-flex justify-content-between align-items-center mb-1">
-                                  <span className="fw-bold text-dark">{contact.name || `Contact #${idx + 1}`}</span>
-                                  <Badge bg={idx === 0 ? "success-subtle" : "light"} className={idx === 0 ? "text-success border rounded-pill" : "text-secondary border rounded-pill"}>
-                                    {contact.relationship || "Father"} {idx === 0 ? "• Primary" : ""}
-                                  </Badge>
-                                </div>
-                                <div className="text-secondary">Phone: +91 {contact.phone || "—"}</div>
-                                {contact.email && <div className="text-muted">Email: {contact.email}</div>}
-                                {contact.occupation && <div className="text-muted">Occupation: {contact.occupation}</div>}
-                              </div>
-                            </Col>
-                          ))}
-                        </Row>
+                        {formData.familyContacts && formData.familyContacts.length > 0 ? (
+                          <Row className="g-3">
+                            {formData.familyContacts.map((contact, idx) => {
+                              const initial = (contact.name || "C").trim().charAt(0).toUpperCase();
+                              const isPrimary = idx === 0;
+                              return (
+                                <Col md={6} key={idx}>
+                                  <div
+                                    className="p-3 rounded-3 border h-100 bg-white shadow-xs position-relative"
+                                    style={{
+                                      borderColor: isPrimary ? "rgba(196, 154, 85, 0.45)" : "#EBE5D8",
+                                      background: isPrimary ? "linear-gradient(180deg, #FDFAF5 0%, #FFFFFF 100%)" : "#FFFFFF",
+                                      transition: "all 0.2s ease",
+                                    }}
+                                  >
+                                    {/* Header: Avatar, Name & Badges */}
+                                    <div className="d-flex justify-content-between align-items-start gap-2 mb-3 pb-2 border-bottom">
+                                      <div className="d-flex align-items-center gap-2.5 min-w-0">
+                                        <div
+                                          className="rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
+                                          style={{
+                                            width: "36px",
+                                            height: "36px",
+                                            background: isPrimary
+                                              ? "linear-gradient(135deg, #E2C278 0%, #C49A55 100%)"
+                                              : "#F0ECE1",
+                                            color: isPrimary ? "#FFFFFF" : "#55524A",
+                                            fontSize: "14px",
+                                            boxShadow: isPrimary ? "0 2px 6px rgba(196, 154, 85, 0.3)" : "none",
+                                          }}
+                                        >
+                                          {initial}
+                                        </div>
+                                        <div className="min-w-0">
+                                          <div className="fw-bold text-dark text-truncate" style={{ fontSize: "13px" }}>
+                                            {contact.name || `Contact #${idx + 1}`}
+                                          </div>
+                                          <div className="extra-small text-muted text-capitalize">
+                                            {contact.relationship || "Family Member"}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="d-flex flex-wrap align-items-center gap-1 flex-shrink-0">
+                                        {isPrimary ? (
+                                          <Badge
+                                            bg="success-subtle"
+                                            className="text-success border border-success-subtle rounded-pill extra-small px-2 py-0.5 fw-semibold"
+                                          >
+                                            <FaCheckCircle className="me-1" size={9} /> Primary
+                                          </Badge>
+                                        ) : (
+                                          <Badge
+                                            bg="light"
+                                            className="text-muted border rounded-pill extra-small px-2 py-0.5 fw-normal"
+                                          >
+                                            Secondary
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Contact Details Grid */}
+                                    <div className="d-flex flex-column gap-2 extra-small">
+                                      <div className="d-flex align-items-center justify-content-between py-1 px-2 rounded bg-light border-0">
+                                        <span className="text-muted d-inline-flex align-items-center gap-1.5">
+                                          <FaPhoneAlt size={10} style={{ color: "var(--color-primary, #C49A55)" }} /> Phone
+                                        </span>
+                                        <span className="fw-semibold text-dark">
+                                          {contact.phone ? `+91 ${contact.phone}` : "—"}
+                                        </span>
+                                      </div>
+
+                                      <div className="d-flex align-items-center justify-content-between py-1 px-2 rounded bg-light border-0">
+                                        <span className="text-muted d-inline-flex align-items-center gap-1.5">
+                                          <FaEnvelope size={10} style={{ color: "var(--color-primary, #C49A55)" }} /> Email
+                                        </span>
+                                        <span className="fw-semibold text-dark text-truncate" style={{ maxWidth: "200px" }}>
+                                          {contact.email || "—"}
+                                        </span>
+                                      </div>
+
+                                      <div className="d-flex align-items-center justify-content-between py-1 px-2 rounded bg-light border-0">
+                                        <span className="text-muted d-inline-flex align-items-center gap-1.5">
+                                          <FaBriefcase size={10} style={{ color: "var(--color-primary, #C49A55)" }} /> Occupation
+                                        </span>
+                                        <span className="fw-semibold text-dark">
+                                          {contact.occupation || "—"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </Col>
+                              );
+                            })}
+                          </Row>
+                        ) : (
+                          <div className="text-center py-4 text-muted extra-small">
+                            <FaUsers size={24} className="mb-2 opacity-50" />
+                            <div>No family members or emergency contacts recorded.</div>
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
+                              className="mt-2 py-0.5 px-3 extra-small rounded-pill"
+                              onClick={() => setActiveFormTab("family")}
+                            >
+                              <FaPlus size={10} className="me-1" /> Add Family Contact
+                            </Button>
+                          </div>
+                        )}
                       </Card.Body>
                     </Card>
-
-                    {/* Final Confirmation Banner */}
-                    <div
-                      className="p-3.5 rounded-3 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 border shadow-xs"
-                      style={{
-                        background: "linear-gradient(135deg, var(--color-background, #FAF7F0) 0%, #F5EEDD 100%)",
-                        borderColor: "var(--color-primary-light, #E2C278)",
-                      }}
-                    >
-                      <div className="d-flex align-items-center gap-3">
-                        <div
-                          className="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0"
-                          style={{
-                            width: "44px",
-                            height: "44px",
-                            background: "linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 100%)",
-                          }}
-                        >
-                          <FaRocket size={18} />
-                        </div>
-                        <div>
-                          <h6 className="fw-bold text-dark mb-0.5">Ready to Initialize Candidate Onboarding?</h6>
-                          <span className="extra-small text-muted">
-                            Clicking Initialize will create the candidate employee record, provision authentication credentials, and dispatch the onboarding lifecycle workflow.
-                          </span>
-                        </div>
-                      </div>
-                      <Button
-                        variant="dark"
-                        className="rounded-pill px-4 py-2 extra-small fw-bold text-white d-flex align-items-center gap-2 shadow-sm text-nowrap flex-shrink-0"
-                        style={{ background: "var(--color-sidebar, #1C1D1D)", border: "none" }}
-                        onClick={handleOnboardSubmit}
-                        disabled={submittingForm}
-                      >
-                        {submittingForm ? <LoadingSpinner variant="button" size="sm" /> : <FaUserCheck size={13} />}
-                        Initialize Onboarding
-                      </Button>
-                    </div>
                   </div>
                 )}
 
@@ -9022,7 +9460,9 @@ function HrOnboarding() {
                                 </Col>
                                 <Col md={4}>
                                   <Form.Group>
-                                    <Form.Label className="extra-small fw-bold text-secondary">Gender</Form.Label>
+                                    <Form.Label className="extra-small fw-bold text-secondary">
+                                      Gender <span className="text-danger">*</span>
+                                    </Form.Label>
                                     <Form.Select
                                       size="sm"
                                       value={candidateProfileData.gender || ""}
@@ -9037,7 +9477,9 @@ function HrOnboarding() {
                                 </Col>
                                 <Col md={4}>
                                   <Form.Group>
-                                    <Form.Label className="extra-small fw-bold text-secondary">Marital Status</Form.Label>
+                                    <Form.Label className="extra-small fw-bold text-secondary">
+                                      Marital Status <span className="text-danger">*</span>
+                                    </Form.Label>
                                     <Form.Select
                                       size="sm"
                                       value={candidateProfileData.marriageStatus || ""}
@@ -9051,7 +9493,9 @@ function HrOnboarding() {
                                 </Col>
                                 <Col md={4}>
                                   <Form.Group>
-                                    <Form.Label className="extra-small fw-bold text-secondary">Blood Group</Form.Label>
+                                    <Form.Label className="extra-small fw-bold text-secondary">
+                                      Blood Group <span className="text-danger">*</span>
+                                    </Form.Label>
                                     <Form.Select
                                       size="sm"
                                       value={candidateProfileData.bloodGroup || ""}
@@ -9530,61 +9974,37 @@ function HrOnboarding() {
                                         </Row>
 
                                         <Row className="g-2 mb-2">
-                                          <Col md={4}>
-                                            <Form.Group>
-                                              <Form.Label className="extra-small fw-bold">DEPARTMENT <span className="text-danger">*</span></Form.Label>
-                                              <Form.Select
-                                                size="sm"
-                                                value={prof.department || ""}
-                                                onChange={(e) => {
-                                                  const arr = [...candidateProfileData.professional];
-                                                  arr[i].department = e.target.value;
-                                                  setCandidateProfileData({ ...candidateProfileData, professional: arr });
-                                                }}
-                                              >
-                                                <option value="">Select Department</option>
-                                                {orgDepartments.map((dept) => {
-                                                  const deptName = dept.departmentName || dept.name;
-                                                  return (
-                                                    <option key={dept._id || deptName} value={deptName}>
-                                                      {deptName} {dept.departmentCode ? `(${dept.departmentCode})` : ""}
-                                                    </option>
-                                                  );
-                                                })}
-                                                {prof.department && !orgDepartments.some((d) => (d.departmentName || d.name) === prof.department) && (
-                                                  <option value={prof.department}>{prof.department}</option>
-                                                )}
-                                              </Form.Select>
-                                            </Form.Group>
-                                          </Col>
-                                          <Col md={4}>
-                                            <Form.Group>
-                                              <Form.Label className="extra-small fw-bold">DESIGNATION <span className="text-danger">*</span></Form.Label>
-                                              <Form.Select
-                                                size="sm"
-                                                value={prof.designation || ""}
-                                                onChange={(e) => {
-                                                  const arr = [...candidateProfileData.professional];
-                                                  arr[i].designation = e.target.value;
-                                                  setCandidateProfileData({ ...candidateProfileData, professional: arr });
-                                                }}
-                                              >
-                                                <option value="">Select Designation</option>
-                                                {getFilteredDesignations(prof.department).map((des) => {
-                                                  const desName = des.designationName || des.name;
-                                                  return (
-                                                    <option key={des._id || desName} value={desName}>
-                                                      {desName} {des.designationCode ? `(${des.designationCode})` : ""}
-                                                    </option>
-                                                  );
-                                                })}
-                                                {prof.designation && !getFilteredDesignations(prof.department).some((d) => (d.designationName || d.name) === prof.designation) && (
-                                                  <option value={prof.designation}>{prof.designation}</option>
-                                                )}
-                                              </Form.Select>
-                                            </Form.Group>
-                                          </Col>
-                                          <Col md={4}>
+                                           <Col md={4}>
+                                             <Form.Group>
+                                               <Form.Label className="extra-small fw-bold">DEPARTMENT <span className="text-danger">*</span></Form.Label>
+                                               <Form.Control
+                                                 size="sm"
+                                                 placeholder="Enter Department"
+                                                 value={prof.department || ""}
+                                                 onChange={(e) => {
+                                                   const arr = [...candidateProfileData.professional];
+                                                   arr[i].department = e.target.value;
+                                                   setCandidateProfileData({ ...candidateProfileData, professional: arr });
+                                                 }}
+                                               />
+                                             </Form.Group>
+                                           </Col>
+                                           <Col md={4}>
+                                             <Form.Group>
+                                               <Form.Label className="extra-small fw-bold">DESIGNATION <span className="text-danger">*</span></Form.Label>
+                                               <Form.Control
+                                                 size="sm"
+                                                 placeholder="Enter Designation"
+                                                 value={prof.designation || ""}
+                                                 onChange={(e) => {
+                                                   const arr = [...candidateProfileData.professional];
+                                                   arr[i].designation = e.target.value;
+                                                   setCandidateProfileData({ ...candidateProfileData, professional: arr });
+                                                 }}
+                                               />
+                                             </Form.Group>
+                                           </Col>
+                                            <Col md={4}>
                                             <Form.Group>
                                               <Form.Label className="extra-small fw-bold">ROLE / POSITION <span className="text-danger">*</span></Form.Label>
                                               <Form.Control
@@ -10366,7 +10786,6 @@ function HrOnboarding() {
                                       >
                                         <option value="Permanent">Permanent</option>
                                         <option value="Current">Current / Present</option>
-                                        <option value="Official">Official</option>
                                       </Form.Select>
                                     </Col>
                                     <Col md={9}>
@@ -10770,7 +11189,7 @@ function HrOnboarding() {
                                       Bank Details Exempted
                                     </span>
                                     <p className="text-muted extra-small mb-0" style={{ maxWidth: 360 }}>
-                                      This candidate is registered under an <strong>Unpaid / Volunteer Engagement</strong>. Bank account verification and salary payroll processing are not required and are marked as complete.
+                                      This candidate is registered under an <strong>Unpaid (Intern / Trainee) Engagement</strong>. Bank account verification and salary payroll processing are not required and are marked as complete.
                                     </p>
                                   </div>
                                 ) : (

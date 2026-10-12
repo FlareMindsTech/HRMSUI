@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useCallback } from "react";
 import { Container, Row, Col, Modal, Button } from "react-bootstrap";
 import { FaExclamationTriangle, FaTrash, FaPlus, FaCheckCircle } from "react-icons/fa";
 import { useSelector, useDispatch } from 'react-redux';
@@ -9,6 +9,7 @@ import {
   createDocumentApi,
   updateDocumentApi,
   deleteDocumentApi,
+  uploadDocumentFile,
 } from "../../Api/Document/documentApi";
 
 // Modular Components
@@ -226,30 +227,48 @@ const DocumentManagement = () => {
     }
   };
 
-  // 5. Attachment Upload Handler
-  const handleUploadAttachment = async (newAttachment) => {
-    const updatedAttachments = [...(docData.attachments || []), newAttachment];
-    setDocData((prev) => ({
-      ...prev,
-      attachments: updatedAttachments,
-    }));
-    setShowUploadModal(false);
+    // 5. Attachment Upload Handler (uploads file to Cloudinary backend)
+    const handleUploadAttachment = async (newAttachment) => {
+      setShowUploadModal(false);
+      setSaving(true);
+      setErrorMsg("");
 
-    if (hasRecord) {
       try {
-        setSaving(true);
-        await updateDocumentApi(selectedUserId, { attachments: updatedAttachments });
-        setSuccessMsg(`Document "${newAttachment.title}" uploaded and saved.`);
-        await loadDocumentData(selectedUserId);
+        let finalAttachment = { ...newAttachment };
+
+        if (newAttachment.file) {
+          const uploadRes = await uploadDocumentFile({
+            file: newAttachment.file,
+            entityId: selectedUserId,
+            documentType: newAttachment.category || "OTHER",
+            category: newAttachment.category || "GENERAL",
+            title: newAttachment.title,
+          });
+          if (uploadRes?.fileUrl) {
+            finalAttachment.fileUrl = uploadRes.fileUrl;
+            finalAttachment.storageKey = uploadRes.storageKey || uploadRes.publicId;
+          }
+        }
+
+        const updatedAttachments = [...(docData.attachments || []), finalAttachment];
+        setDocData((prev) => ({
+          ...prev,
+          attachments: updatedAttachments,
+        }));
+
+        if (hasRecord) {
+          await updateDocumentApi(selectedUserId, { attachments: updatedAttachments });
+          setSuccessMsg(`Document "${newAttachment.title}" uploaded to Cloudinary and saved.`);
+          await loadDocumentData(selectedUserId);
+        } else {
+          setSuccessMsg(`Document "${newAttachment.title}" uploaded to Cloudinary. Click save to persist.`);
+        }
       } catch (e) {
-        setErrorMsg(e.message || "Failed to save uploaded attachment to server.");
+        setErrorMsg(e.message || "Failed to upload document.");
       } finally {
         setSaving(false);
       }
-    } else {
-      setSuccessMsg(`Document "${newAttachment.title}" added to form. Click save to persist.`);
-    }
-  };
+    };
 
   // 6. Attachment Verification Handler
   const handleSaveVerification = async (verifiedAttachment) => {
@@ -490,3 +509,4 @@ const DocumentManagement = () => {
 };
 
 export default DocumentManagement;
+

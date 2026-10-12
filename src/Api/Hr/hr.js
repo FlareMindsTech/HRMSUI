@@ -131,12 +131,12 @@ export const fetchEmployeeInfo = async (id) => {
     professional: (Array.isArray(profDetails.professional) && profDetails.professional.length > 0)
       ? profDetails.professional
       : (profDetails.currentCompany && Object.keys(profDetails.currentCompany).length > 0)
-      ? [profDetails.currentCompany]
-      : (Array.isArray(emp.professional) && emp.professional.length > 0)
-      ? emp.professional
-      : (Array.isArray(data.professional) && data.professional.length > 0)
-      ? data.professional
-      : [],
+        ? [profDetails.currentCompany]
+        : (Array.isArray(emp.professional) && emp.professional.length > 0)
+          ? emp.professional
+          : (Array.isArray(data.professional) && data.professional.length > 0)
+            ? data.professional
+            : [],
     currentCompany: profDetails.currentCompany || {},
     education: profDetails.education || emp.education || data.education || [],
     experience: profDetails.experience || emp.experience || data.experience || [],
@@ -158,11 +158,44 @@ export const fetchCandidateProfessional = async (id) => {
 };
 
 /**
+ * Update Current Company details (/currentcompany/:userId or /currentcompany/update/:userId)
+ * @param {string} userId - User ID
+ * @param {Object|FormData} payload - Current company fields or FormData with files
+ */
+export const updateCurrentCompanyApi = async (userId, payload) => {
+  if (!userId) throw new Error("userId is required to update current company.");
+  const isFormData = payload instanceof FormData;
+  const body = isFormData ? payload : JSON.stringify(payload);
+
+  const endpoints = [
+    `/currentcompany/${userId}`,
+    `/currentcompany/update/${userId}`,
+  ];
+  let lastError = null;
+  for (const ep of endpoints) {
+    try {
+      const res = await apiFetch(ep, {
+        method: "PUT",
+        body,
+      });
+      if (res.ok) return res.data?.data || res.data;
+      lastError = apiError(res, "Failed to update current company.");
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError || new Error("Failed to update current company.");
+};
+
+/**
  * Create or register Current Company details (/current-company/create or /currentCompany/create)
  * @param {Object|FormData} payload - Current company fields or FormData with files
  */
 export const createCurrentCompanyApi = async (payload) => {
   let body = payload;
+  const targetUserId = payload instanceof FormData
+    ? (payload.get("userId") || payload.get("employeeId"))
+    : (payload?.userId || payload?.employeeId);
 
   if (payload instanceof FormData) {
     const endpoints = [
@@ -172,14 +205,22 @@ export const createCurrentCompanyApi = async (payload) => {
     ];
     let lastError = null;
     for (const ep of endpoints) {
-      const uploadRes = await apiFetch(ep, {
-        method: "POST",
-        body,
-      });
-      if (uploadRes.ok) return uploadRes.data;
-      if (uploadRes.status === 0) continue;
-      lastError = apiError(uploadRes, "Failed to create current company.");
-      break;
+      try {
+        const uploadRes = await apiFetch(ep, {
+          method: "POST",
+          body,
+        });
+        if (uploadRes.ok) return uploadRes.data?.data || uploadRes.data;
+        if (uploadRes.status === 400 && targetUserId) {
+          return await updateCurrentCompanyApi(targetUserId, payload);
+        }
+        lastError = apiError(uploadRes, "Failed to create current company.");
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    if (targetUserId) {
+      return await updateCurrentCompanyApi(targetUserId, payload);
     }
     throw lastError || new Error("Failed to create current company.");
   }
@@ -195,10 +236,13 @@ export const createCurrentCompanyApi = async (payload) => {
     body: JSON.stringify(payload),
   });
 
-  if (!res.ok) {
+  if (!res || !res.ok) {
+    if (targetUserId) {
+      return await updateCurrentCompanyApi(targetUserId, payload);
+    }
     throw apiError(res, "Failed to create current company.");
   }
-  return res.data;
+  return res.data?.data || res.data;
 };
 
 /**
@@ -1122,27 +1166,9 @@ export const disableLogin = async (id) => {
 };
 
 /**
- * Fetch employment types from backend master / lookup API
+ * Fetch employment types master / standard values
  */
 export const fetchEmploymentTypes = async () => {
-  const endpoints = [
-    "/current-company/employment-types",
-    "/onboarding/employment-types",
-    "/organization/employment-types",
-    "/lookup/employment-types",
-    "/settings/employment-types",
-  ];
-  for (const ep of endpoints) {
-    try {
-      const res = await apiFetch(ep, { method: "GET" });
-      if (res && (res.ok || res.status === 200)) {
-        const data = res.data?.data || res.data || [];
-        if (Array.isArray(data) && data.length > 0) {
-          return data;
-        }
-      }
-    } catch (e) { }
-  }
   return [
     { value: "FULL_TIME", label: "Full Time" },
     { value: "PART_TIME", label: "Part Time" },

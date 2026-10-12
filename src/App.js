@@ -4,6 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { BranchProvider } from './context/BranchContext';
 import {
   selectIsAuthenticated,
+  selectAuthNextAction,
   fetchAuth,
   clearAuth,
   logout,
@@ -25,12 +26,12 @@ import ProjectManagement from './Pages/Dashboard/ProjectManagement';
 import TasksPage from './Pages/Dashboard/TasksPage';
 import AssetManagement from './Pages/Dashboard/AssetManagement';
 import InitialSetupPage from './Pages/Dashboard/InitialSetupPage';
+import SubscriptionRenewalPage from './Pages/Dashboard/SubscriptionRenewalPage';
 import LifecycleManagement from './Pages/Dashboard/LifecycleManagement';
 import ReimbursementManagement from './Pages/Dashboard/ReimbursementManagement';
 import ApprovalWorkflows from './Pages/Dashboard/ApprovalWorkflows';
 import AuditLogs from './Pages/Dashboard/AuditLogs';
 import PlatformAdmin from './Pages/Dashboard/PlatformAdmin';
-import { fetchSystemSetupStatus } from './services/organizationService';
 
 const isAuthError = (payload) => {
   // 401 only — a 403 (AccessDenied with required* keys) must never bounce to
@@ -52,20 +53,10 @@ const isAuthError = (payload) => {
 function App() {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
+  const nextAction = useSelector(selectAuthNextAction);
   const [booted, setBooted] = useState(false);
-  const [setupRequired, setSetupRequired] = useState(null);
 
-  // Central runtime-401 recovery, registered once. Any authenticated API
-  // call that comes back 401 (expired/revoked token mid-session) funnels
-  // through the EXISTING logout flow: the thunk clears the session
-  // synchronously and logout.pending flips the route gate to /login
-  // declaratively — no reload, no per-page handling needed. Single-flight
-  // holds at two levels: apiFetch notifies only once per expiry episode,
-  // and the state re-check below collapses any residual duplicates (logout
-  // itself is idempotent, so even a double dispatch is harmless).
-  // Auth-owned paths (/auth/login, /auth/me, /user/logout) and token-less
-  // requests never notify — boot owns /auth/me explicitly and Login owns
-  // its own 401 messaging.
+  // Central runtime-401 recovery, registered once.
   useEffect(() => {
     setUnauthorizedHandler(() => {
       try {
@@ -79,7 +70,7 @@ function App() {
     return () => setUnauthorizedHandler(null);
   }, [dispatch]);
 
-  // Boot: validate any stored token via Redux (replaces AuthContext.loadAuthContext).
+  // Boot: validate any stored token via Redux.
   useEffect(() => {
     let cancelled = false;
     const boot = async () => {
@@ -112,30 +103,18 @@ function App() {
     };
   }, [dispatch]);
 
-  // Check setup requirement on startup (from main).
-  useEffect(() => {
-    fetchSystemSetupStatus()
-      .then((status) => {
-        if (status?.setupRequired && !status?.ownerExists) {
-          setSetupRequired(true);
-        } else {
-          setSetupRequired(false);
-        }
-      })
-      .catch(() => setSetupRequired(false));
-  }, []);
-
   const handleLogin = () => {
-    // Route gating comes from the Redux selector (user + token); the legacy
-    // localStorage sentinel is no longer written (reads of it remain only
-    // where the initial Redux state hydrates, and cleanup lists still remove
-    // it for existing installs).
+    // Auth context loaded through Redux
   };
 
-  // Boot splash only while the initial token validation is outstanding.
-  // Background refreshes (e.g. the post-login fetchAuth that loads
-  // menus/permissions) must NOT unmount the app back to a splash screen —
-  // that was the main perceived "login is slow" delay.
+  // Helper to determine destination for authenticated user
+  const getAuthenticatedRedirect = () => {
+    if (nextAction === 'SETUP_ORGANIZATION') return '/setup';
+    if (nextAction === 'RENEW_SUBSCRIPTION') return '/subscription-renewal';
+    return '/dashboard';
+  };
+
+  // Boot splash only while initial token validation is outstanding.
   if (!booted) {
     return (
       <div
@@ -157,17 +136,40 @@ function App() {
     <BranchProvider>
       <BrowserRouter>
         <Routes>
-          {/* Standalone One-Time Setup Route */}
-          <Route path="/setup" element={<InitialSetupPage />} />
+          {/* Organization Setup Route */}
+          <Route
+            path="/setup"
+            element={
+              isAuthenticated ? (
+                nextAction === 'RENEW_SUBSCRIPTION' ? (
+                  <Navigate to="/subscription-renewal" replace />
+                ) : (
+                  <InitialSetupPage />
+                )
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
 
-          {/* Public Login & Signup Routes */}
+          {/* Subscription Renewal Route */}
+          <Route
+            path="/subscription-renewal"
+            element={
+              isAuthenticated ? (
+                <SubscriptionRenewalPage />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+
+          {/* Public Login & Signup Routes - Always default for unauthenticated users */}
           <Route
             path="/login"
             element={
               isAuthenticated ? (
-                <Navigate to="/dashboard" replace />
-              ) : setupRequired === true ? (
-                <Navigate to="/setup" replace />
+                <Navigate to={getAuthenticatedRedirect()} replace />
               ) : (
                 <Login onLogin={() => handleLogin(true)} initialMode="signin" />
               )
@@ -177,57 +179,53 @@ function App() {
             path="/signup"
             element={
               isAuthenticated ? (
-                <Navigate to="/dashboard" replace />
-              ) : setupRequired === true ? (
-                <Navigate to="/setup" replace />
+                <Navigate to={getAuthenticatedRedirect()} replace />
               ) : (
                 <Login onLogin={() => handleLogin(true)} initialMode="signup" />
               )
             }
           />
 
-          {/* Protected Routes */}
+          {/* Protected Dashboard Routes */}
           {isAuthenticated ? (
-            <Route path="/" element={<Layout />}>
-              <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/organisation" element={<Organisation />} />
-              <Route path="/organisation/:section" element={<Organisation />} />
-              <Route path="/onboarding" element={<HrOnboarding />} />
-              <Route path="/leave" element={<LeaveRequest />} />
-              <Route path="/mis" element={<Mis />} />
-              <Route path="/payslip" element={<Payslip />} />
-              <Route path="/users" element={<UserManagement />} />
-              <Route path="/roles" element={<UserManagement />} />
-              <Route path="/assets" element={<AssetManagement />} />
-              <Route path="/attendance" element={<Attendance />} />
-              <Route path="/projects" element={<ProjectManagement />} />
-              <Route path="/projects/tasks" element={<TasksPage />} />
-              <Route path="/tasks" element={<TasksPage />} />
-              <Route path="/epfo" element={<Epfo />} />
-              <Route path="/lifecycle" element={<LifecycleManagement />} />
-              <Route path="/resignation" element={<LifecycleManagement />} />
-              <Route path="/offboarding" element={<LifecycleManagement />} />
-              <Route path="/reimbursement" element={<ReimbursementManagement />} />
-              <Route path="/reimbursements" element={<ReimbursementManagement />} />
-              <Route path="/approval-workflows" element={<ApprovalWorkflows />} />
-              <Route path="/approvals" element={<ApprovalWorkflows />} />
-              <Route path="/audit-logs" element={<AuditLogs />} />
-              <Route path="/audit" element={<AuditLogs />} />
-              <Route path="/platform" element={<PlatformAdmin />} />
-              <Route path="/platform/*" element={<PlatformAdmin />} />
-            </Route>
+            nextAction === 'SETUP_ORGANIZATION' ? (
+              <Route path="*" element={<Navigate to="/setup" replace />} />
+            ) : nextAction === 'RENEW_SUBSCRIPTION' ? (
+              <Route path="*" element={<Navigate to="/subscription-renewal" replace />} />
+            ) : (
+              <Route path="/" element={<Layout />}>
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/organisation" element={<Organisation />} />
+                <Route path="/organisation/:section" element={<Organisation />} />
+                <Route path="/onboarding" element={<HrOnboarding />} />
+                <Route path="/leave" element={<LeaveRequest />} />
+                <Route path="/mis" element={<Mis />} />
+                <Route path="/payslip" element={<Payslip />} />
+                <Route path="/users" element={<UserManagement />} />
+                <Route path="/roles" element={<UserManagement />} />
+                <Route path="/assets" element={<AssetManagement />} />
+                <Route path="/attendance" element={<Attendance />} />
+                <Route path="/projects" element={<ProjectManagement />} />
+                <Route path="/projects/tasks" element={<TasksPage />} />
+                <Route path="/tasks" element={<TasksPage />} />
+                <Route path="/epfo" element={<Epfo />} />
+                <Route path="/lifecycle" element={<LifecycleManagement />} />
+                <Route path="/resignation" element={<LifecycleManagement />} />
+                <Route path="/offboarding" element={<LifecycleManagement />} />
+                <Route path="/reimbursement" element={<ReimbursementManagement />} />
+                <Route path="/reimbursements" element={<ReimbursementManagement />} />
+                <Route path="/approval-workflows" element={<ApprovalWorkflows />} />
+                <Route path="/approvals" element={<ApprovalWorkflows />} />
+                <Route path="/audit-logs" element={<AuditLogs />} />
+                <Route path="/audit" element={<AuditLogs />} />
+                <Route path="/platform" element={<PlatformAdmin />} />
+                <Route path="/platform/*" element={<PlatformAdmin />} />
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Route>
+            )
           ) : (
-            <Route
-              path="*"
-              element={
-                setupRequired === true ? (
-                  <Navigate to="/setup" replace />
-                ) : (
-                  <Navigate to="/login" replace />
-                )
-              }
-            />
+            <Route path="*" element={<Navigate to="/login" replace />} />
           )}
         </Routes>
       </BrowserRouter>

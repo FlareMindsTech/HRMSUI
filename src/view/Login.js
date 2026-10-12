@@ -4,16 +4,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   FiUser,
   FiMail,
+  FiPhone,
   FiEye,
   FiEyeOff,
   FiCheck,
-  FiAlertCircle,
   FiCheckCircle,
-  FiArrowRight,
 } from 'react-icons/fi';
-import { login, fetchAuth, selectAuthError } from '../redux/slices/authSlice';
-import { fetchTheme, selectTheme } from '../redux/slices/themeSlice';
-import { fetchSystemSetupStatus } from '../services/organizationService';
+import { login, register, fetchAuth, selectAuthError } from '../redux/slices/authSlice';
+import { fetchTheme } from '../redux/slices/themeSlice';
 import './Login.css';
 
 /* ==========================================================================
@@ -51,10 +49,6 @@ const Login = ({ onLogin, initialMode }) => {
   const registered = queryParams.get('registered') === 'true';
   const initialEmail = queryParams.get('email') || '';
 
-  // Setup status check
-  const [setupRequired, setSetupRequired] = useState(false);
-  const [setupDetails, setSetupDetails] = useState(null);
-
   // Sign In Form State
   const [signinForm, setSigninForm] = useState({
     usernameOrEmail: initialEmail,
@@ -70,11 +64,14 @@ const Login = ({ onLogin, initialMode }) => {
   const [signupForm, setSignupForm] = useState({
     fullName: '',
     email: '',
+    phoneNumber: '',
     password: '',
+    confirmPassword: '',
   });
   const [signupErrors, setSignupErrors] = useState({});
   const [signupTouched, setSignupTouched] = useState({});
   const [showSignupPass, setShowSignupPass] = useState(false);
+  const [showSignupConfirmPass, setShowSignupConfirmPass] = useState(false);
   const [signupFocused, setSignupFocused] = useState(initialMode === 'signup' ? 'fullName' : null);
 
   const [loading, setLoading] = useState(false);
@@ -83,28 +80,15 @@ const Login = ({ onLogin, initialMode }) => {
 
   // Clear pending timers on unmount
   useEffect(() => {
+    const timers = timerRefs.current;
     return () => {
-      timerRefs.current.forEach((t) => clearTimeout(t));
+      timers.forEach((t) => clearTimeout(t));
     };
   }, []);
 
-  // Check setup status and load active theme on mount
+  // Load active theme on mount
   useEffect(() => {
     dispatch(fetchTheme());
-    fetchSystemSetupStatus()
-      .then((status) => {
-        if (status?.ownerExists) {
-          console.log('[owner-details] Owner exists:', status.owner || {
-            ownerExists: true,
-            organization: status.organization,
-          });
-        }
-        if (status?.setupRequired && !status?.ownerExists) {
-          setSetupRequired(true);
-          setSetupDetails(status);
-        }
-      })
-      .catch((e) => console.warn('Setup status check notice:', e.message));
   }, [dispatch]);
 
   // Autofocus input on mode switch & initial mount
@@ -168,18 +152,6 @@ const Login = ({ onLogin, initialMode }) => {
     timerRefs.current.push(t1, t2, t3);
   };
 
-  // Password strength calculation
-  const getPasswordStrength = (pass) => {
-    if (!pass) return 0;
-    let score = 0;
-    if (pass.length >= 8) score += 1;
-    if (/[A-Z]/.test(pass) && /[a-z]/.test(pass)) score += 1;
-    if (/[0-9]/.test(pass) || /[^A-Za-z0-9]/.test(pass)) score += 1;
-    return score;
-  };
-
-  const passwordStrength = getPasswordStrength(signupForm.password);
-
   // Form Validation
   const validateSignin = () => {
     const errs = {};
@@ -188,8 +160,8 @@ const Login = ({ onLogin, initialMode }) => {
     }
     if (!signinForm.password) {
       errs.password = 'Password is required';
-    } else if (signinForm.password.length < 8) {
-      errs.password = 'Must be at least 8 characters';
+    } else if (signinForm.password.length < 6) {
+      errs.password = 'Must be at least 6 characters';
     }
     setSigninErrors(errs);
     return Object.keys(errs).length === 0;
@@ -205,20 +177,33 @@ const Login = ({ onLogin, initialMode }) => {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupForm.email.trim())) {
       errs.email = 'Enter a valid email address';
     }
+    if (!signupForm.phoneNumber.trim()) {
+      errs.phoneNumber = 'Phone number is required';
+    } else if (!/^\+?[0-9\s-]{7,15}$/.test(signupForm.phoneNumber.trim())) {
+      errs.phoneNumber = 'Enter a valid phone number';
+    }
     if (!signupForm.password) {
       errs.password = 'Password is required';
-    } else if (signupForm.password.length < 8) {
-      errs.password = 'Must be at least 8 characters';
+    } else if (signupForm.password.length < 6) {
+      errs.password = 'Must be at least 6 characters';
+    }
+    if (!signupForm.confirmPassword) {
+      errs.confirmPassword = 'Confirm password is required';
+    } else if (signupForm.confirmPassword !== signupForm.password) {
+      errs.confirmPassword = 'Passwords do not match';
     }
     setSignupErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  // Submit Handler for Sign In (keeps existing Redux and API logic)
+  // Submit Handler for Sign In
   const handleSigninSubmit = async (e) => {
     e.preventDefault();
+    if (loading || phase !== 'idle') return;
+
     setSigninTouched({ usernameOrEmail: true, password: true });
     setGeneralError('');
+    setInfoMessage('');
 
     if (!validateSignin()) return;
 
@@ -231,7 +216,18 @@ const Login = ({ onLogin, initialMode }) => {
       if (login.fulfilled.match(result)) {
         setLoading(false);
         onLogin && onLogin();
-        void dispatch(fetchAuth());
+        void dispatch(fetchAuth({ force: true }));
+
+        const nextAction = result.payload?.nextAction;
+        if (nextAction === 'SETUP_ORGANIZATION') {
+          navigate('/setup', { replace: true });
+        } else if (nextAction === 'RENEW_SUBSCRIPTION') {
+          navigate('/subscription-renewal', { replace: true });
+        } else if (nextAction === 'OPEN_DASHBOARD' || !nextAction) {
+          navigate('/dashboard', { replace: true });
+        } else {
+          setGeneralError(`Unknown access status (${nextAction}). Please contact system administrator.`);
+        }
       } else {
         setGeneralError(result.payload || authError || 'Login failed. Please check your credentials.');
         setLoading(false);
@@ -245,24 +241,66 @@ const Login = ({ onLogin, initialMode }) => {
   // Submit Handler for Sign Up / Create Account
   const handleSignupSubmit = async (e) => {
     e.preventDefault();
-    setSignupTouched({ fullName: true, email: true, password: true });
+    if (loading || phase !== 'idle') return;
+
+    setSignupTouched({
+      fullName: true,
+      email: true,
+      phoneNumber: true,
+      password: true,
+    });
     setGeneralError('');
+    setInfoMessage('');
 
     if (!validateSignup()) return;
 
-    // Check if initial setup is required
-    if (setupRequired) {
-      navigate('/setup');
-      return;
-    }
-
     setLoading(true);
-    // Attempt registration or guide user
-    setTimeout(() => {
+
+    try {
+      const result = await dispatch(
+        register({
+          name: signupForm.fullName,
+          fullName: signupForm.fullName,
+          email: signupForm.email,
+          phoneNumber: signupForm.phoneNumber,
+          phone: signupForm.phoneNumber,
+          password: signupForm.password,
+        })
+      );
+
+      if (register.fulfilled.match(result)) {
+        setLoading(false);
+        const data = result.payload;
+
+        if (data?.token) {
+          onLogin && onLogin();
+          void dispatch(fetchAuth({ force: true }));
+
+          const nextAction = data?.nextAction || 'SETUP_ORGANIZATION';
+          if (nextAction === 'SETUP_ORGANIZATION') {
+            navigate('/setup', { replace: true });
+          } else if (nextAction === 'RENEW_SUBSCRIPTION') {
+            navigate('/subscription-renewal', { replace: true });
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
+        } else {
+          // If backend requires sign in or email verification after registration
+          setInfoMessage(data?.message || 'Account registered successfully! Please sign in.');
+          setSigninForm((prev) => ({
+            ...prev,
+            usernameOrEmail: signupForm.email,
+          }));
+          switchMode('signin');
+        }
+      } else {
+        setLoading(false);
+        setGeneralError(result.payload || 'Registration failed. Please check your details and try again.');
+      }
+    } catch (err) {
       setLoading(false);
-      setInfoMessage('Account created! Please sign in with your credentials.');
-      switchMode('signin');
-    }, 600);
+      setGeneralError('Unable to reach the registration server. Please check your internet connection.');
+    }
   };
 
   return (
@@ -270,7 +308,7 @@ const Login = ({ onLogin, initialMode }) => {
       {/* Ambient background noise */}
       <div className="auth-bg-noise" aria-hidden="true" />
 
-      {/* Setup / Registered Alerts if applicable */}
+      {/* Registered Alert if applicable */}
       {registered && (
         <div
           style={{
@@ -294,51 +332,8 @@ const Login = ({ onLogin, initialMode }) => {
         </div>
       )}
 
-      {setupRequired && !registered && (
-        <div
-          style={{
-            zIndex: 30,
-            marginBottom: '1rem',
-            padding: '8px 16px',
-            background: 'rgba(232, 163, 61, 0.15)',
-            border: '1px solid rgba(232, 163, 61, 0.4)',
-            borderRadius: '8px',
-            color: '#FDE68A',
-            fontSize: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <FiAlertCircle />
-            <span>Initial Setup Required: Organization owner not yet configured.</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate('/setup')}
-            style={{
-              background: 'var(--auth-gold-primary)',
-              color: '#000906',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '4px 10px',
-              fontSize: '11px',
-              fontWeight: '700',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-            }}
-          >
-            Setup <FiArrowRight />
-          </button>
-        </div>
-      )}
-
       {/* ---------------------------------------------------------------------
-          THE AUTH CARD (570x345px, 16px radius, 1px dark green border)
+          THE AUTH CARD (880x570px, 20px radius, 1px dark green border)
           --------------------------------------------------------------------- */}
       <div
         className="auth-card"
@@ -414,7 +409,7 @@ const Login = ({ onLogin, initialMode }) => {
 
                   {/* General / API Error */}
                   {generalError && (
-                    <div className="auth-error-msg" style={{ fontSize: '10px' }}>
+                    <div className="auth-error-msg" style={{ fontSize: '11px', padding: '2px 0' }}>
                       {generalError}
                     </div>
                   )}
@@ -494,9 +489,47 @@ const Login = ({ onLogin, initialMode }) => {
                     )}
                   </div>
 
-                  {/* Field 3: Password + Hint & Strength meter */}
+                  {/* Field 3: Phone number */}
                   <div
-                    className={`auth-field auth-stagger-item stagger-form-4 ${signupFocused === 'password' ? 'is-active' : ''
+                    className={`auth-field auth-stagger-item stagger-form-4 ${signupFocused === 'phoneNumber' ? 'is-active' : ''
+                      } ${signupForm.phoneNumber ? 'has-value' : ''}`}
+                  >
+                    <div className="auth-input-line-wrap">
+                      <label htmlFor="auth-signup-phone" className="auth-floating-label">
+                        Phone number
+                      </label>
+                      <input
+                        id="auth-signup-phone"
+                        type="tel"
+                        className="auth-input"
+                        value={signupForm.phoneNumber}
+                        onChange={(e) => {
+                          setSignupForm({ ...signupForm, phoneNumber: e.target.value });
+                          if (signupErrors.phoneNumber) setSignupErrors({ ...signupErrors, phoneNumber: '' });
+                        }}
+                        onFocus={() => setSignupFocused('phoneNumber')}
+                        onBlur={() => {
+                          setSignupFocused(null);
+                          setSignupTouched((p) => ({ ...p, phoneNumber: true }));
+                          if (!signupForm.phoneNumber.trim()) {
+                            setSignupErrors((p) => ({ ...p, phoneNumber: 'Phone number is required' }));
+                          } else if (!/^\+?[0-9\s-]{7,15}$/.test(signupForm.phoneNumber.trim())) {
+                            setSignupErrors((p) => ({ ...p, phoneNumber: 'Enter a valid phone number' }));
+                          }
+                        }}
+                        autoComplete="tel"
+                      />
+                      <FiPhone className="auth-input-icon" />
+                      <div className="auth-focus-underline" />
+                    </div>
+                    {signupTouched.phoneNumber && signupErrors.phoneNumber && (
+                      <span className="auth-error-msg">{signupErrors.phoneNumber}</span>
+                    )}
+                  </div>
+
+                  {/* Field 4: Password */}
+                  <div
+                    className={`auth-field auth-stagger-item stagger-form-5 ${signupFocused === 'password' ? 'is-active' : ''
                       } ${signupForm.password ? 'has-value' : ''}`}
                   >
                     <div className="auth-input-line-wrap">
@@ -518,8 +551,8 @@ const Login = ({ onLogin, initialMode }) => {
                           setSignupTouched((p) => ({ ...p, password: true }));
                           if (!signupForm.password) {
                             setSignupErrors((p) => ({ ...p, password: 'Password is required' }));
-                          } else if (signupForm.password.length < 8) {
-                            setSignupErrors((p) => ({ ...p, password: 'Use 8 characters or more' }));
+                          } else if (signupForm.password.length < 6) {
+                            setSignupErrors((p) => ({ ...p, password: 'Must be at least 6 characters' }));
                           }
                         }}
                         autoComplete="new-password"
@@ -535,41 +568,59 @@ const Login = ({ onLogin, initialMode }) => {
                       </button>
                       <div className="auth-focus-underline" />
                     </div>
-
-                    {/* Hint & Strength bar row */}
-                    <div className="auth-password-hint-row">
-                      <div className="auth-strength-meter">
-                        <div
-                          className={`auth-strength-bar ${passwordStrength >= 1
-                              ? passwordStrength === 1
-                                ? 'is-active-warn'
-                                : 'is-active-good'
-                              : ''
-                            }`}
-                        />
-                        <div
-                          className={`auth-strength-bar ${passwordStrength >= 2
-                              ? passwordStrength === 2
-                                ? 'is-active-good'
-                                : 'is-active-strong'
-                              : ''
-                            }`}
-                        />
-                        <div
-                          className={`auth-strength-bar ${passwordStrength >= 3 ? 'is-active-strong' : ''
-                            }`}
-                        />
-                      </div>
-                      <span className="auth-password-hint-text">Use 8 characters or more.</span>
-                    </div>
-
                     {signupTouched.password && signupErrors.password && (
                       <span className="auth-error-msg">{signupErrors.password}</span>
                     )}
                   </div>
 
+                  {/* Field 5: Confirm Password */}
+                  <div
+                    className={`auth-field auth-stagger-item stagger-form-5 ${signupFocused === 'confirmPassword' ? 'is-active' : ''
+                      } ${signupForm.confirmPassword ? 'has-value' : ''}`}
+                  >
+                    <div className="auth-input-line-wrap">
+                      <label htmlFor="auth-signup-confpass" className="auth-floating-label">
+                        Confirm password
+                      </label>
+                      <input
+                        id="auth-signup-confpass"
+                        type={showSignupConfirmPass ? 'text' : 'password'}
+                        className="auth-input"
+                        value={signupForm.confirmPassword}
+                        onChange={(e) => {
+                          setSignupForm({ ...signupForm, confirmPassword: e.target.value });
+                          if (signupErrors.confirmPassword) setSignupErrors({ ...signupErrors, confirmPassword: '' });
+                        }}
+                        onFocus={() => setSignupFocused('confirmPassword')}
+                        onBlur={() => {
+                          setSignupFocused(null);
+                          setSignupTouched((p) => ({ ...p, confirmPassword: true }));
+                          if (!signupForm.confirmPassword) {
+                            setSignupErrors((p) => ({ ...p, confirmPassword: 'Confirm password is required' }));
+                          } else if (signupForm.confirmPassword !== signupForm.password) {
+                            setSignupErrors((p) => ({ ...p, confirmPassword: 'Passwords do not match' }));
+                          }
+                        }}
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        className="auth-eye-btn"
+                        onClick={() => setShowSignupConfirmPass(!showSignupConfirmPass)}
+                        tabIndex={-1}
+                        aria-label={showSignupConfirmPass ? 'Hide confirm password' : 'Show confirm password'}
+                      >
+                        {showSignupConfirmPass ? <FiEyeOff /> : <FiEye />}
+                      </button>
+                      <div className="auth-focus-underline" />
+                    </div>
+                    {signupTouched.confirmPassword && signupErrors.confirmPassword && (
+                      <span className="auth-error-msg">{signupErrors.confirmPassword}</span>
+                    )}
+                  </div>
+
                   {/* Pill Button: Create account */}
-                  <div className="auth-stagger-item stagger-form-5">
+                  <div className="auth-stagger-item stagger-form-6">
                     <button
                       type="submit"
                       className="auth-submit-btn"
@@ -580,7 +631,7 @@ const Login = ({ onLogin, initialMode }) => {
                   </div>
 
                   {/* Footer Text */}
-                  <div className="auth-footer-text auth-stagger-item stagger-form-6">
+                  <div className="auth-footer-text auth-stagger-item stagger-form-7">
                     <span>Already have an account? </span>
                     <button
                       type="button"
@@ -605,12 +656,12 @@ const Login = ({ onLogin, initialMode }) => {
 
                   {/* General / API Error or Info */}
                   {generalError && (
-                    <div className="auth-error-msg" style={{ fontSize: '10px' }}>
+                    <div className="auth-error-msg" style={{ fontSize: '11px', padding: '2px 0' }}>
                       {generalError}
                     </div>
                   )}
                   {infoMessage && (
-                    <div style={{ color: '#059669', fontSize: '10px', fontWeight: 600 }}>
+                    <div style={{ color: '#059669', fontSize: '11px', fontWeight: 600, padding: '2px 0' }}>
                       {infoMessage}
                     </div>
                   )}
@@ -683,6 +734,8 @@ const Login = ({ onLogin, initialMode }) => {
                           setSigninTouched((p) => ({ ...p, password: true }));
                           if (!signinForm.password) {
                             setSigninErrors((p) => ({ ...p, password: 'Password is required' }));
+                          } else if (signinForm.password.length < 6) {
+                            setSigninErrors((p) => ({ ...p, password: 'Must be at least 6 characters' }));
                           }
                         }}
                         autoComplete="current-password"

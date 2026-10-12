@@ -2,7 +2,6 @@ import React, { useMemo } from "react";
 import { Card, Row, Col, Form, Button, Badge, InputGroup } from "react-bootstrap";
 import {
   FaMoneyBillWave,
-  FaCalculator,
   FaInfoCircle,
   FaCheckCircle,
   FaCoins,
@@ -53,52 +52,6 @@ const CompensationCard = ({
         onChange("salary", value);
       }
     }
-  };
-
-  // ── Auto-Calculate Breakdown from Annual CTC ──
-  const handleAutoCalculateFromCtc = (ctcInput) => {
-    const numericCtc = parseFloat(String(ctcInput).replace(/[^0-9.]/g, "")) || 0;
-    if (numericCtc <= 0) return;
-
-    const monthlyGross = Math.round(numericCtc / 12);
-    const basic = Math.round(monthlyGross * 0.50); // 50% Basic
-    const hra = Math.round(basic * 0.40);          // 40% of Basic
-    const conveyance = 1600;                        // Standard Conveyance
-    const medical = 1250;                           // Standard Medical
-    const fixedSum = basic + hra + conveyance + medical;
-    const specialAllowance = Math.max(0, monthlyGross - fixedSum);
-
-    // Deductions
-    const pfEmployee = Math.min(Math.round(basic * 0.12), 1800); // 12% capped or standard
-    const pfEmployer = pfEmployee;
-    const pt = monthlyGross > 15000 ? 200 : 0;
-    const esiEmployee = monthlyGross <= 21000 ? Math.round(monthlyGross * 0.0075) : 0;
-    const esiEmployer = monthlyGross <= 21000 ? Math.round(monthlyGross * 0.0325) : 0;
-    const totalDeductions = pfEmployee + pt + esiEmployee;
-    const netTakeHome = Math.max(0, monthlyGross - totalDeductions);
-
-    const updated = {
-      ...(data.compensation || {}),
-      compensationType: "SALARY",
-      annualCtc: String(numericCtc),
-      monthlyGross: String(monthlyGross),
-      basicSalary: String(basic),
-      hra: String(hra),
-      conveyanceAllowance: String(conveyance),
-      medicalAllowance: String(medical),
-      specialAllowance: String(specialAllowance),
-      otherAllowances: comp.otherAllowances || "0",
-      pfEmployee: String(pfEmployee),
-      pfEmployer: String(pfEmployer),
-      professionalTax: String(pt),
-      esiEmployee: String(esiEmployee),
-      esiEmployer: String(esiEmployer),
-      netTakeHome: String(netTakeHome),
-    };
-
-    onChange("compensation", updated);
-    onChange("compensationAmount", String(numericCtc));
-    onChange("salary", String(numericCtc));
   };
 
   // Compute live totals if not set
@@ -300,17 +253,6 @@ const CompensationCard = ({
             <span className="d-flex align-items-center gap-1.5">
               <FaFileContract className="text-primary" /> Compensation Model & Terms
             </span>
-            {isEditMode && !readOnly && compType === "SALARY" && (
-              <Button
-                variant="outline-primary"
-                size="sm"
-                className="py-0.5 px-2 extra-small rounded-pill fw-semibold d-inline-flex align-items-center gap-1"
-                onClick={() => handleAutoCalculateFromCtc(comp.annualCtc || "600000")}
-                title="Automatically calculate Basic, HRA, Allowances & PF based on Annual CTC"
-              >
-                <FaCalculator size={11} /> Auto-Compute Breakdown
-              </Button>
-            )}
           </div>
 
           <Row className="g-3">
@@ -325,11 +267,11 @@ const CompensationCard = ({
                   >
                     <option value="SALARY">Salary (Standard Payroll)</option>
                     <option value="STIPEND">Stipend (Intern / Trainee)</option>
-                    <option value="UNPAID">Unpaid / Volunteer</option>
+                    <option value="UNPAID">Unpaid (Intern / Trainee)</option>
                     <option value="CONTRACT_PAYMENT">Contract Payment (Consultant)</option>
                   </Form.Select>
                 ) : (
-                  <div className="fw-semibold text-dark small">{compType.replace(/_/g, " ")}</div>
+                  <div className="fw-semibold text-dark small">{compType === "UNPAID" ? "Unpaid (Intern / Trainee)" : compType.replace(/_/g, " ")}</div>
                 )}
               </Form.Group>
             </Col>
@@ -407,7 +349,7 @@ const CompensationCard = ({
                 <FaInfoCircle size={20} />
               </div>
               <div>
-                <h6 className="fw-bold text-warning-emphasis mb-1">Unpaid / Volunteer Engagement</h6>
+                <h6 className="fw-bold text-warning-emphasis mb-1">Unpaid (Intern / Trainee) Engagement</h6>
                 <p className="text-muted extra-small mb-2" style={{ maxWidth: 650 }}>
                   This candidate is registered with an unpaid engagement agreement (such as an academic internship, volunteering, or honorary role).
                   All salary computations, tax deductions, and bank account verifications are exempted.

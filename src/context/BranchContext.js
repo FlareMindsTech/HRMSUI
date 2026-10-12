@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
-import { selectAuthUser, selectIsSystemAdmin, selectAuthStatus } from "../redux/slices/authSlice";
-import { setBranchMismatchHandler } from "../config/api";
+import { selectAuthUser, selectIsSystemAdmin, selectAuthStatus, selectIsAuthenticated, selectAuthNextAction } from "../redux/slices/authSlice";
+import { setBranchMismatchHandler, getAuthToken } from "../config/api";
 import { fetchMyOrganization, fetchBranchesDropdown, fetchBranches } from "../services/organizationService";
 
 const BranchContext = createContext(null);
@@ -10,10 +10,12 @@ export const BranchProvider = ({ children }) => {
   const user = useSelector(selectAuthUser);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const authStatus = useSelector(selectAuthStatus);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const nextAction = useSelector(selectAuthNextAction);
 
   const [organization, setOrganization] = useState(null);
   const [branches, setBranches] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Read saved selectedBranchId from localStorage
   const [selectedBranchId, setSelectedBranchIdState] = useState(() => {
@@ -41,8 +43,20 @@ export const BranchProvider = ({ children }) => {
     return user.assignedBranchIds.filter(Boolean).map(String);
   }, [user]);
 
+  const hasOrganization = Boolean(
+    user?.organizationId ||
+    user?.tenantId ||
+    user?.tenant?._id ||
+    localStorage.getItem("organizationId") ||
+    localStorage.getItem("tenantId")
+  );
+
   // Load Organization
   const loadOrganization = useCallback(async () => {
+    if (!getAuthToken() || !isAuthenticated || nextAction === "SETUP_ORGANIZATION" || !hasOrganization) {
+      setOrganization(null);
+      return;
+    }
     try {
       const org = await fetchMyOrganization(true);
       if (org && (org._id || org.id || org.organizationName || org.name)) {
@@ -59,10 +73,15 @@ export const BranchProvider = ({ children }) => {
       console.warn("BranchContext: Failed to load organization:", err.message);
       setOrganization(null);
     }
-  }, []);
+  }, [isAuthenticated, nextAction, hasOrganization]);
 
   // Load Branches
   const loadBranches = useCallback(async () => {
+    if (!getAuthToken() || !isAuthenticated || nextAction === "SETUP_ORGANIZATION" || !hasOrganization) {
+      setBranches([]);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       let list = await fetchBranchesDropdown().catch(() => []);
@@ -107,11 +126,11 @@ export const BranchProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [accessLevel, isOwner, isSystemAdmin, userBranchIds, primaryBranchId]);
+  }, [accessLevel, isOwner, isSystemAdmin, userBranchIds, primaryBranchId, isAuthenticated, nextAction, hasOrganization]);
 
   // Organization does not depend on the access filter — load once per person.
   useEffect(() => {
-    if (!userId) {
+    if (!isAuthenticated || !userId || nextAction === "SETUP_ORGANIZATION" || !hasOrganization) {
       orgLoadedForRef.current = null;
       setOrganization(null);
       return;
@@ -119,7 +138,7 @@ export const BranchProvider = ({ children }) => {
     if (orgLoadedForRef.current === userId) return;
     orgLoadedForRef.current = userId;
     loadOrganization();
-  }, [userId, loadOrganization]);
+  }, [isAuthenticated, userId, nextAction, hasOrganization, loadOrganization]);
 
   // Keep authoritative React state in sync when apiFetch recovers from a
   // branch mismatch: it already cleared storage and retried without the
@@ -141,7 +160,7 @@ export const BranchProvider = ({ children }) => {
     : '';
   const branchesFilterKey = `${userId || ''}|${accessLevel}|${branchIdsKey}`;
   useEffect(() => {
-    if (!userId) {
+    if (!isAuthenticated || !userId || nextAction === "SETUP_ORGANIZATION" || !hasOrganization) {
       branchesLoadedForRef.current = null;
       setBranches([]);
       setLoading(false);
@@ -154,7 +173,7 @@ export const BranchProvider = ({ children }) => {
     // loadBranches carries the access filter in its identity; branchIdsKey /
     // accessLevel are folded into branchesFilterKey above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, authStatus, branchesFilterKey]);
+  }, [isAuthenticated, userId, nextAction, hasOrganization, authStatus, branchesFilterKey, loadBranches]);
 
   // Set Selected Branch with authorization check
   const setSelectedBranchId = useCallback(

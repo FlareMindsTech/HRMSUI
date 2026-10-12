@@ -35,9 +35,10 @@ import {
   createOrganization,
   fetchSystemSetupStatus,
   registerSystemOwner,
+  registerSaaSAccount,
 } from "../../services/organizationService";
-import { useDispatch } from "react-redux";
-import { authSynced } from "../../redux/slices/authSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { authSynced, selectAuthUser, fetchAuth } from "../../redux/slices/authSlice";
 import { invalidateOrgResource } from "../../redux/slices/organizationSlice";
 import FeedbackAlert from "../Common/FeedbackAlert";
 import LoadingSpinner from "../Common/LoadingSpinner";
@@ -119,6 +120,7 @@ const INITIAL_FORM = {
 
 export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
   const dispatch = useDispatch();
+  const currentUser = useSelector(selectAuthUser);
   const { refreshOrganization, refreshBranches } = useBranch();
 
   // Stage: "welcome" (First Intro View with Next Button) or "form" (Stepper + Form)
@@ -155,8 +157,28 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
   const fileInputRef = useRef(null);
   const [logoError, setLogoError] = useState("");
 
-  // Check setup status from backend on mount & purge any stale cache
+  const effectiveUser = (() => {
+    if (currentUser) return currentUser;
+    try {
+      const u = localStorage.getItem("user");
+      return u ? JSON.parse(u) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  // Check setup status from backend on mount & prefill owner info from authenticated user
   useEffect(() => {
+    if (effectiveUser) {
+      setFormData((prev) => ({
+        ...prev,
+        ownerFirstName: prev.ownerFirstName || effectiveUser.firstName || effectiveUser.name?.split(" ")[0] || "",
+        ownerLastName: prev.ownerLastName || effectiveUser.lastName || effectiveUser.name?.split(" ").slice(1).join(" ") || "",
+        ownerEmail: prev.ownerEmail || effectiveUser.email || "",
+        ownerPhone: prev.ownerPhone || effectiveUser.phoneNumber || effectiveUser.phone || effectiveUser.mobileNo || "",
+      }));
+    }
+
     try {
       const saved = sessionStorage.getItem("org_setup_form");
       if (saved) {
@@ -193,7 +215,7 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
         }
       })
       .catch((e) => console.warn("Notice checking system setup status:", e.message));
-  }, []);
+  }, [currentUser]);
 
   const updateField = (field, value) => {
     setFormData((prev) => {
@@ -274,10 +296,12 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
       if (!formData.ownerPhone?.trim()) {
         errs.ownerPhone = "Owner Phone Number is required.";
       }
-      if (!formData.ownerPassword || formData.ownerPassword.length < 6) {
+      if (!effectiveUser && (!formData.ownerPassword || formData.ownerPassword.length < 6)) {
+        errs.ownerPassword = "Password must be at least 6 characters.";
+      } else if (formData.ownerPassword && formData.ownerPassword.length < 6) {
         errs.ownerPassword = "Password must be at least 6 characters.";
       }
-      if (formData.ownerPassword !== formData.ownerConfirmPassword) {
+      if (formData.ownerPassword && formData.ownerPassword !== formData.ownerConfirmPassword) {
         errs.ownerConfirmPassword = "Passwords do not match.";
       }
     }
@@ -295,77 +319,6 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
 
   const handleNext = async () => {
     if (!validateStep(currentStep)) return;
-
-    if (currentStep === 3) {
-      // Step 3 Finish: Create organization in database and proceed to owner registration
-      try {
-        setLoading(true);
-        setError("");
-
-        let orgId = existingOrg?.id || existingOrg?._id;
-        let createdOrg = existingOrg;
-
-        if (!orgId) {
-          const payload = {
-            organizationName: formData.organizationName.trim(),
-            organizationCode: formData.organizationCode.trim().toUpperCase().replace(/\s+/g, "_"),
-            legalName: formData.legalName?.trim() || formData.organizationName.trim(),
-            displayName: formData.displayName?.trim() || formData.organizationName.trim(),
-            organizationType: formData.organizationType || "COMPANY",
-            industry: formData.industry?.trim() || "Technology",
-            website: formData.website?.trim() || "",
-            email: formData.email?.trim() || formData.ownerEmail?.trim() || "",
-            phone: formData.phone?.trim() || formData.ownerPhone?.trim() || "",
-            logo: formData.logo?.trim() || "",
-            registrationNumber: formData.registrationNumber?.trim() || "",
-            pan: formData.pan?.trim()?.toUpperCase() || "",
-            tan: formData.tan?.trim()?.toUpperCase() || "",
-            gstin: formData.gstin?.trim()?.toUpperCase() || "",
-            pfNumber: formData.pfNumber?.trim()?.toUpperCase() || "",
-            esiNumber: formData.esiNumber?.trim()?.toUpperCase() || "",
-            msmeNumber: formData.msmeNumber?.trim()?.toUpperCase() || "",
-            incorporationDate: formData.incorporationDate || null,
-            address: formData.address?.trim() || "",
-            city: formData.city?.trim() || "",
-            state: formData.state?.trim() || "",
-            country: formData.country?.trim() || "India",
-            pincode: formData.pincode?.trim() || "",
-            currency: formData.currency || "INR",
-            timeZone: formData.timeZone || "Asia/Kolkata",
-            financialYearStart: formData.financialYearStart || "04-01",
-            status: formData.status || "ACTIVE",
-          };
-
-          console.log("[SetupOrganisation] Creating organization on Step 3 Finish:", payload);
-          const result = await createOrganization(payload);
-          createdOrg = result?.data || result;
-          orgId = createdOrg?._id || createdOrg?.id;
-          setExistingOrg(createdOrg);
-          // A new organization exists: invalidate the shared profile cache.
-          dispatch(invalidateOrgResource("profile"));
-        }
-
-        if (!orgId) {
-          throw new Error("Unable to establish organization ID after creation.");
-        }
-
-        localStorage.setItem("organizationId", orgId);
-        localStorage.setItem("tenantId", orgId);
-
-        setSuccessMessage("Organization created successfully! Now register the System Owner account.");
-        setTimeout(() => setSuccessMessage(""), 5000);
-
-        setStepPersisted(4);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      } catch (err) {
-        console.error("Error creating organization on Step 3:", err);
-        setError(err.message || "Failed to create organization. Please review the details.");
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-
     setStepPersisted(Math.min(currentStep + 1, 4));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -382,7 +335,9 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
-    if (!validateStep(4)) {
+    if (loading) return;
+
+    if (!validateStep(1) || !validateStep(2) || !validateStep(3) || !validateStep(4)) {
       return;
     }
 
@@ -390,128 +345,117 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
       setLoading(true);
       setError("");
 
-      let orgId =
-        existingOrg?.id ||
-        existingOrg?._id ||
-        localStorage.getItem("organizationId") ||
-        localStorage.getItem("tenantId");
+      const combinedPayload = {
+        organizationName: formData.organizationName.trim(),
+        organizationCode: formData.organizationCode.trim().toUpperCase().replace(/\s+/g, "_"),
+        legalName: formData.legalName?.trim() || formData.organizationName.trim(),
+        displayName: formData.displayName?.trim() || formData.organizationName.trim(),
+        organizationType: formData.organizationType || "COMPANY",
+        industry: formData.industry?.trim() || "Technology",
+        website: formData.website?.trim() || "",
+        email: formData.email?.trim() || formData.ownerEmail?.trim() || "",
+        phone: formData.phone?.trim() || formData.ownerPhone?.trim() || "",
+        logo: formData.logo?.trim() || "",
+        registrationNumber: formData.registrationNumber?.trim() || "",
+        pan: formData.pan?.trim()?.toUpperCase() || "",
+        tan: formData.tan?.trim()?.toUpperCase() || "",
+        gstin: formData.gstin?.trim()?.toUpperCase() || "",
+        pfNumber: formData.pfNumber?.trim()?.toUpperCase() || "",
+        esiNumber: formData.esiNumber?.trim()?.toUpperCase() || "",
+        msmeNumber: formData.msmeNumber?.trim()?.toUpperCase() || "",
+        incorporationDate: formData.incorporationDate || null,
+        address: formData.address?.trim() || "",
+        city: formData.city?.trim() || "",
+        state: formData.state?.trim() || "",
+        country: formData.country?.trim() || "India",
+        pincode: formData.pincode?.trim() || "",
+        currency: formData.currency || "INR",
+        timeZone: formData.timeZone || "Asia/Kolkata",
+        financialYearStart: formData.financialYearStart || "04-01",
+        status: formData.status || "ACTIVE",
 
-      // Fallback: If organization was not yet established, create it
+        // Owner account details
+        firstName: formData.ownerFirstName?.trim() || (currentUser?.name ? currentUser.name.split(" ")[0] : ""),
+        lastName: formData.ownerLastName?.trim() || (currentUser?.name ? currentUser.name.split(" ").slice(1).join(" ") : ""),
+        name: `${formData.ownerFirstName?.trim() || ""} ${formData.ownerLastName?.trim() || ""}`.trim() || currentUser?.name || "",
+        ownerFirstName: formData.ownerFirstName?.trim() || "",
+        ownerLastName: formData.ownerLastName?.trim() || "",
+        ownerEmail: formData.ownerEmail?.trim()?.toLowerCase() || currentUser?.email?.toLowerCase() || "",
+        ownerPhone: formData.ownerPhone?.trim() || currentUser?.phoneNumber || currentUser?.phone || "",
+        mobileNo: formData.ownerPhone?.trim() || currentUser?.phoneNumber || currentUser?.phone || "",
+        phoneNumber: formData.ownerPhone?.trim() || currentUser?.phoneNumber || currentUser?.phone || "",
+        ownerPassword: formData.ownerPassword?.trim() || undefined,
+        password: formData.ownerPassword?.trim() || undefined,
+      };
+
+      let result = null;
+      let orgResult = existingOrg;
+      let orgId = existingOrg?._id || existingOrg?.id;
+
       if (!orgId) {
-        if (!validateStep(1) || !validateStep(2) || !validateStep(3)) {
-          setError("Please complete and verify previous organization profile steps.");
-          return;
-        }
-        const payload = {
-          organizationName: formData.organizationName.trim(),
-          organizationCode: formData.organizationCode.trim().toUpperCase().replace(/\s+/g, "_"),
-          legalName: formData.legalName?.trim() || formData.organizationName.trim(),
-          displayName: formData.displayName?.trim() || formData.organizationName.trim(),
-          organizationType: formData.organizationType || "COMPANY",
-          industry: formData.industry?.trim() || "Technology",
-          website: formData.website?.trim() || "",
-          email: formData.email?.trim() || formData.ownerEmail?.trim() || "",
-          phone: formData.phone?.trim() || formData.ownerPhone?.trim() || "",
-          logo: formData.logo?.trim() || "",
-          registrationNumber: formData.registrationNumber?.trim() || "",
-          pan: formData.pan?.trim()?.toUpperCase() || "",
-          tan: formData.tan?.trim()?.toUpperCase() || "",
-          gstin: formData.gstin?.trim()?.toUpperCase() || "",
-          pfNumber: formData.pfNumber?.trim()?.toUpperCase() || "",
-          esiNumber: formData.esiNumber?.trim()?.toUpperCase() || "",
-          msmeNumber: formData.msmeNumber?.trim()?.toUpperCase() || "",
-          incorporationDate: formData.incorporationDate || null,
-          address: formData.address?.trim() || "",
-          city: formData.city?.trim() || "",
-          state: formData.state?.trim() || "",
-          country: formData.country?.trim() || "India",
-          pincode: formData.pincode?.trim() || "",
-          currency: formData.currency || "INR",
-          timeZone: formData.timeZone || "Asia/Kolkata",
-          financialYearStart: formData.financialYearStart || "04-01",
-          status: formData.status || "ACTIVE",
-        };
-        const result = await createOrganization(payload);
-        const createdOrg = result?.data || result;
-        orgId = createdOrg?._id || createdOrg?.id;
-        setExistingOrg(createdOrg);
-        // A new organization exists: invalidate the shared profile cache.
+        result = await createOrganization(combinedPayload);
+        orgResult = result?.organization || result?.data?.organization || result?.data || result;
+        orgId = orgResult?._id || orgResult?.id;
+
+        setExistingOrg(orgResult);
         dispatch(invalidateOrgResource("profile"));
       }
 
       if (!orgId) {
-        throw new Error("Unable to establish valid organization ID.");
+        orgId = localStorage.getItem("organizationId") || localStorage.getItem("tenantId");
       }
 
-      localStorage.setItem("organizationId", orgId);
-      localStorage.setItem("tenantId", orgId);
-
-      // Register One-Time Owner Account mapped to Organization
-      const ownerPayload = {
-        organizationId: orgId,
-        firstName: formData.ownerFirstName.trim(),
-        lastName: formData.ownerLastName.trim() || undefined,
-        email: formData.ownerEmail.trim().toLowerCase(),
-        mobileNo: formData.ownerPhone.trim(),
-        password: formData.ownerPassword,
-      };
-
-      console.log("[SetupOrganisation] Registering Owner mapped to Org ID:", orgId, ownerPayload);
-      const regResult = await registerSystemOwner(ownerPayload);
-      let token = regResult?.token || regResult?.data?.token;
-      let userObj = regResult?.data?.user || regResult?.user || regResult?.data?.owner;
-
-      // Auto-authenticate with Owner session credentials
-      if (!token) {
-        try {
-          const loginRes = await fetch(`${API_BASE_URL}/auth/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              identifier: formData.ownerEmail.trim().toLowerCase(),
-              email: formData.ownerEmail.trim().toLowerCase(),
-              password: formData.ownerPassword,
-            }),
-          });
-          const loginData = await loginRes.json();
-          if (loginData?.token) {
-            token = loginData.token;
-            userObj = loginData.user || userObj;
-          }
-        } catch (authErr) {
-          console.warn("Auto-login fallback error:", authErr);
-        }
-      }
-
-      if (token) {
-        setAuthToken(token);
-        localStorage.setItem("tenantId", orgId);
+      if (orgId) {
         localStorage.setItem("organizationId", orgId);
-        // The legacy isAuthenticated sentinel is no longer written (route
-        // gating comes from the Redux selector); cleanup lists still remove
-        // it for existing installs.
-        if (userObj) {
-          if (!userObj.organizationId) userObj.organizationId = orgId;
-          if (!userObj.tenantId) userObj.tenantId = orgId;
+        localStorage.setItem("tenantId", orgId);
+      }
+
+      const newToken = result?.token || result?.data?.token;
+      if (newToken) {
+        setAuthToken(newToken);
+      }
+
+      // If user was not authenticated and a password was supplied, ensure root owner registered / logged in
+      if (!currentUser && formData.ownerPassword && !newToken) {
+        const ownerPayload = {
+          organizationId: orgId,
+          firstName: formData.ownerFirstName.trim(),
+          lastName: formData.ownerLastName.trim() || undefined,
+          email: formData.ownerEmail.trim().toLowerCase(),
+          mobileNo: formData.ownerPhone.trim(),
+          password: formData.ownerPassword,
+        };
+
+        const regResult = await registerSystemOwner(ownerPayload).catch(() => null);
+        let token = regResult?.token || regResult?.data?.token;
+
+        if (!token) {
           try {
-            localStorage.setItem("user", JSON.stringify(userObj));
-          } catch {
-            // ignore storage errors
+            const loginRes = await fetch(`${API_BASE_URL}/auth/login`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                identifier: formData.ownerEmail.trim().toLowerCase(),
+                email: formData.ownerEmail.trim().toLowerCase(),
+                password: formData.ownerPassword,
+              }),
+            });
+            const loginData = await loginRes.json();
+            if (loginData?.token) {
+              token = loginData.token;
+            }
+          } catch (authErr) {
+            console.warn("Auto-login fallback error:", authErr);
           }
         }
-        dispatch(
-          authSynced({
-            user: userObj || null,
-            role: userObj?.roleCode || userObj?.roleName || "OWNER",
-            menus: [],
-            permissions: [],
-            // Timestamp is supplied by the caller so the reducer performs no
-            // clock reads. tokenPresent is intentionally left for the auth
-            // thunks to resolve, preserving the existing gate behavior.
-            fetchedAt: Date.now(),
-          })
-        );
+
+        if (token) {
+          setAuthToken(token);
+        }
       }
+
+      // Re-fetch authoritative auth context
+      await dispatch(fetchAuth({ force: true }));
 
       // Clear setup wizard temporary session state
       try {
@@ -523,17 +467,17 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
       if (refreshOrganization) await refreshOrganization();
       if (refreshBranches) await refreshBranches();
 
-      setSuccessMessage("Organization and Owner registered & mapped successfully! Opening dashboard...");
+      setSuccessMessage("Organization setup completed successfully! Opening dashboard...");
 
       setTimeout(() => {
         if (onOrgCreated) {
-          onOrgCreated(existingOrg);
+          onOrgCreated(orgResult);
         }
         window.location.href = "/dashboard";
       }, 1000);
     } catch (err) {
-      console.error("Error launching organization & owner setup:", err);
-      setError(err.message || "Failed to initialize organization & owner account.");
+      console.error("Error launching organization setup:", err);
+      setError(err.message || "Failed to initialize organization.");
     } finally {
       setLoading(false);
     }
@@ -1328,7 +1272,7 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
           </div>
         )}
 
-        {/* ── STEP 4: OWNER ACCOUNT REGISTRATION ── */}
+        {/* ── STEP 4: OWNER ACCOUNT REGISTRATION / CONFIRMATION ── */}
         {currentStep === 4 && (
           <div>
             <div className="p-3 mb-4 rounded-3 bg-light border d-flex align-items-center gap-3">
@@ -1337,16 +1281,24 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
               </div>
               <div>
                 <div className="fw-bold text-dark small">
-                  {existingOrg || formData.organizationName ? (
+                  {currentUser ? (
+                    <>
+                      Authenticated Root Administrator: <span className="text-success fw-bold">{currentUser.name || currentUser.fullName || currentUser.email}</span>
+                    </>
+                  ) : existingOrg || formData.organizationName ? (
                     <>
                       Organization Established: <span className="text-success fw-bold">{existingOrg?.displayName || existingOrg?.organizationName || formData.organizationName}</span>
                     </>
                   ) : (
-                    "One-Time Owner Account Registration"
+                    "Root Owner Account Details"
                   )}
                 </div>
                 <div className="text-muted extra-small">
-                  This user account will be mapped as root <code>OWNER</code> with full administrative authority across this organization and all branches.
+                  {currentUser ? (
+                    "Your authenticated account will be configured as root System Owner with full administrative authority across this organization and all branches."
+                  ) : (
+                    "This root account will be created as system Owner with full administrative authority across this organization and all branches."
+                  )}
                 </div>
               </div>
             </div>
@@ -1499,7 +1451,7 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
                       <FaExclamationTriangle size={11} /> {validationErrors.ownerPassword}
                     </div>
                   ) : (
-                    <Form.Text className="text-muted extra-small">Minimum 6 characters with secure combination.</Form.Text>
+                    <Form.Text className="text-muted extra-small">Minimum 6 characters.</Form.Text>
                   )}
                 </Form.Group>
               </Col>
@@ -1558,35 +1510,36 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
             </Button>
           </div>
 
-              <div>
-                {currentStep < 4 ? (
-                  <Button
-                    type="button"
-                    className="onboarding-nav-btn onboarding-next-btn"
-                    onClick={handleNext}
-                  >
-                    Continue <FaChevronRight size={10} className="ms-1" />
-                  </Button>
+          <div>
+            {currentStep < 4 ? (
+              <Button
+                type="button"
+                className="onboarding-nav-btn onboarding-next-btn"
+                onClick={handleNext}
+                disabled={loading}
+              >
+                Continue <FaChevronRight size={10} className="ms-1" />
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                className="onboarding-nav-btn onboarding-submit-btn"
+                disabled={loading}
+                onClick={handleSubmit}
+              >
+                {loading ? (
+                  <>
+                    <Spinner animation="border" size="sm" className="me-2" /> Initializing Organization...
+                  </>
                 ) : (
-                  <Button
-                    type="submit"
-                    className="onboarding-nav-btn onboarding-submit-btn"
-                    disabled={loading}
-                    onClick={handleSubmit}
-                  >
-                    {loading ? (
-                      <>
-                        <Spinner animation="border" size="sm" className="me-2" /> Initializing Organization & Owner...
-                      </>
-                    ) : (
-                      <>
-                        <FaRocket className="me-2" /> Complete Setup & Register Owner
-                      </>
-                    )}
-                  </Button>
+                  <>
+                    <FaRocket className="me-2" /> {currentUser ? "Complete & Launch Organization" : "Complete Setup & Register Owner"}
+                  </>
                 )}
-              </div>
-            </div>
+              </Button>
+            )}
+          </div>
+        </div>
       </Card>
     </div>
   );

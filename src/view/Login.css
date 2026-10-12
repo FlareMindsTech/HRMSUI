@@ -80,13 +80,13 @@
   z-index: 0;
 }
 
-/* ── The Auth Card (Expanded Modern Luxury Dimensions: 880x500px) ── */
+/* ── The Auth Card (Expanded Modern Luxury Dimensions: 880x570px) ── */
 .auth-card {
   position: relative;
   z-index: 10;
   width: 880px;
   max-width: 94vw;
-  height: 500px;
+  height: 570px;
   border-radius: 20px;
   border: 1px solid var(--auth-card-border);
   overflow: hidden;
@@ -434,7 +434,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: 410px;
+  height: 480px;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -818,7 +818,17 @@
 
 .auth-card[data-phase="revealing"] .stagger-form-6,
 .auth-card[data-phase="idle"] .stagger-form-6 {
-  animation-delay: 350ms;
+  animation-delay: 320ms;
+}
+
+.auth-card[data-phase="revealing"] .stagger-form-7,
+.auth-card[data-phase="idle"] .stagger-form-7 {
+  animation-delay: 360ms;
+}
+
+.auth-card[data-phase="revealing"] .stagger-form-8,
+.auth-card[data-phase="idle"] .stagger-form-8 {
+  animation-delay: 400ms;
 }
 
 /* Brand Item Staggers */

@@ -1,4 +1,4 @@
-import { apiFetch, apiError, buildQuery } from "../config/api";
+import { apiFetch, apiError, buildQuery, setAuthToken } from "../config/api";
 
 // ============================================================
 // Organization Service (Multi-Tenant SaaS HRMS)
@@ -179,14 +179,15 @@ export const fetchMyOrganization = async (forceRefresh = false) => {
   return foundOrg;
 };
 
-export const createOrganization = async (payload) => {
-  const res = await apiFetch("/organization/", {
+export const registerSaaSAccount = async (payload) => {
+  // Primary endpoint: POST /api/user/register (UserController.registerSaaSAccount)
+  const res = await apiFetch("/user/register", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
-    throw apiError(res, "Failed to create organization");
+    throw apiError(res, "Failed to register SaaS account");
   }
 
   const resultData = res.data?.data || res.data;
@@ -195,9 +196,8 @@ export const createOrganization = async (payload) => {
   if (org?.organization) org = org.organization;
 
   const normalized = normalizeOrganization(org || resultData);
-  console.log("[setup-organization] response:", normalized || resultData);
+  const orgId = normalized?._id || normalized?.id || resultData?._id || resultData?.id || resultData?.organizationId || resultData?.tenantId;
 
-  const orgId = normalized?._id || normalized?.id;
   if (orgId) {
     localStorage.setItem("organizationId", orgId);
     localStorage.setItem("tenantId", orgId);
@@ -211,7 +211,72 @@ export const createOrganization = async (payload) => {
       }
     } catch (e) { }
   }
-  return normalized || resultData;
+
+  if (resultData?.token) {
+    setAuthToken(resultData.token);
+  }
+
+  return {
+    organization: normalized || resultData,
+    user: resultData?.user || null,
+    token: resultData?.token || null,
+    data: resultData,
+  };
+};
+
+export const createOrganization = async (payload) => {
+  let res = await apiFetch("/organization/", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok && res.status === 404) {
+    res = await apiFetch("/organization/create", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  if (!res.ok) {
+    throw apiError(res, "Failed to create organization");
+  }
+
+  const resultData = res.data?.data || res.data;
+  let org = resultData?.organization || resultData?.org || resultData;
+  if (Array.isArray(org)) org = org[0];
+  if (org?.organization) org = org.organization;
+
+  const normalized = normalizeOrganization(org || resultData);
+  console.log("[setup-organization] response:", normalized || resultData);
+
+  const orgId = normalized?._id || normalized?.id || resultData?._id || resultData?.id || res.data?.organizationId;
+  if (orgId) {
+    localStorage.setItem("organizationId", orgId);
+    localStorage.setItem("tenantId", orgId);
+    try {
+      const uStr = localStorage.getItem("user");
+      if (uStr) {
+        const u = JSON.parse(uStr);
+        u.organizationId = orgId;
+        u.tenantId = orgId;
+        localStorage.setItem("user", JSON.stringify(u));
+      }
+    } catch (e) { }
+  }
+
+  const token = res.data?.token || res.data?.accountToken || resultData?.token || resultData?.accountToken;
+  if (token) {
+    setAuthToken(token);
+  }
+
+  return {
+    organization: normalized || resultData,
+    user: resultData?.owner || resultData?.user || null,
+    owner: resultData?.owner || null,
+    token: token || null,
+    nextAction: res.data?.nextAction || resultData?.nextAction || "ORGANIZATION_SETUP_COMPLETE",
+    data: resultData,
+  };
 };
 
 export const updateMyOrganization = async (payload, orgIdOverride = null) => {
@@ -269,13 +334,23 @@ export const fetchReportingTree = async () => {
 
 export const fetchBranches = async (params = {}) => {
   const res = await apiFetch(`/branches${buildQuery(params)}`, { method: "GET" });
-  if (!res.ok) throw apiError(res, "Failed to fetch branches");
+  if (!res.ok) {
+    if (res.status === 403 || res.status === 404 || res.status === 401) {
+      return { data: [] };
+    }
+    throw apiError(res, "Failed to fetch branches");
+  }
   return res.data;
 };
 
 export const fetchBranchesDropdown = async () => {
   const res = await apiFetch("/branches/dropdown", { method: "GET" });
-  if (!res.ok) throw apiError(res, "Failed to fetch branch dropdown");
+  if (!res.ok) {
+    if (res.status === 403 || res.status === 404 || res.status === 401) {
+      return [];
+    }
+    throw apiError(res, "Failed to fetch branch dropdown");
+  }
   return res.data?.data || [];
 };
 
@@ -363,6 +438,9 @@ export const fetchDesignations = async (params = {}) => {
 export const fetchMyOrganizationsList = async () => {
   const res = await apiFetch("/organization/list", { method: "GET" });
   if (!res.ok) {
+    if (res.status === 403 || res.status === 404 || res.status === 401) {
+      return [];
+    }
     throw apiError(res, "Failed to fetch organizations list");
   }
   return res.data?.data || [];
@@ -1012,7 +1090,6 @@ export const fetchSystemSetupStatus = async () => {
   if (!res.ok) {
     throw apiError(res, "Failed to fetch system setup status");
   }
-  console.log("[setup-status] response:", res.data);
   return res.data;
 };
 
@@ -1021,7 +1098,6 @@ export const fetchSystemSetupStatus = async () => {
  * Payload: { organizationId, firstName, lastName, email, password, mobileNo, ... }
  */
 export const registerSystemOwner = async (payload) => {
-  console.log("[register-owner] request payload:", { ...payload, password: "***" });
   const res = await apiFetch("/auth/register-owner", {
     method: "POST",
     body: JSON.stringify(payload),
@@ -1031,7 +1107,6 @@ export const registerSystemOwner = async (payload) => {
     throw apiError(res, "Failed to register organization owner");
   }
 
-  console.log("[register-owner] response:", res.data);
   return res.data;
 };
 

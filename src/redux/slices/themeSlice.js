@@ -143,6 +143,8 @@ export const fetchTheme = createAsyncThunk(
   "theme/fetchTheme",
   async (_, { rejectWithValue }) => {
     try {
+      const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) return DEFAULT_THEME;
       const settings = await fetchOrganizationSettings();
       const themeData = settings?.theme || DEFAULT_THEME;
       applyThemeToCssVariables(themeData);

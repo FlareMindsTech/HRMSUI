@@ -34,7 +34,9 @@ function Dashboard() {
   const hasPermission = useHasPermission();
   const navigate = useNavigate();
 
-  const employeeName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Team Member';
+  const employeeName = user
+    ? (user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email?.split('@')[0] || 'User')
+    : 'User';
   const roleCode = (user?.roleCode || user?.roleName || '').toUpperCase();
 
   // Admin and Owner roles do not have Punch In / Out widget on Dashboard
