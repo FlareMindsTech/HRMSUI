@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
-<<<<<<< HEAD
-import { selectAuthUser, selectIsSystemAdmin, selectAuthStatus, selectIsAuthenticated, selectAuthNextAction } from "../redux/slices/authSlice";
+import {
+  selectAuthUser,
+  selectIsSystemAdmin,
+  selectAuthStatus,
+  selectIsAuthenticated,
+  selectAuthNextAction,
+  selectAuthAccessLevel,
+} from "../redux/slices/authSlice";
 import { setBranchMismatchHandler, getAuthToken } from "../config/api";
-=======
-import { selectAuthUser, selectIsSystemAdmin, selectAuthStatus, selectAuthAccessLevel } from "../redux/slices/authSlice";
-import { setBranchMismatchHandler } from "../config/api";
->>>>>>> 92a651b84a3d098c2bba34b3fdd5d66e104349af
 import { fetchMyOrganization, fetchBranchesDropdown, fetchBranches } from "../services/organizationService";
 
 const BranchContext = createContext(null);
@@ -15,12 +17,9 @@ export const BranchProvider = ({ children }) => {
   const user = useSelector(selectAuthUser);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const authStatus = useSelector(selectAuthStatus);
-<<<<<<< HEAD
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const nextAction = useSelector(selectAuthNextAction);
-=======
   const authAccessLevel = useSelector(selectAuthAccessLevel);
->>>>>>> 92a651b84a3d098c2bba34b3fdd5d66e104349af
 
   const [organization, setOrganization] = useState(null);
   const [branches, setBranches] = useState([]);
