@@ -424,6 +424,12 @@
   border: 1px solid #cbd5e1;
 }
 
+.leave-type-badge.custom {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.28);
+}
+
 /* ── Action Buttons ── */
 .leave-btn-approve {
   background: linear-gradient(135deg, #2DC58A 0%, #20a673 100%);

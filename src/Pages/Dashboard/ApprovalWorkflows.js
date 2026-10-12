@@ -61,7 +61,7 @@ function ApprovalWorkflows() {
     allowSelfApproval: false,
     isActive: true,
     approvalLevels: [
-      { level: 1, name: 'Level 1', roleId: '', roleName: '', minimumPriority: 3, isMandatory: true }
+      { level: 1, name: 'Level 1', roleId: '', requiredRole: '', roleName: '', minimumPriority: 3, isMandatory: true }
     ],
   });
 
@@ -125,14 +125,21 @@ function ApprovalWorkflows() {
     try {
       const sanitizedLevels = (configForm.approvalLevels || []).map((lvl, index) => {
         const lvlNum = lvl.level || index + 1;
-        const matchedRole = roles.find((r) => String(r._id) === String(lvl.roleId));
+        const resolvedRoleId = lvl.requiredRole?._id || lvl.requiredRole || lvl.roleId || '';
+        const matchedRole = roles.find((r) => String(r._id || r.id) === String(resolvedRoleId));
         const roleTitle = lvl.roleName || matchedRole?.roleName || matchedRole?.name || '';
+        const rolePriority = matchedRole?.priority !== undefined ? Number(matchedRole.priority) : 3;
+        let minPriority = Number(lvl.minimumPriority) || rolePriority;
+        if (resolvedRoleId && minPriority < rolePriority) {
+          minPriority = rolePriority;
+        }
         return {
           level: lvlNum,
           name: lvl.name || roleTitle || `Level ${lvlNum}`,
-          roleId: lvl.roleId || undefined,
+          roleId: resolvedRoleId || undefined,
+          requiredRole: resolvedRoleId || undefined,
           roleName: roleTitle || `Level ${lvlNum} Authority`,
-          minimumPriority: Number(lvl.minimumPriority) || 1,
+          minimumPriority: minPriority,
           isMandatory: lvl.isMandatory !== undefined ? Boolean(lvl.isMandatory) : true,
         };
       });
@@ -184,8 +191,9 @@ function ApprovalWorkflows() {
             level: nextLvl,
             name: `Level ${nextLvl}`,
             roleId: '',
+            requiredRole: '',
             roleName: '',
-            minimumPriority: 2,
+            minimumPriority: 3,
             isMandatory: true,
           },
         ],
@@ -228,11 +236,17 @@ function ApprovalWorkflows() {
       header: 'Approval Hierarchy',
       render: (row) => (
         <div>
-          {row.approvalLevels?.map((l) => (
-            <span key={l.level} className="badge bg-light text-dark border me-1">
-              L{l.level}: {l.roleName || `Priority ≤ ${l.minimumPriority}`}
-            </span>
-          ))}
+          {row.approvalLevels?.map((l) => {
+            const roleObj = typeof l.requiredRole === 'object' && l.requiredRole !== null ? l.requiredRole : null;
+            const roleIdStr = roleObj?._id || l.requiredRole || l.roleId;
+            const matchedRole = roleObj || roles.find((r) => String(r._id || r.id) === String(roleIdStr));
+            const displayRole = roleObj?.roleName || matchedRole?.roleName || l.roleName || (l.minimumPriority ? `Priority ≤ ${l.minimumPriority}` : '');
+            return (
+              <span key={l.level} className="badge bg-light text-dark border me-1">
+                L{l.level}: {displayRole} (P≤{l.minimumPriority})
+              </span>
+            );
+          })}
         </div>
       ),
     },
@@ -261,16 +275,27 @@ function ApprovalWorkflows() {
               allowSelfApproval: Boolean(row.allowSelfApproval),
               isActive: row.isActive !== undefined ? row.isActive : true,
               approvalLevels: row.approvalLevels?.length
-                ? row.approvalLevels.map((lvl, idx) => ({
-                    ...lvl,
-                    level: lvl.level || idx + 1,
-                    name: lvl.name || lvl.roleName || `Level ${lvl.level || idx + 1}`,
-                    roleId: lvl.roleId || '',
-                    roleName: lvl.roleName || '',
-                    minimumPriority: lvl.minimumPriority ?? 3,
-                    isMandatory: lvl.isMandatory !== undefined ? lvl.isMandatory : true,
-                  }))
-                : [{ level: 1, name: 'Level 1', roleId: '', roleName: '', minimumPriority: 3, isMandatory: true }],
+                ? row.approvalLevels.map((lvl, idx) => {
+                    const resolvedRoleId = lvl.requiredRole?._id
+                      ? String(lvl.requiredRole._id)
+                      : lvl.requiredRole
+                      ? String(lvl.requiredRole)
+                      : lvl.roleId || '';
+                    const matchedRole = roles.find((r) => String(r._id || r.id) === resolvedRoleId);
+                    const roleTitle = lvl.requiredRole?.roleName || matchedRole?.roleName || lvl.roleName || '';
+                    const fallbackPriority = matchedRole?.priority ?? 3;
+                    return {
+                      ...lvl,
+                      level: lvl.level || idx + 1,
+                      name: lvl.name || roleTitle || `Level ${lvl.level || idx + 1}`,
+                      roleId: resolvedRoleId,
+                      requiredRole: resolvedRoleId,
+                      roleName: roleTitle,
+                      minimumPriority: lvl.minimumPriority ?? fallbackPriority,
+                      isMandatory: lvl.isMandatory !== undefined ? lvl.isMandatory : true,
+                    };
+                  })
+                : [{ level: 1, name: 'Level 1', roleId: '', requiredRole: '', roleName: '', minimumPriority: 3, isMandatory: true }],
             });
             setShowConfigModal(true);
           }}
@@ -361,7 +386,7 @@ function ApprovalWorkflows() {
                     description: '',
                     allowSelfApproval: false,
                     isActive: true,
-                    approvalLevels: [{ level: 1, name: 'Level 1', roleId: '', roleName: '', minimumPriority: 3, isMandatory: true }],
+                    approvalLevels: [{ level: 1, name: 'Level 1', roleId: '', requiredRole: '', roleName: '', minimumPriority: 3, isMandatory: true }],
                   });
                   setShowConfigModal(true);
                 }}
@@ -480,16 +505,20 @@ function ApprovalWorkflows() {
                     </Col>
                     <Col md={4}>
                       <Form.Select
-                        value={lvl.roleId || ''}
+                        value={lvl.roleId || (lvl.requiredRole?._id ? String(lvl.requiredRole._id) : (lvl.requiredRole ? String(lvl.requiredRole) : ''))}
                         onChange={(e) => {
-                          const selected = roles.find((r) => String(r._id || r.id) === String(e.target.value));
+                          const selectedVal = e.target.value;
+                          const selected = roles.find((r) => String(r._id || r.id) === String(selectedVal));
                           const updated = [...configForm.approvalLevels];
                           const roleTitle = selected?.roleName || selected?.name || '';
+                          const rolePriority = selected?.priority !== undefined ? Number(selected.priority) : (updated[index].minimumPriority ?? 3);
                           updated[index] = {
                             ...updated[index],
-                            roleId: e.target.value,
+                            roleId: selectedVal,
+                            requiredRole: selectedVal,
                             roleName: roleTitle || 'Authority Role',
                             name: roleTitle || updated[index].name || `Level ${updated[index].level || index + 1}`,
+                            minimumPriority: rolePriority,
                           };
                           setConfigForm({ ...configForm, approvalLevels: updated });
                         }}
