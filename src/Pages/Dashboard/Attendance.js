@@ -7,10 +7,12 @@ import {
   FaSearch, FaEdit, FaHistory, FaUser, FaChevronLeft, FaChevronRight,
   FaUsers, FaChartLine, FaMapMarkerAlt, FaExclamationCircle, FaArrowLeft, FaPlus,
   FaCalendarPlus, FaShieldAlt, FaInfoCircle, FaBuilding, FaSitemap, FaFileAlt,
-  FaFileContract, FaCheck, FaTimes, FaFilter, FaDownload, FaCrosshairs, FaCheckDouble, FaUmbrellaBeach
+  FaFileContract, FaCheck, FaTimes, FaFilter, FaDownload, FaCrosshairs, FaCheckDouble, FaUmbrellaBeach,
+  FaUserCheck
 } from 'react-icons/fa';
 import { useSelector, useDispatch } from 'react-redux';
-import { selectAuthUser } from '../../redux/slices/authSlice';
+import { selectAuthUser, useHasPermission } from '../../redux/slices/authSlice';
+import ManualAttendanceModal from '../../Components/Attendance/ManualAttendanceModal';
 import EmptyState from '../../Components/Common/EmptyState';
 import PaginationBar from '../../Components/Common/PaginationBar';
 import StatusBadge from '../../Components/Common/StatusBadge';
@@ -317,6 +319,9 @@ function Attendance() {
   const isPM = !isOwner && !isAdmin && !isHR && (priority === 4 || rawRole.includes('MANAGER') || rawRole.includes('PROJECT') || rawRole.includes('TL'));
   const isEmployeeOrIntern = !isOwner && !isAdmin && !isHR && !isPM;
 
+  const hasPermission = useHasPermission();
+  const canManualEntry = isOwner || isAdmin || Boolean(hasPermission && hasPermission('attendance.modify')) || (user?.permissions && (user.permissions.includes('*') || user.permissions.includes('attendance.modify')));
+
   // Determine initial default tab per role
   const defaultTab = isPM ? 'my-team' : isEmployeeOrIntern ? 'my-today' : 'overview';
   const [activeTab, setActiveTab] = useState(defaultTab);
@@ -393,6 +398,7 @@ function Attendance() {
   const [locationModalRecord, setLocationModalRecord] = useState(null);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
+  const [showManualModal, setShowManualModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [correctionForm, setCorrectionForm] = useState({
     loginTime: '', logoutTime: '', status: 'Present', locationType: 'Office', isLate: false, reason: ''
@@ -605,8 +611,9 @@ function Attendance() {
     }
     setPunchLoading(true);
     try {
+      const effectiveMode = (effectiveAttendanceMode || attendancePolicy?.attendanceMode || 'GEOFENCE').toUpperCase();
       let coords = null;
-      if (attendancePolicy?.attendanceMode !== 'STATIC_IP') {
+      if (effectiveMode !== 'STATIC_IP') {
         if (navigator.geolocation) {
           try {
             const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 }));
@@ -617,10 +624,16 @@ function Attendance() {
 
       if (todayRecord?.loginTime && !todayRecord?.logoutTime) {
         const res = await punchOutUser(coords || {});
+        if (res?.attendanceMode) {
+          setEffectiveAttendanceMode(String(res.attendanceMode).toUpperCase());
+        }
         setFeedbackMessage({ type: 'success', text: res.message || 'Punched out successfully!' });
       } else {
         const res = await punchInUser(coords || {});
-        const successMsg = attendancePolicy?.attendanceMode === 'STATIC_IP'
+        if (res?.attendanceMode) {
+          setEffectiveAttendanceMode(String(res.attendanceMode).toUpperCase());
+        }
+        const successMsg = effectiveMode === 'STATIC_IP'
           ? 'Office network verified. Punched in successfully!'
           : (res.message || 'Punched in successfully!');
         setFeedbackMessage({ type: 'success', text: successMsg });
@@ -708,6 +721,16 @@ function Attendance() {
           </span>
         </div>
         <div className="d-flex align-items-center gap-2 flex-wrap">
+          {canManualEntry && (
+            <Button
+              variant="outline-primary"
+              size="sm"
+              className="rounded-pill px-3 fw-semibold d-flex align-items-center gap-1.5"
+              onClick={() => setShowManualModal(true)}
+            >
+              <FaUserCheck size={12} /> Manual Attendance
+            </Button>
+          )}
           <Button
             variant="outline-success"
             size="sm"
@@ -1202,7 +1225,15 @@ function Attendance() {
                     <td className="text-danger fw-semibold">{r.logoutTime ? formatTime(r.logoutTime) : (r.loginTime ? 'Working...' : '—')}</td>
                     <td className="fw-bold">{r.totalHours ? `${r.totalHours} h` : '0'}</td>
                     <td>{renderStatusBadgeStatic(r.status)}</td>
-                    <td><Badge bg="light" text="dark" className="border extra-small">{r.attendanceSource || 'GPS'}</Badge></td>
+                    <td>
+                      <Badge
+                        bg={r.attendanceSource === 'MANUAL' ? 'warning-subtle' : 'light'}
+                        text="dark"
+                        className="border extra-small"
+                      >
+                        {r.attendanceSource === 'GPS' ? 'GEOFENCE' : (r.attendanceSource || 'GEOFENCE')}
+                      </Badge>
+                    </td>
                     <td>
                       <Button variant="light" size="sm" onClick={() => handleOpenCorrection(r)} className="border btn-icon p-1">
                         <FaEdit size={12} className="text-muted" />
@@ -1844,6 +1875,18 @@ function Attendance() {
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {/* ── Manual Attendance Entry Modal (Branch Head / Admin / Owner) ── */}
+      <ManualAttendanceModal
+        show={showManualModal}
+        onHide={() => setShowManualModal(false)}
+        onSuccess={(msg) => {
+          setFeedbackMessage({ type: 'success', text: msg });
+          loadTeamRecords();
+          loadAnalytics();
+          loadTodayData();
+        }}
+      />
     </Container>
   );
 }
