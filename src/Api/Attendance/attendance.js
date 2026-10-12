@@ -420,6 +420,31 @@ export const postManualAttendanceOverride = async (overrideData) => {
 };
 
 /**
+ * Fetch manual attendance options (authorized branches and valid statuses).
+ */
+export const fetchManualAttendanceOptions = async () => {
+  const result = await apiFetch("/attendance/manual-entry/options", { method: "GET" });
+  if (!result.ok) {
+    throw apiError(result, "Failed to load manual attendance options.");
+  }
+  return result.data;
+};
+
+/**
+ * Fetch active employees belonging to an authorized branch.
+ * @param {string} branchId
+ */
+export const fetchManualAttendanceEmployees = async (branchId) => {
+  const result = await apiFetch(`/attendance/manual-entry/employees?branchId=${encodeURIComponent(branchId)}`, {
+    method: "GET",
+  });
+  if (!result.ok) {
+    throw apiError(result, "Failed to load branch employees.");
+  }
+  return result.data;
+};
+
+/**
  * Apply Company Holiday / Department Holiday / Bulk Leave (Admin / Owner).
  * @param {{ title: string, date: string, holidayType?: string, scope?: string, targetDepartment?: string, selectedUserIds?: string[], reason: string, excludeAdmins?: boolean }} holidayData
  */

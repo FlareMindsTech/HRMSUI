@@ -265,14 +265,14 @@ const AttendanceVerificationMethodConfig = ({
         </div>
       )}
 
-      {/* ── GPS (COORDINATES ONLY) SECTION ── */}
+      {/* ── GPS (CONSOLIDATED INTO GEOFENCE) SECTION ── */}
       {value === "GPS" && (
         <div className="verification-detail-panel">
           <div className="verification-detail-panel-title">
-            <FaCrosshairs className="text-info" /> GPS (Coordinates Only)
+            <FaCrosshairs className="text-info" /> Geofence (Legacy GPS Mode)
           </div>
           <div className="verification-detail-panel-desc mb-0">
-            Attendance check-ins record employee GPS coordinates without requiring them to be within an office geofence boundary or radius perimeter.
+            Legacy GPS mode is consolidated into GEOFENCE. Attendance check-ins obtain device coordinates and enforce the configured office radius boundary.
           </div>
         </div>
       )}
@@ -298,19 +298,19 @@ const AttendanceVerificationMethodConfig = ({
             <FaInfoCircle className="text-warning" /> Manual Override Only
           </div>
           <div className="verification-detail-panel-desc mb-0">
-            Attendance records are created exclusively through administrator or manager manual adjustments. Direct self clock-ins without approval are restricted.
+            Attendance records are created exclusively through authorized administrator, branch head, or manager manual adjustments. Direct self clock-ins without approval are restricted.
           </div>
         </div>
       )}
 
-      {/* ── ANY (UNRESTRICTED) SECTION ── */}
+      {/* ── ANY (ALTERNATIVE PERMITTED METHODS) SECTION ── */}
       {value === "ANY" && (
         <div className="verification-detail-panel">
           <div className="verification-detail-panel-title">
-            <FaCheckCircle className="text-success" /> Any (Unrestricted)
+            <FaCheckCircle className="text-success" /> Any Permitted Method (Network or Location)
           </div>
           <div className="verification-detail-panel-desc mb-0">
-            Attendance check-ins are unrestricted. Employees can clock in from any device, location, or network without enforcement checks.
+            Attendance check-ins succeed if either the registered Office Network (Static IP) or the Geofence location boundary check passes.
           </div>
         </div>
       )}

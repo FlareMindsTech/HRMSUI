@@ -160,17 +160,15 @@ function LeaveRequest() {
       ? item.leaveTypeId
       : availableLeaveTypes.find((lt) => lt.code === code || lt._id === item.leaveTypeId);
 
-    const badgeClass = code === "SL" ? "sl" : code === "CL" ? "cl" : code === "LOP" ? "lop" : "custom";
-    const customStyle = leaveTypeObj?.color && badgeClass === "custom"
-      ? {
-          backgroundColor: `${leaveTypeObj.color}1a`,
-          color: leaveTypeObj.color,
-          border: `1px solid ${leaveTypeObj.color}40`,
-        }
-      : undefined;
+    const badgeColor = leaveTypeObj?.color || "#3B82F6";
+    const customStyle = {
+      backgroundColor: `${badgeColor}18`,
+      color: badgeColor,
+      border: `1px solid ${badgeColor}40`,
+    };
 
     return (
-      <span className={`leave-type-badge ${badgeClass}`} style={customStyle}>
+      <span className="leave-type-badge custom" style={customStyle}>
         {name}{extraText ? ` ${extraText}` : ""}
       </span>
     );
@@ -704,6 +702,9 @@ function LeaveRequest() {
             })
           ) : balance && Object.keys(balance).length > 0 ? (
             Object.entries(balance).map(([code, val]) => {
+              const leaveTypeObj = availableLeaveTypes.find((lt) => lt.code === code || lt._id === code);
+              const name = leaveTypeObj?.name || code;
+              const color = leaveTypeObj?.color || "#3B82F6";
               const allocated = val?.allocated ?? 0;
               const remaining = val?.remaining ?? 0;
               const used = val?.used ?? 0;
@@ -714,7 +715,7 @@ function LeaveRequest() {
                     <div className="d-flex justify-content-between align-items-center">
                       <div>
                         <span className="leave-balance-label">
-                          {code}
+                          {name} ({code})
                         </span>
                         <h5 className="leave-balance-value">
                           {balanceLoading ? (
@@ -725,14 +726,24 @@ function LeaveRequest() {
                         </h5>
                         <span className="extra-small text-muted">{used} day(s) used</span>
                       </div>
-                      <div className="leave-balance-tag">
+                      <div
+                        className="leave-balance-tag"
+                        style={{
+                          backgroundColor: `${color}18`,
+                          color: color,
+                          border: `1px solid ${color}40`,
+                        }}
+                      >
                         {code}
                       </div>
                     </div>
                     <div className="leave-progress-track">
                       <div
                         className="leave-progress-bar"
-                        style={{ width: `${pct}%` }}
+                        style={{
+                          width: `${pct}%`,
+                          backgroundColor: color,
+                        }}
                       />
                     </div>
                   </Card>
@@ -864,7 +875,8 @@ function LeaveRequest() {
                                     type="date"
                                     name="endDate"
                                     min={formData.startDate || todayStr}
-                                    value={formData.endDate}
+                                    value={formData.isHalfDay ? formData.startDate : formData.endDate}
+                                    disabled={formData.isHalfDay}
                                     onChange={handleInputChange}
                                     className="form-control-sm shadow-none border"
                                     required

@@ -61,7 +61,7 @@ function AttendanceCard() {
       if (response && response.success) {
         setAttendance(response.data);
         if (response.attendanceMode) {
-          setAttendanceMode(response.attendanceMode);
+          setAttendanceMode(String(response.attendanceMode).toUpperCase());
         }
       }
     } catch (error) {
@@ -146,49 +146,54 @@ function AttendanceCard() {
     try {
       let coords = null;
 
-      if (attendanceMode === 'STATIC_IP') {
-        // Mode 1: Static Public IP (Office Network Attendance)
-        setActionStageText('Checking office network...');
+        let punchResult = null;
+        if (attendanceMode === 'STATIC_IP') {
+          // Mode 1: Static Public IP (Office Network Attendance)
+          setActionStageText('Checking office network...');
 
-        // Attempt to collect optional location without failing on desktop PCs
-        try {
-          coords = await getCurrentCoordinates();
-        } catch (geoErr) {
-          console.info('Geolocation omitted for office network verification:', geoErr.message);
+          // Attempt to collect optional location without failing on desktop PCs
+          try {
+            coords = await getCurrentCoordinates();
+          } catch (geoErr) {
+            console.info('Geolocation omitted for office network verification:', geoErr.message);
+          }
+
+          punchResult = await punchInUser(coords || {});
+          setSuccessMessage('Office network verified. Punched in successfully! Have a productive workday.');
+        } else if (attendanceMode === 'BOTH') {
+          // Mode 2: Both (Geofence + Office Network)
+          setActionStageText('Checking location & office network...');
+          try {
+            coords = await getCurrentCoordinates();
+          } catch (geoError) {
+            setErrorMessage(geoError.message || 'Location permission is required for Both mode attendance.');
+            setActionInProgress(false);
+            setActionStageText('');
+            return;
+          }
+
+          punchResult = await punchInUser(coords);
+          setSuccessMessage('Office network & geofence verified. Punched in successfully!');
+        } else {
+          // Mode 3: Geofence (Existing GPS / Geofence Behavior)
+          setActionStageText('Getting location...');
+          try {
+            coords = await getCurrentCoordinates();
+          } catch (geoError) {
+            setErrorMessage(geoError.message || 'Location permission is required to punch in.');
+            setActionInProgress(false);
+            setActionStageText('');
+            return;
+          }
+
+          setActionStageText('Punching in...');
+          punchResult = await punchInUser(coords);
+          setSuccessMessage('Punched in successfully! Have a productive workday.');
         }
 
-        await punchInUser(coords || {});
-        setSuccessMessage('Office network verified. Punched in successfully! Have a productive workday.');
-      } else if (attendanceMode === 'BOTH') {
-        // Mode 2: Both (Geofence + Office Network)
-        setActionStageText('Checking location & office network...');
-        try {
-          coords = await getCurrentCoordinates();
-        } catch (geoError) {
-          setErrorMessage(geoError.message || 'Location permission is required for Both mode attendance.');
-          setActionInProgress(false);
-          setActionStageText('');
-          return;
+        if (punchResult?.attendanceMode) {
+          setAttendanceMode(String(punchResult.attendanceMode).toUpperCase());
         }
-
-        await punchInUser(coords);
-        setSuccessMessage('Office network & geofence verified. Punched in successfully!');
-      } else {
-        // Mode 3: Geofence (Existing GPS / Geofence Behavior)
-        setActionStageText('Getting location...');
-        try {
-          coords = await getCurrentCoordinates();
-        } catch (geoError) {
-          setErrorMessage(geoError.message || 'Location permission is required to punch in.');
-          setActionInProgress(false);
-          setActionStageText('');
-          return;
-        }
-
-        setActionStageText('Punching in...');
-        await punchInUser(coords);
-        setSuccessMessage('Punched in successfully! Have a productive workday.');
-      }
 
       // Refresh from backend as source of truth to transition to State 2
       await loadTodayAttendance();
@@ -228,7 +233,10 @@ function AttendanceCard() {
       }
 
       setActionStageText('Punching out...');
-      await punchOutUser(coords || {});
+      const punchOutResult = await punchOutUser(coords || {});
+      if (punchOutResult?.attendanceMode) {
+        setAttendanceMode(String(punchOutResult.attendanceMode).toUpperCase());
+      }
 
       setSuccessMessage('Punched out successfully! Workday session completed.');
 
