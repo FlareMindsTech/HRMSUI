@@ -104,12 +104,14 @@ const CompensationCard = ({
     <Card className="border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden">
       {/* ── Card Header ── */}
       <Card.Header className="bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div className="d-flex align-items-center gap-2.5">
+        <div className="d-flex align-items-center" style={{ gap: "14px" }}>
           <div
-            className="rounded-circle d-flex align-items-center justify-content-center"
+            className="rounded-circle d-flex align-items-center justify-content-center me-3"
             style={{
               width: 38,
               height: 38,
+              minWidth: 38,
+              marginRight: "14px",
               background: isUnpaid ? "rgba(245, 158, 11, 0.12)" : "rgba(16, 185, 129, 0.12)",
               color: isUnpaid ? "#D97706" : "#059669",
               fontSize: 18,
@@ -119,7 +121,7 @@ const CompensationCard = ({
           </div>
           <div>
             <div className="d-flex align-items-center gap-2">
-              <h6 className="fw-bold mb-0 text-dark">Compensation & CTC Structure</h6>
+              <h6 className="fw-bold mb-0 text-dark">Salary & CTC Structure</h6>
               <Badge
                 bg={
                   isUnpaid
@@ -159,7 +161,7 @@ const CompensationCard = ({
             onClick={onSave}
             disabled={saving}
           >
-            {saving ? "Saving..." : "Save Compensation"}
+            {saving ? "Saving..." : "Save Salary Details"}
           </Button>
         )}
       </Card.Header>
@@ -251,14 +253,14 @@ const CompensationCard = ({
         <div className="p-3 bg-white border rounded-3 mb-3">
           <div className="extra-small text-uppercase fw-bold text-muted mb-3 d-flex align-items-center justify-content-between pb-2 border-bottom">
             <span className="d-flex align-items-center gap-1.5">
-              <FaFileContract className="text-primary" /> Compensation Model & Terms
+              <FaFileContract className="text-primary" /> Salary Model & Terms
             </span>
           </div>
 
           <Row className="g-3">
             <Col md={3} sm={6}>
               <Form.Group>
-                <Form.Label className="extra-small fw-bold text-uppercase">Compensation Type *</Form.Label>
+                <Form.Label className="extra-small fw-bold text-uppercase">Salary / Pay Type *</Form.Label>
                 {isEditMode && !readOnly ? (
                   <Form.Select
                     size="sm"

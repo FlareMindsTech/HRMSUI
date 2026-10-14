@@ -5,13 +5,13 @@
 
 :root {
   /* Geometric and Clip-Path Percentages */
-  --auth-slant: 14%;
-  --auth-signup-top: 39%;
+  --auth-slant: 11%;
+  --auth-signup-top: 42%;
   --auth-signup-bottom: calc(var(--auth-signup-top) + var(--auth-slant));
-  /* 53% */
+  /* 40% */
   --auth-signin-top: 47%;
   --auth-signin-bottom: calc(var(--auth-signin-top) + var(--auth-slant));
-  /* 61% */
+  /* 60% */
 
   /* Timing & Easings */
   --auth-cover-duration: 350ms;
@@ -28,7 +28,7 @@
   --auth-gold-blade: var(--color-primary, #C79D58);
   --auth-gold-blade-glow: var(--color-primary-light, rgba(199, 157, 88, 0.6));
   --auth-dark-start: var(--color-sidebar, #1C1D1D);
-  --auth-dark-end: var(--color-primary-dark, #002E28);
+  --auth-dark-end: #101413;
   --auth-card-border: var(--color-border, #0D2E24);
   --auth-cream-panel: var(--color-surface, #FEFDF2);
   --auth-btn-start: var(--color-primary, #C79D58);
@@ -80,13 +80,13 @@
   z-index: 0;
 }
 
-/* ── The Auth Card (Expanded Modern Luxury Dimensions: 880x570px) ── */
+/* ── The Auth Card (Expanded Modern Luxury Dimensions: 880x580px) ── */
 .auth-card {
   position: relative;
   z-index: 10;
   width: 880px;
   max-width: 94vw;
-  height: 570px;
+  height: 580px;
   border-radius: 20px;
   border: 1px solid var(--auth-card-border);
   overflow: hidden;
@@ -117,7 +117,7 @@
 
 /* Dark Layer Styling */
 .auth-layer-dark {
-  background: linear-gradient(145deg, var(--auth-dark-start) 0%, #001A12 55%, var(--auth-dark-end) 100%);
+  background: linear-gradient(145deg, var(--auth-dark-start, #1C1D1D) 0%, #161817 65%, #101413 100%);
   color: #ffffff;
 }
 
@@ -139,13 +139,13 @@
 
 /* ── Clip-Path States & Animations ── */
 
-/* 1. SIGNUP REST STATE: Dark on top (0 to 39% top, 0 to 53% bottom) */
+/* 1. SIGNUP REST STATE: Dark on top (0 to 32% top, 0 to 40% bottom) */
 .auth-card[data-mode="signup"][data-phase="idle"] .auth-layer-wrapper-dark {
   z-index: 20;
 }
 
 .auth-card[data-mode="signup"][data-phase="idle"] .auth-layer-dark {
-  clip-path: polygon(0 0, 39% 0, 53% 100%, 0 100%);
+  clip-path: polygon(0 0, var(--auth-signup-top) 0, var(--auth-signup-bottom) 100%, 0 100%);
 }
 
 .auth-card[data-mode="signup"][data-phase="idle"] .auth-layer-wrapper-cream {
@@ -157,13 +157,13 @@
   clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
 }
 
-/* 2. SIGNIN REST STATE: Cream on top (0 to 47% top, 0 to 61% bottom) */
+/* 2. SIGNIN REST STATE: Cream on top (0 to 52% top, 0 to 60% bottom) */
 .auth-card[data-mode="signin"][data-phase="idle"] .auth-layer-wrapper-cream {
   z-index: 20;
 }
 
 .auth-card[data-mode="signin"][data-phase="idle"] .auth-layer-cream {
-  clip-path: polygon(0 0, 47% 0, 61% 100%, 0 100%);
+  clip-path: polygon(0 0, var(--auth-signin-top) 0, var(--auth-signin-bottom) 100%, 0 100%);
 }
 
 .auth-card[data-mode="signin"][data-phase="idle"] .auth-layer-wrapper-dark {
@@ -183,7 +183,7 @@
 }
 
 .auth-card[data-transition="signup-to-signin"][data-phase="covering"] .auth-layer-dark {
-  clip-path: polygon(0 0, 100% 0, 114% 100%, 0 100%);
+  clip-path: polygon(0 0, 100% 0, calc(100% + var(--auth-slant)) 100%, 0 100%);
   transition: clip-path var(--auth-cover-duration) var(--auth-ease-accelerate);
 }
 
@@ -212,17 +212,17 @@
 }
 
 .auth-card[data-transition="signup-to-signin"][data-phase="holding"] .auth-layer-cream {
-  clip-path: polygon(0 0, -14% 0, 0 100%, 0 100%);
+  clip-path: polygon(0 0, calc(0% - var(--auth-slant)) 0, 0 100%, 0 100%);
   transition: none;
 }
 
-/* Phase 3: REVEAL (550 to 900ms) - Cream blade enters from left edge and decelerates rightward to 47%/61% */
+/* Phase 3: REVEAL (550 to 900ms) - Cream blade enters from left edge and decelerates rightward to 52%/60% */
 .auth-card[data-transition="signup-to-signin"][data-phase="revealing"] .auth-layer-wrapper-cream {
   z-index: 25;
 }
 
 .auth-card[data-transition="signup-to-signin"][data-phase="revealing"] .auth-layer-cream {
-  clip-path: polygon(0 0, 47% 0, 61% 100%, 0 100%);
+  clip-path: polygon(0 0, var(--auth-signin-top) 0, var(--auth-signin-bottom) 100%, 0 100%);
   transition: clip-path var(--auth-reveal-duration) var(--auth-ease-decelerate);
 }
 
@@ -244,7 +244,7 @@
 }
 
 .auth-card[data-transition="signin-to-signup"][data-phase="covering"] .auth-layer-cream {
-  clip-path: polygon(0 0, 100% 0, 114% 100%, 0 100%);
+  clip-path: polygon(0 0, 100% 0, calc(100% + var(--auth-slant)) 100%, 0 100%);
   transition: clip-path var(--auth-cover-duration) var(--auth-ease-accelerate);
 }
 
@@ -273,17 +273,17 @@
 }
 
 .auth-card[data-transition="signin-to-signup"][data-phase="holding"] .auth-layer-dark {
-  clip-path: polygon(0 0, -14% 0, 0 100%, 0 100%);
+  clip-path: polygon(0 0, calc(0% - var(--auth-slant)) 0, 0 100%, 0 100%);
   transition: none;
 }
 
-/* Phase 3: REVEAL (550 to 900ms) - Dark blade enters from left edge and decelerates to 39%/53% */
+/* Phase 3: REVEAL (550 to 900ms) - Dark blade enters from left edge and decelerates to 32%/40% */
 .auth-card[data-transition="signin-to-signup"][data-phase="revealing"] .auth-layer-wrapper-dark {
   z-index: 25;
 }
 
 .auth-card[data-transition="signin-to-signup"][data-phase="revealing"] .auth-layer-dark {
-  clip-path: polygon(0 0, 39% 0, 53% 100%, 0 100%);
+  clip-path: polygon(0 0, var(--auth-signup-top) 0, var(--auth-signup-bottom) 100%, 0 100%);
   transition: clip-path var(--auth-reveal-duration) var(--auth-ease-decelerate);
 }
 
@@ -360,19 +360,19 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  width: 290px;
+  width: 270px;
   box-sizing: border-box;
   user-select: none;
 }
 
 /* Signup: Brand on Left */
 .auth-brand-content.is-left {
-  left: 44px;
+  left: 48px;
 }
 
 /* Signin: Brand on Right */
 .auth-brand-content.is-right {
-  right: 44px;
+  right: 48px;
 }
 
 .auth-brand-tag {
@@ -416,25 +416,26 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  width: 400px;
+  width: 380px;
+  max-width: 46%;
   box-sizing: border-box;
 }
 
 /* Signup: Form on Right */
 .auth-form-container.is-right {
-  right: 44px;
+  right: 48px;
 }
 
 /* Signin: Form on Left */
 .auth-form-container.is-left {
-  left: 44px;
+  left: 48px;
 }
 
 .auth-form {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: 480px;
+  height: 490px;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -674,7 +675,7 @@
 /* ── Pill Submit Button ── */
 .auth-submit-btn {
   width: 100%;
-  padding: 11px 20px;
+  padding: 12px 20px;
   border-radius: 9999px;
   background: linear-gradient(90deg, var(--auth-btn-start) 0%, var(--auth-btn-end) 100%);
   color: #ffffff;
@@ -688,7 +689,8 @@
   align-items: center;
   justify-content: center;
   transition: filter 0.2s ease, transform 0.1s ease, opacity 0.2s ease;
-  margin-top: 4px;
+  margin-top: 12px;
+  margin-bottom: 6px;
 }
 
 .auth-submit-btn:hover {
@@ -727,7 +729,7 @@
 }
 
 .auth-mode-link:hover {
-  color: var(--auth-dark-end);
+  color: var(--auth-gold-primary);
 }
 
 /* ── Content Stagger Animations (Phase 3 Reveal & Idle entry) ── */

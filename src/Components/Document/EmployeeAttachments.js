@@ -98,12 +98,14 @@ const EmployeeAttachments = ({
     <Card className="border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden">
       <Card.Header className="bg-white border-bottom py-3.5 px-4">
         <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
-          <div className="d-flex align-items-center gap-2.5">
+          <div className="d-flex align-items-center" style={{ gap: "14px" }}>
             <div
-              className="rounded-circle d-flex align-items-center justify-content-center"
+              className="rounded-circle d-flex align-items-center justify-content-center me-3"
               style={{
                 width: 36,
                 height: 36,
+                minWidth: 36,
+                marginRight: "14px",
                 background: "rgba(16, 185, 129, 0.12)",
                 color: "#059669",
                 fontSize: 16,
@@ -210,10 +212,10 @@ const EmployeeAttachments = ({
                       )}
                     </div>
 
-                    <div className="d-flex align-items-start gap-2.5 mt-2">
+                    <div className="d-flex align-items-start mt-2" style={{ gap: "12px" }}>
                       <div
-                        className="rounded p-2 text-danger bg-white border d-flex align-items-center justify-content-center flex-shrink-0"
-                        style={{ width: 38, height: 38 }}
+                        className="rounded p-2 text-danger bg-white border d-flex align-items-center justify-content-center flex-shrink-0 me-3"
+                        style={{ width: 38, height: 38, minWidth: 38, marginRight: "12px" }}
                       >
                         <FaFilePdf className="fs-5" />
                       </div>

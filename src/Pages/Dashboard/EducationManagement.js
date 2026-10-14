@@ -1,6 +1,16 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Container, Modal, Button } from "react-bootstrap";
-import { FaCheckCircle, FaExclamationTriangle, FaTrash } from "react-icons/fa";
+import { Container, Modal, Button, Dropdown, Badge } from "react-bootstrap";
+import {
+  FaCheckCircle,
+  FaExclamationTriangle,
+  FaTrash,
+  FaPlus,
+  FaTools,
+  FaCertificate,
+  FaUserGraduate,
+  FaBook,
+  FaGraduationCap,
+} from "react-icons/fa";
 import { useSelector, useDispatch } from 'react-redux';
 import { selectAuthUser, selectIsSystemAdmin, useHasMenu } from '../../redux/slices/authSlice';
 import { fetchDirectory, selectAllEmployees } from '../../redux/slices/directorySlice';
@@ -301,10 +311,24 @@ function EducationManagement() {
     });
   };
 
-  const toggleSection = (section) => {
+  const addSection = (section) => {
     setExpandedSections((prev) => ({
       ...prev,
-      [section]: !prev[section],
+      [section]: true,
+    }));
+    setTimeout(() => {
+      const el = document.getElementById(`edu-mgmt-section-${section}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 120);
+  };
+
+  const removeSection = (section) => {
+    clearSection(section);
+    setExpandedSections((prev) => ({
+      ...prev,
+      [section]: false,
     }));
   };
 
@@ -641,101 +665,312 @@ function EducationManagement() {
           />
 
           {/* Academic Qualifications Section */}
-          <div className="mb-4">
-            <h5 className="fw-bold text-dark mb-1">Academic Qualifications</h5>
-            <p className="text-muted small mb-3">
-              Fill in formal schooling, technical certifications, bachelor's, master's, and doctoral details.
-            </p>
+          {(() => {
+            const hasItiData = Boolean(
+              formData.itiinstituteName?.trim() ||
+              formData.iticourse?.trim() ||
+              formData.itiduration?.trim() ||
+              formData.itiyearOfPassing ||
+              formData.itipercentage ||
+              docFiles.itiDocument ||
+              formData.itiDocumentUrl ||
+              formData.itiDocument
+            );
+            const hasDiplomaData = Boolean(
+              formData.diplomainstitution?.trim() ||
+              formData.diplomacourse?.trim() ||
+              formData.diplomaduration?.trim() ||
+              formData.diplomayearOfPassing ||
+              formData.diplomapercentage ||
+              docFiles.diplomaDocument ||
+              formData.diplomaDocumentUrl ||
+              formData.diplomaDocument
+            );
+            const hasPgData = Boolean(
+              formData.pgInstituteName?.trim() ||
+              formData.pgUniversityName?.trim() ||
+              formData.pgDegree?.trim() ||
+              formData.pgDepartmentCourse?.trim() ||
+              formData.pgYearOfPassing ||
+              formData.pgCgpa ||
+              docFiles.pgDocument ||
+              formData.pgDocumentUrl ||
+              formData.pgDocument
+            );
+            const hasPhdData = Boolean(
+              formData.phdInstituteName?.trim() ||
+              formData.phdUniversityName?.trim() ||
+              formData.phdResearchArea?.trim() ||
+              formData.phdYearOfPassing ||
+              docFiles.phdDocument ||
+              formData.phdDocumentUrl ||
+              formData.phdDocument
+            );
 
-            {/* SSLC Section (Mandatory) */}
-            <SSLCSection
-              data={formData}
-              onChange={handleFieldChange}
-              errors={errors}
-              file={docFiles.sslcDocument}
-              docUrl={formData.sslcDocumentUrl || formData.sslcDocument}
-              onFileChange={(f) => handleFileChange("sslcDocument", f)}
-              onFileRemove={() => handleFileRemove("sslcDocument")}
-            />
+            const isItiActive = expandedSections.iti || hasItiData;
+            const isDiplomaActive = expandedSections.diploma || hasDiplomaData;
+            const isPgActive = expandedSections.pg || hasPgData;
+            const isPhdActive = expandedSections.phd || hasPhdData;
 
-            {/* HSC Section (Mandatory) */}
-            <HSCSection
-              data={formData}
-              onChange={handleFieldChange}
-              errors={errors}
-              file={docFiles.hscDocument}
-              docUrl={formData.hscDocumentUrl || formData.hscDocument}
-              onFileChange={(f) => handleFileChange("hscDocument", f)}
-              onFileRemove={() => handleFileRemove("hscDocument")}
-            />
+            return (
+              <div className="mb-4">
+                <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                  <div>
+                    <h5 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                      <FaGraduationCap className="text-primary" /> Academic Qualifications
+                    </h5>
+                    <p className="text-muted small mb-0">
+                      Core formal schooling (SSLC, HSC, UG) and technical/advanced qualifications.
+                    </p>
+                  </div>
 
-            {/* ITI Section (Optional Expandable) */}
-            <ITISection
-              data={formData}
-              onChange={handleFieldChange}
-              errors={errors}
-              file={docFiles.itiDocument}
-              docUrl={formData.itiDocumentUrl || formData.itiDocument}
-              onFileChange={(f) => handleFileChange("itiDocument", f)}
-              onFileRemove={() => handleFileRemove("itiDocument")}
-              isOpen={expandedSections.iti}
-              onToggle={() => toggleSection("iti")}
-              onClear={() => clearSection("iti")}
-            />
+                  {/* Top-Right Add Qualification Dropdown */}
+                  <Dropdown align="end">
+                    <Dropdown.Toggle
+                      variant="light"
+                      id="dropdown-mgmt-add-other-edu"
+                      size="sm"
+                      className="d-inline-flex align-items-center gap-1.5 fw-bold rounded-pill px-3 py-1.5 border transition-all shadow-xs"
+                      style={{
+                        background: "linear-gradient(135deg, rgba(196,154,85,0.12) 0%, rgba(226,194,120,0.22) 100%)",
+                        borderColor: "#C49A55",
+                        color: "#8B651B",
+                        fontSize: "12px",
+                      }}
+                    >
+                      <FaPlus size={11} /> Add Other Qualification
+                    </Dropdown.Toggle>
+                    <Dropdown.Menu className="shadow-lg border-0 rounded-3 p-2" style={{ minWidth: "290px", zIndex: 1050 }}>
+                      <Dropdown.Header className="extra-small text-uppercase fw-bold text-muted pb-1">
+                        Select Qualification to Add
+                      </Dropdown.Header>
 
-            {/* Diploma Section (Optional Expandable) */}
-            <DiplomaSection
-              data={formData}
-              onChange={handleFieldChange}
-              errors={errors}
-              file={docFiles.diplomaDocument}
-              docUrl={formData.diplomaDocumentUrl || formData.diplomaDocument}
-              onFileChange={(f) => handleFileChange("diplomaDocument", f)}
-              onFileRemove={() => handleFileRemove("diplomaDocument")}
-              isOpen={expandedSections.diploma}
-              onToggle={() => toggleSection("diploma")}
-              onClear={() => clearSection("diploma")}
-            />
+                      {/* ITI */}
+                      <Dropdown.Item
+                        as="button"
+                        className="rounded-2 p-2 d-flex align-items-center justify-content-between mb-1"
+                        onClick={() => addSection("iti")}
+                      >
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="rounded-circle p-1.5 bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                            <FaTools size={12} />
+                          </div>
+                          <div>
+                            <div className="fw-semibold small text-dark">ITI Certificate</div>
+                            <div className="extra-small text-muted">Industrial Training Institute</div>
+                          </div>
+                        </div>
+                        {isItiActive ? (
+                          <Badge bg="success-subtle" className="text-success border border-success-subtle extra-small rounded-pill">
+                            <FaCheckCircle className="me-1" /> Added
+                          </Badge>
+                        ) : (
+                          <Badge bg="light" className="text-muted border extra-small rounded-pill">
+                            <FaPlus className="me-1" /> Add
+                          </Badge>
+                        )}
+                      </Dropdown.Item>
 
-            {/* Undergraduate (UG) Section (Mandatory) */}
-            <UGSection
-              data={formData}
-              onChange={handleFieldChange}
-              errors={errors}
-              file={docFiles.ugDocument}
-              docUrl={formData.ugDocumentUrl || formData.ugDocument}
-              onFileChange={(f) => handleFileChange("ugDocument", f)}
-              onFileRemove={() => handleFileRemove("ugDocument")}
-            />
+                      {/* Diploma */}
+                      <Dropdown.Item
+                        as="button"
+                        className="rounded-2 p-2 d-flex align-items-center justify-content-between mb-1"
+                        onClick={() => addSection("diploma")}
+                      >
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="rounded-circle p-1.5 bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                            <FaCertificate size={12} />
+                          </div>
+                          <div>
+                            <div className="fw-semibold small text-dark">Diploma</div>
+                            <div className="extra-small text-muted">Polytechnic / 3-Year Diploma</div>
+                          </div>
+                        </div>
+                        {isDiplomaActive ? (
+                          <Badge bg="success-subtle" className="text-success border border-success-subtle extra-small rounded-pill">
+                            <FaCheckCircle className="me-1" /> Added
+                          </Badge>
+                        ) : (
+                          <Badge bg="light" className="text-muted border extra-small rounded-pill">
+                            <FaPlus className="me-1" /> Add
+                          </Badge>
+                        )}
+                      </Dropdown.Item>
 
-            {/* Postgraduate (PG) Section (Optional Expandable) */}
-            <PGSection
-              data={formData}
-              onChange={handleFieldChange}
-              errors={errors}
-              file={docFiles.pgDocument}
-              docUrl={formData.pgDocumentUrl || formData.pgDocument}
-              onFileChange={(f) => handleFileChange("pgDocument", f)}
-              onFileRemove={() => handleFileRemove("pgDocument")}
-              isOpen={expandedSections.pg}
-              onToggle={() => toggleSection("pg")}
-              onClear={() => clearSection("pg")}
-            />
+                      {/* PG */}
+                      <Dropdown.Item
+                        as="button"
+                        className="rounded-2 p-2 d-flex align-items-center justify-content-between mb-1"
+                        onClick={() => addSection("pg")}
+                      >
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="rounded-circle p-1.5 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                            <FaUserGraduate size={12} />
+                          </div>
+                          <div>
+                            <div className="fw-semibold small text-dark">Postgraduate (PG)</div>
+                            <div className="extra-small text-muted">Master's Degree (M.Tech, MBA, etc.)</div>
+                          </div>
+                        </div>
+                        {isPgActive ? (
+                          <Badge bg="success-subtle" className="text-success border border-success-subtle extra-small rounded-pill">
+                            <FaCheckCircle className="me-1" /> Added
+                          </Badge>
+                        ) : (
+                          <Badge bg="light" className="text-muted border extra-small rounded-pill">
+                            <FaPlus className="me-1" /> Add
+                          </Badge>
+                        )}
+                      </Dropdown.Item>
 
-            {/* PhD Section (Optional Expandable) */}
-            <PhDSection
-              data={formData}
-              onChange={handleFieldChange}
-              errors={errors}
-              file={docFiles.phdDocument}
-              docUrl={formData.phdDocumentUrl || formData.phdDocument}
-              onFileChange={(f) => handleFileChange("phdDocument", f)}
-              onFileRemove={() => handleFileRemove("phdDocument")}
-              isOpen={expandedSections.phd}
-              onToggle={() => toggleSection("phd")}
-              onClear={() => clearSection("phd")}
-            />
-          </div>
+                      {/* PhD / Dr */}
+                      <Dropdown.Item
+                        as="button"
+                        className="rounded-2 p-2 d-flex align-items-center justify-content-between"
+                        onClick={() => addSection("phd")}
+                      >
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="rounded-circle p-1.5 bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                            <FaBook size={12} />
+                          </div>
+                          <div>
+                            <div className="fw-semibold small text-dark">Doctorate / PhD (Dr.)</div>
+                            <div className="extra-small text-muted">Doctor of Philosophy / Research</div>
+                          </div>
+                        </div>
+                        {isPhdActive ? (
+                          <Badge bg="success-subtle" className="text-success border border-success-subtle extra-small rounded-pill">
+                            <FaCheckCircle className="me-1" /> Added
+                          </Badge>
+                        ) : (
+                          <Badge bg="light" className="text-muted border extra-small rounded-pill">
+                            <FaPlus className="me-1" /> Add
+                          </Badge>
+                        )}
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown>
+                </div>
+
+                {/* 1. SSLC Section (Mandatory Primary) */}
+                <SSLCSection
+                  data={formData}
+                  onChange={handleFieldChange}
+                  errors={errors}
+                  file={docFiles.sslcDocument}
+                  docUrl={formData.sslcDocumentUrl || formData.sslcDocument}
+                  onFileChange={(f) => handleFileChange("sslcDocument", f)}
+                  onFileRemove={() => handleFileRemove("sslcDocument")}
+                />
+
+                {/* 2. HSC Section (Mandatory Secondary) */}
+                <HSCSection
+                  data={formData}
+                  onChange={handleFieldChange}
+                  errors={errors}
+                  file={docFiles.hscDocument}
+                  docUrl={formData.hscDocumentUrl || formData.hscDocument}
+                  onFileChange={(f) => handleFileChange("hscDocument", f)}
+                  onFileRemove={() => handleFileRemove("hscDocument")}
+                />
+
+                {/* 3. Undergraduate (UG) Section (Mandatory Bachelor's) */}
+                <UGSection
+                  data={formData}
+                  onChange={handleFieldChange}
+                  errors={errors}
+                  file={docFiles.ugDocument}
+                  docUrl={formData.ugDocumentUrl || formData.ugDocument}
+                  onFileChange={(f) => handleFileChange("ugDocument", f)}
+                  onFileRemove={() => handleFileRemove("ugDocument")}
+                />
+
+                {/* Additional & Higher Qualifications (Shown when added or contains data) */}
+                {(isItiActive || isDiplomaActive || isPgActive || isPhdActive) && (
+                  <div className="d-flex align-items-center gap-2 mb-3 mt-4 pt-2 border-top">
+                    <h6 className="fw-bold mb-0 text-dark small text-uppercase tracking-wider">
+                      Additional & Higher Qualifications
+                    </h6>
+                    <Badge bg="primary-subtle" className="text-primary border border-primary-subtle extra-small rounded-pill">
+                      {[isItiActive, isDiplomaActive, isPgActive, isPhdActive].filter(Boolean).length} Added
+                    </Badge>
+                  </div>
+                )}
+
+                {/* ITI Section */}
+                {isItiActive && (
+                  <div id="edu-mgmt-section-iti">
+                    <ITISection
+                      data={formData}
+                      onChange={handleFieldChange}
+                      errors={errors}
+                      file={docFiles.itiDocument}
+                      docUrl={formData.itiDocumentUrl || formData.itiDocument}
+                      onFileChange={(f) => handleFileChange("itiDocument", f)}
+                      onFileRemove={() => handleFileRemove("itiDocument")}
+                      isOpen={true}
+                      onToggle={() => removeSection("iti")}
+                      onClear={() => removeSection("iti")}
+                    />
+                  </div>
+                )}
+
+                {/* Diploma Section */}
+                {isDiplomaActive && (
+                  <div id="edu-mgmt-section-diploma">
+                    <DiplomaSection
+                      data={formData}
+                      onChange={handleFieldChange}
+                      errors={errors}
+                      file={docFiles.diplomaDocument}
+                      docUrl={formData.diplomaDocumentUrl || formData.diplomaDocument}
+                      onFileChange={(f) => handleFileChange("diplomaDocument", f)}
+                      onFileRemove={() => handleFileRemove("diplomaDocument")}
+                      isOpen={true}
+                      onToggle={() => removeSection("diploma")}
+                      onClear={() => removeSection("diploma")}
+                    />
+                  </div>
+                )}
+
+                {/* Postgraduate (PG) Section */}
+                {isPgActive && (
+                  <div id="edu-mgmt-section-pg">
+                    <PGSection
+                      data={formData}
+                      onChange={handleFieldChange}
+                      errors={errors}
+                      file={docFiles.pgDocument}
+                      docUrl={formData.pgDocumentUrl || formData.pgDocument}
+                      onFileChange={(f) => handleFileChange("pgDocument", f)}
+                      onFileRemove={() => handleFileRemove("pgDocument")}
+                      isOpen={true}
+                      onToggle={() => removeSection("pg")}
+                      onClear={() => removeSection("pg")}
+                    />
+                  </div>
+                )}
+
+                {/* Doctorate / PhD Section */}
+                {isPhdActive && (
+                  <div id="edu-mgmt-section-phd">
+                    <PhDSection
+                      data={formData}
+                      onChange={handleFieldChange}
+                      errors={errors}
+                      file={docFiles.phdDocument}
+                      docUrl={formData.phdDocumentUrl || formData.phdDocument}
+                      onFileChange={(f) => handleFileChange("phdDocument", f)}
+                      onFileRemove={() => handleFileRemove("phdDocument")}
+                      isOpen={true}
+                      onToggle={() => removeSection("phd")}
+                      onClear={() => removeSection("phd")}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Verification & Remarks */}
           <EducationVerification
