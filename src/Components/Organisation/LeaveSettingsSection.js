@@ -18,6 +18,7 @@ import {
   FaBuilding,
   FaCheckCircle,
   FaTimesCircle,
+  FaUndo,
 } from "react-icons/fa";
 import {
   fetchLeaveTypesApi,
@@ -138,7 +139,12 @@ function LeaveSettingsSection({ lockedBranchId }) {
         setLeaveTypes(Array.isArray(res) ? res : res?.data || []);
       } else {
         const params = {};
-        if (filterBranchId) params.branchId = filterBranchId;
+        if (filterBranchId) {
+          params.branchId = filterBranchId;
+          if (filterBranchId !== "org" && filterBranchId !== "all") {
+            params.includeInherited = "true";
+          }
+        }
         if (filterLeaveTypeId) params.leaveTypeId = filterLeaveTypeId;
         const res = await fetchLeavePoliciesApi(params);
         setLeavePolicies(Array.isArray(res) ? res : res?.data || []);
@@ -266,6 +272,47 @@ function LeaveSettingsSection({ lockedBranchId }) {
     setShowPolicyModal(true);
   };
 
+  // ── Open Override Modal for Inherited Policy ──
+  const handleOpenOverrideModal = (inheritedPolicy) => {
+    setModalError("");
+    setEditingPolicy(null);
+    const targetBranchId = filterBranchId && filterBranchId !== "org" && filterBranchId !== "all"
+      ? filterBranchId
+      : (inheritedPolicy.branchId?._id || inheritedPolicy.branchId || "");
+
+    setPolicyFormData({
+      leaveTypeId: inheritedPolicy.leaveTypeId?._id || inheritedPolicy.leaveTypeId || "",
+      branchId: targetBranchId,
+      entitlement: inheritedPolicy.entitlement !== undefined ? inheritedPolicy.entitlement : 12,
+      accrualFrequency: inheritedPolicy.accrualFrequency || "Yearly",
+      accrualAmount: inheritedPolicy.accrualAmount || 0,
+      maximumBalance: inheritedPolicy.maximumBalance || 0,
+      carryForwardEnabled: Boolean(inheritedPolicy.carryForwardEnabled),
+      carryForwardLimit: inheritedPolicy.carryForwardLimit || 0,
+      allowNegativeBalance: Boolean(inheritedPolicy.allowNegativeBalance),
+      maxNegativeBalance: inheritedPolicy.maxNegativeBalance || 0,
+      allowHalfDay: inheritedPolicy.allowHalfDay !== undefined ? Boolean(inheritedPolicy.allowHalfDay) : true,
+      allowBackdatedDays: inheritedPolicy.allowBackdatedDays || 0,
+      minimumNoticeDays: inheritedPolicy.minimumNoticeDays || 0,
+      maximumConsecutiveDays: inheritedPolicy.maximumConsecutiveDays || 0,
+      probationRestriction: Boolean(inheritedPolicy.probationRestriction),
+      probationDays: inheritedPolicy.probationDays || 0,
+      effectiveFrom: inheritedPolicy.effectiveFrom ? new Date(inheritedPolicy.effectiveFrom).toISOString().split("T")[0] : "",
+      effectiveTo: inheritedPolicy.effectiveTo ? new Date(inheritedPolicy.effectiveTo).toISOString().split("T")[0] : "",
+      isActive: inheritedPolicy.isActive !== undefined ? Boolean(inheritedPolicy.isActive) : true,
+    });
+    setShowPolicyModal(true);
+  };
+
+  // ── Open Revert Modal for Branch Override ──
+  const handleOpenRevertModal = (policy) => {
+    setDeletingItemType("revert_policy");
+    setDeletingId(policy._id);
+    const branchName = policy.branchId?.name || policy.branchId?.branchName || "this branch";
+    setDeletingName(`override for ${policy.leaveTypeId?.name || "Leave"} in ${branchName}`);
+    setShowDeleteModal(true);
+  };
+
   // ── Submit Policy Form ──
   const handleSavePolicy = async (e) => {
     e.preventDefault();
@@ -288,7 +335,7 @@ function LeaveSettingsSection({ lockedBranchId }) {
     }
   };
 
-  // ── Delete Actions ──
+  // ── Delete / Revert Actions ──
   const handleConfirmDelete = async () => {
     if (!deletingId) return;
     setLoading(true);
@@ -296,6 +343,9 @@ function LeaveSettingsSection({ lockedBranchId }) {
       if (deletingItemType === "type") {
         await deleteLeaveTypeApi(deletingId);
         setSuccess("Leave type deleted / deactivated successfully.");
+      } else if (deletingItemType === "revert_policy") {
+        await deleteLeavePolicyApi(deletingId);
+        setSuccess("Branch override reverted successfully. The branch will now inherit the organization default policy.");
       } else {
         await deleteLeavePolicyApi(deletingId);
         setSuccess("Leave policy deleted successfully.");
@@ -303,7 +353,7 @@ function LeaveSettingsSection({ lockedBranchId }) {
       setShowDeleteModal(false);
       loadData();
     } catch (err) {
-      setError(err.message || "Deletion failed.");
+      setError(err.message || "Action failed.");
     } finally {
       setLoading(false);
     }
@@ -578,8 +628,14 @@ function LeaveSettingsSection({ lockedBranchId }) {
                       <small className="text-muted">{pol.leaveTypeId?.code}</small>
                     </td>
                     <td>
-                      {pol.branchId ? (
-                        <Badge bg="info">Branch Override ({pol.branchId?.name || "Branch"})</Badge>
+                      {pol.isInherited ? (
+                        <Badge bg="secondary" className="d-inline-flex align-items-center gap-1">
+                          <FaBuilding /> Inherited ({pol.branchId?.name || pol.branchId?.branchName || "Branch"})
+                        </Badge>
+                      ) : pol.isOverride || pol.branchId ? (
+                        <Badge bg="primary" className="d-inline-flex align-items-center gap-1">
+                          <FaCheckCircle /> Branch Override ({pol.branchId?.name || pol.branchId?.branchName || "Branch"})
+                        </Badge>
                       ) : (
                         <Badge bg="dark">Org Default</Badge>
                       )}
@@ -600,7 +656,10 @@ function LeaveSettingsSection({ lockedBranchId }) {
                         <span className="text-danger small fw-semibold">No</span>
                       )}
                     </td>
-                    <td>{pol.minimumNoticeDays ? `${pol.minimumNoticeDays} day(s)` : "None"}</td>
+                    <td>
+                      {pol.minimumNoticeDays > 0 ? `${pol.minimumNoticeDays}d notice` : "0d notice"}
+                      {pol.allowBackdatedDays > 0 && ` / ${pol.allowBackdatedDays}d backdated`}
+                    </td>
                     <td>
                       {pol.isActive ? (
                         <Badge bg="success">Active</Badge>
@@ -611,27 +670,61 @@ function LeaveSettingsSection({ lockedBranchId }) {
                     <td>
                       {canManage && (
                         <div className="d-flex gap-2">
-                          <Button
-                            variant="outline-primary"
-                            size="sm"
-                            onClick={() => handleOpenPolicyModal(pol)}
-                            title="Edit Policy"
-                          >
-                            <FaEdit />
-                          </Button>
-                          <Button
-                            variant="outline-danger"
-                            size="sm"
-                            onClick={() => {
-                              setDeletingItemType("policy");
-                              setDeletingId(pol._id);
-                              setDeletingName(`Policy for ${pol.leaveTypeId?.name || "Leave"}`);
-                              setShowDeleteModal(true);
-                            }}
-                            title="Delete Policy"
-                          >
-                            <FaTrash />
-                          </Button>
+                          {pol.isInherited ? (
+                            <Button
+                              variant="outline-warning"
+                              size="sm"
+                              onClick={() => handleOpenOverrideModal(pol)}
+                              title="Create Branch Override for this policy"
+                              className="d-flex align-items-center gap-1"
+                            >
+                              <FaSlidersH /> Override
+                            </Button>
+                          ) : pol.isOverride || pol.branchId ? (
+                            <>
+                              <Button
+                                variant="outline-primary"
+                                size="sm"
+                                onClick={() => handleOpenPolicyModal(pol)}
+                                title="Edit Branch Override"
+                              >
+                                <FaEdit />
+                              </Button>
+                              <Button
+                                variant="outline-info"
+                                size="sm"
+                                onClick={() => handleOpenRevertModal(pol)}
+                                title="Revert to Organization Default"
+                                className="d-flex align-items-center gap-1"
+                              >
+                                <FaUndo /> Revert
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                variant="outline-primary"
+                                size="sm"
+                                onClick={() => handleOpenPolicyModal(pol)}
+                                title="Edit Organization Default Policy"
+                              >
+                                <FaEdit />
+                              </Button>
+                              <Button
+                                variant="outline-danger"
+                                size="sm"
+                                onClick={() => {
+                                  setDeletingItemType("policy");
+                                  setDeletingId(pol._id);
+                                  setDeletingName(`Org Default Policy for ${pol.leaveTypeId?.name || "Leave"}`);
+                                  setShowDeleteModal(true);
+                                }}
+                                title="Delete Policy"
+                              >
+                                <FaTrash />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       )}
                     </td>
@@ -867,6 +960,17 @@ function LeaveSettingsSection({ lockedBranchId }) {
             </Form.Group>
           </Col>
           <Col md={6}>
+            <Form.Group>
+              <Form.Label>Maximum Consecutive Days (0 for unlimited)</Form.Label>
+              <Form.Control
+                type="number"
+                min="0"
+                value={policyFormData.maximumConsecutiveDays}
+                onChange={(e) => setPolicyFormData({ ...policyFormData, maximumConsecutiveDays: Number(e.target.value) })}
+              />
+            </Form.Group>
+          </Col>
+          <Col md={6}>
             <Form.Check
               type="checkbox"
               id="carryForwardCheck"
@@ -969,15 +1073,19 @@ function LeaveSettingsSection({ lockedBranchId }) {
         </Row>
       </CrudModal>
 
-      {/* ── DELETE CONFIRMATION MODAL ── */}
+      {/* ── DELETE / REVERT CONFIRMATION MODAL ── */}
       <ConfirmModal
         show={showDeleteModal}
         onHide={() => setShowDeleteModal(false)}
-        title={`Confirm Delete ${deletingItemType === "type" ? "Leave Type" : "Leave Policy"}`}
-        message={`Are you sure you want to delete ${deletingName}?`}
+        title={deletingItemType === "revert_policy" ? "Revert to Organization Default?" : `Confirm Delete ${deletingItemType === "type" ? "Leave Type" : "Leave Policy"}`}
+        message={
+          deletingItemType === "revert_policy"
+            ? `Are you sure you want to revert ${deletingName}? This will remove the branch-specific override and resume inheriting the organization default policy.`
+            : `Are you sure you want to delete ${deletingName}?`
+        }
         onConfirm={handleConfirmDelete}
-        confirmVariant="danger"
-        confirmText="Delete"
+        confirmVariant={deletingItemType === "revert_policy" ? "warning" : "danger"}
+        confirmText={deletingItemType === "revert_policy" ? "Revert to Default" : "Delete"}
       />
     </div>
   );
