@@ -64,7 +64,7 @@ const TIMEZONES = [
   { value: "UTC", label: "UTC (Coordinated Universal Time)" },
 ];
 
-export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = null }) {
+export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = null, orgData: initialOrgData = null }) {
   const hasPermission = useHasPermission();
   const user = useSelector(selectAuthUser);
   const { organization, refreshOrganization, refreshBranches } = useBranch();
@@ -73,9 +73,11 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
   const orgProfile = useSelector(selectOrgProfile);
   const orgStructure = useSelector(selectOrgStructure);
 
-  const [orgData, setOrgData] = useState(null);
+  const [orgData, setOrgData] = useState(
+    initialOrgData ? (normalizeOrganization(initialOrgData) || initialOrgData) : null
+  );
   const [stats, setStats] = useState({ branches: 0, departments: 0, employees: 0, users: 0 });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialOrgData && !orgProfile && !organization);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState("");
@@ -329,6 +331,11 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
               <Button
                 variant="success"
                 className="d-flex align-items-center gap-2 fw-semibold shadow-sm"
+                style={{
+                  backgroundColor: "var(--color-primary, #C49A55)",
+                  borderColor: "var(--color-primary, #C49A55)",
+                  color: "#ffffff",
+                }}
                 onClick={() => {
                   if (onNavigateTab) {
                     onNavigateTab("edit-profile");

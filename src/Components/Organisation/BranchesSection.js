@@ -28,7 +28,6 @@ import {
   FaArrowLeft,
   FaArrowRight,
   FaCalendarAlt,
-  FaCalendarCheck,
   FaSitemap,
   FaCalendarWeek,
   FaUmbrellaBeach,
@@ -47,10 +46,6 @@ import {
   FaThLarge,
   FaList,
   FaSyncAlt,
-  FaShieldAlt,
-  FaProjectDiagram,
-  FaLayerGroup,
-  FaMoneyCheckAlt,
   FaUserMinus,
 } from "react-icons/fa";
 import {
@@ -75,13 +70,14 @@ import {
   selectHolidayCalendarsDropdown,
 } from '../../redux/slices/organizationSlice';
 import { useSearchParams, useNavigate } from "react-router-dom";
-import SearchInput from "../Common/SearchInput";
 import PaginationBar from "../Common/PaginationBar";
 import FeedbackAlert from "../Common/FeedbackAlert";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { useBranch } from "../../context/BranchContext";
 import "../../Pages/Dashboard/HrOnboarding.css";
 import "./BranchesSection.css";
+import "./navigation/OrgWorkspaceNav.css";
+import OrgWorkspaceNav from "./navigation/OrgWorkspaceNav";
 
 // Import child sub-modules for Branch Detail page tabs
 import DepartmentsSection from "./DepartmentsSection";
@@ -97,65 +93,17 @@ import HolidayCalendarsSection from "./HolidayCalendarsSection";
 import FinancialYearsSection from "./FinancialYearsSection";
 import LeaveSettingsSection from "./LeaveSettingsSection";
 import BranchSettingsSection from "./BranchSettingsSection";
+import {
+  BRANCH_NAV_GROUPS,
+  filterNavGroups,
+  sanitizeBranchTab,
+} from "./navigation/orgNavConfig";
 
 const BRANCH_TYPES = [
   { value: "HEAD_OFFICE", label: "Head Office (HQ)" },
   { value: "REGIONAL_OFFICE", label: "Regional Office" },
   { value: "BRANCH_OFFICE", label: "Branch Office" },
   { value: "VIRTUAL", label: "Virtual / Remote Office" },
-];
-
-const BRANCH_DETAIL_NAV_GROUPS = [
-  {
-    groupId: "overview",
-    groupTitle: "Overview",
-    groupIcon: FaBuilding,
-    tabs: [
-      { key: "overview", label: "Branch Overview", icon: FaBuilding },
-    ],
-  },
-  {
-    groupId: "people",
-    groupTitle: "People & Structure",
-    groupIcon: FaSitemap,
-    tabs: [
-      { key: "members", label: "Branch Members & Staff", icon: FaUsers },
-      { key: "departments", label: "Departments", icon: FaSitemap },
-      { key: "designations", label: "Designations", icon: FaUserTie },
-      { key: "teams", label: "Teams", icon: FaUsers },
-      { key: "reporting", label: "Reporting Hierarchy", icon: FaProjectDiagram },
-    ],
-  },
-  {
-    groupId: "workplace",
-    groupTitle: "Workplace & Operations",
-    groupIcon: FaMapMarkerAlt,
-    tabs: [
-      { key: "locations", label: "Locations", icon: FaMapMarkerAlt },
-      { key: "work-calendars", label: "Work Calendar", icon: FaCalendarWeek },
-      { key: "shifts", label: "Shifts", icon: FaClock },
-      { key: "holidays", label: "Holiday Calendars", icon: FaUmbrellaBeach },
-    ],
-  },
-  {
-    groupId: "masters",
-    groupTitle: "HR Masters",
-    groupIcon: FaLayerGroup,
-    tabs: [
-      { key: "job-grades", label: "Job Grades", icon: FaShieldAlt },
-      { key: "cost-centers", label: "Cost Centers", icon: FaMoneyCheckAlt },
-      { key: "financial-years", label: "Financial Years", icon: FaCalendarAlt },
-      { key: "leave-settings", label: "Leave Settings", icon: FaCalendarCheck },
-    ],
-  },
-  {
-    groupId: "settings",
-    groupTitle: "Settings",
-    groupIcon: FaCog,
-    tabs: [
-      { key: "settings", label: "Branch Settings", icon: FaCog },
-    ],
-  },
 ];
 
 export default function BranchesSection({
@@ -167,7 +115,7 @@ export default function BranchesSection({
 }) {
   const hasPermission = useHasPermission();
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
-  const { organization, refreshBranches, setSelectedBranchId, branches: contextBranches } = useBranch();
+  const { organization, refreshBranches, setSelectedBranchId } = useBranch();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -275,6 +223,16 @@ export default function BranchesSection({
     status: "ACTIVE",
   };
   const [formData, setFormData] = useState(initialForm);
+
+  // Branch workspace navigation: only tabs the user may view.
+  const canViewCode = useCallback(
+    (code) => Boolean(isSystemAdmin || hasPermission(code)),
+    [isSystemAdmin, hasPermission]
+  );
+  const branchNavGroups = useMemo(() => {
+    const visible = filterNavGroups(BRANCH_NAV_GROUPS, canViewCode);
+    return visible.length > 0 ? visible : BRANCH_NAV_GROUPS.slice(0, 1);
+  }, [canViewCode]);
 
   const canCreate = isSystemAdmin || hasPermission("branch.create") || hasPermission("organization.branch.create");
   const canUpdate = isSystemAdmin || hasPermission("branch.update") || hasPermission("organization.branch.update");
@@ -402,7 +360,8 @@ export default function BranchesSection({
     handleSelectBranch(branch, "departments");
   }, [handleSelectBranch]);
 
-  const handleDetailTabChange = useCallback((tabKey) => {
+  const handleDetailTabChange = useCallback((rawTabKey) => {
+    const tabKey = sanitizeBranchTab(rawTabKey, canViewCode);
     setDetailActiveTab(tabKey);
     setSearchParams(
       (prev) => {
@@ -416,7 +375,7 @@ export default function BranchesSection({
       },
       { replace: true }
     );
-  }, [setSearchParams]);
+  }, [setSearchParams, canViewCode]);
 
   useEffect(() => {
     loadBranches();
@@ -442,20 +401,22 @@ export default function BranchesSection({
       }
     }
 
-    if (bIdParam && branches.length > 0) {
-      const match = branches.find((b) => String(b._id || b.id) === String(bIdParam));
+    const pool = allOrgBranches.length > 0 ? allOrgBranches : branches;
+    if (bIdParam && pool.length > 0) {
+      const match = pool.find((b) => String(b._id || b.id) === String(bIdParam));
       if (match) {
         if (!selectedBranchDetail || String(selectedBranchDetail._id || selectedBranchDetail.id) !== String(bIdParam)) {
           setSelectedBranchDetail(match);
           if (setSelectedBranchId) setSelectedBranchId(bIdParam);
         }
-        if (tabParam && tabParam !== detailActiveTab) {
-          setDetailActiveTab(tabParam);
+        const safeTab = sanitizeBranchTab(tabParam, canViewCode);
+        if (tabParam && safeTab !== detailActiveTab) {
+          setDetailActiveTab(safeTab);
         }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branches, searchParams, setSelectedBranchId]);
+  }, [branches, allOrgBranches, searchParams, setSelectedBranchId]);
 
   // Compute members assigned to branch
   const getBranchMembers = useCallback(
@@ -1682,16 +1643,6 @@ export default function BranchesSection({
       ? managerName.split(" ").map((n) => n[0]).filter(Boolean).slice(0, 2).join("").toUpperCase()
       : "BM";
 
-    const activeGroup = BRANCH_DETAIL_NAV_GROUPS.find((g) =>
-      g.tabs.some((t) => t.key === detailActiveTab)
-    ) || BRANCH_DETAIL_NAV_GROUPS[0];
-
-    const handleCategoryClick = (group) => {
-      if (!group.tabs.some((t) => t.key === detailActiveTab)) {
-        handleDetailTabChange(group.tabs[0].key);
-      }
-    };
-
     return (
       <div className="branch-detail-workspace">
         {/* ── 0. Breadcrumb Trail ── */}
@@ -1734,19 +1685,19 @@ export default function BranchesSection({
               <FaArrowLeft /> Back to All Branches
             </button>
 
-            {branches.length > 1 && (
+            {masterBranchList.length > 1 && (
               <div className="d-flex align-items-center gap-2">
                 <span className="text-muted small fw-bold">Active Branch:</span>
                 <select
                   className="form-select form-select-sm"
                   value={lockedBId}
                   onChange={(e) => {
-                    const targetB = branches.find((br) => String(br._id || br.id) === e.target.value);
+                    const targetB = masterBranchList.find((br) => String(br._id || br.id) === e.target.value);
                     if (targetB) handleSelectBranch(targetB, detailActiveTab);
                   }}
                   style={{ width: "auto", minWidth: 200, fontWeight: 600, borderColor: "rgba(196, 154, 85, 0.4)" }}
                 >
-                  {branches.map((br) => (
+                  {masterBranchList.map((br) => (
                     <option key={br._id || br.id} value={br._id || br.id}>
                       {br.branchName} ({br.branchCode || "Branch"})
                     </option>
@@ -1843,92 +1794,25 @@ export default function BranchesSection({
               </div>
             </div>
 
-            <div className="branch-scope-badge">
-              <div className="branch-scope-label">Scoped Branch ID</div>
-              <div className="branch-scope-val">{lockedBId}</div>
-            </div>
           </div>
         </div>
 
-        {/* ── Branch Lifecycle & Setup Guided Flow Pipeline ── */}
-        <div className="branch-flow-pipeline-bar mb-4 p-2.5 bg-white rounded-3 border shadow-sm">
-          <div className="d-flex align-items-center justify-content-between px-2 mb-2 flex-wrap gap-2">
-            <span className="extra-small fw-bold text-uppercase tracking-wider text-muted d-flex align-items-center gap-1.5">
-              <FaProjectDiagram className="text-warning" /> Branch Configuration & Governance Flow
-            </span>
-            <span className="badge bg-light text-secondary border extra-small">
-              Facility: {b.branchName}
-            </span>
-          </div>
-          <div className="d-flex align-items-center gap-1 flex-wrap">
-            <button
-              type="button"
-              className={`branch-flow-step-btn ${detailActiveTab === "overview" ? "active" : ""}`}
-              onClick={() => handleDetailTabChange("overview")}
-            >
-              <span className="branch-flow-step-num">1</span>
-              <FaBuilding size={12} />
-              <span>Identity & GPS</span>
-              <FaCheckCircle size={11} className="text-success ms-1" />
-            </button>
-            <span className="branch-flow-step-arrow">➔</span>
-
-            <button
-              type="button"
-              className={`branch-flow-step-btn ${detailActiveTab === "departments" ? "active" : ""}`}
-              onClick={() => handleDetailTabChange("departments")}
-            >
-              <span className="branch-flow-step-num">2</span>
-              <FaSitemap size={12} />
-              <span>Departments ({getBranchDepartments(lockedBId).length})</span>
-              {getBranchDepartments(lockedBId).length > 0 ? (
-                <FaCheckCircle size={11} className="text-success ms-1" />
-              ) : (
-                <span className="badge bg-warning text-dark extra-small ms-1">Required</span>
-              )}
-            </button>
-            <span className="branch-flow-step-arrow">➔</span>
-
-            <button
-              type="button"
-              className={`branch-flow-step-btn ${detailActiveTab === "members" ? "active" : ""}`}
-              onClick={() => handleDetailTabChange("members")}
-            >
-              <span className="branch-flow-step-num">3</span>
-              <FaUsers size={12} />
-              <span>Staff & Members ({branchMembers.length})</span>
-              {branchMembers.length > 0 ? (
-                <FaCheckCircle size={11} className="text-success ms-1" />
-              ) : (
-                <span className="badge bg-warning text-dark extra-small ms-1">Pending</span>
-              )}
-            </button>
-            <span className="branch-flow-step-arrow">➔</span>
-
-            <button
-              type="button"
-              className={`branch-flow-step-btn ${detailActiveTab === "shifts" ? "active" : ""}`}
-              onClick={() => handleDetailTabChange("shifts")}
-            >
-              <span className="branch-flow-step-num">4</span>
-              <FaClock size={12} />
-              <span>Shifts & Calendars</span>
-            </button>
-            <span className="branch-flow-step-arrow">➔</span>
-
-            <button
-              type="button"
-              className={`branch-flow-step-btn ${detailActiveTab === "settings" ? "active" : ""}`}
-              onClick={() => handleDetailTabChange("settings")}
-            >
-              <span className="branch-flow-step-num">5</span>
-              <FaCog size={12} />
-              <span>Branch Settings</span>
-            </button>
-          </div>
-        </div>
-
-        {/* ── 3. KPI Summary Metric Cards ── */}
+        {/* ── Workspace: ONE navigation + content. No duplicate step bar / jump menu. ── */}
+        <div className="ows-layout">
+          <OrgWorkspaceNav
+            heading="Branch"
+            groups={branchNavGroups}
+            activeKey={detailActiveTab}
+            onSelect={handleDetailTabChange}
+            badges={{
+              members: branchMembers.length,
+              departments: getBranchDepartments(lockedBId).length,
+            }}
+          />
+          <div className="ows-content">
+            {/* Summary cards belong to the overview only; on other tabs they just push the work down. */}
+            {detailActiveTab === "overview" && (
+              <div className="mb-4">
         <div className="branches-kpi-grid">
           <div className="branches-kpi-card">
             <div className="branches-kpi-icon-box blue">
@@ -1976,77 +1860,8 @@ export default function BranchesSection({
             </div>
           </div>
         </div>
-
-        {/* ── 4. Categorized Navigation Hub ── */}
-        <div className="branch-nav-system-wrapper mb-4">
-          <div className="branch-nav-system-header">
-            {/* Tier 1: Category Segments Bar */}
-            <div className="branch-category-segment-bar" role="tablist">
-              {BRANCH_DETAIL_NAV_GROUPS.map((group) => {
-                const GroupIcon = group.groupIcon;
-                const isGroupActive = activeGroup.groupId === group.groupId;
-                return (
-                  <button
-                    key={group.groupId}
-                    type="button"
-                    role="tab"
-                    aria-selected={isGroupActive}
-                    className={`branch-category-segment-btn ${isGroupActive ? "active" : ""}`}
-                    onClick={() => handleCategoryClick(group)}
-                  >
-                    <GroupIcon className="branch-category-icon" />
-                    <span className="branch-category-btn-text">{group.groupTitle}</span>
-                    <span className="branch-category-count-pill">{group.tabs.length}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Quick direct jump dropdown for convenience */}
-            <div className="branch-quick-jump-box">
-              <span className="branch-quick-jump-label">Jump to:</span>
-              <select
-                className="form-select form-select-sm branch-quick-jump-select"
-                value={detailActiveTab}
-                onChange={(e) => handleDetailTabChange(e.target.value)}
-                aria-label="Direct module navigation"
-              >
-                {BRANCH_DETAIL_NAV_GROUPS.map((group) => (
-                  <optgroup key={group.groupId} label={group.groupTitle}>
-                    {group.tabs.map((tab) => (
-                      <option key={tab.key} value={tab.key}>
-                        {tab.label}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Tier 2: Sub-module Tabs (displayed when active category has >1 tab) */}
-          {activeGroup.tabs.length > 1 && (
-            <div className="branch-subtabs-tray">
-              {activeGroup.tabs.map((tab) => {
-                const TabIcon = tab.icon;
-                const isTabActive = detailActiveTab === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    role="tab"
-                    aria-selected={isTabActive}
-                    className={`branch-subtab-pill ${isTabActive ? "active" : ""}`}
-                    onClick={() => handleDetailTabChange(tab.key)}
-                  >
-                    <TabIcon className="branch-subtab-icon" />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+              </div>
+            )}
 
         {/* ── 5. Tab Content Panes ── */}
         <div>
@@ -2317,17 +2132,27 @@ export default function BranchesSection({
                   <div className="branch-info-card">
                     <div className="branch-info-card-header">
                       <div className="d-flex align-items-center gap-2">
-                        <FaSitemap className="text-success" />
-                        <h5 className="branch-info-card-title mb-0">Branch Departments & Functional Units</h5>
-                        <Badge bg="success-subtle" className="text-success border border-success-subtle rounded-pill px-3 py-1">
-                          {getBranchDepartments(lockedBId).length} Active Departments
-                        </Badge>
+                        <div className="branch-card-icon-badge branch-card-icon-gold">
+                          <FaSitemap />
+                        </div>
+                        <div>
+                          <div className="d-flex align-items-center gap-2">
+                            <h5 className="branch-info-card-title mb-0">Branch Departments & Functional Units</h5>
+                            {getBranchDepartments(lockedBId).length === 0 ? (
+                              <span className="branch-dept-count-pill zero">0 Departments</span>
+                            ) : (
+                              <span className="branch-dept-count-pill active">
+                                {getBranchDepartments(lockedBId).length} Active
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                       <div className="d-flex align-items-center gap-2 flex-wrap">
                         {canUpdate && (
                           <button
                             type="button"
-                            className="btn btn-sm btn-success text-white fw-bold shadow-sm d-flex align-items-center gap-1.5"
+                            className="branches-btn-add btn-sm"
                             onClick={() => {
                               handleDetailTabChange("departments");
                               setSearchParams((prev) => {
@@ -2339,7 +2164,7 @@ export default function BranchesSection({
                               }, { replace: true });
                             }}
                           >
-                            <FaPlus size={11} /> Add Branch Department
+                            <FaPlus size={11} className="me-1" /> Add Branch Department
                           </button>
                         )}
                         <button
@@ -2354,54 +2179,83 @@ export default function BranchesSection({
 
                     <div className="branch-info-card-body">
                       {getBranchDepartments(lockedBId).length === 0 ? (
-                        <div className="text-center py-4 text-muted">
-                          <FaSitemap size={28} className="text-muted opacity-50 mb-2" />
-                          <p className="mb-2">No functional departments have been assigned to <strong>{b.branchName}</strong> yet.</p>
-                          <Button
-                            variant="success"
-                            size="sm"
-                            className="fw-bold"
-                            onClick={() => {
-                              handleDetailTabChange("departments");
-                              setSearchParams((prev) => {
-                                const next = new URLSearchParams(prev);
-                                next.set("branchId", lockedBId);
-                                next.set("tab", "departments");
-                                next.set("action", "new-dept");
-                                return next;
-                              }, { replace: true });
-                            }}
-                          >
-                            <FaPlus className="me-1" /> Create First Department for this Branch
-                          </Button>
+                        <div className="branch-empty-departments-wrap">
+                          <div className="branch-empty-icon-glow">
+                            <FaSitemap />
+                          </div>
+                          <h6 className="branch-empty-title">No Departments Assigned to This Branch Yet</h6>
+                          <p className="branch-empty-desc">
+                            Departments organize workforce reporting, assign department heads, and manage shift schedules for <strong>{b.branchName}</strong>. Create a dedicated branch unit or link from the master list.
+                          </p>
+
+                          <div className="branch-empty-features-grid">
+                            <span className="branch-empty-feature-chip">
+                              <FaUsers className="branch-empty-feature-chip-icon" /> Team Leads & HOD Mapping
+                            </span>
+                            <span className="branch-empty-feature-chip">
+                              <FaClock className="branch-empty-feature-chip-icon" /> Shift & Attendance Scoping
+                            </span>
+                            <span className="branch-empty-feature-chip">
+                              <FaCheckCircle className="branch-empty-feature-chip-icon" /> Departmental Approvals
+                            </span>
+                          </div>
+
+                          <div className="branch-empty-actions-row">
+                            {canUpdate && (
+                              <button
+                                type="button"
+                                className="branches-btn-add"
+                                onClick={() => {
+                                  handleDetailTabChange("departments");
+                                  setSearchParams((prev) => {
+                                    const next = new URLSearchParams(prev);
+                                    next.set("branchId", lockedBId);
+                                    next.set("tab", "departments");
+                                    next.set("action", "new-dept");
+                                    return next;
+                                  }, { replace: true });
+                                }}
+                              >
+                                <FaPlus size={12} className="me-1" /> Create First Department for this Branch
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="branches-btn-secondary"
+                              onClick={() => handleDetailTabChange("departments")}
+                            >
+                              <FaBuilding size={12} className="me-1" /> View Master Organization Directory
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         <Row className="g-3">
                           {getBranchDepartments(lockedBId).map((dept) => (
                             <Col md={4} key={dept._id}>
-                              <div className="p-3 rounded-3 border bg-light h-100 d-flex flex-column justify-content-between">
+                              <div className="branch-dept-card">
                                 <div>
-                                  <div className="d-flex align-items-center justify-content-between mb-1">
-                                    <h6 className="fw-bold text-dark mb-0">{dept.departmentName}</h6>
-                                    <span className="badge bg-light text-dark border font-monospace small">
+                                  <div className="d-flex align-items-center justify-content-between mb-2">
+                                    <h6 className="fw-bold text-dark mb-0 fs-6">{dept.departmentName}</h6>
+                                    <span className="badge bg-light text-dark border font-monospace small px-2 py-1">
                                       {dept.departmentCode}
                                     </span>
                                   </div>
-                                  <div className="text-muted extra-small">
+                                  <div className="text-muted small">
                                     {dept.departmentHeadId ? (
-                                      <span>Head: {dept.departmentHeadId.firstName} {dept.departmentHeadId.lastName}</span>
+                                      <span><FaUserTie className="me-1 text-secondary" /> Head: {dept.departmentHeadId.firstName} {dept.departmentHeadId.lastName}</span>
                                     ) : (
-                                      <span>No HOD assigned</span>
+                                      <span className="text-secondary opacity-75">No HOD assigned</span>
                                     )}
                                   </div>
                                 </div>
-                                <div className="mt-2 pt-2 border-top d-flex align-items-center justify-content-between">
-                                  <span className={`badge ${dept.status === 'ACTIVE' ? 'bg-success' : 'bg-secondary'}`} style={{ fontSize: '0.65rem' }}>
+                                <div className="mt-3 pt-2 border-top d-flex align-items-center justify-content-between">
+                                  <span className={`badge ${dept.status === 'ACTIVE' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary'}`} style={{ fontSize: '0.72rem' }}>
                                     {dept.status || 'ACTIVE'}
                                   </span>
                                   <button
                                     type="button"
-                                    className="btn btn-link p-0 text-success text-decoration-none extra-small fw-semibold"
+                                    className="btn btn-link p-0 text-decoration-none small fw-semibold"
+                                    style={{ color: "var(--color-primary-dark, #9B7229)" }}
                                     onClick={() => setDetailActiveTab("departments")}
                                   >
                                     Manage in Branch Hub &rarr;
@@ -2423,219 +2277,324 @@ export default function BranchesSection({
           {detailActiveTab === "members" && (
             <div className="branch-members-pane">
               <div className="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom flex-wrap gap-3">
-                <div>
-                  <div className="d-flex align-items-center gap-2">
-                    <h4 className="fw-bold mb-0 text-dark">Branch Members Directory</h4>
-                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1">
-                      {branchMembers.length} Members
-                    </span>
+                <div className="d-flex align-items-center gap-3">
+                  <div className="branch-card-icon-badge branch-card-icon-gold">
+                    <FaUsers />
                   </div>
-                  <p className="text-muted extra-small mb-0 mt-1">
-                    Personnel currently assigned to <strong>{b.branchName}</strong>. Directly add staff or transfer members from other branches.
-                  </p>
+                  <div>
+                    <div className="d-flex align-items-center gap-2">
+                      <h4 className="fw-bold mb-0 text-dark">Branch Members Directory</h4>
+                      <span className="branch-dept-count-pill active">
+                        {branchMembers.length} Members Assigned
+                      </span>
+                    </div>
+                    <p className="text-muted extra-small mb-0 mt-0.5">
+                      Personnel currently assigned to <strong>{b.branchName}</strong>. Directly add staff or transfer members from other branches.
+                    </p>
+                  </div>
                 </div>
 
                 {canUpdate && (
                   <button
                     type="button"
-                    className="branches-btn-add"
+                    className="branches-btn-add btn-sm"
                     onClick={() => handleOpenAssignModal(b)}
                   >
-                    <FaUserPlus /> Add / Transfer Members
+                    <FaUserPlus size={12} className="me-1" /> Add / Transfer Members
                   </button>
                 )}
               </div>
 
-              {/* Toolbar */}
-              <div className="branches-toolbar-card mb-4">
-                <div className="branches-toolbar-row">
-                  <div className="branches-search-wrap">
-                    <FaSearch className="branches-search-icon" />
-                    <input
-                      type="text"
-                      className="branches-search-input"
-                      placeholder="Search member by name, email, code, or designation..."
-                      value={branchMemberSearch}
-                      onChange={(e) => setBranchMemberSearch(e.target.value)}
-                    />
-                  </div>
+              {/* Toolbar & Department Filter */}
+              {(() => {
+                const departmentCounts = {};
+                branchMembers.forEach((m) => {
+                  const dept = m.department || "General";
+                  departmentCounts[dept] = (departmentCounts[dept] || 0) + 1;
+                });
+                const departmentList = Object.keys(departmentCounts).sort();
 
-                  <div className="branches-filter-group">
-                    <select
-                      className="branches-filter-select"
-                      value={branchMemberDeptFilter}
-                      onChange={(e) => setBranchMemberDeptFilter(e.target.value)}
-                    >
-                      <option value="">All Departments</option>
-                      {Array.from(new Set(branchMembers.map((m) => m.department).filter(Boolean))).map((dept) => (
-                        <option key={dept} value={dept}>{dept}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
+                const filteredBranchMembers = branchMembers.filter((m) => {
+                  const q = (branchMemberSearch || "").toLowerCase();
+                  const matchSearch = !q ||
+                    (m.fullName && m.fullName.toLowerCase().includes(q)) ||
+                    (m.email && m.email.toLowerCase().includes(q)) ||
+                    (m.employeeCode && m.employeeCode.toLowerCase().includes(q)) ||
+                    (m.designation && m.designation.toLowerCase().includes(q));
+                  const matchDept = !branchMemberDeptFilter || m.department === branchMemberDeptFilter;
+                  return matchSearch && matchDept;
+                });
 
-              {/* Table / Empty State */}
-              {branchMembers.length === 0 ? (
-                <div className="branches-empty-state">
-                  <div className="branches-empty-icon">
-                    <FaUsers />
-                  </div>
-                  <h4 className="branches-empty-title">No Members in this Branch</h4>
-                  <p className="branches-empty-text">
-                    Add new members or transfer employees from other branches into {b.branchName}.
-                  </p>
-                  {canUpdate && (
-                    <button
-                      type="button"
-                      className="branches-btn-add"
-                      onClick={() => handleOpenAssignModal(b)}
-                    >
-                      <FaUserPlus /> Add / Transfer Members
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="branches-table-card">
-                  <Table responsive hover className="branches-table align-middle mb-0">
-                    <thead>
-                      <tr>
-                        <th>Employee</th>
-                        <th>Employee Code</th>
-                        <th>Department</th>
-                        <th>Designation</th>
-                        <th>Branch Status</th>
-                        {canUpdate && <th className="text-end">Actions</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {branchMembers
-                        .filter((m) => {
-                          const q = branchMemberSearch.toLowerCase();
-                          const matchSearch = !q ||
-                            (m.fullName && m.fullName.toLowerCase().includes(q)) ||
-                            (m.email && m.email.toLowerCase().includes(q)) ||
-                            (m.employeeCode && m.employeeCode.toLowerCase().includes(q)) ||
-                            (m.designation && m.designation.toLowerCase().includes(q));
-                          const matchDept = !branchMemberDeptFilter || m.department === branchMemberDeptFilter;
-                          return matchSearch && matchDept;
-                        })
-                        .map((m) => {
-                          const empId = m._id || m.id;
-                          const initials = m.fullName ? m.fullName.split(" ").map((n) => n[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() : "EM";
-                          return (
-                            <tr key={empId}>
-                              <td>
-                                <div className="d-flex align-items-center gap-2.5">
-                                  <div
-                                    style={{
-                                      width: 36,
-                                      height: 36,
-                                      borderRadius: "50%",
-                                      background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
-                                      color: "#fff",
-                                      fontSize: 12,
-                                      fontWeight: 700,
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      flexShrink: 0,
-                                    }}
-                                  >
-                                    {initials}
-                                  </div>
-                                  <div>
-                                    <div className="fw-bold text-dark">{m.fullName}</div>
-                                    <div className="extra-small text-muted">{m.email}</div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td>
-                                <span className="branch-code-badge">{m.employeeCode || "—"}</span>
-                              </td>
-                              <td>
-                                <span className="fw-medium text-dark">{m.department || "—"}</span>
-                              </td>
-                              <td>
-                                <span className="fw-medium text-dark">{m.designation || "—"}</span>
-                              </td>
-                              <td>
-                                <Badge bg="success-subtle" className="text-success border border-success-subtle px-2.5 py-1">
-                                  <FaCheckCircle className="me-1" /> Primary Member
-                                </Badge>
-                              </td>
-                              {canUpdate && (
-                                <td className="text-end">
-                                  <button
-                                    type="button"
-                                    className="branches-btn-remove-pill"
-                                    onClick={() => handleOpenRemoveMemberModal(m)}
-                                    title="Remove from this branch"
-                                  >
-                                    <FaUserMinus size={11} /> Remove
-                                  </button>
-                                </td>
-                              )}
+                return (
+                  <>
+                    {/* Department Filter Pills */}
+                    {departmentList.length > 0 && (
+                      <div className="dept-branch-filter-bar mb-3">
+                        <div className="dept-branch-filter-label">
+                          <FaSitemap size={12} className="text-secondary" /> Filter by Department:
+                        </div>
+                        <div className="dept-branch-pills-wrap">
+                          <button
+                            type="button"
+                            className={`dept-branch-pill ${!branchMemberDeptFilter ? "active" : ""}`}
+                            onClick={() => setBranchMemberDeptFilter("")}
+                          >
+                            🏢 All Departments
+                            <span className="dept-branch-pill-count">{branchMembers.length}</span>
+                          </button>
+                          {departmentList.map((dept) => (
+                            <button
+                              key={dept}
+                              type="button"
+                              className={`dept-branch-pill ${branchMemberDeptFilter === dept ? "active" : ""}`}
+                              onClick={() => setBranchMemberDeptFilter(dept)}
+                            >
+                              {dept}
+                              <span className="dept-branch-pill-count">{departmentCounts[dept]}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="branches-toolbar-card mb-3">
+                      <div className="branches-toolbar-row">
+                        <div className="branches-search-wrap">
+                          <FaSearch className="branches-search-icon" />
+                          <input
+                            type="text"
+                            className="branches-search-input"
+                            placeholder="Search member by name, email, code, or designation..."
+                            value={branchMemberSearch}
+                            onChange={(e) => setBranchMemberSearch(e.target.value)}
+                          />
+                          {branchMemberSearch && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-link text-muted p-0 me-2"
+                              style={{ textDecoration: "none", fontSize: "11px" }}
+                              onClick={() => setBranchMemberSearch("")}
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="branches-filter-group d-flex align-items-center gap-2 flex-wrap">
+                          <select
+                            className="branches-filter-select"
+                            value={branchMemberDeptFilter}
+                            onChange={(e) => setBranchMemberDeptFilter(e.target.value)}
+                          >
+                            <option value="">All Departments ({branchMembers.length})</option>
+                            {departmentList.map((dept) => (
+                              <option key={dept} value={dept}>
+                                {dept} ({departmentCounts[dept]})
+                              </option>
+                            ))}
+                          </select>
+
+                          {(branchMemberSearch || branchMemberDeptFilter) && (
+                            <>
+                              <span className="branch-dept-count-pill active" style={{ fontSize: "11.5px" }}>
+                                Showing {filteredBranchMembers.length} of {branchMembers.length}
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-link text-muted text-decoration-none px-2"
+                                style={{ fontSize: "12px" }}
+                                onClick={() => {
+                                  setBranchMemberSearch("");
+                                  setBranchMemberDeptFilter("");
+                                }}
+                              >
+                                Clear Filters
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Table / Empty State */}
+                    {branchMembers.length === 0 ? (
+                      <div className="branch-empty-departments-wrap">
+                        <div className="branch-empty-icon-glow">
+                          <FaUsers />
+                        </div>
+                        <h6 className="branch-empty-title">No Members Assigned to This Branch Yet</h6>
+                        <p className="branch-empty-desc">
+                          Add new employees or transfer existing personnel into <strong>{b.branchName}</strong> to populate this branch's workforce directory.
+                        </p>
+                        <div className="branch-empty-features-grid">
+                          <span className="branch-empty-feature-chip">
+                            <FaUsers className="branch-empty-feature-chip-icon" /> Staff Allocation
+                          </span>
+                          <span className="branch-empty-feature-chip">
+                            <FaSitemap className="branch-empty-feature-chip-icon" /> Department Mapping
+                          </span>
+                          <span className="branch-empty-feature-chip">
+                            <FaClock className="branch-empty-feature-chip-icon" /> Shift Rostering Ready
+                          </span>
+                        </div>
+                        {canUpdate && (
+                          <div className="branch-empty-actions-row">
+                            <button
+                              type="button"
+                              className="branches-btn-add"
+                              onClick={() => handleOpenAssignModal(b)}
+                            >
+                              <FaUserPlus size={12} className="me-1" /> Add / Transfer Members
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="branches-table-card">
+                        <Table responsive hover className="branches-table align-middle mb-0">
+                          <thead>
+                            <tr>
+                              <th style={{ minWidth: 240 }}>Member / Employee</th>
+                              <th style={{ minWidth: 140 }}>Employee Code</th>
+                              <th style={{ minWidth: 160 }}>Department</th>
+                              <th style={{ minWidth: 160 }}>Designation</th>
+                              <th style={{ minWidth: 150 }}>Branch Status</th>
+                              {canUpdate && <th className="text-end" style={{ minWidth: 110 }}>Actions</th>}
                             </tr>
-                          );
-                        })}
-                    </tbody>
-                  </Table>
-                </div>
-              )}
-
-              {/* Flow Next Step Card in Members pane */}
-              <div className="p-3.5 mt-4 rounded-3 border bg-white shadow-sm d-flex align-items-center justify-content-between flex-wrap gap-3">
-                <div className="d-flex align-items-center gap-3">
-                  <div
-                    style={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 12,
-                      background: "linear-gradient(135deg, rgba(139, 92, 246, 0.18) 0%, rgba(139, 92, 246, 0.06) 100%)",
-                      color: "#7c3aed",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 18,
-                      border: "1px solid rgba(139, 92, 246, 0.25)",
-                    }}
-                  >
-                    <FaClock />
-                  </div>
-                  <div>
-                    <div className="fw-bold text-dark" style={{ fontSize: "0.95rem" }}>
-                      Next Step in Flow: Configure Shifts & Work Calendars
-                    </div>
-                    <div className="text-muted small">
-                      Assign branch shifts, rotational schedules, and working day calendars to personnel.
-                    </div>
-                  </div>
-                </div>
-                <div className="d-flex align-items-center gap-2">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-secondary"
-                    onClick={() => handleDetailTabChange("departments")}
-                  >
-                    &larr; Branch Departments
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm fw-bold shadow-sm"
-                    style={{
-                      background: "var(--org-gold-btn-gradient, linear-gradient(135deg, #E2C278 0%, #C49A55 100%))",
-                      color: "#1C1D1D",
-                      border: "none",
-                      padding: "7px 16px",
-                      borderRadius: 8,
-                    }}
-                    onClick={() => handleDetailTabChange("shifts")}
-                  >
-                    Configure Shifts &rarr;
-                  </button>
-                </div>
-              </div>
+                          </thead>
+                          <tbody>
+                            {filteredBranchMembers.length === 0 ? (
+                              <tr>
+                                <td colSpan={canUpdate ? 6 : 5} className="text-center py-5 text-muted">
+                                  <div className="d-flex flex-column align-items-center justify-content-center py-4">
+                                    <div className="branch-empty-icon-glow mb-2" style={{ width: 44, height: 44, fontSize: 18 }}>
+                                      <FaSearch />
+                                    </div>
+                                    <div className="fw-bold text-dark mb-1">No matching members found</div>
+                                    <div className="extra-small text-muted mb-3">
+                                      No personnel match &quot;{branchMemberSearch || branchMemberDeptFilter}&quot;.
+                                    </div>
+                                    <button
+                                      type="button"
+                                      className="branches-btn-view"
+                                      style={{ fontSize: "12px", padding: "5px 14px" }}
+                                      onClick={() => {
+                                        setBranchMemberSearch("");
+                                        setBranchMemberDeptFilter("");
+                                      }}
+                                    >
+                                      Reset Filters
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ) : (
+                              filteredBranchMembers.map((m) => {
+                                const empId = m._id || m.id;
+                                const initials = m.fullName ? m.fullName.split(" ").map((n) => n[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() : "EM";
+                                return (
+                                  <tr key={empId}>
+                                    <td>
+                                      <div className="d-flex align-items-center" style={{ gap: "12px" }}>
+                                        <div
+                                          style={{
+                                            width: 38,
+                                            height: 38,
+                                            borderRadius: "10px",
+                                            background: "linear-gradient(135deg, #1C1D1D 0%, #2A2B2C 100%)",
+                                            color: "var(--color-primary-light, #E2C278)",
+                                            fontSize: "12px",
+                                            fontWeight: 700,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            flexShrink: 0,
+                                            border: "1px solid rgba(196, 154, 85, 0.35)",
+                                            boxShadow: "0 2px 5px rgba(0, 0, 0, 0.1)",
+                                          }}
+                                        >
+                                          {initials}
+                                        </div>
+                                        <div className="min-w-0" style={{ lineHeight: 1.3 }}>
+                                          <div className="fw-bold text-dark text-truncate" style={{ fontSize: "13.5px" }}>
+                                            {m.fullName}
+                                          </div>
+                                          <div className="text-muted text-truncate" style={{ fontSize: "12px", marginTop: "2px" }}>
+                                            {m.email}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td>
+                                      <span
+                                        className="branch-code-badge font-monospace"
+                                        style={{
+                                          fontSize: "11px",
+                                          padding: "4px 9px",
+                                          borderRadius: "6px",
+                                          display: "inline-block",
+                                        }}
+                                      >
+                                        {m.employeeCode || "—"}
+                                      </span>
+                                    </td>
+                                    <td>
+                                      <div className="d-flex align-items-center" style={{ gap: "8px" }}>
+                                        <FaSitemap className="text-secondary opacity-75 flex-shrink-0" size={12} />
+                                        <span className="fw-semibold text-dark text-truncate" style={{ fontSize: "13px" }}>
+                                          {m.department || "General"}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td>
+                                      <div className="d-flex align-items-center" style={{ gap: "8px" }}>
+                                        <FaUserTie className="text-secondary opacity-75 flex-shrink-0" size={12} />
+                                        <span className="fw-medium text-secondary text-truncate" style={{ fontSize: "13px" }}>
+                                          {m.designation || "Staff"}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td>
+                                      <span
+                                        className="badge fw-semibold d-inline-flex align-items-center"
+                                        style={{
+                                          fontSize: "11px",
+                                          padding: "5px 11px",
+                                          gap: "6px",
+                                          backgroundColor: "rgba(16, 185, 129, 0.1)",
+                                          color: "#059669",
+                                          border: "1px solid rgba(16, 185, 129, 0.25)",
+                                          borderRadius: "9999px",
+                                          textTransform: "uppercase",
+                                          letterSpacing: "0.4px",
+                                        }}
+                                      >
+                                        <FaCheckCircle size={10} /> Primary Member
+                                      </span>
+                                    </td>
+                                    {canUpdate && (
+                                      <td className="text-end" style={{ verticalAlign: "middle" }}>
+                                        <button
+                                          type="button"
+                                          className="branches-btn-remove-pill"
+                                          onClick={() => handleOpenRemoveMemberModal(m)}
+                                          title="Remove from this branch"
+                                        >
+                                          <FaUserMinus size={11} /> Remove
+                                        </button>
+                                      </td>
+                                    )}
+                                  </tr>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </Table>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
           {detailActiveTab === "departments" && (
@@ -2656,6 +2615,8 @@ export default function BranchesSection({
           {detailActiveTab === "leave-settings" && <LeaveSettingsSection lockedBranchId={lockedBId} />}
           {detailActiveTab === "financial-years" && <FinancialYearsSection lockedBranchId={lockedBId} />}
           {detailActiveTab === "settings" && <BranchSettingsSection lockedBranchId={lockedBId} />}
+        </div>
+          </div>
         </div>
 
         {/* ── Professional Remove Member Confirmation Modal ── */}
@@ -2765,190 +2726,339 @@ export default function BranchesSection({
         </Modal>
 
         {/* ── Assign Members Modal (Inside Detail View) ── */}
-        <Modal show={showAssignModal} onHide={() => setShowAssignModal(false)} size="lg" centered backdrop="static">
+        <Modal
+          show={showAssignModal}
+          onHide={() => setShowAssignModal(false)}
+          size="lg"
+          centered
+          backdrop="static"
+          dialogClassName="luxury-staff-modal"
+        >
           <Modal.Header closeButton className="border-bottom px-4 py-3">
-            <Modal.Title className="fs-5 fw-bold d-flex align-items-center gap-2">
-              <FaUserPlus className="text-success" /> Manage Staff — {selectedBranchForMembers?.branchName}
-            </Modal.Title>
+            <div className="d-flex align-items-center gap-3">
+              <div
+                className="branch-card-icon-badge branch-card-icon-gold"
+                style={{ width: 40, height: 40, fontSize: 16 }}
+              >
+                <FaUserPlus />
+              </div>
+              <div>
+                <div className="d-flex align-items-center gap-2">
+                  <Modal.Title className="fs-5 fw-bold text-dark mb-0">
+                    Manage Staff Allocations
+                  </Modal.Title>
+                  {selectedBranchForMembers?.branchCode && (
+                    <span className="branch-code-badge font-monospace" style={{ fontSize: "11px", padding: "2px 8px" }}>
+                      {selectedBranchForMembers.branchCode}
+                    </span>
+                  )}
+                </div>
+                <div className="text-muted extra-small mt-0.5">
+                  Assigning personnel to <strong>{selectedBranchForMembers?.branchName}</strong>
+                </div>
+              </div>
+            </div>
           </Modal.Header>
           <Modal.Body className="p-4">
             {assignModalError && <FeedbackAlert variant="danger" message={assignModalError} />}
             {assignModalSuccess && <FeedbackAlert variant="success" message={assignModalSuccess} />}
 
-            <div className="p-3 rounded-3 bg-light border mb-3">
-              <div className="d-flex align-items-center gap-2 text-dark small fw-bold">
-                <FaUsers className="text-primary" />
-                <span>Branch Staff Assignment</span>
-              </div>
-              <div className="extra-small text-muted mt-1">
-                Manage assigned personnel or add unassigned employees to <strong>{selectedBranchForMembers?.branchName}</strong>. To view and edit branch allocations for all employees across the organization, go to <strong>Organization &gt; Access &amp; Security &gt; Organization Access</strong>.
-              </div>
-            </div>
-
-            <div className="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
-              <div className="flex-grow-1" style={{ minWidth: 220 }}>
-                <SearchInput
-                  inputGroupTextClassName="bg-white border-end-0"
-                  iconClassName="text-muted"
-                  inputClassName="border-start-0 ps-0"
-                  placeholder="Search staff by name, email, code, or department..."
-                  value={memberSearch}
-                  onChange={(e) => setMemberSearch(e.target.value)}
-                />
-              </div>
-
-              <div className="d-flex align-items-center gap-2 flex-wrap">
-                <select
-                  className="form-select form-select-sm"
-                  value={memberAssignFilter}
-                  onChange={(e) => setMemberAssignFilter(e.target.value)}
-                  style={{ width: "auto" }}
-                >
-                  <option value="all">All Available Personnel</option>
-                  <option value="current">Current Branch Members</option>
-                  <option value="unassigned">Unassigned Employees Only</option>
-                </select>
-
-                <Button
-                  variant="outline-secondary"
-                  size="sm"
-                  onClick={() => {
-                    const targetBId = String(selectedBranchForMembers?._id || selectedBranchForMembers?.id || "");
-                    const filteredIds = onboardedStaff
-                      .filter((emp) => {
-                        const empBId = String(emp.primaryBranchId || "");
-                        const isCurrent = empBId && empBId === targetBId;
-                        const isUnassigned = !empBId;
-                        if (!isCurrent && !isUnassigned) return false; // Exclude other branch members
-
-                        const q = memberSearch.toLowerCase();
-                        const matchSearch = !q ||
-                          (emp.fullName && emp.fullName.toLowerCase().includes(q)) ||
-                          (emp.email && emp.email.toLowerCase().includes(q)) ||
-                          (emp.employeeCode && emp.employeeCode.toLowerCase().includes(q)) ||
-                          (emp.department && emp.department.toLowerCase().includes(q));
-                        if (!matchSearch) return false;
-
-                        if (memberAssignFilter === "current") return isCurrent;
-                        if (memberAssignFilter === "unassigned") return isUnassigned;
-                        return true;
-                      })
-                      .map((e) => String(e._id || e.id));
-                    setSelectedMemberIds((prev) => {
-                      const next = new Set(prev);
-                      filteredIds.forEach((id) => next.add(id));
-                      return next;
-                    });
-                  }}
-                >
-                  Select Filtered
-                </Button>
-                <Button
-                  variant="outline-secondary"
-                  size="sm"
-                  onClick={() => setSelectedMemberIds(new Set())}
-                >
-                  Clear All
-                </Button>
+            <div className="staff-modal-notice mb-3">
+              <div className="d-flex align-items-start gap-2.5">
+                <div style={{ color: "#C49A55", fontSize: 16, marginTop: 1 }}>
+                  <FaBuilding />
+                </div>
+                <div>
+                  <div className="fw-bold text-dark small">Branch Staff Allocation &amp; Workforce Mapping</div>
+                  <div className="extra-small text-muted mt-0.5" style={{ lineHeight: 1.45 }}>
+                    Select personnel to assign as active primary members of <strong>{selectedBranchForMembers?.branchName}</strong>. Checked employees will populate this branch&apos;s directory, shifts, and attendance workspaces.
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div style={{ maxHeight: 380, overflowY: "auto" }}>
-              <Table hover responsive className="align-middle mb-0">
-                <thead className="table-light small">
-                  <tr>
-                    <th style={{ width: 40 }}></th>
-                    <th>Employee</th>
-                    <th>Department & Designation</th>
-                    <th>Branch Assignment</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {onboardedStaff
-                    .filter((emp) => {
-                      const targetBId = String(selectedBranchForMembers?._id || selectedBranchForMembers?.id || "");
-                      const empBId = String(emp.primaryBranchId || "");
-                      const isCurrent = empBId && empBId === targetBId;
-                      const isUnassigned = !empBId;
+            {(() => {
+              const targetBId = String(selectedBranchForMembers?._id || selectedBranchForMembers?.id || "");
+              const filteredStaffList = onboardedStaff.filter((emp) => {
+                const empBId = String(emp.primaryBranchId || "");
+                const isCurrent = empBId && empBId === targetBId;
+                const isUnassigned = !empBId;
 
-                      // Exclude other branch members from this branch's modal
-                      if (!isCurrent && !isUnassigned) return false;
+                // Exclude other branch members from this branch's modal
+                if (!isCurrent && !isUnassigned) return false;
 
-                      const q = memberSearch.toLowerCase();
-                      const matchSearch = !q ||
-                        (emp.fullName && emp.fullName.toLowerCase().includes(q)) ||
-                        (emp.email && emp.email.toLowerCase().includes(q)) ||
-                        (emp.employeeCode && emp.employeeCode.toLowerCase().includes(q)) ||
-                        (emp.department && emp.department.toLowerCase().includes(q));
-                      if (!matchSearch) return false;
+                const q = (memberSearch || "").toLowerCase();
+                const matchSearch = !q ||
+                  (emp.fullName && emp.fullName.toLowerCase().includes(q)) ||
+                  (emp.email && emp.email.toLowerCase().includes(q)) ||
+                  (emp.employeeCode && emp.employeeCode.toLowerCase().includes(q)) ||
+                  (emp.department && emp.department.toLowerCase().includes(q));
+                if (!matchSearch) return false;
 
-                      if (memberAssignFilter === "current") return isCurrent;
-                      if (memberAssignFilter === "unassigned") return isUnassigned;
-                      return true;
-                    })
-                    .map((emp) => {
-                      const empId = String(emp._id || emp.id);
-                      const isChecked = selectedMemberIds.has(empId);
-                      const targetBId = String(selectedBranchForMembers?._id || selectedBranchForMembers?.id || "");
-                      const empBId = String(emp.primaryBranchId || "");
-                      const isCurrent = empBId && empBId === targetBId;
+                if (memberAssignFilter === "current") return isCurrent;
+                if (memberAssignFilter === "unassigned") return isUnassigned;
+                return true;
+              });
 
-                      return (
-                        <tr
-                          key={empId}
-                          onClick={() => toggleMember(empId)}
-                          role="button"
-                          className={isChecked ? "table-active" : ""}
+              const allFilteredSelected = filteredStaffList.length > 0 && filteredStaffList.every((emp) => selectedMemberIds.has(String(emp._id || emp.id)));
+
+              return (
+                <>
+                  <div className="d-flex align-items-center justify-content-between gap-2.5 mb-3 flex-wrap">
+                    <div className="branches-search-wrap flex-grow-1" style={{ minWidth: 240 }}>
+                      <FaSearch className="branches-search-icon" />
+                      <input
+                        type="text"
+                        className="branches-search-input"
+                        placeholder="Search staff by name, email, code, or department..."
+                        value={memberSearch}
+                        onChange={(e) => setMemberSearch(e.target.value)}
+                      />
+                      {memberSearch && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-link text-muted p-0 me-2"
+                          style={{ textDecoration: "none", fontSize: "11px" }}
+                          onClick={() => setMemberSearch("")}
                         >
-                          <td>
-                            <Form.Check
-                              checked={isChecked}
-                              onChange={() => {}}
-                              onClick={(e) => e.stopPropagation()}
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="d-flex align-items-center gap-2 flex-wrap">
+                      <select
+                        className="branches-filter-select"
+                        value={memberAssignFilter}
+                        onChange={(e) => setMemberAssignFilter(e.target.value)}
+                        style={{ minWidth: 190 }}
+                      >
+                        <option value="all">All Available Personnel</option>
+                        <option value="current">Current Branch Members</option>
+                        <option value="unassigned">Unassigned Employees Only</option>
+                      </select>
+
+                      <button
+                        type="button"
+                        className="branches-btn-view"
+                        style={{ fontSize: "12px", padding: "6px 14px" }}
+                        onClick={() => {
+                          const filteredIds = filteredStaffList.map((e) => String(e._id || e.id));
+                          setSelectedMemberIds((prev) => {
+                            const next = new Set(prev);
+                            filteredIds.forEach((id) => next.add(id));
+                            return next;
+                          });
+                        }}
+                      >
+                        Select Filtered
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-link text-muted text-decoration-none px-2"
+                        style={{ fontSize: "12px" }}
+                        onClick={() => setSelectedMemberIds(new Set())}
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="staff-table-wrap">
+                    <Table hover responsive className="align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th style={{ width: 44, textAlign: "center" }}>
+                            <input
+                              type="checkbox"
+                              className="staff-custom-checkbox"
+                              checked={allFilteredSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedMemberIds((prev) => {
+                                    const next = new Set(prev);
+                                    filteredStaffList.forEach((emp) => next.add(String(emp._id || emp.id)));
+                                    return next;
+                                  });
+                                } else {
+                                  setSelectedMemberIds((prev) => {
+                                    const next = new Set(prev);
+                                    filteredStaffList.forEach((emp) => next.delete(String(emp._id || emp.id)));
+                                    return next;
+                                  });
+                                }
+                              }}
                             />
-                          </td>
-                          <td>
-                            <div className="fw-semibold text-dark d-flex align-items-center gap-2">
-                              <span>{emp.fullName}</span>
-                              {emp.employeeCode && (
-                                <span className="branch-code-badge" style={{ fontSize: "10px", padding: "1px 5px" }}>
-                                  {emp.employeeCode}
-                                </span>
-                              )}
-                            </div>
-                            <div className="small text-muted">{emp.email}</div>
-                          </td>
-                          <td>
-                            <div className="small text-dark fw-medium">{emp.designation || "—"}</div>
-                            <div className="extra-small text-muted">{emp.department || "—"}</div>
-                          </td>
-                          <td>
-                            {isCurrent ? (
-                              <Badge bg="success-subtle" className="text-success border border-success-subtle px-2.5 py-1">
-                                <FaCheckCircle className="me-1" /> Assigned to this Branch
-                              </Badge>
-                            ) : (
-                              <Badge bg="secondary-subtle" className="text-secondary border px-2.5 py-1">
-                                Unassigned {isChecked && <span className="ms-1 fw-bold text-success">➔ Add to Branch</span>}
-                              </Badge>
-                            )}
-                          </td>
+                          </th>
+                          <th style={{ minWidth: 230 }}>Employee / Staff</th>
+                          <th style={{ minWidth: 170 }}>Department &amp; Designation</th>
+                          <th style={{ minWidth: 180 }}>Branch Assignment</th>
                         </tr>
-                      );
-                    })}
-                </tbody>
-              </Table>
-            </div>
+                      </thead>
+                      <tbody>
+                        {filteredStaffList.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="text-center py-5 text-muted">
+                              <div className="d-flex flex-column align-items-center justify-content-center py-3">
+                                <FaSearch className="text-muted opacity-50 mb-2" size={22} />
+                                <div className="fw-semibold text-dark">No personnel match your search</div>
+                                <div className="extra-small text-muted mt-1">Try modifying your search or filter options</div>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredStaffList.map((emp) => {
+                            const empId = String(emp._id || emp.id);
+                            const isChecked = selectedMemberIds.has(empId);
+                            const empBId = String(emp.primaryBranchId || "");
+                            const isCurrent = empBId && empBId === targetBId;
+                            const initials = emp.fullName
+                              ? emp.fullName.split(" ").map((n) => n[0]).filter(Boolean).slice(0, 2).join("").toUpperCase()
+                              : "EM";
+
+                            return (
+                              <tr
+                                key={empId}
+                                onClick={() => toggleMember(empId)}
+                                className={isChecked ? "selected-row" : ""}
+                              >
+                                <td style={{ textAlign: "center" }}>
+                                  <input
+                                    type="checkbox"
+                                    className="staff-custom-checkbox"
+                                    checked={isChecked}
+                                    onChange={() => {}}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </td>
+                                <td>
+                                  <div className="d-flex align-items-center" style={{ gap: "10px" }}>
+                                    <div
+                                      style={{
+                                        width: 34,
+                                        height: 34,
+                                        borderRadius: "9px",
+                                        background: isChecked ? "#1C1D1D" : "#f1f5f9",
+                                        color: isChecked ? "#E2C278" : "#475569",
+                                        fontSize: "11px",
+                                        fontWeight: 700,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        flexShrink: 0,
+                                        border: isChecked ? "1px solid rgba(196, 154, 85, 0.4)" : "1px solid #e2e8f0",
+                                        transition: "all 0.15s ease",
+                                      }}
+                                    >
+                                      {initials}
+                                    </div>
+                                    <div className="min-w-0" style={{ lineHeight: 1.3 }}>
+                                      <div className="d-flex align-items-center gap-1.5">
+                                        <span className="fw-bold text-dark text-truncate" style={{ fontSize: "13px" }}>
+                                          {emp.fullName}
+                                        </span>
+                                        {emp.employeeCode && (
+                                          <span className="branch-code-badge font-monospace" style={{ fontSize: "10px", padding: "1px 6px" }}>
+                                            {emp.employeeCode}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="extra-small text-muted text-truncate" style={{ marginTop: "1px" }}>
+                                        {emp.email}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="fw-semibold text-dark text-truncate" style={{ fontSize: "12.5px" }}>
+                                    <FaUserTie className="text-secondary opacity-75 me-1" size={10} />
+                                    {emp.designation || "Staff"}
+                                  </div>
+                                  <div className="extra-small text-muted text-truncate mt-0.5">
+                                    <FaSitemap className="text-secondary opacity-75 me-1" size={10} />
+                                    {emp.department || "General"}
+                                  </div>
+                                </td>
+                                <td>
+                                  {isCurrent ? (
+                                    <span
+                                      className="badge fw-semibold d-inline-flex align-items-center gap-1"
+                                      style={{
+                                        fontSize: "11px",
+                                        padding: "4px 9px",
+                                        backgroundColor: "rgba(16, 185, 129, 0.1)",
+                                        color: "#059669",
+                                        border: "1px solid rgba(16, 185, 129, 0.25)",
+                                        borderRadius: "9999px",
+                                      }}
+                                    >
+                                      <FaCheckCircle size={10} /> Assigned to this Branch
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className="badge fw-medium d-inline-flex align-items-center gap-1"
+                                      style={{
+                                        fontSize: "11px",
+                                        padding: "4px 9px",
+                                        backgroundColor: isChecked ? "rgba(196, 154, 85, 0.12)" : "#f1f5f9",
+                                        color: isChecked ? "#9B7229" : "#64748b",
+                                        border: isChecked ? "1px solid rgba(196, 154, 85, 0.3)" : "1px solid #e2e8f0",
+                                        borderRadius: "9999px",
+                                      }}
+                                    >
+                                      {isChecked ? (
+                                        <>
+                                          <FaUserPlus size={10} className="text-success" /> Add to Branch
+                                        </>
+                                      ) : (
+                                        "Unassigned"
+                                      )}
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </Table>
+                  </div>
+                </>
+              );
+            })()}
           </Modal.Body>
-          <Modal.Footer className="bg-light px-4 py-3 border-top d-flex justify-content-between">
-            <span className="small text-muted"><strong>{selectedMemberIds.size}</strong> staff selected for this branch</span>
-            <div className="d-flex gap-2">
-              <Button variant="secondary" size="sm" onClick={() => setShowAssignModal(false)} disabled={assignLoading}>
+          <Modal.Footer className="px-4 py-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div className="d-flex align-items-center gap-2">
+              <span className="branch-dept-count-pill active" style={{ fontSize: "11.5px", padding: "4px 10px" }}>
+                {selectedMemberIds.size} Selected
+              </span>
+              <span className="text-muted extra-small">Personnel selected for this branch</span>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <Button
+                variant="light"
+                size="sm"
+                className="px-3 py-1.5 fw-semibold border text-dark"
+                onClick={() => setShowAssignModal(false)}
+                disabled={assignLoading}
+              >
                 Cancel
               </Button>
-              <Button variant="success" size="sm" onClick={handleSaveMembers} disabled={assignLoading}>
-                {assignLoading ? <LoadingSpinner variant="button" size="sm" /> : "Save Staff Assignments"}
-              </Button>
+              <button
+                type="button"
+                className="branches-btn-add btn-sm"
+                style={{ padding: "7px 18px" }}
+                onClick={handleSaveMembers}
+                disabled={assignLoading}
+              >
+                {assignLoading ? (
+                  <LoadingSpinner variant="button" size="sm" />
+                ) : (
+                  <>
+                    <FaCheckCircle size={11} className="me-1" /> Save Staff Assignments
+                  </>
+                )}
+              </button>
             </div>
           </Modal.Footer>
         </Modal>
@@ -2982,7 +3092,9 @@ export default function BranchesSection({
   const totalBranchesCount = totalRecords || masterBranchList.length || branches.length;
   const activeBranchesCount = (masterBranchList.length > 0 ? masterBranchList : branches).filter((b) => b.status === "ACTIVE").length;
   const inactiveBranchesCount = (masterBranchList.length > 0 ? masterBranchList : branches).filter((b) => b.status === "INACTIVE").length;
-  const totalStaffCount = onboardedStaff.length;
+  const totalStaffCount = onboardedStaff.filter(
+    (e) => e.primaryBranchId || (Array.isArray(e.branchIds) && e.branchIds.length > 0)
+  ).length;
   const geofencedBranchesCount = (masterBranchList.length > 0 ? masterBranchList : branches).filter((b) => b.latitude && b.longitude).length;
   const citiesCount = cityOptions.length;
 
@@ -3086,7 +3198,7 @@ export default function BranchesSection({
           </div>
           <div className="branches-kpi-info">
             <div className="branches-kpi-label">Cities & Regions</div>
-            <div className="branches-kpi-value">{citiesCount || 1}</div>
+            <div className="branches-kpi-value">{citiesCount}</div>
             <div className="branches-kpi-subtext">Geographic coverage</div>
           </div>
         </div>
@@ -3702,190 +3814,339 @@ export default function BranchesSection({
 
 
       {/* ── Assign Members Modal ── */}
-      <Modal show={showAssignModal} onHide={() => setShowAssignModal(false)} size="lg" centered backdrop="static">
+      <Modal
+        show={showAssignModal}
+        onHide={() => setShowAssignModal(false)}
+        size="lg"
+        centered
+        backdrop="static"
+        dialogClassName="luxury-staff-modal"
+      >
         <Modal.Header closeButton className="border-bottom px-4 py-3">
-          <Modal.Title className="fs-5 fw-bold d-flex align-items-center gap-2">
-            <FaUserPlus className="text-success" /> Manage Staff — {selectedBranchForMembers?.branchName}
-          </Modal.Title>
+          <div className="d-flex align-items-center gap-3">
+            <div
+              className="branch-card-icon-badge branch-card-icon-gold"
+              style={{ width: 40, height: 40, fontSize: 16 }}
+            >
+              <FaUserPlus />
+            </div>
+            <div>
+              <div className="d-flex align-items-center gap-2">
+                <Modal.Title className="fs-5 fw-bold text-dark mb-0">
+                  Manage Staff Allocations
+                </Modal.Title>
+                {selectedBranchForMembers?.branchCode && (
+                  <span className="branch-code-badge font-monospace" style={{ fontSize: "11px", padding: "2px 8px" }}>
+                    {selectedBranchForMembers.branchCode}
+                  </span>
+                )}
+              </div>
+              <div className="text-muted extra-small mt-0.5">
+                Assigning personnel to <strong>{selectedBranchForMembers?.branchName}</strong>
+              </div>
+            </div>
+          </div>
         </Modal.Header>
         <Modal.Body className="p-4">
           {assignModalError && <FeedbackAlert variant="danger" message={assignModalError} />}
           {assignModalSuccess && <FeedbackAlert variant="success" message={assignModalSuccess} />}
 
-          <div className="p-3 rounded-3 bg-light border mb-3">
-            <div className="d-flex align-items-center gap-2 text-dark small fw-bold">
-              <FaUsers className="text-primary" />
-              <span>Branch Staff Assignment</span>
-            </div>
-            <div className="extra-small text-muted mt-1">
-              Manage assigned personnel or add unassigned employees to <strong>{selectedBranchForMembers?.branchName}</strong>. To view and edit branch allocations for all employees across the organization, go to <strong>Organization &gt; Access &amp; Security &gt; Organization Access</strong>.
-            </div>
-          </div>
-
-          <div className="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
-            <div className="flex-grow-1" style={{ minWidth: 220 }}>
-              <SearchInput
-                inputGroupTextClassName="bg-white border-end-0"
-                iconClassName="text-muted"
-                inputClassName="border-start-0 ps-0"
-                placeholder="Search staff by name, email, code, or department..."
-                value={memberSearch}
-                onChange={(e) => setMemberSearch(e.target.value)}
-              />
-            </div>
-
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <select
-                className="form-select form-select-sm"
-                value={memberAssignFilter}
-                onChange={(e) => setMemberAssignFilter(e.target.value)}
-                style={{ width: "auto" }}
-              >
-                <option value="all">All Available Personnel</option>
-                <option value="current">Current Branch Members</option>
-                <option value="unassigned">Unassigned Employees Only</option>
-              </select>
-
-              <Button
-                variant="outline-secondary"
-                size="sm"
-                onClick={() => {
-                  const targetBId = String(selectedBranchForMembers?._id || selectedBranchForMembers?.id || "");
-                  const filteredIds = onboardedStaff
-                    .filter((emp) => {
-                      const empBId = String(emp.primaryBranchId || "");
-                      const isCurrent = empBId && empBId === targetBId;
-                      const isUnassigned = !empBId;
-                      if (!isCurrent && !isUnassigned) return false; // Exclude other branch members
-
-                      const q = memberSearch.toLowerCase();
-                      const matchSearch = !q ||
-                        (emp.fullName && emp.fullName.toLowerCase().includes(q)) ||
-                        (emp.email && emp.email.toLowerCase().includes(q)) ||
-                        (emp.employeeCode && emp.employeeCode.toLowerCase().includes(q)) ||
-                        (emp.department && emp.department.toLowerCase().includes(q));
-                      if (!matchSearch) return false;
-
-                      if (memberAssignFilter === "current") return isCurrent;
-                      if (memberAssignFilter === "unassigned") return isUnassigned;
-                      return true;
-                    })
-                    .map((e) => String(e._id || e.id));
-                  setSelectedMemberIds((prev) => {
-                    const next = new Set(prev);
-                    filteredIds.forEach((id) => next.add(id));
-                    return next;
-                  });
-                }}
-              >
-                Select Filtered
-              </Button>
-              <Button
-                variant="outline-secondary"
-                size="sm"
-                onClick={() => setSelectedMemberIds(new Set())}
-              >
-                Clear All
-              </Button>
+          <div className="staff-modal-notice mb-3">
+            <div className="d-flex align-items-start gap-2.5">
+              <div style={{ color: "#C49A55", fontSize: 16, marginTop: 1 }}>
+                <FaBuilding />
+              </div>
+              <div>
+                <div className="fw-bold text-dark small">Branch Staff Allocation &amp; Workforce Mapping</div>
+                <div className="extra-small text-muted mt-0.5" style={{ lineHeight: 1.45 }}>
+                  Select personnel to assign as active primary members of <strong>{selectedBranchForMembers?.branchName}</strong>. Checked employees will populate this branch&apos;s directory, shifts, and attendance workspaces.
+                </div>
+              </div>
             </div>
           </div>
 
-          <div style={{ maxHeight: 380, overflowY: "auto" }}>
-            <Table hover responsive className="align-middle mb-0">
-              <thead className="table-light small">
-                <tr>
-                  <th style={{ width: 40 }}></th>
-                  <th>Employee</th>
-                  <th>Department & Designation</th>
-                  <th>Branch Assignment</th>
-                </tr>
-              </thead>
-              <tbody>
-                {onboardedStaff
-                  .filter((emp) => {
-                    const targetBId = String(selectedBranchForMembers?._id || selectedBranchForMembers?.id || "");
-                    const empBId = String(emp.primaryBranchId || "");
-                    const isCurrent = empBId && empBId === targetBId;
-                    const isUnassigned = !empBId;
+          {(() => {
+            const targetBId = String(selectedBranchForMembers?._id || selectedBranchForMembers?.id || "");
+            const filteredStaffList = onboardedStaff.filter((emp) => {
+              const empBId = String(emp.primaryBranchId || "");
+              const isCurrent = empBId && empBId === targetBId;
+              const isUnassigned = !empBId;
 
-                    // Exclude other branch members from this branch's modal
-                    if (!isCurrent && !isUnassigned) return false;
+              // Exclude other branch members from this branch's modal
+              if (!isCurrent && !isUnassigned) return false;
 
-                    const q = memberSearch.toLowerCase();
-                    const matchSearch = !q ||
-                      (emp.fullName && emp.fullName.toLowerCase().includes(q)) ||
-                      (emp.email && emp.email.toLowerCase().includes(q)) ||
-                      (emp.employeeCode && emp.employeeCode.toLowerCase().includes(q)) ||
-                      (emp.department && emp.department.toLowerCase().includes(q));
-                    if (!matchSearch) return false;
+              const q = (memberSearch || "").toLowerCase();
+              const matchSearch = !q ||
+                (emp.fullName && emp.fullName.toLowerCase().includes(q)) ||
+                (emp.email && emp.email.toLowerCase().includes(q)) ||
+                (emp.employeeCode && emp.employeeCode.toLowerCase().includes(q)) ||
+                (emp.department && emp.department.toLowerCase().includes(q));
+              if (!matchSearch) return false;
 
-                    if (memberAssignFilter === "current") return isCurrent;
-                    if (memberAssignFilter === "unassigned") return isUnassigned;
-                    return true;
-                  })
-                  .map((emp) => {
-                    const empId = String(emp._id || emp.id);
-                    const isChecked = selectedMemberIds.has(empId);
-                    const targetBId = String(selectedBranchForMembers?._id || selectedBranchForMembers?.id || "");
-                    const empBId = String(emp.primaryBranchId || "");
-                    const isCurrent = empBId && empBId === targetBId;
+              if (memberAssignFilter === "current") return isCurrent;
+              if (memberAssignFilter === "unassigned") return isUnassigned;
+              return true;
+            });
 
-                    return (
-                      <tr
-                        key={empId}
-                        onClick={() => toggleMember(empId)}
-                        role="button"
-                        className={isChecked ? "table-active" : ""}
+            const allFilteredSelected = filteredStaffList.length > 0 && filteredStaffList.every((emp) => selectedMemberIds.has(String(emp._id || emp.id)));
+
+            return (
+              <>
+                <div className="d-flex align-items-center justify-content-between gap-2.5 mb-3 flex-wrap">
+                  <div className="branches-search-wrap flex-grow-1" style={{ minWidth: 240 }}>
+                    <FaSearch className="branches-search-icon" />
+                    <input
+                      type="text"
+                      className="branches-search-input"
+                      placeholder="Search staff by name, email, code, or department..."
+                      value={memberSearch}
+                      onChange={(e) => setMemberSearch(e.target.value)}
+                    />
+                    {memberSearch && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-link text-muted p-0 me-2"
+                        style={{ textDecoration: "none", fontSize: "11px" }}
+                        onClick={() => setMemberSearch("")}
                       >
-                        <td>
-                          <Form.Check
-                            checked={isChecked}
-                            onChange={() => {}}
-                            onClick={(e) => e.stopPropagation()}
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <select
+                      className="branches-filter-select"
+                      value={memberAssignFilter}
+                      onChange={(e) => setMemberAssignFilter(e.target.value)}
+                      style={{ minWidth: 190 }}
+                    >
+                      <option value="all">All Available Personnel</option>
+                      <option value="current">Current Branch Members</option>
+                      <option value="unassigned">Unassigned Employees Only</option>
+                    </select>
+
+                    <button
+                      type="button"
+                      className="branches-btn-view"
+                      style={{ fontSize: "12px", padding: "6px 14px" }}
+                      onClick={() => {
+                        const filteredIds = filteredStaffList.map((e) => String(e._id || e.id));
+                        setSelectedMemberIds((prev) => {
+                          const next = new Set(prev);
+                          filteredIds.forEach((id) => next.add(id));
+                          return next;
+                        });
+                      }}
+                    >
+                      Select Filtered
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-link text-muted text-decoration-none px-2"
+                      style={{ fontSize: "12px" }}
+                      onClick={() => setSelectedMemberIds(new Set())}
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+
+                <div className="staff-table-wrap">
+                  <Table hover responsive className="align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 44, textAlign: "center" }}>
+                          <input
+                            type="checkbox"
+                            className="staff-custom-checkbox"
+                            checked={allFilteredSelected}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedMemberIds((prev) => {
+                                  const next = new Set(prev);
+                                  filteredStaffList.forEach((emp) => next.add(String(emp._id || emp.id)));
+                                  return next;
+                                });
+                              } else {
+                                setSelectedMemberIds((prev) => {
+                                  const next = new Set(prev);
+                                  filteredStaffList.forEach((emp) => next.delete(String(emp._id || emp.id)));
+                                  return next;
+                                });
+                              }
+                            }}
                           />
-                        </td>
-                        <td>
-                          <div className="fw-semibold text-dark d-flex align-items-center gap-2">
-                            <span>{emp.fullName}</span>
-                            {emp.employeeCode && (
-                              <span className="branch-code-badge" style={{ fontSize: "10px", padding: "1px 5px" }}>
-                                {emp.employeeCode}
-                              </span>
-                            )}
-                          </div>
-                          <div className="small text-muted">{emp.email}</div>
-                        </td>
-                        <td>
-                          <div className="small text-dark fw-medium">{emp.designation || "—"}</div>
-                          <div className="extra-small text-muted">{emp.department || "—"}</div>
-                        </td>
-                        <td>
-                          {isCurrent ? (
-                            <Badge bg="success-subtle" className="text-success border border-success-subtle px-2.5 py-1">
-                              <FaCheckCircle className="me-1" /> Assigned to this Branch
-                            </Badge>
-                          ) : (
-                            <Badge bg="secondary-subtle" className="text-secondary border px-2.5 py-1">
-                              Unassigned {isChecked && <span className="ms-1 fw-bold text-success">➔ Add to Branch</span>}
-                            </Badge>
-                          )}
-                        </td>
+                        </th>
+                        <th style={{ minWidth: 230 }}>Employee / Staff</th>
+                        <th style={{ minWidth: 170 }}>Department &amp; Designation</th>
+                        <th style={{ minWidth: 180 }}>Branch Assignment</th>
                       </tr>
-                    );
-                  })}
-              </tbody>
-            </Table>
-          </div>
+                    </thead>
+                    <tbody>
+                      {filteredStaffList.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="text-center py-5 text-muted">
+                            <div className="d-flex flex-column align-items-center justify-content-center py-3">
+                              <FaSearch className="text-muted opacity-50 mb-2" size={22} />
+                              <div className="fw-semibold text-dark">No personnel match your search</div>
+                              <div className="extra-small text-muted mt-1">Try modifying your search or filter options</div>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredStaffList.map((emp) => {
+                          const empId = String(emp._id || emp.id);
+                          const isChecked = selectedMemberIds.has(empId);
+                          const empBId = String(emp.primaryBranchId || "");
+                          const isCurrent = empBId && empBId === targetBId;
+                          const initials = emp.fullName
+                            ? emp.fullName.split(" ").map((n) => n[0]).filter(Boolean).slice(0, 2).join("").toUpperCase()
+                            : "EM";
+
+                          return (
+                            <tr
+                              key={empId}
+                              onClick={() => toggleMember(empId)}
+                              className={isChecked ? "selected-row" : ""}
+                            >
+                              <td style={{ textAlign: "center" }}>
+                                <input
+                                  type="checkbox"
+                                  className="staff-custom-checkbox"
+                                  checked={isChecked}
+                                  onChange={() => {}}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </td>
+                              <td>
+                                <div className="d-flex align-items-center" style={{ gap: "10px" }}>
+                                  <div
+                                    style={{
+                                      width: 34,
+                                      height: 34,
+                                      borderRadius: "9px",
+                                      background: isChecked ? "#1C1D1D" : "#f1f5f9",
+                                      color: isChecked ? "#E2C278" : "#475569",
+                                      fontSize: "11px",
+                                      fontWeight: 700,
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      flexShrink: 0,
+                                      border: isChecked ? "1px solid rgba(196, 154, 85, 0.4)" : "1px solid #e2e8f0",
+                                      transition: "all 0.15s ease",
+                                    }}
+                                  >
+                                    {initials}
+                                  </div>
+                                  <div className="min-w-0" style={{ lineHeight: 1.3 }}>
+                                    <div className="d-flex align-items-center gap-1.5">
+                                      <span className="fw-bold text-dark text-truncate" style={{ fontSize: "13px" }}>
+                                        {emp.fullName}
+                                      </span>
+                                      {emp.employeeCode && (
+                                        <span className="branch-code-badge font-monospace" style={{ fontSize: "10px", padding: "1px 6px" }}>
+                                          {emp.employeeCode}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="extra-small text-muted text-truncate" style={{ marginTop: "1px" }}>
+                                      {emp.email}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>
+                                <div className="fw-semibold text-dark text-truncate" style={{ fontSize: "12.5px" }}>
+                                  <FaUserTie className="text-secondary opacity-75 me-1" size={10} />
+                                  {emp.designation || "Staff"}
+                                </div>
+                                <div className="extra-small text-muted text-truncate mt-0.5">
+                                  <FaSitemap className="text-secondary opacity-75 me-1" size={10} />
+                                  {emp.department || "General"}
+                                </div>
+                              </td>
+                              <td>
+                                {isCurrent ? (
+                                  <span
+                                    className="badge fw-semibold d-inline-flex align-items-center gap-1"
+                                    style={{
+                                      fontSize: "11px",
+                                      padding: "4px 9px",
+                                      backgroundColor: "rgba(16, 185, 129, 0.1)",
+                                      color: "#059669",
+                                      border: "1px solid rgba(16, 185, 129, 0.25)",
+                                      borderRadius: "9999px",
+                                    }}
+                                  >
+                                    <FaCheckCircle size={10} /> Assigned to this Branch
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="badge fw-medium d-inline-flex align-items-center gap-1"
+                                    style={{
+                                      fontSize: "11px",
+                                      padding: "4px 9px",
+                                      backgroundColor: isChecked ? "rgba(196, 154, 85, 0.12)" : "#f1f5f9",
+                                      color: isChecked ? "#9B7229" : "#64748b",
+                                      border: isChecked ? "1px solid rgba(196, 154, 85, 0.3)" : "1px solid #e2e8f0",
+                                      borderRadius: "9999px",
+                                    }}
+                                  >
+                                    {isChecked ? (
+                                      <>
+                                        <FaUserPlus size={10} className="text-success" /> Add to Branch
+                                      </>
+                                    ) : (
+                                      "Unassigned"
+                                    )}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </Table>
+                </div>
+              </>
+            );
+          })()}
         </Modal.Body>
-        <Modal.Footer className="bg-light px-4 py-3 border-top d-flex justify-content-between">
-          <span className="small text-muted"><strong>{selectedMemberIds.size}</strong> staff selected for this branch</span>
-          <div className="d-flex gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setShowAssignModal(false)} disabled={assignLoading}>
+        <Modal.Footer className="px-4 py-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div className="d-flex align-items-center gap-2">
+            <span className="branch-dept-count-pill active" style={{ fontSize: "11.5px", padding: "4px 10px" }}>
+              {selectedMemberIds.size} Selected
+            </span>
+            <span className="text-muted extra-small">Personnel selected for this branch</span>
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            <Button
+              variant="light"
+              size="sm"
+              className="px-3 py-1.5 fw-semibold border text-dark"
+              onClick={() => setShowAssignModal(false)}
+              disabled={assignLoading}
+            >
               Cancel
             </Button>
-            <Button variant="success" size="sm" onClick={handleSaveMembers} disabled={assignLoading}>
-              {assignLoading ? <LoadingSpinner variant="button" size="sm" /> : "Save Staff Assignments"}
-            </Button>
+            <button
+              type="button"
+              className="branches-btn-add btn-sm"
+              style={{ padding: "7px 18px" }}
+              onClick={handleSaveMembers}
+              disabled={assignLoading}
+            >
+              {assignLoading ? (
+                <LoadingSpinner variant="button" size="sm" />
+              ) : (
+                <>
+                  <FaCheckCircle size={11} className="me-1" /> Save Staff Assignments
+                </>
+              )}
+            </button>
           </div>
         </Modal.Footer>
       </Modal>

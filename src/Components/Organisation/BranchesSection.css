@@ -647,6 +647,17 @@
   color: #475569;
   padding: 14px 18px;
   border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.branches-table th:first-child,
+.branches-table td:first-child {
+  padding-left: 20px;
+}
+
+.branches-table th:last-child,
+.branches-table td:last-child {
+  padding-right: 20px;
 }
 
 .branches-table td {
@@ -1471,3 +1482,321 @@
   display: inline-flex;
   align-items: center;
 }
+
+/* ── Branch Departments Spotlight Card & Luxury Empty State ── */
+.branch-card-icon-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.branch-card-icon-gold {
+  background: linear-gradient(135deg, rgba(226, 194, 120, 0.22) 0%, rgba(196, 154, 85, 0.1) 100%);
+  border: 1px solid rgba(196, 154, 85, 0.35);
+  color: var(--color-primary-dark, #9B7229);
+  box-shadow: 0 2px 8px rgba(196, 154, 85, 0.12);
+}
+
+.branch-dept-count-pill {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 11px;
+  border-radius: 20px;
+  letter-spacing: 0.03em;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.branch-dept-count-pill.zero {
+  background: #F1F5F9;
+  color: #64748B;
+  border: 1px solid #E2E8F0;
+}
+
+.branch-dept-count-pill.active {
+  background: rgba(22, 163, 74, 0.1);
+  color: #15803D;
+  border: 1px solid rgba(22, 163, 74, 0.25);
+}
+
+/* ── Modern Illustrated Empty State ── */
+.branch-empty-departments-wrap {
+  background: linear-gradient(180deg, #FAFAF9 0%, #FFFFFF 100%);
+  border: 1.5px dashed rgba(196, 154, 85, 0.35);
+  border-radius: 18px;
+  padding: 42px 28px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.branch-empty-departments-wrap:hover {
+  border-color: rgba(196, 154, 85, 0.55);
+  background: linear-gradient(180deg, #FDFBF7 0%, #FFFFFF 100%);
+}
+
+.branch-empty-icon-glow {
+  width: 76px;
+  height: 76px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(226, 194, 120, 0.25) 0%, rgba(196, 154, 85, 0.12) 100%);
+  border: 1.5px solid rgba(196, 154, 85, 0.35);
+  box-shadow: 0 8px 24px rgba(196, 154, 85, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary-dark, #9B7229);
+  font-size: 32px;
+  margin-bottom: 16px;
+  transition: transform 0.25s ease;
+}
+
+.branch-empty-departments-wrap:hover .branch-empty-icon-glow {
+  transform: translateY(-2px) scale(1.04);
+}
+
+.branch-empty-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: #1E293B;
+  margin: 0 0 6px 0;
+  letter-spacing: -0.01em;
+}
+
+.branch-empty-desc {
+  font-size: 13.5px;
+  color: #64748B;
+  max-width: 520px;
+  line-height: 1.6;
+  margin: 0 0 20px 0;
+}
+
+.branch-empty-desc strong {
+  color: #0F172A;
+  font-weight: 700;
+}
+
+.branch-empty-features-grid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  max-width: 600px;
+}
+
+.branch-empty-feature-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.branch-empty-feature-chip-icon {
+  color: var(--color-primary, #C49A55);
+}
+
+.branch-empty-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ── Populated Department Cards ── */
+.branch-dept-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 16px 18px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease;
+}
+
+.branch-dept-card:hover {
+  border-color: rgba(196, 154, 85, 0.4);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+}
+
+/* ── Department Filter Pills in Branch Members Directory ── */
+.dept-branch-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  flex-wrap: wrap;
+}
+
+.dept-branch-filter-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.dept-branch-pills-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dept-branch-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.dept-branch-pill:hover {
+  border-color: #C49A55;
+  color: #1C1D1D;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(196, 154, 85, 0.15);
+}
+
+.dept-branch-pill.active {
+  background: #1C1D1D;
+  border-color: #C49A55;
+  color: #E2C278;
+  font-weight: 700;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16);
+}
+
+.dept-branch-pill-count {
+  font-size: 10.5px;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  background: rgba(196, 154, 85, 0.2);
+  color: inherit;
+  font-weight: 700;
+}
+
+/* ── Luxury Staff Management Modal ── */
+.luxury-staff-modal .modal-content {
+  border: 1px solid rgba(196, 154, 85, 0.25) !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.18) !important;
+}
+
+.luxury-staff-modal .modal-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  padding: 18px 24px !important;
+}
+
+.luxury-staff-modal .modal-body {
+  padding: 20px 24px !important;
+  background: #ffffff !important;
+}
+
+.luxury-staff-modal .modal-footer {
+  background: #f8fafc !important;
+  border-top: 1px solid #e2e8f0 !important;
+  padding: 14px 24px !important;
+}
+
+.staff-modal-notice {
+  background: #fdfbf7;
+  border: 1px solid rgba(196, 154, 85, 0.25);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
+.staff-table-wrap {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.staff-table-wrap table {
+  margin-bottom: 0 !important;
+}
+
+.staff-table-wrap thead th {
+  background: #f8fafc !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: #475569 !important;
+  padding: 11px 16px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 2 !important;
+}
+
+.staff-table-wrap tbody td {
+  padding: 11px 16px !important;
+  vertical-align: middle !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  font-size: 13px !important;
+  color: #334155 !important;
+}
+
+.staff-table-wrap tbody tr {
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.staff-table-wrap tbody tr:hover {
+  background: #fdfbf7 !important;
+}
+
+.staff-table-wrap tbody tr.selected-row {
+  background: rgba(196, 154, 85, 0.06) !important;
+}
+
+.staff-custom-checkbox {
+  width: 17px;
+  height: 17px;
+  accent-color: #C49A55;
+  cursor: pointer;
+}
+
+

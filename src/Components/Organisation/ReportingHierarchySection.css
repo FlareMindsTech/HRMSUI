@@ -1,0 +1,756 @@
+/* ==========================================================================
+   TeamHub Luxury Reporting Hierarchy & Line Management Styles
+   Theme Tokens: #C49A55 (Gold), #1C1D1D (Charcoal), #FFFFFF, #F8FAFC
+   ========================================================================== */
+
+/* ── KPI Summary Grid ── */
+.rep-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+@media (max-width: 992px) {
+  .rep-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 576px) {
+  .rep-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rep-kpi-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.rep-kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(196, 154, 85, 0.5);
+  box-shadow: 0 6px 18px rgba(196, 154, 85, 0.12);
+}
+
+.rep-kpi-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: #1c1d1d;
+  line-height: 1.2;
+}
+
+.rep-kpi-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 3px;
+}
+
+.rep-kpi-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.rep-kpi-icon-gold {
+  background: #fdf8ee;
+  color: #c49a55;
+  border: 1px solid rgba(196, 154, 85, 0.25);
+}
+
+.rep-kpi-icon-charcoal {
+  background: #f1f5f9;
+  color: #1c1d1d;
+  border: 1px solid #e2e8f0;
+}
+
+.rep-kpi-icon-emerald {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid rgba(5, 150, 105, 0.2);
+}
+
+.rep-kpi-icon-blue {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+}
+
+/* ── Interactive Toolbar ── */
+.rep-toolbar {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.rep-search-box {
+  position: relative;
+  min-width: 260px;
+  flex: 1;
+  max-width: 380px;
+}
+
+.rep-search-input {
+  width: 100%;
+  height: 38px;
+  padding: 8px 36px 8px 36px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 13px;
+  color: #1c1d1d;
+  transition: all 0.2s ease;
+}
+
+.rep-search-input:focus {
+  background: #ffffff;
+  border-color: #c49a55;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(196, 154, 85, 0.15);
+}
+
+.rep-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.rep-search-clear {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 50%;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rep-search-clear:hover {
+  color: #1c1d1d;
+  background: #e2e8f0;
+}
+
+.rep-btn-ghost {
+  height: 36px;
+  padding: 0 13px;
+  border-radius: 9px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.18s ease;
+  cursor: pointer;
+}
+
+.rep-btn-ghost:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+/* ── Tree Canvas Container ── */
+.rep-tree-canvas {
+  background-color: #fafcfe;
+  background-image: radial-gradient(#e2e8f0 1.2px, transparent 1.2px);
+  background-size: 22px 22px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 28px 24px;
+  min-height: 520px;
+  position: relative;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+/* ── Structured Hierarchy Tree ── */
+.rep-tree-flow-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.rep-tree-flow-root {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 18px 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+/* Level Tier Indicator */
+.rep-level-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.rep-level-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 10px;
+  border-radius: 9999px;
+}
+
+.rep-level-badge.exec {
+  background: #fdf8ee;
+  color: #926d2e;
+  border: 1px solid rgba(196, 154, 85, 0.35);
+}
+
+/* Recursive Branch Tree with Left Guide Rails */
+.rep-branch-nest {
+  position: relative;
+  margin-top: 12px;
+  padding-left: 28px;
+  border-left: 2px solid #cbd5e1;
+  margin-left: 24px;
+}
+
+.rep-branch-item {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.rep-branch-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Horizontal feeder arm from left rail to node */
+.rep-branch-feeder-arm {
+  position: absolute;
+  left: -28px;
+  top: 26px;
+  width: 24px;
+  height: 2px;
+  background: #cbd5e1;
+}
+
+.rep-branch-feeder-arm::after {
+  content: "";
+  position: absolute;
+  right: -3px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c49a55;
+}
+
+/* ── Node Cards (Production Luxury Theme) ── */
+.rep-node-card {
+  width: 100%;
+  max-width: 540px;
+  border-radius: 14px;
+  padding: 14px 16px;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  cursor: default;
+  background: #ffffff;
+}
+
+/* Executive Root Card (Level 0) — High Contrast Luxury Gold/White */
+.rep-node-card.executive {
+  background: linear-gradient(135deg, #ffffff 0%, #fdfbf7 100%);
+  border: 1px solid rgba(196, 154, 85, 0.4);
+  border-top: 4px solid #c49a55;
+  box-shadow: 0 4px 16px rgba(196, 154, 85, 0.12);
+  max-width: 100%;
+}
+
+.rep-node-card.executive:hover {
+  transform: translateY(-2px);
+  border-color: rgba(196, 154, 85, 0.65);
+  border-top-color: #c49a55;
+  box-shadow: 0 8px 24px rgba(196, 154, 85, 0.2);
+}
+
+/* Manager Card — Crisp White with Gold Accent */
+.rep-node-card.manager {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #c49a55;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+}
+
+.rep-node-card.manager:hover {
+  transform: translateY(-2px);
+  border-color: #cbd5e1;
+  border-left-color: #c49a55;
+  box-shadow: 0 6px 18px rgba(196, 154, 85, 0.15);
+}
+
+/* Direct Report Card — Clean White with Slate Accent */
+.rep-node-card.contributor {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #94a3b8;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+.rep-node-card.contributor:hover {
+  transform: translateY(-2px);
+  border-color: #cbd5e1;
+  border-left-color: #c49a55;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.07);
+}
+
+/* Highlighted by Search Filter */
+.rep-node-card.highlighted {
+  border-color: #c49a55 !important;
+  box-shadow: 0 0 0 4px rgba(196, 154, 85, 0.35), 0 8px 24px rgba(196, 154, 85, 0.2) !important;
+  animation: repPulseGlow 2s infinite;
+}
+
+@keyframes repPulseGlow {
+  0% { box-shadow: 0 0 0 3px rgba(196, 154, 85, 0.25); }
+  50% { box-shadow: 0 0 0 5px rgba(196, 154, 85, 0.45); }
+  100% { box-shadow: 0 0 0 3px rgba(196, 154, 85, 0.25); }
+}
+
+.rep-node-card.dimmed {
+  opacity: 0.35;
+  filter: grayscale(0.5);
+}
+
+/* ── Card Content Typography & Tags ── */
+.rep-card-top-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2.5px 8px;
+  border-radius: 9999px;
+}
+
+.rep-tag-crown {
+  background: #fdf8ee;
+  color: #926d2e;
+  border: 1px solid rgba(196, 154, 85, 0.35);
+}
+
+.rep-tag-manager {
+  background: #fdf8ee;
+  color: #926d2e;
+  border: 1px solid rgba(196, 154, 85, 0.25);
+}
+
+.rep-tag-direct {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.rep-tag-functional {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid rgba(22, 101, 52, 0.2);
+}
+
+.rep-card-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rep-card-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13.5px;
+  font-weight: 700;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.rep-avatar-dark {
+  background: linear-gradient(135deg, #1c1d1d 0%, #2a2b2d 100%);
+  color: #e2c278;
+  border: 1.5px solid rgba(196, 154, 85, 0.5);
+}
+
+.rep-avatar-light {
+  background: linear-gradient(135deg, #c49a55 0%, #b38845 100%);
+  color: #ffffff;
+  border: 1.5px solid rgba(196, 154, 85, 0.3);
+}
+
+.rep-avatar-status-dot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #10b981;
+  border: 2px solid #ffffff;
+}
+
+.rep-card-details {
+  min-width: 0;
+  flex: 1;
+}
+
+.rep-card-name {
+  font-size: 14.5px;
+  font-weight: 800;
+  line-height: 1.25;
+  color: #1c1d1d !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rep-card-role {
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 2px;
+  color: #64748b !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rep-card-meta-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(226, 232, 240, 0.7);
+}
+
+.rep-code-chip {
+  font-family: monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 1.5px 6px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}
+
+.rep-dept-chip {
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 1.5px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+/* Direct Reports Expand Button in Card */
+.rep-reports-toggle-btn {
+  background: #fdf8ee;
+  border: 1px solid rgba(196, 154, 85, 0.35);
+  border-radius: 9999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #926d2e;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.18s ease;
+}
+
+.rep-reports-toggle-btn:hover {
+  background: #c49a55;
+  color: #ffffff;
+  border-color: #c49a55;
+}
+
+.rep-reports-toggle-btn.expanded {
+  background: #1c1d1d;
+  color: #ffffff;
+  border-color: #1c1d1d;
+}
+
+/* Quick Action Hover Bar on Node Card */
+.rep-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rep-card-action-btn {
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 7px;
+  border: 1px solid rgba(196, 154, 85, 0.35);
+  background: #fdf8ee;
+  color: #926d2e;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rep-card-action-btn:hover {
+  background: #c49a55;
+  color: #ffffff;
+  border-color: #c49a55;
+}
+
+/* ==========================================================================
+   ── Luxury Assign Reporting Manager Modal ──
+   ========================================================================== */
+.rep-luxury-modal .modal-content {
+  border-radius: 18px !important;
+  border: 1px solid rgba(196, 154, 85, 0.3) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(196, 154, 85, 0.15) !important;
+  overflow: hidden;
+}
+
+.rep-luxury-modal .modal-header {
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 18px 24px;
+}
+
+.rep-luxury-modal .modal-title {
+  font-size: 16.5px;
+  font-weight: 800;
+  color: #1c1d1d;
+}
+
+.rep-luxury-modal .modal-subtitle {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.rep-luxury-modal .modal-body {
+  padding: 22px 24px;
+  background: #ffffff;
+}
+
+.rep-luxury-modal .modal-footer {
+  background: #f8fafc;
+  border-top: 1px solid #f1f5f9;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Relationship Mapping Preview Box */
+.rep-modal-preview-box {
+  background: #fdfbf7;
+  border: 1px solid rgba(196, 154, 85, 0.35);
+  border-left: 4px solid #c49a55;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.rep-preview-flow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.rep-preview-card {
+  flex: 1;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.rep-preview-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: #c49a55;
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rep-preview-arrow {
+  font-size: 14px;
+}
+
+/* Modal Form Controls */
+.rep-modal-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #475569;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.rep-modal-select,
+.rep-modal-input {
+  width: 100%;
+  height: 42px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 13.5px;
+  color: #1c1d1d;
+  transition: all 0.2s ease;
+}
+
+.rep-modal-select:focus,
+.rep-modal-input:focus {
+  border-color: #c49a55;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(196, 154, 85, 0.15);
+}
+
+.rep-modal-checkbox-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.rep-modal-checkbox-card:hover {
+  background: #fdfbf7;
+  border-color: rgba(196, 154, 85, 0.4);
+}
+
+.rep-modal-checkbox-input {
+  accent-color: #c49a55;
+  width: 17px;
+  height: 17px;
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+/* Modal Action Buttons */
+.rep-modal-btn-cancel {
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.rep-modal-btn-cancel:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.rep-modal-btn-save {
+  height: 40px;
+  padding: 0 24px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #c49a55 0%, #b38845 100%);
+  color: #1c1d1d;
+  font-size: 13.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(196, 154, 85, 0.28);
+  transition: all 0.2s ease;
+}
+
+.rep-modal-btn-save:hover {
+  background: linear-gradient(135deg, #b38845 0%, #9b7229 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(196, 154, 85, 0.38);
+}
+
+.rep-modal-btn-save:active {
+  transform: none;
+}
+
+.rep-modal-btn-save:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}

@@ -1,13 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate, useLocation, Navigate } from "react-router-dom";
-import { Nav, Dropdown } from "react-bootstrap";
+import { Dropdown } from "react-bootstrap";
 import {
   FaBuilding,
-  FaSitemap,
-  FaUserTag,
-  FaUsers,
   FaMapMarkerAlt,
-  FaProjectDiagram,
   FaLayerGroup,
   FaMoneyCheckAlt,
   FaCalendarWeek,
@@ -22,10 +18,8 @@ import {
   FaRegCalendarAlt,
   FaPlus,
   FaCrown,
-  FaShieldAlt,
-  FaUserShield,
-  FaSlidersH,
   FaCalendarCheck,
+  FaCodeBranch,
 } from "react-icons/fa";
 import { useSelector, useDispatch } from 'react-redux';
 import { selectAuthUser, useHasPermission } from '../../redux/slices/authSlice';
@@ -38,12 +32,7 @@ import {
 import { useBranch } from "../../context/BranchContext";
 import { normalizeOrganization, resolveMediaUrl } from "../../services/organizationService";
 import OrgOverview from "../../Components/Organisation/OrgOverview";
-import OrganizationProfileView from "../../Components/Organisation/OrganizationProfileView";
-import DepartmentsSection from "../../Components/Organisation/DepartmentsSection";
-import DesignationsSection from "../../Components/Organisation/DesignationsSection";
-import TeamsSection from "../../Components/Organisation/TeamsSection";
 import LocationsSection from "../../Components/Organisation/LocationsSection";
-import ReportingHierarchySection from "../../Components/Organisation/ReportingHierarchySection";
 import JobGradesSection from "../../Components/Organisation/JobGradesSection";
 import CostCentersSection from "../../Components/Organisation/CostCentersSection";
 import WorkCalendarsSection from "../../Components/Organisation/WorkCalendarsSection";
@@ -52,13 +41,9 @@ import ShiftsSection from "../../Components/Organisation/ShiftsSection";
 import FinancialYearsSection from "../../Components/Organisation/FinancialYearsSection";
 import HolidayCalendarsSection from "../../Components/Organisation/HolidayCalendarsSection";
 import LeaveSettingsSection from "../../Components/Organisation/LeaveSettingsSection";
-import OrganizationSettingsSection from "../../Components/Organisation/OrganizationSettingsSection";
-import BranchSettingsSection from "../../Components/Organisation/BranchSettingsSection";
 import SubscriptionSection from "../../Components/Organisation/SubscriptionSection";
-import OrgAccessManagementSection from "../../Components/Organisation/OrgAccessManagementSection";
 import OrgSetupWizard from "../../Components/Organisation/OrgSetupWizard";
 import EditOrgProfilePage from "../../Components/Organisation/EditOrgProfilePage";
-import UserManagement from "./UserManagement";
 import "./Organisation.css";
 
 // ── Categorized Navigation Tabs matching Target UI Grouping ──
@@ -72,23 +57,11 @@ const ORG_NAV_GROUPS = [
     ],
   },
   {
-    groupId: "company",
-    groupTitle: "Company",
-    groupIcon: FaBuilding,
+    groupId: "subscription",
+    groupTitle: "Subscription",
+    groupIcon: FaCrown,
     tabs: [
-      { key: "profile", label: "Organization Profile", icon: FaBuilding, perm: "organization.view" },
       { key: "subscription", label: "Subscription", icon: FaCrown, perm: "organization.view" },
-    ],
-  },
-  {
-    groupId: "people",
-    groupTitle: "People & Structure",
-    groupIcon: FaSitemap,
-    tabs: [
-      { key: "departments", label: "Departments", icon: FaSitemap, perm: "department.view" },
-      { key: "designations", label: "Designations", icon: FaUserTag, perm: "designation.view" },
-      { key: "teams", label: "Teams", icon: FaUsers, perm: "team.view" },
-      { key: "reporting-hierarchy", label: "Reporting Hierarchy", icon: FaProjectDiagram, perm: "reportingHierarchy.view" },
     ],
   },
   {
@@ -114,28 +87,9 @@ const ORG_NAV_GROUPS = [
       { key: "cost-centers", label: "Cost Centers", icon: FaMoneyCheckAlt, perm: "costCenter.view" },
     ],
   },
-  {
-    groupId: "access",
-    groupTitle: "Access & Security",
-    groupIcon: FaShieldAlt,
-    tabs: [
-      { key: "users", label: "Users", icon: FaUsers, perm: "user.view" },
-      { key: "roles", label: "Roles & Permissions", icon: FaUserShield, perm: "role.view" },
-      { key: "organization-access", label: "Organization Access", icon: FaShieldAlt, perm: "organization.view" },
-    ],
-  },
-  {
-    groupId: "settings",
-    groupTitle: "Settings",
-    groupIcon: FaCog,
-    tabs: [
-      { key: "settings", label: "Organization Settings", icon: FaCog, perm: "orgSettings.view" },
-      { key: "branch-settings", label: "Branch Settings", icon: FaSlidersH, perm: "branch.view" },
-    ],
-  },
 ];
 
-const STANDALONE_SECTIONS = ["edit-profile"];
+const STANDALONE_SECTIONS = ["edit-profile", "profile"];
 
 const ALL_TABS = ORG_NAV_GROUPS.flatMap((g) => g.tabs);
 
@@ -166,26 +120,31 @@ function Organisation() {
   const hasPermission = useHasPermission();
   const { organization, refreshOrganization, refreshBranches } = useBranch();
   const dispatch = useDispatch();
-  // Shared organization profile (single guarded fetch); banner/tab UI stays local.
   const orgProfile = useSelector(selectOrgProfile);
 
   const [orgData, setOrgData] = useState(organization || null);
   const [loadingOrg, setLoadingOrg] = useState(!organization);
-  const [currentDateTime, setCurrentDateTime] = useState(new Date());
-  const [copiedField, setCopiedField] = useState("");
+  const [activeTab, setActiveTab] = useState("overview");
   const [activeCategory, setActiveCategory] = useState("Overview");
+  const [copiedField, setCopiedField] = useState("");
+  const [currentDateTime, setCurrentDateTime] = useState(() => new Date());
 
-  // Determine active tab from URL parameter or default to "overview"
-  const currentTabKey = isKnownSection(section) ? section : "overview";
-  const [activeTab, setActiveTab] = useState(currentTabKey);
-
-  // Time updater
   useEffect(() => {
     const timer = setInterval(() => setCurrentDateTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch organization profile for the header banner (shared slice).
+  const isOwner =
+    user?.roleCode === "OWNER" ||
+    user?.priority === 1 ||
+    user?.role === "OWNER" ||
+    user?.permissions?.includes("*");
+
+  const canEdit = Boolean(
+    (hasPermission && (hasPermission("organization.update") || hasPermission("organisation.update"))) ||
+    isOwner
+  );
+
   const loadOrg = useCallback(async () => {
     try {
       await dispatch(fetchOrgResource({ key: "profile", force: true })).catch(() => null);
@@ -196,8 +155,6 @@ function Organisation() {
     }
   }, [dispatch]);
 
-  // Resolve banner data, preserving the legacy priority: shared profile →
-  // branch context → cached profile.
   useEffect(() => {
     if (orgProfile) {
       setOrgData(normalizeOrganization(orgProfile) || orgProfile);
@@ -211,9 +168,24 @@ function Organisation() {
         if (cached) {
           setOrgData(normalizeOrganization(JSON.parse(cached)));
         }
-      } catch (e) {}
+      } catch (e) {
+        // corrupt cache: ignore
+      }
     }
   }, [orgProfile, organization]);
+
+  const handleOrgCreated = useCallback(
+    async (newOrg) => {
+      const norm = normalizeOrganization(newOrg) || newOrg;
+      setOrgData(norm);
+      dispatch(setOrgResource({ key: "profile", data: norm }));
+      dispatch(invalidateOrgResource("structure"));
+      if (refreshOrganization) await refreshOrganization();
+      if (refreshBranches) await refreshBranches();
+      loadOrg();
+    },
+    [dispatch, loadOrg, refreshOrganization, refreshBranches]
+  );
 
   const handleOrgUpdated = useCallback((updated) => {
     if (updated) {
@@ -229,20 +201,52 @@ function Organisation() {
   }, [loadOrg]);
 
   useEffect(() => {
-    if (isKnownSection(section)) {
+    if (section === "settings") {
+      navigate("/settings/organization", { replace: true });
+      return;
+    }
+    if (section === "branch-settings") {
+      navigate("/settings/branches", { replace: true });
+      return;
+    }
+    if (section === "profile") {
+      setActiveTab("overview");
+      setActiveCategory("Overview");
+    } else if (isKnownSection(section)) {
       setActiveTab(section);
       const foundGroup = ORG_NAV_GROUPS.find((g) => g.tabs.some((t) => t.key === section));
       if (foundGroup) setActiveCategory(foundGroup.groupTitle);
-    } else if (location.pathname === "/organisation" || location.pathname === "/organisation/") {
+    } else if (["departments", "designations", "teams", "reporting-hierarchy"].includes(section)) {
+      const tabParam = section === "reporting-hierarchy" ? "reporting" : section;
+      navigate(`/organisation/branches?tab=${tabParam}`, { replace: true });
+      return;
+    } else if (section === "users" || section === "roles") {
+      navigate(`/${section}`, { replace: true });
+      return;
+    } else if (section === "organization-access") {
+      navigate("/settings/organization", { replace: true });
+      return;
+    } else {
       setActiveTab("overview");
       setActiveCategory("Overview");
     }
-  }, [section, location.pathname]);
+  }, [section, location.pathname, navigate]);
 
   const handleTabSelect = (tabKey) => {
     if (tabKey === "branches") {
       navigate("/organisation/branches");
       return;
+    }
+    if (tabKey === "settings") {
+      navigate("/settings/organization");
+      return;
+    }
+    if (tabKey === "branch-settings") {
+      navigate("/settings/branches");
+      return;
+    }
+    if (tabKey === "profile") {
+      tabKey = "overview";
     }
     setActiveTab(tabKey);
     const foundGroup = ORG_NAV_GROUPS.find((g) => g.tabs.some((t) => t.key === tabKey));
@@ -263,81 +267,58 @@ function Organisation() {
     }
   };
 
-  const handleOrgCreated = async (newOrg) => {
-    setOrgData(newOrg);
-    // A new organization exists: invalidate the shared profile so the
-    // banner reload below fetches fresh (mirrors the previous forced fetch).
-    dispatch(invalidateOrgResource("profile"));
-    if (refreshOrganization) await refreshOrganization();
-    if (refreshBranches) await refreshBranches();
-    setActiveTab("overview");
-    navigate("/organisation");
-    loadOrg();
-  };
-
   const copyToClipboard = (text, fieldName) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
-    setCopiedField(fieldName);
-    setTimeout(() => setCopiedField(""), 2500);
+    if (fieldName) {
+      setCopiedField(fieldName);
+      setTimeout(() => setCopiedField(""), 2500);
+    }
   };
 
+  const storedOrgId = localStorage.getItem("organizationId") || localStorage.getItem("tenantId");
+  const hasNoOrg = !loadingOrg && !orgData && !user?.organizationId && !storedOrgId;
+
+  const currentOrg = useMemo(() => {
+    return orgData ? normalizeOrganization(orgData) || orgData : null;
+  }, [orgData]);
+
+  const userDisplayName = useMemo(() => {
+    if (user?.fullName) return user.fullName;
+    if (user?.firstName) return `${user.firstName} ${user.lastName || ""}`.trim();
+    if (user?.name) return user.name;
+    return "Enterprise Admin";
+  }, [user]);
+
   const greetingText = useMemo(() => {
-    const hour = currentDateTime.getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 17) return "Good Afternoon";
+    const hr = currentDateTime.getHours();
+    if (hr < 12) return "Good Morning";
+    if (hr < 17) return "Good Afternoon";
     return "Good Evening";
   }, [currentDateTime]);
 
   const dateFormatted = useMemo(() => {
-    return currentDateTime.toLocaleDateString("en-GB", {
+    return currentDateTime.toLocaleDateString("en-IN", {
       weekday: "long",
-      day: "numeric",
-      month: "long",
       year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   }, [currentDateTime]);
 
   const timeFormatted = useMemo(() => {
-    return currentDateTime.toLocaleTimeString("en-US", {
+    return currentDateTime.toLocaleTimeString("en-IN", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
     });
   }, [currentDateTime]);
 
-  const userDisplayName = user?.firstName
-    ? `${user.firstName} ${user.lastName || ""}`.trim()
-    : user?.roleName || "Organization Administrator";
-
-  const storedCachedOrg = useMemo(() => {
-    try {
-      const s = localStorage.getItem("cached_org_profile");
-      return s ? JSON.parse(s) : null;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  const currentOrg = orgData || organization || storedCachedOrg || user?.organization;
-  const isOwner =
-    user?.roleCode === "OWNER" ||
-    user?.priority === 1 ||
-    user?.role === "OWNER" ||
-    user?.permissions?.includes("*");
-
-  const storedOrgId = localStorage.getItem("organizationId") || localStorage.getItem("tenantId") || user?.organizationId;
-  const hasNoOrg = !loadingOrg && !currentOrg && !storedOrgId;
-  const canEdit = Boolean(
-    (hasPermission && (hasPermission("organization.update") || hasPermission("organisation.update"))) ||
-    isOwner
-  );
-
   const orgInitials = useMemo(() => {
-    const name = getStr(currentOrg?.displayName || currentOrg?.organizationName || "HR");
+    const name = getStr(currentOrg?.displayName || currentOrg?.organizationName, "HRMS");
     return name
       .split(" ")
-      .map((n) => n[0])
+      .map((w) => w[0])
       .filter(Boolean)
       .slice(0, 2)
       .join("")
@@ -350,12 +331,11 @@ function Organisation() {
         return (
           <EditOrgProfilePage
             orgData={currentOrg}
-            onBack={() => handleTabSelect("profile")}
+            onBack={() => handleTabSelect("overview")}
             onOrgUpdated={handleOrgUpdated}
           />
         );
       case "profile":
-        return <OrganizationProfileView onNavigateTab={handleTabSelect} onOrgUpdated={handleOrgUpdated} />;
       case "overview":
         return (
           <OrgOverview
@@ -369,20 +349,14 @@ function Organisation() {
       case "subscription":
         return <SubscriptionSection />;
       case "departments":
-        return (
-          <DepartmentsSection
-            onBackToOrg={() => handleTabSelect("overview")}
-            onNavigateTab={handleTabSelect}
-          />
-        );
       case "designations":
-        return <DesignationsSection />;
       case "teams":
-        return <TeamsSection />;
+      case "reporting-hierarchy": {
+        const tabParam = activeTab === "reporting-hierarchy" ? "reporting" : activeTab;
+        return <Navigate to={`/organisation/branches?tab=${tabParam}`} replace />;
+      }
       case "locations":
         return <LocationsSection />;
-      case "reporting-hierarchy":
-        return <ReportingHierarchySection />;
       case "job-grades":
         return <JobGradesSection />;
       case "cost-centers":
@@ -401,19 +375,18 @@ function Organisation() {
         return <FinancialYearsSection />;
       case "users":
       case "roles":
-        return <UserManagement initialTab={activeTab === "roles" ? "roles" : "users"} />;
+        return <Navigate to={`/${activeTab}`} replace />;
       case "organization-access":
-        return <OrgAccessManagementSection />;
+        return <Navigate to="/settings/organization" replace />;
       case "settings":
-        return <OrganizationSettingsSection onNavigateTab={handleTabSelect} />;
       case "branch-settings":
-        return <BranchSettingsSection onNavigateTab={handleTabSelect} />;
+        return <Navigate to={activeTab === "branch-settings" ? "/settings/branches" : "/settings/organization"} replace />;
       default:
         return (
           <OrgOverview
             orgData={currentOrg}
             onNavigateTab={handleTabSelect}
-            onOrgUpdated={loadOrg}
+            onOrgUpdated={handleOrgUpdated}
           />
         );
     }
@@ -462,17 +435,15 @@ function Organisation() {
       <div className="org-dashboard-container">
         <EditOrgProfilePage
           orgData={currentOrg}
-          onBack={() => handleTabSelect("profile")}
+          onBack={() => handleTabSelect("overview")}
           onOrgUpdated={handleOrgUpdated}
         />
       </div>
     );
   }
 
-
   const activeTabObj = ALL_TABS.find((t) => t.key === activeTab) || null;
   const currentCategoryGroup = ORG_NAV_GROUPS.find((g) => g.groupTitle === activeCategory) || ORG_NAV_GROUPS[0];
-
 
   return (
     <div className="org-dashboard-container">
@@ -489,12 +460,16 @@ function Organisation() {
             >
               Organization
             </span>
-            <span className="org-breadcrumb-sep">/</span>
-            <span className="org-breadcrumb-current">{activeCategory}</span>
-            {activeTab !== "overview" && activeTabObj && (
+            {activeCategory !== "Overview" && (
               <>
-                <span className="org-breadcrumb-sep">/</span>
-                <span className="org-breadcrumb-active">{activeTabObj.label}</span>
+                <span>/</span>
+                <span className="org-breadcrumb-current">{activeCategory}</span>
+              </>
+            )}
+            {activeTabObj && activeCategory !== "Overview" && activeTabObj.label !== activeCategory && (
+              <>
+                <span>/</span>
+                <span className="org-breadcrumb-current">{activeTabObj.label}</span>
               </>
             )}
           </div>
@@ -525,13 +500,13 @@ function Organisation() {
               <FaBolt className="me-1 text-warning" /> Quick Actions
             </Dropdown.Toggle>
             <Dropdown.Menu align="end" className="org-dropdown-menu shadow">
-              <Dropdown.Item onClick={() => handleTabSelect("departments")}>
+              <Dropdown.Item onClick={() => navigate("/organisation/branches?tab=departments")}>
                 <FaPlus className="me-2 text-primary" /> Add Department
               </Dropdown.Item>
               <Dropdown.Item onClick={() => navigate("/organisation/branches?action=create")}>
                 <FaPlus className="me-2 text-success" /> Add Branch
               </Dropdown.Item>
-              <Dropdown.Item onClick={() => handleTabSelect("reporting-hierarchy")}>
+              <Dropdown.Item onClick={() => navigate("/organisation/branches?tab=reporting")}>
                 <FaPlus className="me-2 text-info" /> Add Employee
               </Dropdown.Item>
               <Dropdown.Item onClick={() => handleTabSelect("locations")}>
@@ -542,11 +517,11 @@ function Organisation() {
               </Dropdown.Item>
               <Dropdown.Divider />
               {canEdit && (
-                <Dropdown.Item onClick={() => handleTabSelect("profile")}>
+                <Dropdown.Item onClick={() => handleTabSelect("edit-profile")}>
                   <FaEdit className="me-2 text-warning" /> Edit Organization Profile
                 </Dropdown.Item>
               )}
-              <Dropdown.Item onClick={() => handleTabSelect("settings")}>
+              <Dropdown.Item onClick={() => navigate("/settings/organization")}>
                 <FaCog className="me-2 text-secondary" /> Global Settings
               </Dropdown.Item>
             </Dropdown.Menu>
@@ -669,51 +644,94 @@ function Organisation() {
         </div>
       )}
 
-      {/* ── 3. EXECUTIVE CATEGORY SEGMENT TABS ── */}
-      <div className="org-category-segment-wrapper mb-3">
-        <div className="org-category-segment-bar" role="tablist">
-          {ORG_NAV_GROUPS.map((group) => {
-            const GroupIcon = group.groupIcon;
-            const isGroupActive = activeCategory === group.groupTitle;
-            return (
-              <button
-                key={group.groupTitle}
-                type="button"
-                role="tab"
-                aria-selected={isGroupActive}
-                className={`org-category-segment-btn ${isGroupActive ? "active" : ""}`}
-                onClick={() => handleCategorySelect(group)}
-              >
-                {GroupIcon && <GroupIcon className="org-category-icon" />}
-                <span className="org-category-btn-text">{group.groupTitle}</span>
-                <span className="org-category-count-pill">{group.tabs.length}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── 4. SUB-MODULE TABS OF ACTIVE CATEGORY (shown when category has >1 tab) ── */}
-      {currentCategoryGroup && currentCategoryGroup.tabs.length > 1 && (
-        <div className="org-tabs-wrapper mb-4">
-          <Nav variant="tabs" className="org-nav-tabs" activeKey={activeTab} onSelect={handleTabSelect}>
-            {currentCategoryGroup.tabs.map((tab) => {
-              const Icon = tab.icon;
+      {/* ── 3. EXECUTIVE DUAL-TIER NAVIGATION CONSOLE ── */}
+      <div className="org-dual-nav-console mb-4">
+        {/* Tier 1: Category Level Navigation */}
+        <div className="org-category-tier">
+          <div className="org-category-track" role="tablist">
+            {ORG_NAV_GROUPS.map((group) => {
+              const GroupIcon = group.groupIcon;
+              const isGroupActive = activeCategory === group.groupTitle;
+              const subCount = group.tabs.length;
               return (
-                <Nav.Item key={tab.key}>
-                  <Nav.Link
-                    eventKey={tab.key}
-                    className={`org-nav-tab-item ${activeTab === tab.key ? "active" : ""}`}
-                  >
-                    <Icon className="org-nav-tab-icon" />
-                    <span>{tab.label}</span>
-                  </Nav.Link>
-                </Nav.Item>
+                <button
+                  key={group.groupTitle}
+                  type="button"
+                  role="tab"
+                  aria-selected={isGroupActive}
+                  className={`org-category-btn ${isGroupActive ? "active" : ""}`}
+                  onClick={() => handleCategorySelect(group)}
+                >
+                  {GroupIcon && <GroupIcon className="org-category-icon" />}
+                  <span className="org-category-btn-text">{group.groupTitle}</span>
+                  {subCount > 1 && (
+                    <span className="org-category-count-badge">
+                      {subCount}
+                    </span>
+                  )}
+                </button>
               );
             })}
-          </Nav>
+          </div>
+
+          <div className="org-nav-tier-actions">
+            <div className="org-nav-status-badge d-none d-md-inline-flex">
+              <span className="org-nav-status-pulse" />
+              <span>Tenant Governance</span>
+            </div>
+            <button
+              type="button"
+              className="org-nav-branch-link-btn"
+              onClick={() => navigate("/organisation/branches")}
+              title="Open Branch Workspace"
+            >
+              <FaCodeBranch className="org-nav-branch-icon" />
+              <span>Branch Workspace</span>
+              <span className="org-nav-branch-arrow">↗</span>
+            </button>
+          </div>
         </div>
-      )}
+
+        {/* Tier 2: Sub-Module Docked Rail (shown when active category has multiple modules) */}
+        {currentCategoryGroup && currentCategoryGroup.tabs.length > 1 && (
+          <div className="org-submodule-tier">
+            <div className="org-submodule-left-wrap">
+              <div className="org-submodule-scope-label">
+                <span className="org-submodule-scope-dot" />
+                <span>{currentCategoryGroup.groupTitle} Modules</span>
+              </div>
+              <div className="org-submodule-list" role="tablist">
+                {currentCategoryGroup.tabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const isTabActive = activeTab === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={isTabActive}
+                      className={`org-submodule-pill ${isTabActive ? "active" : ""}`}
+                      onClick={() => handleTabSelect(tab.key)}
+                    >
+                      <Icon className="org-submodule-icon" />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="org-submodule-right-meta d-none d-lg-flex">
+              <span className="org-submodule-meta-label">
+                {activeTabObj?.label ? `Configuring: ${activeTabObj.label}` : `${currentCategoryGroup.tabs.length} modules`}
+              </span>
+              <span className="org-submodule-step-counter">
+                {currentCategoryGroup.tabs.findIndex((t) => t.key === activeTab) + 1} of {currentCategoryGroup.tabs.length}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* ── 5. ACTIVE MODULE VIEWPORT ── */}
       <div className="org-tab-content-area">

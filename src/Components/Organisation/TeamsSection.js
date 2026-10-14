@@ -7,17 +7,17 @@ import {
   Row,
   Col,
   Spinner,
-  InputGroup,
+  Modal,
 } from "react-bootstrap";
 import {
   FaUsers,
   FaPlus,
   FaEdit,
   FaTrash,
-  FaSearch,
   FaUserTie,
   FaSitemap,
   FaCodeBranch,
+  FaCheck,
 } from "react-icons/fa";
 import {
   fetchTeams,
@@ -36,7 +36,7 @@ import SearchInput from "../Common/SearchInput";
 import PaginationBar from "../Common/PaginationBar";
 import FeedbackAlert from "../Common/FeedbackAlert";
 import ConfirmModal from "../Common/ConfirmModal";
-import CrudModal from "../Common/CrudModal";
+import "./TeamsSection.css";
 
 function TeamsSection({ lockedBranchId }) {
   const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
@@ -253,7 +253,12 @@ function TeamsSection({ lockedBranchId }) {
           </p>
         </div>
         {canCreate && (
-          <Button variant="success" size="sm" className="d-flex align-items-center gap-1 shadow-sm" onClick={handleOpenCreate}>
+          <Button
+            size="sm"
+            className="d-flex align-items-center gap-1 shadow-sm team-modal-btn-save"
+            style={{ height: "36px", padding: "0 16px", fontSize: "13px" }}
+            onClick={handleOpenCreate}
+          >
             <FaPlus size={11} /> Add Team
           </Button>
         )}
@@ -490,137 +495,219 @@ function TeamsSection({ lockedBranchId }) {
       </Card>
 
       {/* ── Create / Edit Modal ── */}
-      <CrudModal
+      <Modal
         show={showModal}
-        onClose={() => setShowModal(false)}
-        title={<><FaUsers className="text-success" />{editingTeam ? "Edit Team" : "Add New Team"}</>}
-        onSubmit={handleSubmit}
-        saving={modalLoading}
-        saveLabel="Save Team"
-        modalError={modalError}
+        onHide={() => setShowModal(false)}
+        size="lg"
+        centered
+        dialogClassName="team-luxury-modal"
       >
+        <Modal.Header closeButton>
+          <div className="d-flex align-items-center gap-3">
+            <div className="team-modal-icon-badge">
+              <FaUsers />
+            </div>
+            <div>
+              <Modal.Title className="modal-title mb-0">
+                {editingTeam ? "Edit Team" : "Add New Team"}
+              </Modal.Title>
+              <div className="modal-subtitle">
+                {editingTeam
+                  ? `Update team structure, leadership, and operational domain for ${editingTeam.teamName}`
+                  : "Configure functional squad, leadership, and operational scope"}
+              </div>
+            </div>
+          </div>
+        </Modal.Header>
+
+        <Form onSubmit={handleSubmit}>
+          <Modal.Body className="modal-body">
+            <FeedbackAlert variant="danger" dismissible onClose={() => setModalError("")} message={modalError} />
+
+            {lockedBranchId && (
+              <div className="team-modal-notice">
+                <div className="d-flex align-items-center gap-2">
+                  <FaCodeBranch style={{ color: "#c49a55" }} />
+                  <div>
+                    <strong className="text-dark small">Branch-Scoped Team:</strong>{" "}
+                    <span className="small text-muted">
+                      This squad is bound to{" "}
+                      <strong>
+                        {branches.find((b) => b._id === lockedBranchId)?.branchName || "Current Branch"}
+                      </strong>.
+                    </span>
+                  </div>
+                </div>
+                <span className="badge" style={{ background: "#c49a55", color: "#1c1d1d", fontWeight: 700 }}>
+                  LOCKED
+                </span>
+              </div>
+            )}
         <Row className="g-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Team Name <span className="text-danger">*</span></Form.Label>
-                  <Form.Control
-                    required
-                    placeholder="e.g. Core Platform Team"
-                    value={formData.teamName}
-                    onChange={(e) => setFormData({ ...formData, teamName: e.target.value })}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Team Code <span className="text-danger">*</span></Form.Label>
-                  <Form.Control
-                    required
-                    placeholder="e.g. CORE-PLAT"
-                    value={formData.teamCode}
-                    onChange={(e) => setFormData({ ...formData, teamCode: e.target.value.toUpperCase() })}
-                  />
-                </Form.Group>
-              </Col>
+          <Col md={6}>
+            <Form.Group>
+              <label className="team-modal-label">
+                Team Name <span className="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                className="team-modal-input"
+                placeholder="e.g. Core Platform Team"
+                value={formData.teamName}
+                onChange={(e) => setFormData({ ...formData, teamName: e.target.value })}
+              />
+            </Form.Group>
+          </Col>
+          <Col md={6}>
+            <Form.Group>
+              <label className="team-modal-label">
+                Team Code <span className="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                className="team-modal-input font-monospace text-uppercase"
+                placeholder="e.g. CORE-PLAT"
+                value={formData.teamCode}
+                onChange={(e) => setFormData({ ...formData, teamCode: e.target.value.toUpperCase() })}
+              />
+            </Form.Group>
+          </Col>
 
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>
-                    Branch {lockedBranchId && <span className="badge bg-secondary ms-1">Locked</span>}
-                  </Form.Label>
-                  <Form.Select
-                    value={formData.branchId}
-                    disabled={Boolean(lockedBranchId)}
-                    onChange={(e) => handleFormBranchChange(e.target.value)}
-                  >
-                    {!lockedBranchId && <option value="">-- All Branches / Virtual --</option>}
-                    {branches.map((b) => (
-                      <option key={b._id} value={b._id}>
-                        {b.branchName} ({b.branchCode})
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
+          <Col md={6}>
+            <Form.Group>
+              <label className="team-modal-label">
+                Branch {lockedBranchId && <span className="badge bg-secondary ms-1">Locked</span>}
+              </label>
+              <select
+                className="team-modal-select"
+                value={formData.branchId}
+                disabled={Boolean(lockedBranchId)}
+                onChange={(e) => handleFormBranchChange(e.target.value)}
+              >
+                {!lockedBranchId && <option value="">-- All Branches / Virtual --</option>}
+                {branches.map((b) => (
+                  <option key={b._id} value={b._id}>
+                    {b.branchName} ({b.branchCode})
+                  </option>
+                ))}
+              </select>
+            </Form.Group>
+          </Col>
 
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Department (Filtered by Branch)</Form.Label>
-                  <Form.Select
-                    value={formData.departmentId}
-                    onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
-                  >
-                    <option value="">-- Cross-Department / None --</option>
-                    {departments.map((d) => (
-                      <option key={d._id} value={d._id}>
-                        {d.departmentName} ({d.departmentCode})
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
+          <Col md={6}>
+            <Form.Group>
+              <label className="team-modal-label">Department (Filtered by Branch)</label>
+              <select
+                className="team-modal-select"
+                value={formData.departmentId}
+                onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
+              >
+                <option value="">-- Cross-Department / None --</option>
+                {departments.map((d) => (
+                  <option key={d._id} value={d._id}>
+                    {d.departmentName} ({d.departmentCode})
+                  </option>
+                ))}
+              </select>
+            </Form.Group>
+          </Col>
 
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Team Lead (Filtered by Branch)</Form.Label>
-                  <Form.Select
-                    value={formData.teamLeadId}
-                    onChange={(e) => setFormData({ ...formData, teamLeadId: e.target.value })}
-                  >
-                    <option value="">-- Select Team Lead --</option>
-                    {employees.map((emp) => (
-                      <option key={emp._id} value={emp._id}>
-                        {emp.firstName} {emp.lastName} ({emp.employeeCode})
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
+          <Col md={6}>
+            <Form.Group>
+              <label className="team-modal-label">Team Lead (Filtered by Branch)</label>
+              <select
+                className="team-modal-select"
+                value={formData.teamLeadId}
+                onChange={(e) => setFormData({ ...formData, teamLeadId: e.target.value })}
+              >
+                <option value="">-- Select Team Lead --</option>
+                {employees.map((emp) => (
+                  <option key={emp._id} value={emp._id}>
+                    {emp.firstName} {emp.lastName} ({emp.employeeCode})
+                  </option>
+                ))}
+              </select>
+            </Form.Group>
+          </Col>
 
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Team Manager</Form.Label>
-                  <Form.Select
-                    value={formData.teamManagerId}
-                    onChange={(e) => setFormData({ ...formData, teamManagerId: e.target.value })}
-                  >
-                    <option value="">-- Select Team Manager --</option>
-                    {employees.map((emp) => (
-                      <option key={emp._id} value={emp._id}>
-                        {emp.firstName} {emp.lastName} ({emp.employeeCode})
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
+          <Col md={6}>
+            <Form.Group>
+              <label className="team-modal-label">Team Manager</label>
+              <select
+                className="team-modal-select"
+                value={formData.teamManagerId}
+                onChange={(e) => setFormData({ ...formData, teamManagerId: e.target.value })}
+              >
+                <option value="">-- Select Team Manager --</option>
+                {employees.map((emp) => (
+                  <option key={emp._id} value={emp._id}>
+                    {emp.firstName} {emp.lastName} ({emp.employeeCode})
+                  </option>
+                ))}
+              </select>
+            </Form.Group>
+          </Col>
 
-              <Col md={12}>
-                <Form.Group>
-                  <Form.Label>Description</Form.Label>
-                  <Form.Control
-                    as="textarea"
-                    rows={2}
-                    placeholder="Team purpose and domain"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  />
-                </Form.Group>
-              </Col>
+          <Col md={12}>
+            <Form.Group>
+              <label className="team-modal-label">Description</label>
+              <textarea
+                rows={2}
+                className="team-modal-textarea"
+                placeholder="Team purpose and domain"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              />
+            </Form.Group>
+          </Col>
 
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Status</Form.Label>
-                  <Form.Select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  >
-                    <option value="ACTIVE">Active</option>
-                    <option value="INACTIVE">Inactive</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
+          <Col md={6}>
+            <Form.Group>
+              <label className="team-modal-label">Status</label>
+              <select
+                className="team-modal-select"
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+              >
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+              </select>
+            </Form.Group>
+          </Col>
             </Row>
-      </CrudModal>
+          </Modal.Body>
+
+          <Modal.Footer className="modal-footer">
+            <button
+              type="button"
+              className="team-modal-btn-cancel"
+              onClick={() => setShowModal(false)}
+              disabled={modalLoading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="team-modal-btn-save"
+              disabled={modalLoading}
+            >
+              {modalLoading ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-1" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <FaCheck size={12} />
+                  <span>{editingTeam ? "Update Team" : "Save Team"}</span>
+                </>
+              )}
+            </button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
 
       {/* ── Delete Confirmation Modal ── */}
       <ConfirmModal

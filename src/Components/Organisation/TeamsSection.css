@@ -1,0 +1,194 @@
+/* ==========================================================================
+   TeamHub Luxury Teams Module Styles
+   Theme Tokens: #C49A55 (Gold), #1C1D1D (Charcoal), #FFFFFF, #F8FAFC
+   ========================================================================== */
+
+/* ── Luxury Team Modal ── */
+.team-luxury-modal .modal-content {
+  border-radius: 18px !important;
+  border: 1px solid rgba(196, 154, 85, 0.3) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(196, 154, 85, 0.15) !important;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.team-luxury-modal .modal-header {
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 18px 24px;
+}
+
+.team-modal-icon-badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  background: #fdf8ee;
+  color: #c49a55;
+  border: 1px solid rgba(196, 154, 85, 0.3);
+  flex-shrink: 0;
+}
+
+.team-luxury-modal .modal-title {
+  font-size: 16.5px;
+  font-weight: 800;
+  color: #1c1d1d;
+  line-height: 1.25;
+}
+
+.team-luxury-modal .modal-subtitle,
+.team-modal-subtitle {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.team-luxury-modal .btn-close {
+  padding: 10px;
+  margin: -6px -6px -6px auto;
+  opacity: 0.6;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.team-luxury-modal .btn-close:hover {
+  opacity: 1;
+  transform: rotate(90deg);
+}
+
+.team-luxury-modal .modal-body {
+  padding: 22px 24px;
+  background: #ffffff;
+}
+
+.team-luxury-modal .modal-footer {
+  background: #f8fafc;
+  border-top: 1px solid #f1f5f9;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Notice / Context Box */
+.team-modal-notice {
+  background: #fdfbf7;
+  border: 1px solid rgba(196, 154, 85, 0.35);
+  border-left: 4px solid #c49a55;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Form Controls */
+.team-modal-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #475569;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.team-modal-input,
+.team-modal-select {
+  width: 100%;
+  height: 42px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 13.5px;
+  color: #1c1d1d;
+  transition: all 0.2s ease;
+}
+
+.team-modal-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 13.5px;
+  color: #1c1d1d;
+  transition: all 0.2s ease;
+  resize: vertical;
+}
+
+.team-modal-input:focus,
+.team-modal-select:focus,
+.team-modal-textarea:focus {
+  border-color: #c49a55;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(196, 154, 85, 0.15);
+}
+
+.team-modal-input:disabled,
+.team-modal-select:disabled {
+  background: #f8fafc;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+/* Action Buttons */
+.team-modal-btn-cancel {
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.team-modal-btn-cancel:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.team-modal-btn-save {
+  height: 40px;
+  padding: 0 24px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #c49a55 0%, #b38845 100%);
+  color: #1c1d1d;
+  font-size: 13.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(196, 154, 85, 0.28);
+  transition: all 0.2s ease;
+}
+
+.team-modal-btn-save:hover {
+  background: linear-gradient(135deg, #b38845 0%, #9b7229 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(196, 154, 85, 0.38);
+}
+
+.team-modal-btn-save:active {
+  transform: none;
+}
+
+.team-modal-btn-save:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}

@@ -21,9 +21,10 @@ import {
   MdHistoryEdu,
   MdDns,
   MdAssignment,
+  MdSettings,
 } from 'react-icons/md';
 import { useSelector, useDispatch } from 'react-redux';
-import { selectAuthUser, selectIsSystemAdmin, useHasMenu, logout } from '../../redux/slices/authSlice';
+import { selectAuthUser, selectIsSystemAdmin, useHasMenu, useHasPermission, logout } from '../../redux/slices/authSlice';
 import './Sidebar.css';
 
 // Menu codes frozen to backend seed registry. ROLE_MANAGEMENT is granted to
@@ -49,7 +50,7 @@ const menuItems = [
     icon: MdBusiness,
     section: 'main',
     children: [
-      { name: 'Branches', path: '/organisation/branches', icon: MdDomain },
+      { name: 'Branches', path: '/organisation/branches', icon: MdDomain, perm: 'branch.view' },
     ],
   },
   { name: 'Leave Request', path: '/leave', menuCode: 'LEAVE_MGMT', icon: MdEventNote, section: 'main' },
@@ -63,6 +64,7 @@ const menuItems = [
   { name: 'Payslip', path: '/payslip', menuCode: 'PAYSLIP', icon: MdReceipt, section: 'manage' },
   { name: 'EPFO', path: '/epfo', menuCode: 'EPFO', icon: MdAccountBalance, section: 'manage' },
   { name: 'MIS', path: '/mis', menuCode: 'MIS', icon: MdAssessment, section: 'manage' },
+  { name: 'Settings', path: '/settings', menuCode: 'ORGANISATION', icon: MdSettings, section: 'manage' },
   { name: 'Platform Admin', path: '/platform', menuCode: 'PLATFORM_DASHBOARD', icon: MdDns, section: 'manage', isPlatformOnly: true },
 ];
 
@@ -72,6 +74,7 @@ function Sidebar({ isExpanded = false }) {
   const user = useSelector(selectAuthUser);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const hasMenu = useHasMenu();
+  const hasPermission = useHasPermission();
   const dispatch = useDispatch();
   const [hovered, setHovered] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -112,11 +115,11 @@ function Sidebar({ isExpanded = false }) {
 
   const renderItem = (item) => {
     const hasChildren = item.children && item.children.length > 0;
-    const isBranchChildActive = hasChildren && item.children.some((c) => location.pathname.startsWith(c.path));
-    const isExactParentActive = location.pathname === item.path || (!isBranchChildActive && location.pathname.startsWith(item.path));
+    const isChildActive = hasChildren && item.children.some((c) => location.pathname.startsWith(c.path));
+    const isExactParentActive = location.pathname === item.path || (!isChildActive && location.pathname.startsWith(item.path));
     const isParentActive = activePath === item.path || location.pathname.startsWith(item.path);
     const isHovered = hovered === item.path;
-    const isOpen = Boolean(openSubMenus[item.path]) || isBranchChildActive;
+    const isOpen = Boolean(openSubMenus[item.path]) || isChildActive;
     const Icon = item.icon;
 
     return (
@@ -125,7 +128,7 @@ function Sidebar({ isExpanded = false }) {
         className={`sidebar-item-group${hasChildren ? ' has-children' : ''}${isOpen ? ' is-open' : ''}`}
       >
         <li
-          className={`sidebar-menu-item${isExactParentActive ? ' active' : (isBranchChildActive ? ' parent-active' : '')}${isHovered ? ' is-hovered' : ''}${hasChildren ? ' has-children' : ''}`}
+          className={`sidebar-menu-item${isExactParentActive ? ' active' : (isChildActive ? ' parent-active' : '')}${isHovered ? ' is-hovered' : ''}${hasChildren ? ' has-children' : ''}`}
           onClick={() => {
             if (hasChildren) {
               setOpenSubMenus((prev) => ({ ...prev, [item.path]: !prev[item.path] }));
@@ -185,8 +188,10 @@ function Sidebar({ isExpanded = false }) {
         {hasChildren && isOpen && isExpanded && (
           <div className="sidebar-submenu-wrap">
             <ul className="sidebar-submenu">
-              {item.children.map((sub) => {
-                const isSubActive = location.pathname.startsWith(sub.path);
+              {item.children.filter((sub) => !sub.perm || isSystemAdmin || hasPermission(sub.perm)).map((sub) => {
+                const isSubActive =
+                  location.pathname.startsWith(sub.path) ||
+                  (sub.path === '/settings/organization' && (location.pathname === '/settings' || location.pathname === '/settings/'));
                 const SubIcon = sub.icon;
 
                 return (

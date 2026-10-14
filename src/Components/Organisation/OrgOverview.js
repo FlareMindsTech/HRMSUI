@@ -17,20 +17,18 @@ import {
   FaClock,
   FaUsers,
   FaSitemap,
-  FaLayerGroup,
   FaCog,
   FaPlus,
-  FaBriefcase,
   FaUserFriends,
   FaUserTie,
   FaRegBuilding,
   FaChevronRight,
-  FaCalendarAlt,
   FaGlobe,
   FaRocket,
   FaShieldAlt,
   FaCopy,
   FaExternalLinkAlt,
+  FaEdit,
 } from "react-icons/fa";
 import {
   createOrganization,
@@ -145,6 +143,10 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
     user?.permissions?.includes("*");
   const canCreate = Boolean(
     (hasPermission && (hasPermission("organization.create") || hasPermission("organisation.create"))) ||
+    isOwner
+  );
+  const canEdit = Boolean(
+    (hasPermission && (hasPermission("organization.update") || hasPermission("organisation.update") || hasPermission("organization.create"))) ||
     isOwner
   );
 
@@ -492,6 +494,34 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
       ) : (
         /* ── CASE 2: ORGANISATION DATA EXISTS (KPI & DETAILED SECTIONS) ── */
         <>
+          {/* ── 1. PAGE HEADER: ORGANIZATION OVERVIEW & PROFILE WITH EDIT ACTION ── */}
+          <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+            <div>
+              <h3 className="fw-bold mb-1 d-flex align-items-center gap-2 text-dark">
+                <FaBuilding className="text-success" /> Organization Overview & Profile
+              </h3>
+              <p className="text-muted small mb-0">
+                Manage your organization's basic information, statutory registrations, contact details and HQ location.
+              </p>
+            </div>
+
+            <div>
+              {canEdit && (
+                <Button
+                  variant="success"
+                  className="d-flex align-items-center gap-2 fw-semibold shadow-sm"
+                  style={{
+                    backgroundColor: "var(--color-primary, #C49A55)",
+                    borderColor: "var(--color-primary, #C49A55)",
+                    color: "#ffffff",
+                  }}
+                  onClick={() => onNavigateTab("edit-profile")}
+                >
+                  <FaEdit /> Edit Profile
+                </Button>
+              )}
+            </div>
+          </div>
 
           {/* ── 2. EXECUTIVE KPI METRIC CARDS ── */}
           <div className="org-kpi-row mb-4">
@@ -752,6 +782,31 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                       )}
                       {copiedField === "gstin" && <span className="badge bg-dark ms-1" style={{ fontSize: "0.65rem" }}>Copied!</span>}
                     </div>
+                  </div>
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">EPFO / PF Registration</span>
+                    <span className="org-tile-val font-monospace">{getStr(activeOrg.pfNumber || activeOrg.epfoNumber || activeOrg.pfRegistrationNumber, "—")}</span>
+                  </div>
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">ESIC Registration</span>
+                    <span className="org-tile-val font-monospace">{getStr(activeOrg.esiNumber || activeOrg.esicNumber || activeOrg.esiRegistrationNumber, "—")}</span>
+                  </div>
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">MSME / Udyam Number</span>
+                    <span className="org-tile-val font-monospace">{getStr(activeOrg.msmeNumber || activeOrg.udyamNumber || activeOrg.msmeRegistrationNumber, "—")}</span>
+                  </div>
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">Labour Identification (LIN)</span>
+                    <span className="org-tile-val font-monospace">{getStr(activeOrg.lin || activeOrg.labourIdentificationNumber, "—")}</span>
+                  </div>
+
+                  <div className="org-data-tile">
+                    <span className="org-tile-label">Professional Tax No</span>
+                    <span className="org-tile-val font-monospace">{getStr(activeOrg.professionalTaxNumber || activeOrg.ptNumber, "—")}</span>
                   </div>
 
                   <div className="org-data-tile">

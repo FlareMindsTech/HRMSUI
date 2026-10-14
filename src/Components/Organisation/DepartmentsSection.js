@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Card,
-  Button,
   Badge,
   Form,
   Row,
   Col,
   Spinner,
-  ButtonGroup,
 } from "react-bootstrap";
 import {
   FaSitemap,
@@ -23,6 +21,11 @@ import {
   FaFolder,
   FaFolderOpen,
   FaUsers,
+  FaGlobe,
+  FaNetworkWired,
+  FaCheckCircle,
+  FaUserSlash,
+  FaSearch,
 } from "react-icons/fa";
 import {
   fetchDepartments,
@@ -42,7 +45,6 @@ import { useSearchParams } from 'react-router-dom';
 import FeedbackAlert from "../Common/FeedbackAlert";
 import EmptyState from "../Common/EmptyState";
 import DataTable from "../Common/DataTable";
-import SearchInput from "../Common/SearchInput";
 import ConfirmModal from "../Common/ConfirmModal";
 import PaginationBar from "../Common/PaginationBar";
 import CrudModal from "../Common/CrudModal";
@@ -113,28 +115,26 @@ function DeptTreeNode({ node, level = 0, onEdit, onDelete, canUpdate, canDelete 
                 {node.children.length} Sub-department{node.children.length > 1 ? "s" : ""}
               </Badge>
             )}
-            <div className="org-tree-actions">
+            <div className="org-tree-actions d-flex align-items-center gap-1">
               {canUpdate && (
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="text-primary p-1"
+                <button
+                  type="button"
+                  className="org-icon-btn edit"
                   title="Edit Department"
                   onClick={() => onEdit(node)}
                 >
-                  <FaEdit />
-                </Button>
+                  <FaEdit size={13} />
+                </button>
               )}
               {canDelete && (
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="text-danger p-1"
+                <button
+                  type="button"
+                  className="org-icon-btn delete"
                   title="Delete Department"
                   onClick={() => onDelete(node)}
                 >
-                  <FaTrash />
-                </Button>
+                  <FaTrash size={12} />
+                </button>
               )}
             </div>
           </div>
@@ -455,36 +455,39 @@ function DepartmentsSection({
     <div className="org-section-container">
       {/* ── Section Header ── */}
       <div className="org-section-header">
-        <div>
-          <h3 className="org-section-title">
-            <FaSitemap className="text-success me-2" /> Department Directory
-          </h3>
-          <p className="org-section-sub">
-            Organize functional units, parent-child department hierarchies, and departmental leadership.
-          </p>
+        <div className="d-flex align-items-center gap-3">
+          <div className="branch-card-icon-badge branch-card-icon-gold">
+            <FaSitemap />
+          </div>
+          <div>
+            <h3 className="org-section-title mb-0">Department Directory</h3>
+            <p className="org-section-sub mb-0 mt-0.5">
+              Organize functional units, parent-child department hierarchies, and departmental leadership.
+            </p>
+          </div>
         </div>
-        <div className="d-flex align-items-center gap-2">
-          <ButtonGroup size="sm" className="org-view-toggle">
-            <Button
-              variant={viewMode === "table" ? "success" : "outline-secondary"}
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <div className="org-view-toggle">
+            <button
+              type="button"
+              className={`org-view-toggle-btn ${viewMode === "table" ? "active" : ""}`}
               onClick={() => setViewMode("table")}
-              className="d-flex align-items-center gap-1"
             >
-              <FaList size={12} /> Table View
-            </Button>
-            <Button
-              variant={viewMode === "tree" ? "success" : "outline-secondary"}
+              <FaList size={11} /> Table View
+            </button>
+            <button
+              type="button"
+              className={`org-view-toggle-btn ${viewMode === "tree" ? "active" : ""}`}
               onClick={() => setViewMode("tree")}
-              className="d-flex align-items-center gap-1"
             >
-              <FaSitemap size={12} /> Hierarchy Tree
-            </Button>
-          </ButtonGroup>
+              <FaSitemap size={11} /> Hierarchy Tree
+            </button>
+          </div>
 
           {canCreate && (
-            <Button variant="success" className="org-action-btn" onClick={handleOpenCreate}>
-              <FaPlus className="me-2" /> Add Department
-            </Button>
+            <button type="button" className="branches-btn-add btn-sm" onClick={handleOpenCreate}>
+              <FaPlus size={11} className="me-1" /> Add Department
+            </button>
           )}
         </div>
       </div>
@@ -494,12 +497,15 @@ function DepartmentsSection({
 
       {/* ── Branch-Scoped Notice Banner (when locked to a specific branch) ── */}
       {lockedBranchId && (
-        <div className="p-3 mb-3 rounded-3 border bg-success-subtle text-success-emphasis d-flex align-items-center justify-content-between flex-wrap gap-2">
-          <div className="d-flex align-items-center gap-2">
-            <FaCodeBranch size={16} className="text-success" />
+        <div className="p-3 mb-3 rounded-3 border bg-light d-flex align-items-center justify-content-between flex-wrap gap-2" style={{ borderColor: "rgba(196, 154, 85, 0.3)" }}>
+          <div className="d-flex align-items-center gap-2.5">
+            <div className="branch-card-icon-badge branch-card-icon-gold" style={{ width: 34, height: 34, fontSize: 14 }}>
+              <FaCodeBranch />
+            </div>
             <div>
-              <strong>Branch-Scoped View:</strong> Viewing & managing departments exclusively for{" "}
-              <strong>{branches.find((b) => String(b._id) === String(lockedBranchId))?.branchName || "Current Branch"}</strong>
+              <span className="fw-bold text-dark">Branch-Scoped Directory:</span>{" "}
+              <span className="text-secondary">Viewing & managing departments exclusively for </span>
+              <strong className="text-dark">{branches.find((b) => String(b._id) === String(lockedBranchId))?.branchName || "Current Branch"}</strong>
               {branches.find((b) => String(b._id) === String(lockedBranchId))?.branchCode
                 ? ` (${branches.find((b) => String(b._id) === String(lockedBranchId))?.branchCode})`
                 : ""}
@@ -509,94 +515,121 @@ function DepartmentsSection({
             {canCreate && (
               <button
                 type="button"
-                className="btn btn-sm btn-success text-white fw-bold shadow-sm d-flex align-items-center gap-1.5"
+                className="branches-btn-add btn-sm"
                 onClick={handleOpenCreate}
               >
-                <FaPlus size={11} /> Add Department to Branch
+                <FaPlus size={11} className="me-1" /> Add Department to Branch
               </button>
             )}
-            <Badge bg="success" className="px-2 py-1">Branch Locked</Badge>
+            <span className="branch-dept-count-pill active" style={{ fontSize: "11px" }}>Branch Locked</span>
           </div>
         </div>
       )}
 
       {/* ── Track By Branch Pills (when not locked to a single branch) ── */}
       {!lockedBranchId && branches.length > 0 && (
-        <div className="d-flex align-items-center gap-2 flex-wrap mb-3 p-2 bg-light rounded-3 border">
-          <span className="text-muted small fw-semibold me-1 d-flex align-items-center gap-1">
-            <FaCodeBranch className="text-secondary" /> Track by Branch:
-          </span>
-          <button
-            type="button"
-            className={`btn btn-sm ${!filterBranch ? "btn-success text-white fw-bold shadow-sm" : "btn-outline-secondary"} rounded-pill px-3 py-1`}
-            onClick={() => {
-              setFilterBranch("");
-              setPage(1);
-            }}
-          >
-            🏢 All Branches ({totalRecords})
-          </button>
-          {branches.map((b) => (
+        <div className="dept-branch-filter-bar mb-3">
+          <div className="dept-branch-filter-label">
+            <FaCodeBranch size={12} className="text-secondary" /> Track by Branch:
+          </div>
+          <div className="dept-branch-pills-wrap">
             <button
-              key={b._id}
               type="button"
-              className={`btn btn-sm ${filterBranch === b._id ? "btn-success text-white fw-bold shadow-sm" : "btn-outline-secondary"} rounded-pill px-3 py-1`}
+              className={`dept-branch-pill ${!filterBranch ? "active" : ""}`}
               onClick={() => {
-                setFilterBranch(b._id);
+                setFilterBranch("");
                 setPage(1);
               }}
             >
-              {b.branchName}
+              🏢 All Branches
+              <span className="dept-branch-pill-count">{totalRecords}</span>
             </button>
-          ))}
+            {branches.map((b) => (
+              <button
+                key={b._id}
+                type="button"
+                className={`dept-branch-pill ${filterBranch === b._id ? "active" : ""}`}
+                onClick={() => {
+                  setFilterBranch(b._id);
+                  setPage(1);
+                }}
+              >
+                {b.branchName}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
       {/* ── Filters & Search ── */}
-      <Card className="org-filter-card mb-3">
-        <Card.Body className="py-2">
-          <Row className="g-2 align-items-center">
-            <Col md={5}>
-              <SearchInput
-                size="sm"
-                inputGroupTextClassName=""
-                inputClassName=""
-                iconClassName="text-muted"
-                placeholder="Search by department name or code..."
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              />
-            </Col>
-            <Col md={3}>
-              <Form.Select
-                size="sm"
-                value={lockedBranchId || filterBranch}
-                disabled={Boolean(lockedBranchId)}
-                onChange={(e) => { setFilterBranch(e.target.value); setPage(1); }}
+      <div className="branches-toolbar-card mb-3">
+        <div className="branches-toolbar-row">
+          <div className="branches-search-wrap">
+            <FaSearch className="branches-search-icon" />
+            <input
+              type="text"
+              className="branches-search-input"
+              placeholder="Search by department name or code..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            />
+            {search && (
+              <button
+                type="button"
+                className="btn btn-sm btn-link text-muted p-0 me-2"
+                style={{ textDecoration: "none", fontSize: "11px" }}
+                onClick={() => { setSearch(""); setPage(1); }}
               >
-                {!lockedBranchId && <option value="">All Branches</option>}
-                {branches.map((b) => (
-                  <option key={b._id} value={b._id}>{b.branchName}</option>
-                ))}
-              </Form.Select>
-            </Col>
-            <Col md={2}>
-              <Form.Select
-                size="sm"
-                value={filterStatus}
-                onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+                ✕
+              </button>
+            )}
+          </div>
+
+          <div className="branches-filter-group d-flex align-items-center gap-2 flex-wrap">
+            <select
+              className="branches-filter-select"
+              value={lockedBranchId || filterBranch}
+              disabled={Boolean(lockedBranchId)}
+              onChange={(e) => { setFilterBranch(e.target.value); setPage(1); }}
+            >
+              {!lockedBranchId && <option value="">All Branches</option>}
+              {branches.map((b) => (
+                <option key={b._id} value={b._id}>{b.branchName}</option>
+              ))}
+            </select>
+
+            <select
+              className="branches-filter-select"
+              value={filterStatus}
+              onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+            >
+              <option value="">All Statuses</option>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+            </select>
+
+            {(search || (!lockedBranchId && filterBranch) || filterStatus) && (
+              <button
+                type="button"
+                className="btn btn-sm btn-link text-muted text-decoration-none px-2"
+                style={{ fontSize: "12px" }}
+                onClick={() => {
+                  setSearch("");
+                  if (!lockedBranchId) setFilterBranch("");
+                  setFilterStatus("");
+                  setPage(1);
+                }}
               >
-                <option value="">All Statuses</option>
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
-              </Form.Select>
-            </Col>
-            <Col md={2} className="text-end text-muted small">
-              Total: <strong>{totalRecords}</strong>
-            </Col>
-          </Row>
-        </Card.Body>
-      </Card>
+                Reset Filters
+              </button>
+            )}
+
+            <div className="ms-auto text-muted extra-small fw-semibold">
+              Total: <strong className="text-dark">{totalRecords}</strong> Departments
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* ── Main View (Table or Hierarchy Tree) ── */}
       {viewMode === "tree" ? (
@@ -659,19 +692,37 @@ function DepartmentsSection({
               <EmptyState
                 variant="table"
                 colSpan={7}
-                className="text-center py-5 text-muted"
-                title="No departments found."
+                icon={FaSitemap}
+                iconSize={26}
+                iconClassName="text-muted opacity-50 mb-2"
+                title={search || filterBranch || filterStatus ? "No departments match your filter criteria" : "No departments found"}
+                description={
+                  search || filterBranch || filterStatus
+                    ? "Try adjusting or clearing your search filters."
+                    : "No organizational departments have been registered yet."
+                }
+                actionLabel={canCreate && !search && !filterBranch && !filterStatus ? "Add Department" : undefined}
+                onAction={canCreate ? handleOpenCreate : undefined}
+                actionVariant="success"
+                actionClassName="branches-btn-add mt-2"
+                bodyClassName="py-5"
               />
             }
             columns={[
               {
                 key: "department",
-                header: "Department Code & Name",
+                header: "Department",
                 render: (d) => (
-                  <>
-                    <div className="fw-semibold text-dark">{d.departmentName}</div>
-                    <div className="small font-monospace text-muted">{d.departmentCode}</div>
-                  </>
+                  <div className="min-w-0">
+                    <div className="fw-bold text-dark text-truncate" style={{ fontSize: "13.5px" }}>
+                      {d.departmentName}
+                    </div>
+                    <div className="d-flex align-items-center gap-1 mt-0.5">
+                      <span className="branch-code-badge font-monospace" style={{ fontSize: "10.5px", padding: "2px 7px" }}>
+                        {d.departmentCode || "—"}
+                      </span>
+                    </div>
+                  </div>
                 ),
               },
               {
@@ -679,38 +730,62 @@ function DepartmentsSection({
                 header: "Parent Department",
                 render: (d) =>
                   d.parentDepartmentId ? (
-                    <Badge bg="light" className="text-secondary border">
-                      <FaSitemap className="me-1" />
+                    <span className="dept-parent-pill">
+                      <FaNetworkWired size={11} className="text-secondary opacity-75" />
                       {d.parentDepartmentId.departmentName}
-                    </Badge>
+                    </span>
                   ) : (
-                    <span className="text-muted small">Top Level</span>
+                    <span className="badge bg-light text-muted border px-2.5 py-1 fw-normal" style={{ fontSize: "11px" }}>
+                      <FaCheckCircle size={9} className="me-1 text-success opacity-75" /> Root Dept
+                    </span>
                   ),
               },
               {
                 key: "head",
                 header: "Department Head",
-                render: (d) =>
-                  d.departmentHeadId ? (
-                    <div className="d-flex align-items-center gap-1">
-                      <FaUserTie className="text-primary small" />
-                      <span className="small">{d.departmentHeadId.firstName} {d.departmentHeadId.lastName}</span>
+                render: (d) => {
+                  if (!d.departmentHeadId) {
+                    return (
+                      <span className="text-muted extra-small d-inline-flex align-items-center gap-1">
+                        <FaUserSlash size={10} className="opacity-50" /> Unassigned
+                      </span>
+                    );
+                  }
+                  const f = d.departmentHeadId.firstName || "";
+                  const l = d.departmentHeadId.lastName || "";
+                  const inits = ((f[0] || "") + (l[0] || "")).toUpperCase() || "HD";
+                  return (
+                    <div className="d-flex align-items-center gap-2">
+                      <div className="dept-head-avatar">
+                        {inits}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="fw-semibold text-dark text-truncate" style={{ fontSize: "12.5px" }}>
+                          {f} {l}
+                        </div>
+                        {d.departmentHeadId.email && (
+                          <div className="extra-small text-muted text-truncate" style={{ maxWidth: 140 }}>
+                            {d.departmentHeadId.email}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  ) : (
-                    <span className="text-muted small">Unassigned</span>
-                  ),
+                  );
+                },
               },
               {
                 key: "branch",
                 header: "Branch",
                 render: (d) =>
                   d.branchId ? (
-                    <div className="small">
-                      <FaCodeBranch className="text-secondary me-1" />
-                      {d.branchId.branchName}
+                    <div className="dept-branch-tag">
+                      <FaCodeBranch className="text-secondary opacity-75" size={11} />
+                      <span className="text-truncate" style={{ maxWidth: 140 }}>{d.branchId.branchName}</span>
                     </div>
                   ) : (
-                    <span className="text-muted small">All Branches</span>
+                    <span className="badge bg-light text-secondary border px-2 py-1 fw-normal" style={{ fontSize: "11px" }}>
+                      <FaGlobe size={10} className="me-1 opacity-75" /> All Branches
+                    </span>
                   ),
               },
               {
@@ -718,21 +793,37 @@ function DepartmentsSection({
                 header: "Cost Center",
                 render: (d) =>
                   d.costCenterId ? (
-                    <Badge bg="light" className="text-dark border">
-                      <FaMoneyCheckAlt className="me-1 text-success" />
+                    <span className="dept-cost-center-badge">
+                      <FaMoneyCheckAlt className="text-muted" size={11} />
                       {d.costCenterId.costCenterCode || d.costCenterId.costCenterName}
-                    </Badge>
+                    </span>
                   ) : (
-                    <span className="text-muted small">-</span>
+                    <span className="text-muted extra-small">—</span>
                   ),
               },
               {
                 key: "status",
                 header: "Status",
                 render: (d) => (
-                  <Badge bg={d.status === "ACTIVE" ? "success" : "secondary"}>
+                  <span
+                    className={`badge px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1 ${
+                      d.status === "ACTIVE"
+                        ? "bg-success-subtle text-success border border-success-subtle"
+                        : "bg-secondary-subtle text-secondary border border-secondary-subtle"
+                    }`}
+                    style={{ fontSize: "11.5px" }}
+                  >
+                    <span
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        backgroundColor: d.status === "ACTIVE" ? "#16a34a" : "#64748b",
+                        display: "inline-block",
+                      }}
+                    />
                     {d.status}
-                  </Badge>
+                  </span>
                 ),
               },
               {
@@ -741,23 +832,21 @@ function DepartmentsSection({
                 headerClassName: "text-end",
                 cellClassName: "text-end",
                 render: (d) => (
-                  <>
+                  <div className="org-table-actions justify-content-end">
                     {canUpdate && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="text-primary p-1"
+                      <button
+                        type="button"
+                        className="org-icon-btn edit"
                         title="Edit Department"
                         onClick={() => handleOpenEdit(d)}
                       >
-                        <FaEdit />
-                      </Button>
+                        <FaEdit size={13} />
+                      </button>
                     )}
                     {canDelete && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="text-danger p-1"
+                      <button
+                        type="button"
+                        className="org-icon-btn delete"
                         title="Delete Department"
                         onClick={() => {
                           setDeletingId(d._id);
@@ -765,10 +854,10 @@ function DepartmentsSection({
                           setShowDeleteModal(true);
                         }}
                       >
-                        <FaTrash />
-                      </Button>
+                        <FaTrash size={12} />
+                      </button>
                     )}
-                  </>
+                  </div>
                 ),
               },
             ]}

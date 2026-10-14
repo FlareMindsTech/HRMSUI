@@ -33,6 +33,7 @@ import ReimbursementManagement from './Pages/Dashboard/ReimbursementManagement';
 import ApprovalWorkflows from './Pages/Dashboard/ApprovalWorkflows';
 import AuditLogs from './Pages/Dashboard/AuditLogs';
 import PlatformAdmin from './Pages/Dashboard/PlatformAdmin';
+import SettingsPage from './Pages/Dashboard/SettingsPage';
 
 const isAuthError = (payload) => {
   // 401 only — a 403 (AccessDenied with required* keys) must never bounce to
@@ -194,7 +195,11 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/organisation" element={<Organisation />} />
               <Route path="/organisation/branches" element={<BranchesPage />} />
-              <Route path="/branches" element={<BranchesPage />} />
+              <Route path="/branches" element={<Navigate to="/organisation/branches" replace />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/settings/:subtab" element={<SettingsPage />} />
+              <Route path="/organisation/settings" element={<Navigate to="/settings/organization" replace />} />
+              <Route path="/organisation/branch-settings" element={<Navigate to="/settings/branches" replace />} />
               <Route path="/organisation/:section" element={<Organisation />} />
               <Route path="/onboarding" element={<HrOnboarding />} />
               <Route path="/leave" element={<LeaveRequest />} />

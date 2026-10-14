@@ -1,0 +1,150 @@
+/* ==========================================================================
+   Settings Page Stylesheet (SettingsPage.css)
+   TeamHub Enterprise Executive Styling
+   ========================================================================== */
+
+.settings-page-container {
+  padding: 1.25rem 1.5rem 2.5rem;
+  min-height: 100%;
+  animation: settingsFadeIn 0.22s ease-in-out;
+}
+
+@keyframes settingsFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Top Header Bar ── */
+.settings-header-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.settings-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #9CA3AF;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.settings-breadcrumb-root {
+  color: var(--color-primary, #C49A55);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.settings-breadcrumb-root:hover {
+  color: #8C6729;
+  text-decoration: underline;
+}
+
+.settings-breadcrumb-current {
+  color: #4B5563;
+  font-weight: 700;
+}
+
+.settings-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.settings-icon-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(196, 154, 85, 0.16) 0%, rgba(196, 154, 85, 0.06) 100%);
+  border: 1px solid rgba(196, 154, 85, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary, #C49A55);
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.settings-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #111827;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.settings-subtitle {
+  font-size: 0.84rem;
+  color: #6B7280;
+  margin: 0.25rem 0 0;
+}
+
+/* ── Segment Tabs Bar ── */
+.settings-tabs-bar {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-surface, #FFFFFF);
+  border: 1px solid rgba(196, 154, 85, 0.25);
+  border-radius: var(--radius-md, 12px);
+  padding: 0.32rem;
+  gap: 0.35rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.settings-tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 0.52rem 1.15rem;
+  font-size: 0.83rem;
+  font-weight: 700;
+  color: #4B5563;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  letter-spacing: 0.02em;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.settings-tab-btn:hover {
+  color: #8C6729;
+  background: rgba(196, 154, 85, 0.09);
+  border-color: rgba(196, 154, 85, 0.2);
+}
+
+.settings-tab-btn.active {
+  background: #111827;
+  color: var(--color-surface, #FFFFFF);
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.25);
+}
+
+.settings-tab-icon {
+  font-size: 0.95rem;
+}
+
+.settings-tab-btn.active .settings-tab-icon {
+  color: var(--color-primary-light, #E2C278);
+}
+
+/* ── Content Viewport ── */
+.settings-content-viewport {
+  width: 100%;
+}
