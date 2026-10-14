@@ -65,12 +65,13 @@ function PGSection({
             </Button>
           ) : (
             <Button
-              variant="outline-secondary"
+              variant="outline-danger"
               size="sm"
-              className="rounded-pill px-3 py-1 extra-small"
-              onClick={onToggle}
+              className="rounded-pill px-2.5 py-1 extra-small fw-semibold d-inline-flex align-items-center gap-1"
+              onClick={onClear || onToggle}
+              title="Remove this qualification"
             >
-              Collapse
+              <FaTrash size={10} /> Remove
             </Button>
           )}
         </div>

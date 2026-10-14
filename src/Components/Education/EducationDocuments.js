@@ -181,12 +181,14 @@ function EducationDocuments({
                       )}
                     </div>
 
-                    <div className="d-flex align-items-center gap-2.5 my-2">
+                    <div className="d-flex align-items-center my-2" style={{ gap: "12px" }}>
                       <div
-                        className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                        className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0 me-3"
                         style={{
                           width: "36px",
                           height: "36px",
+                          minWidth: "36px",
+                          marginRight: "12px",
                           background: "rgba(196, 154, 85, 0.12)",
                           border: "1px solid rgba(196, 154, 85, 0.25)",
                         }}

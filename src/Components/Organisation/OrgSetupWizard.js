@@ -30,6 +30,8 @@ import {
   FaMailBulk,
   FaHome,
   FaSitemap,
+  FaQuestionCircle,
+  FaTimes,
 } from "react-icons/fa";
 import {
   createOrganization,
@@ -39,12 +41,13 @@ import {
   compressImageFile,
 } from "../../services/organizationService";
 import { useDispatch, useSelector } from "react-redux";
-import { authSynced, selectAuthUser, fetchAuth } from "../../redux/slices/authSlice";
+import { selectAuthUser, fetchAuth } from "../../redux/slices/authSlice";
 import { invalidateOrgResource } from "../../redux/slices/organizationSlice";
 import FeedbackAlert from "../Common/FeedbackAlert";
 import { useBranch } from "../../context/BranchContext";
 import { API_BASE_URL, setAuthToken } from "../../config/api";
 import "../../Pages/Dashboard/HrOnboarding.css";
+import "./OrgSetupHero.css";
 
 const ORG_TYPES = [
   { value: "COMPANY", label: "Private / Public Limited Company" },
@@ -81,7 +84,7 @@ const INITIAL_FORM = {
   organizationCode: "",
   legalName: "",
   displayName: "",
-  organizationType: "COMPANY",
+  organizationType: "",
   industry: "",
   website: "",
   email: "",
@@ -141,6 +144,7 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
         if (parsed.organizationName?.includes("Foreign Corp")) parsed.organizationName = "";
         if (parsed.organizationCode?.startsWith("FRG_")) parsed.organizationCode = "";
         if (parsed.industry === "Information Technology" || parsed.industry === "Technology") parsed.industry = "";
+        if (parsed.organizationType === "COMPANY") parsed.organizationType = "";
         return { ...INITIAL_FORM, ...parsed };
       }
     } catch (e) { }
@@ -156,6 +160,8 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const fileInputRef = useRef(null);
   const [logoError, setLogoError] = useState("");
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [previewActiveStep, setPreviewActiveStep] = useState(2);
 
   const effectiveUser = (() => {
     if (currentUser) return currentUser;
@@ -196,6 +202,10 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
           parsed.industry = "";
           modified = true;
         }
+        if (parsed.organizationType === "COMPANY") {
+          parsed.organizationType = "";
+          modified = true;
+        }
         if (modified) {
           sessionStorage.setItem("org_setup_form", JSON.stringify(parsed));
           setFormData((prev) => ({
@@ -203,6 +213,7 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
             organizationName: parsed.organizationName || "",
             organizationCode: parsed.organizationCode || "",
             industry: parsed.industry || "",
+            organizationType: parsed.organizationType || "",
           }));
         }
       }
@@ -216,6 +227,19 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
       })
       .catch((e) => console.warn("Notice checking system setup status:", e.message));
   }, [currentUser]);
+
+  // Prevent scrollbars when on the welcome hero screen
+  useEffect(() => {
+    if (stage === "welcome") {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    } else {
+      document.body.style.overflow = "";
+    }
+  }, [stage]);
 
   const updateField = (field, value) => {
     setFormData((prev) => {
@@ -278,20 +302,84 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
       if (!formData.organizationCode?.trim()) {
         errs.organizationCode = "Organization Code is required.";
       }
+      if (!formData.legalName?.trim()) {
+        errs.legalName = "Legal Registered Name is required.";
+      }
+      if (!formData.displayName?.trim()) {
+        errs.displayName = "Brand / Display Title is required.";
+      }
+      if (!formData.organizationType?.trim()) {
+        errs.organizationType = "Organization Type is required.";
+      }
+      if (!formData.industry?.trim()) {
+        errs.industry = "Industry Sector is required.";
+      }
+      if (!formData.email?.trim()) {
+        errs.email = "Corporate Email is required.";
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+        errs.email = "Please enter a valid corporate email.";
+      }
+      if (!formData.phone?.trim()) {
+        errs.phone = "Contact Phone Number is required.";
+      }
     }
     if (step === 2) {
-      if (formData.pan && formData.pan.length > 20) {
+      if (!formData.registrationNumber?.trim()) {
+        errs.registrationNumber = "CIN / Registration Number is required.";
+      }
+      if (!formData.pan?.trim()) {
+        errs.pan = "PAN Number is required.";
+      } else if (formData.pan.trim().length > 20) {
         errs.pan = "PAN Number is too long.";
+      }
+      if (!formData.tan?.trim()) {
+        errs.tan = "TAN Number is required.";
+      }
+      if (!formData.gstin?.trim()) {
+        errs.gstin = "GSTIN is required.";
+      }
+      if (!formData.incorporationDate) {
+        errs.incorporationDate = "Date of Incorporation is required.";
+      }
+      if (!formData.pfNumber?.trim()) {
+        errs.pfNumber = "PF / EPFO Code is required.";
+      }
+      if (!formData.esiNumber?.trim()) {
+        errs.esiNumber = "ESIC Code is required.";
       }
     }
     if (step === 3) {
+      if (!formData.address?.trim()) {
+        errs.address = "Headquarters Street Address is required.";
+      }
       if (!formData.city?.trim()) {
-        errs.city = "Headquarters City is required.";
+        errs.city = "City / Metropolis is required.";
+      }
+      if (!formData.state?.trim()) {
+        errs.state = "State / Province is required.";
+      }
+      if (!formData.country?.trim()) {
+        errs.country = "Country is required.";
+      }
+      if (!formData.pincode?.trim()) {
+        errs.pincode = "Postal / ZIP Code is required.";
+      }
+      if (!formData.currency?.trim()) {
+        errs.currency = "Currency is required.";
+      }
+      if (!formData.timeZone?.trim()) {
+        errs.timeZone = "Time Zone is required.";
+      }
+      if (!formData.financialYearStart?.trim()) {
+        errs.financialYearStart = "Financial Year Start is required.";
       }
     }
     if (step === 4) {
       if (!formData.ownerFirstName?.trim()) {
         errs.ownerFirstName = "Owner First Name is required.";
+      }
+      if (!formData.ownerLastName?.trim()) {
+        errs.ownerLastName = "Owner Last Name is required.";
       }
       if (!formData.ownerEmail?.trim()) {
         errs.ownerEmail = "Owner Email is required.";
@@ -301,13 +389,22 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
       if (!formData.ownerPhone?.trim()) {
         errs.ownerPhone = "Owner Phone Number is required.";
       }
-      if (!effectiveUser && (!formData.ownerPassword || formData.ownerPassword.length < 6)) {
-        errs.ownerPassword = "Password must be at least 6 characters.";
-      } else if (formData.ownerPassword && formData.ownerPassword.length < 6) {
-        errs.ownerPassword = "Password must be at least 6 characters.";
-      }
-      if (formData.ownerPassword && formData.ownerPassword !== formData.ownerConfirmPassword) {
-        errs.ownerConfirmPassword = "Passwords do not match.";
+      if (!effectiveUser) {
+        if (!formData.ownerPassword || formData.ownerPassword.length < 6) {
+          errs.ownerPassword = "Password must be at least 6 characters.";
+        }
+        if (!formData.ownerConfirmPassword) {
+          errs.ownerConfirmPassword = "Confirm Password is required.";
+        } else if (formData.ownerPassword !== formData.ownerConfirmPassword) {
+          errs.ownerConfirmPassword = "Passwords do not match.";
+        }
+      } else {
+        if (formData.ownerPassword && formData.ownerPassword.length < 6) {
+          errs.ownerPassword = "Password must be at least 6 characters.";
+        }
+        if (formData.ownerPassword && formData.ownerPassword !== formData.ownerConfirmPassword) {
+          errs.ownerConfirmPassword = "Passwords do not match.";
+        }
       }
     }
 
@@ -489,116 +586,261 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
   };
 
   // =========================================================================
-  // STAGE 1: PROFESSIONAL LUXURY WELCOME SCREEN (CENTER FIT - NO SCROLL)
+  // STAGE 1: PROFESSIONAL LUXURY WELCOME SCREEN (EXACT REPLICA DESIGN)
   // =========================================================================
   if (stage === "welcome") {
     return (
-      <div className="org-welcome-fullcenter-wrap">
-        <div className="org-welcome-ambient-glow" />
-        <Card className="org-welcome-card border-0">
-          {/* Header with Enterprise Glowing Icon */}
-          <div className="text-center mb-3 pb-2.5 border-bottom">
-            <div className="mb-2.5">
-              <div className="org-welcome-rocket-badge-ring">
-                <div className="org-welcome-rocket-badge">
-                  <FaRocket />
+      <div className="org-setup-hero-page">
+        {/* Top Header */}
+        <header className="org-setup-hero-header">
+          <div className="org-setup-hero-brand">
+            <div className="org-setup-brand-icon">
+              <FaBuilding />
+            </div>
+            <div className="org-setup-brand-info">
+              <h2 className="org-setup-brand-title">TeamHub HRMS</h2>
+              <span className="org-setup-brand-subtitle">Enterprise Platform</span>
+              <div className="org-setup-brand-accent-bar" />
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="org-setup-hero-help-btn"
+            onClick={() => setShowHelpModal(true)}
+          >
+            <FaQuestionCircle size={14} className="text-muted" />
+            <span>Need Help?</span>
+          </button>
+        </header>
+
+        {/* Main Body Layout */}
+        <main className="org-setup-hero-body">
+          {/* Left Column: People. Process. Progress. & Frosted Glass Quote Card */}
+          <aside className="org-setup-hero-left">
+            <div className="org-setup-left-top-block">
+              <span className="org-setup-left-tag">ENTERPRISE HRMS</span>
+              <h1 className="org-setup-left-hero-title">
+                <span>People.</span>
+                <span>Process.</span>
+                <span className="org-setup-gold-gradient-text">Progress.</span>
+              </h1>
+              <p className="org-setup-left-hero-desc">
+                Set up your organization in a few simple steps and get started with TeamHub HRMS.
+              </p>
+            </div>
+
+            {/* Bottom Floating Frosted Glass Card */}
+            <div className="org-setup-quote-card">
+              <div className="org-setup-quote-icon">“</div>
+              <div className="org-setup-quote-title">
+                Build a better<br />
+                workplace today
+              </div>
+              <div className="org-setup-quote-avatars-row">
+                <div className="org-setup-avatar-stack">
+                  <span className="org-avatar-circle av-1" />
+                  <span className="org-avatar-circle av-2" />
+                  <span className="org-avatar-circle av-3" />
+                  <span className="org-avatar-circle av-4" />
+                </div>
+                <div className="org-setup-avatar-caption">
+                  Trusted by growing<br />
+                  teams and enterprises
                 </div>
               </div>
+              <div className="org-setup-quote-dash" />
             </div>
-            <div className="d-flex align-items-center justify-content-center gap-2 mb-1.5 flex-wrap">
-              <h3 className="fw-bolder mb-0 text-dark" style={{ letterSpacing: "-0.02em", fontSize: "1.45rem" }}>
-                Setup Your Enterprise Organization
-              </h3>
-              <span className="onboarding-enterprise-pill" style={{ fontSize: "10.5px", padding: "2px 9px" }}>Enterprise Setup</span>
+          </aside>
+
+          {/* Right/Center Floating Main Card */}
+          <div className="org-setup-main-card">
+            {/* Pill Badge */}
+            <div className="org-setup-enterprise-pill-wrap">
+              <div className="org-setup-enterprise-pill">
+                <FaBuilding size={11} className="org-setup-pill-icon" />
+                <span>Enterprise Setup</span>
+              </div>
             </div>
-            <p className="text-muted small mx-auto mb-0" style={{ maxWidth: 620, lineHeight: 1.5, fontSize: "12.5px" }}>
-              Welcome to the <strong>TeamHub HRMS Platform</strong>! No organization owner account was detected.
-              Please complete the initial 4-step setup to establish your corporate profile, configure compliance defaults, and register your primary root System Owner account.
+
+            {/* Heading */}
+            <div className="org-setup-card-header-centered">
+              <h2 className="org-setup-card-title">
+                <span className="d-block org-setup-title-dark">Setup Your</span>
+                <span className="d-block org-setup-title-gold">Enterprise Organization</span>
+              </h2>
+              <div className="org-setup-title-accent-dash" />
+            </div>
+
+            {/* Description Subtitle */}
+            <p className="org-setup-card-desc">
+              Complete a quick 4–step setup to configure your organization and register your primary root account.
             </p>
+
+            {/* Horizontal Progress Stepper Bar (Static Overview) */}
+            <div className="org-setup-horizontal-stepper">
+              <div className="org-setup-hstep-node">
+                <div className="org-setup-hstep-badge">1</div>
+                <div className="org-setup-hstep-label">Organization<br />Profile</div>
+              </div>
+
+              <div className="org-setup-hstep-connector" />
+
+              <div className="org-setup-hstep-node">
+                <div className="org-setup-hstep-badge">2</div>
+                <div className="org-setup-hstep-label">Statutory &amp; Tax</div>
+              </div>
+
+              <div className="org-setup-hstep-connector" />
+
+              <div className="org-setup-hstep-node">
+                <div className="org-setup-hstep-badge">3</div>
+                <div className="org-setup-hstep-label">Headquarters &amp;<br />Location</div>
+              </div>
+
+              <div className="org-setup-hstep-connector" />
+
+              <div className="org-setup-hstep-node">
+                <div className="org-setup-hstep-badge">4</div>
+                <div className="org-setup-hstep-label">Primary Owner</div>
+              </div>
+            </div>
+
+            {/* 4 Step Preview Cards Horizontal Row (Static Display) */}
+            <div className="org-setup-cards-grid">
+              {/* Step 1: Organization Profile */}
+              <div className="org-setup-step-box">
+                <div className="org-setup-step-box-top">
+                  <span className="org-setup-step-badge-num">01</span>
+                  <div className="org-setup-step-badge-icon">
+                    <FaBuilding />
+                  </div>
+                </div>
+                <div className="org-setup-step-title">
+                  Organization Profile
+                </div>
+                <div className="org-setup-step-dash" />
+              </div>
+
+              {/* Step 2: Statutory & Tax */}
+              <div className="org-setup-step-box">
+                <div className="org-setup-step-box-top">
+                  <span className="org-setup-step-badge-num">02</span>
+                  <div className="org-setup-step-badge-icon">
+                    <FaShieldAlt />
+                  </div>
+                </div>
+                <div className="org-setup-step-title">
+                  Statutory &amp; Tax
+                </div>
+                <div className="org-setup-step-dash" />
+              </div>
+
+              {/* Step 3: Headquarters & Location */}
+              <div className="org-setup-step-box">
+                <div className="org-setup-step-box-top">
+                  <span className="org-setup-step-badge-num">03</span>
+                  <div className="org-setup-step-badge-icon">
+                    <FaMapMarkerAlt />
+                  </div>
+                </div>
+                <div className="org-setup-step-title">
+                  Headquarters &amp; Location
+                </div>
+                <div className="org-setup-step-dash" />
+              </div>
+
+              {/* Step 4: Primary Owner */}
+              <div className="org-setup-step-box">
+                <div className="org-setup-step-box-top">
+                  <span className="org-setup-step-badge-num">04</span>
+                  <div className="org-setup-step-badge-icon">
+                    <FaCrown />
+                  </div>
+                </div>
+                <div className="org-setup-step-title">
+                  Primary Owner
+                </div>
+                <div className="org-setup-step-dash" />
+              </div>
+            </div>
+
+            {/* Bottom Action Area: Horizontal Divider Lines + Glowing Button */}
+            <div className="org-setup-cta-wrap">
+              <div className="org-setup-cta-row">
+                <div className="org-setup-cta-line" />
+                <button
+                  type="button"
+                  className="org-setup-start-btn"
+                  onClick={() => {
+                    setStepPersisted(1);
+                    setStagePersisted("form");
+                  }}
+                >
+                  <span>Start Setup Wizard</span>
+                  <FaArrowRight size={14} />
+                </button>
+                <div className="org-setup-cta-line" />
+              </div>
+
+              <div className="org-setup-footer-security">
+                <FaLock className="text-warning" size={11} />
+                <span>TeamHub HRMS – Single-Tenant Secure Architecture</span>
+              </div>
+            </div>
           </div>
+        </main>
 
-          {/* 4 Feature Milestone Cards Grid */}
-          <Row className="g-3 mb-3">
-            <Col md={6}>
-              <div className="org-welcome-milestone-card">
-                <div className="org-welcome-icon-box">
-                  <FaBuilding />
+        {/* Need Help Modal */}
+        {showHelpModal && (
+          <div className="org-setup-help-overlay" onClick={() => setShowHelpModal(false)}>
+            <div className="org-setup-help-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                <div className="d-flex align-items-center gap-2">
+                  <div className="org-setup-brand-icon" style={{ width: 34, height: 34, fontSize: 16 }}>
+                    <FaBuilding />
+                  </div>
+                  <div>
+                    <h5 className="mb-0 fw-bold text-dark" style={{ fontSize: 16 }}>TeamHub HRMS Support</h5>
+                    <span className="text-muted extra-small">Enterprise Onboarding Desk</span>
+                  </div>
                 </div>
-                <div>
-                  <div className="fw-bold text-dark mb-0.5" style={{ fontSize: "13px" }}>
-                    1. Organization Profile & Brand
-                  </div>
-                  <div className="text-muted" style={{ fontSize: "11.5px", lineHeight: 1.4 }}>
-                    Entity name, tenant code, legal title, and corporate logo photo.
-                  </div>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-light border-0 rounded-circle p-1"
+                  onClick={() => setShowHelpModal(false)}
+                >
+                  <FaTimes size={14} />
+                </button>
+              </div>
+
+              <p className="text-muted small mb-3" style={{ lineHeight: 1.5 }}>
+                Setting up your enterprise organization takes less than 5 minutes. You will configure:
+              </p>
+              <ul className="text-muted small ps-3 mb-3" style={{ lineHeight: 1.6 }}>
+                <li>Corporate identity, tenant code &amp; legal title</li>
+                <li>Statutory registrations (PAN, GSTIN, EPFO, ESIC)</li>
+                <li>Headquarters address, operating currency &amp; timezone</li>
+                <li>Root administrator credentials for initial sign-in</li>
+              </ul>
+
+              <div className="p-3 rounded bg-light border mb-3">
+                <div className="fw-bold text-dark small mb-1">Direct Implementation Desk</div>
+                <div className="text-muted extra-small">
+                  Need assistance from our solution architects? Contact us at <strong>flaremindstech@gmail.com</strong>.
                 </div>
               </div>
-            </Col>
 
-            <Col md={6}>
-              <div className="org-welcome-milestone-card">
-                <div className="org-welcome-icon-box">
-                  <FaShieldAlt />
-                </div>
-                <div>
-                  <div className="fw-bold text-dark mb-0.5" style={{ fontSize: "13px" }}>
-                    2. Statutory & Tax Compliance
-                  </div>
-                  <div className="text-muted" style={{ fontSize: "11.5px", lineHeight: 1.4 }}>
-                    MCA CIN, PAN, TAN, GSTIN, and EPFO/ESIC compliance registration details.
-                  </div>
-                </div>
-              </div>
-            </Col>
-
-            <Col md={6}>
-              <div className="org-welcome-milestone-card">
-                <div className="org-welcome-icon-box">
-                  <FaMapMarkerAlt />
-                </div>
-                <div>
-                  <div className="fw-bold text-dark mb-0.5" style={{ fontSize: "13px" }}>
-                    3. Headquarters & Localization
-                  </div>
-                  <div className="text-muted" style={{ fontSize: "11.5px", lineHeight: 1.4 }}>
-                    Head office street address, municipal city, currency, timezone, and FY cycle.
-                  </div>
-                </div>
-              </div>
-            </Col>
-
-            <Col md={6}>
-              <div className="org-welcome-milestone-card">
-                <div className="org-welcome-icon-box">
-                  <FaCrown />
-                </div>
-                <div>
-                  <div className="fw-bold text-dark mb-0.5" style={{ fontSize: "13px" }}>
-                    4. Primary Owner Registration
-                  </div>
-                  <div className="text-muted" style={{ fontSize: "11.5px", lineHeight: 1.4 }}>
-                    Root administrator name, official email, phone, and secure sign-in password.
-                  </div>
-                </div>
-              </div>
-            </Col>
-          </Row>
-
-          {/* Next Action CTA Button & Helpers */}
-          <div className="d-flex flex-column align-items-center gap-2 pt-1">
-            <Button
-              className="org-welcome-cta-btn d-flex align-items-center justify-content-center"
-              onClick={() => setStagePersisted("form")}
-            >
-              Next: Start Setup Wizard <FaArrowRight className="ms-2" />
-            </Button>
+              <button
+                type="button"
+                className="btn btn-dark w-100 rounded-pill py-2 fw-bold"
+                onClick={() => setShowHelpModal(false)}
+              >
+                Got It, Continue Setup
+              </button>
+            </div>
           </div>
-
-          <div className="text-center text-muted extra-small pt-2.5 border-top mt-2.5 d-flex align-items-center justify-content-center gap-2" style={{ fontSize: "11px", opacity: 0.85 }}>
-            <FaLock className="text-warning" size={10} />
-            <span>TeamHub Enterprise HRMS &bull; Single-Tenant Secure Architecture</span>
-          </div>
-        </Card>
+        )}
       </div>
     );
   }
@@ -607,48 +849,16 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
   // STAGE 2: 4-STEP WIZARD FORM (SHOWS AFTER CLICKING "NEXT")
   // =========================================================================
   return (
-    <div className="org-form-centered-container">
-      {/* ── 1. Top Header ── */}
-      <div className="d-flex align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom flex-wrap">
-        <div className="d-flex align-items-center gap-3">
-          <button
-            type="button"
-            className="onboarding-back-btn"
-            onClick={handlePrev}
-            title="Previous Step"
-          >
-            <FaChevronLeft size={13} />
-          </button>
-          <div>
-            <div className="d-flex align-items-center gap-2">
-              <h4 className="mb-0 fw-bold onboarding-header-title">
-                Setup Enterprise Organization & Owner
-              </h4>
-              <span className="onboarding-enterprise-pill">
-                Enterprise
-              </span>
-            </div>
-            <span className="text-muted extra-small d-block mt-0.5">
-              Establish corporate identity, statutory tax compliance, operational headquarters, and initial root owner account.
-            </span>
-          </div>
-        </div>
-
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          <span className="onboarding-active-form-pill">
-            <FaCrown className="me-2 text-warning" /> Step {currentStep} of 4
-          </span>
-        </div>
-      </div>
-
-      {/* ── 2. Sleek Horizontal 4-Step Stepper ── */}
-      <div className="org-wizard-stepper">
-        {[
-          { num: 1, label: "Entity & Identity", icon: FaBuilding },
-          { num: 2, label: "Tax & Compliance", icon: FaShieldAlt },
-          { num: 3, label: "HQ & Localization", icon: FaMapMarkerAlt },
-          { num: 4, label: "System Owner", icon: FaCrown },
-        ].map((s, idx) => {
+    <div className="org-setup-form-page">
+      <div className="org-form-centered-container">
+        {/* ── 1. Sleek Horizontal 4-Step Stepper with Back Button ── */}
+        <div className="org-wizard-stepper">
+          {[
+            { num: 1, label: "Entity & Identity", icon: FaBuilding },
+            { num: 2, label: "Tax & Compliance", icon: FaShieldAlt },
+            { num: 3, label: "HQ & Localization", icon: FaMapMarkerAlt },
+            { num: 4, label: "System Owner", icon: FaCrown },
+          ].map((s, idx) => {
           const isDone = currentStep > s.num;
           const isCurrent = currentStep === s.num;
           const IconComp = s.icon;
@@ -734,13 +944,7 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
                       onChange={(e) => updateField("organizationName", e.target.value)}
                     />
                   </InputGroup>
-                  {validationErrors.organizationName ? (
-                    <div className="text-danger small mt-1.5 fw-semibold d-flex align-items-center gap-1">
-                      <FaExclamationTriangle size={11} /> {validationErrors.organizationName}
-                    </div>
-                  ) : (
-                    <Form.Text className="text-muted extra-small">Official commercial entity name of your company.</Form.Text>
-                  )}
+                 
                 </Form.Group>
               </Col>
 
@@ -770,13 +974,7 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
                       }
                     />
                   </InputGroup>
-                  {validationErrors.organizationCode ? (
-                    <div className="text-danger small mt-1.5 fw-semibold d-flex align-items-center gap-1">
-                      <FaExclamationTriangle size={11} /> {validationErrors.organizationCode}
-                    </div>
-                  ) : (
-                    <Form.Text className="text-muted extra-small">Unique alphanumeric tenant code for prefixing IDs & tags.</Form.Text>
-                  )}
+                 
                 </Form.Group>
               </Col>
             </Row>
@@ -784,37 +982,49 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
             <Row className="g-4 mb-4">
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">LEGAL REGISTERED NAME</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>LEGAL REGISTERED NAME <span className="text-danger">*</span></span>
+                    {validationErrors.legalName && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaBuilding size={14} />
                     </InputGroup.Text>
                     <Form.Control
+                      required
                       className="ps-2"
                       placeholder="Enter full legal registered name"
                       value={formData.legalName}
+                      isInvalid={!!validationErrors.legalName}
                       onChange={(e) => updateField("legalName", e.target.value)}
                     />
                   </InputGroup>
-                  <Form.Text className="text-muted extra-small">Official statutory entity title as registered with government.</Form.Text>
                 </Form.Group>
               </Col>
 
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">BRAND / DISPLAY TITLE</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>BRAND / DISPLAY TITLE <span className="text-danger">*</span></span>
+                    {validationErrors.displayName && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaBuilding size={14} />
                     </InputGroup.Text>
                     <Form.Control
+                      required
                       className="ps-2"
                       placeholder="Enter brand or display name"
                       value={formData.displayName}
+                      isInvalid={!!validationErrors.displayName}
                       onChange={(e) => updateField("displayName", e.target.value)}
                     />
                   </InputGroup>
-                  <Form.Text className="text-muted extra-small">Front-facing brand name displayed in employee portals.</Form.Text>
                 </Form.Group>
               </Col>
             </Row>
@@ -822,42 +1032,58 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
             <Row className="g-4 mb-4">
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">ORGANIZATION TYPE</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>ORGANIZATION TYPE <span className="text-danger">*</span></span>
+                    {validationErrors.organizationType && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaSitemap size={14} />
                     </InputGroup.Text>
                     <Form.Select
-                      value={formData.organizationType}
+                      required
+                      value={formData.organizationType || ""}
                       onChange={(e) => updateField("organizationType", e.target.value)}
+                      isInvalid={!!validationErrors.organizationType}
                       className="onboarding-dash-select ps-2"
+                      style={!formData.organizationType ? { color: "#6c757d" } : { color: "#1C1D1D" }}
                     >
+                      <option value="" disabled style={{ color: "#6c757d" }}>
+                        Select Organization Type
+                      </option>
                       {ORG_TYPES.map((type) => (
-                        <option key={type.value} value={type.value}>
+                        <option key={type.value} value={type.value} style={{ color: "#1C1D1D" }}>
                           {type.label}
                         </option>
                       ))}
                     </Form.Select>
                   </InputGroup>
-                  <Form.Text className="text-muted extra-small">Legal operating structure and corporate entity category.</Form.Text>
                 </Form.Group>
               </Col>
 
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">INDUSTRY SECTOR</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>INDUSTRY SECTOR <span className="text-danger">*</span></span>
+                    {validationErrors.industry && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaRocket size={14} />
                     </InputGroup.Text>
                     <Form.Control
+                      required
                       className="ps-2"
                       placeholder="Enter industry sector"
                       value={formData.industry}
+                      isInvalid={!!validationErrors.industry}
                       onChange={(e) => updateField("industry", e.target.value)}
                     />
                   </InputGroup>
-                  <Form.Text className="text-muted extra-small">Primary business domain or industry classification.</Form.Text>
                 </Form.Group>
               </Col>
             </Row>
@@ -883,16 +1109,23 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
 
               <Col md={4}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">CORPORATE EMAIL</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>CORPORATE EMAIL <span className="text-danger">*</span></span>
+                    {validationErrors.email && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaEnvelope size={14} />
                     </InputGroup.Text>
                     <Form.Control
                       type="email"
+                      required
                       className="ps-2"
                       placeholder="contact@company.com"
                       value={formData.email}
+                      isInvalid={!!validationErrors.email}
                       onChange={(e) => updateField("email", e.target.value)}
                     />
                   </InputGroup>
@@ -901,15 +1134,23 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
 
               <Col md={4}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">CONTACT PHONE</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>CONTACT PHONE <span className="text-danger">*</span></span>
+                    {validationErrors.phone && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaPhoneAlt size={14} />
                     </InputGroup.Text>
                     <Form.Control
+                      type="tel"
+                      required
                       className="ps-2"
                       placeholder="Enter phone number"
                       value={formData.phone}
+                      isInvalid={!!validationErrors.phone}
                       onChange={(e) => updateField("phone", e.target.value)}
                     />
                   </InputGroup>
@@ -929,7 +1170,7 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
                     style={{ display: "none" }}
                   />
                   {formData.logo ? (
-                    <div className="p-3 border rounded-3 bg-light d-flex align-items-center justify-content-between">
+                    <div className="p-3 border rounded-3 bg-light d-flex align-items-center justify-content-between org-setup-logo-preview">
                       <div className="d-flex align-items-center gap-3">
                         <img
                           key={resolveMediaUrl(formData.logo)}
@@ -956,7 +1197,7 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
                     </div>
                   ) : (
                     <div
-                      className="p-4 border rounded-3 bg-light text-center"
+                      className="p-4 border rounded-3 bg-light text-center org-setup-logo-dropzone"
                       style={{ cursor: "pointer", borderStyle: "dashed" }}
                       onClick={() => fileInputRef.current?.click()}
                     >
@@ -978,15 +1219,22 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
             <Row className="g-4 mb-4">
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">CIN / REGISTRATION NUMBER</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>CIN / REGISTRATION NUMBER <span className="text-danger">*</span></span>
+                    {validationErrors.registrationNumber && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaBarcode size={14} />
                     </InputGroup.Text>
                     <Form.Control
+                      required
                       className="font-monospace ps-2"
                       placeholder="Enter CIN or registration number"
                       value={formData.registrationNumber}
+                      isInvalid={!!validationErrors.registrationNumber}
                       onChange={(e) => updateField("registrationNumber", e.target.value)}
                     />
                   </InputGroup>
@@ -996,12 +1244,18 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
 
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">PAN NUMBER (PERMANENT ACCOUNT NO)</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>PAN NUMBER (PERMANENT ACCOUNT NO) <span className="text-danger">*</span></span>
+                    {validationErrors.pan && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaFileInvoice size={14} />
                     </InputGroup.Text>
                     <Form.Control
+                      required
                       className="font-monospace text-uppercase ps-2"
                       placeholder="Enter 10-digit PAN"
                       value={formData.pan}
@@ -1017,15 +1271,22 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
             <Row className="g-4 mb-4">
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">TAN NUMBER (TAX DEDUCTION ACCOUNT)</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>TAN NUMBER (TAX DEDUCTION ACCOUNT) <span className="text-danger">*</span></span>
+                    {validationErrors.tan && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaFileInvoice size={14} />
                     </InputGroup.Text>
                     <Form.Control
+                      required
                       className="font-monospace text-uppercase ps-2"
                       placeholder="Enter 10-digit TAN"
                       value={formData.tan}
+                      isInvalid={!!validationErrors.tan}
                       onChange={(e) => updateField("tan", e.target.value.toUpperCase())}
                     />
                   </InputGroup>
@@ -1035,15 +1296,22 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
 
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">GSTIN (GOODS & SERVICES TAX ID)</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>GSTIN (GOODS & SERVICES TAX ID) <span className="text-danger">*</span></span>
+                    {validationErrors.gstin && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaFileInvoice size={14} />
                     </InputGroup.Text>
                     <Form.Control
+                      required
                       className="font-monospace text-uppercase ps-2"
                       placeholder="Enter 15-digit GSTIN"
                       value={formData.gstin}
+                      isInvalid={!!validationErrors.gstin}
                       onChange={(e) => updateField("gstin", e.target.value.toUpperCase())}
                     />
                   </InputGroup>
@@ -1055,15 +1323,22 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
             <Row className="g-4 mb-2">
               <Col md={4}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">DATE OF INCORPORATION</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>DATE OF INCORPORATION <span className="text-danger">*</span></span>
+                    {validationErrors.incorporationDate && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaCalendarAlt size={14} />
                     </InputGroup.Text>
                     <Form.Control
+                      required
                       type="date"
                       className="ps-2"
                       value={formData.incorporationDate}
+                      isInvalid={!!validationErrors.incorporationDate}
                       onChange={(e) => updateField("incorporationDate", e.target.value)}
                     />
                   </InputGroup>
@@ -1072,15 +1347,22 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
 
               <Col md={4}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">PF / EPFO ESTABLISHMENT CODE</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>PF / EPFO ESTABLISHMENT CODE <span className="text-danger">*</span></span>
+                    {validationErrors.pfNumber && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaShieldAlt size={14} />
                     </InputGroup.Text>
                     <Form.Control
+                      required
                       className="font-monospace text-uppercase ps-2"
                       placeholder="Enter PF code"
                       value={formData.pfNumber}
+                      isInvalid={!!validationErrors.pfNumber}
                       onChange={(e) => updateField("pfNumber", e.target.value.toUpperCase())}
                     />
                   </InputGroup>
@@ -1089,15 +1371,22 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
 
               <Col md={4}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">ESIC CODE</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>ESIC CODE <span className="text-danger">*</span></span>
+                    {validationErrors.esiNumber && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaShieldAlt size={14} />
                     </InputGroup.Text>
                     <Form.Control
+                      required
                       className="font-monospace text-uppercase ps-2"
                       placeholder="Enter ESIC code"
                       value={formData.esiNumber}
+                      isInvalid={!!validationErrors.esiNumber}
                       onChange={(e) => updateField("esiNumber", e.target.value.toUpperCase())}
                     />
                   </InputGroup>
@@ -1113,15 +1402,22 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
             <Row className="g-4 mb-4">
               <Col md={12}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">HEADQUARTERS STREET ADDRESS</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>HEADQUARTERS STREET ADDRESS <span className="text-danger">*</span></span>
+                    {validationErrors.address && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaHome size={14} />
                     </InputGroup.Text>
                     <Form.Control
+                      required
                       className="ps-2"
                       placeholder="Enter street address, building / suite"
                       value={formData.address}
+                      isInvalid={!!validationErrors.address}
                       onChange={(e) => updateField("address", e.target.value)}
                     />
                   </InputGroup>
@@ -1152,27 +1448,28 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
                       onChange={(e) => updateField("city", e.target.value)}
                     />
                   </InputGroup>
-                  {validationErrors.city ? (
-                    <div className="text-danger small mt-1.5 fw-semibold d-flex align-items-center gap-1">
-                      <FaExclamationTriangle size={11} /> {validationErrors.city}
-                    </div>
-                  ) : (
-                    <Form.Text className="text-muted extra-small">City municipality where headquarters operates.</Form.Text>
-                  )}
+                  <Form.Text className="text-muted extra-small">City municipality where headquarters operates.</Form.Text>
                 </Form.Group>
               </Col>
 
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">STATE / PROVINCE</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>STATE / PROVINCE <span className="text-danger">*</span></span>
+                    {validationErrors.state && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaMapMarkerAlt size={14} />
                     </InputGroup.Text>
                     <Form.Control
+                      required
                       className="ps-2"
                       placeholder="Enter state or province"
                       value={formData.state}
+                      isInvalid={!!validationErrors.state}
                       onChange={(e) => updateField("state", e.target.value)}
                     />
                   </InputGroup>
@@ -1183,15 +1480,22 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
             <Row className="g-4 mb-4">
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">COUNTRY</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>COUNTRY <span className="text-danger">*</span></span>
+                    {validationErrors.country && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaGlobe size={14} />
                     </InputGroup.Text>
                     <Form.Control
+                      required
                       className="ps-2"
                       placeholder="Enter country"
                       value={formData.country}
+                      isInvalid={!!validationErrors.country}
                       onChange={(e) => updateField("country", e.target.value)}
                     />
                   </InputGroup>
@@ -1200,15 +1504,22 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
 
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">POSTAL / ZIP CODE</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>POSTAL / ZIP CODE <span className="text-danger">*</span></span>
+                    {validationErrors.pincode && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaMailBulk size={14} />
                     </InputGroup.Text>
                     <Form.Control
+                      required
                       className="font-monospace ps-2"
                       placeholder="Enter postal / ZIP code"
                       value={formData.pincode}
+                      isInvalid={!!validationErrors.pincode}
                       onChange={(e) => updateField("pincode", e.target.value)}
                     />
                   </InputGroup>
@@ -1219,13 +1530,20 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
             <Row className="g-4 mb-2">
               <Col md={4}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">CURRENCY</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>CURRENCY <span className="text-danger">*</span></span>
+                    {validationErrors.currency && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaMoneyBillWave size={14} />
                     </InputGroup.Text>
                     <Form.Select
+                      required
                       value={formData.currency}
+                      isInvalid={!!validationErrors.currency}
                       onChange={(e) => updateField("currency", e.target.value)}
                       className="onboarding-dash-select ps-2"
                     >
@@ -1241,13 +1559,20 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
 
               <Col md={4}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">TIME ZONE</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>TIME ZONE <span className="text-danger">*</span></span>
+                    {validationErrors.timeZone && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaClock size={14} />
                     </InputGroup.Text>
                     <Form.Select
+                      required
                       value={formData.timeZone}
+                      isInvalid={!!validationErrors.timeZone}
                       onChange={(e) => updateField("timeZone", e.target.value)}
                       className="onboarding-dash-select ps-2"
                     >
@@ -1263,13 +1588,20 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
 
               <Col md={4}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">FINANCIAL YEAR START</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>FINANCIAL YEAR START <span className="text-danger">*</span></span>
+                    {validationErrors.financialYearStart && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaCalendarAlt size={14} />
                     </InputGroup.Text>
                     <Form.Select
+                      required
                       value={formData.financialYearStart}
+                      isInvalid={!!validationErrors.financialYearStart}
                       onChange={(e) => updateField("financialYearStart", e.target.value)}
                       className="onboarding-dash-select ps-2"
                     >
@@ -1348,18 +1680,30 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
 
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold text-dark mb-1">OWNER LAST NAME</Form.Label>
-                  <InputGroup>
+                  <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                    <span>OWNER LAST NAME <span className="text-danger">*</span></span>
+                    {validationErrors.ownerLastName && (
+                      <span className="text-danger extra-small fw-semibold">Required</span>
+                    )}
+                  </Form.Label>
+                  <InputGroup hasValidation>
                     <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                       <FaUserTie size={14} />
                     </InputGroup.Text>
                     <Form.Control
+                      required
                       className="ps-2"
                       placeholder="Enter last name"
                       value={formData.ownerLastName}
+                      isInvalid={!!validationErrors.ownerLastName}
                       onChange={(e) => updateField("ownerLastName", e.target.value)}
                     />
                   </InputGroup>
+                  {validationErrors.ownerLastName && (
+                    <div className="text-danger small mt-1.5 fw-semibold d-flex align-items-center gap-1">
+                      <FaExclamationTriangle size={11} /> {validationErrors.ownerLastName}
+                    </div>
+                  )}
                 </Form.Group>
               </Col>
             </Row>
@@ -1519,7 +1863,7 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
               onClick={handlePrev}
               disabled={loading}
             >
-              <FaChevronLeft size={10} className="me-1" /> {currentStep === 1 ? "Back to Welcome" : "Previous Step"}
+              <FaChevronLeft size={10} className="me-1" /> Back
             </Button>
           </div>
 
@@ -1555,5 +1899,6 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
         </div>
       </Card>
     </div>
-  );
+  </div>
+);
 }

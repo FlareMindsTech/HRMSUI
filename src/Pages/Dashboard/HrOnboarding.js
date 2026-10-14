@@ -49,6 +49,10 @@ import {
   FaTimesCircle,
   FaPlus,
   FaTrash,
+  FaTools,
+  FaCertificate,
+  FaUserGraduate,
+  FaBook,
   FaCheck,
   FaTimes,
   FaLock,
@@ -1160,8 +1164,14 @@ function HrOnboarding() {
     phd: false,
   });
 
-  const toggleEduSection = (sec) => {
-    setExpandedEduSections((prev) => ({ ...prev, [sec]: !prev[sec] }));
+  const addEduSection = (sec) => {
+    setExpandedEduSections((prev) => ({ ...prev, [sec]: true }));
+    setTimeout(() => {
+      const el = document.getElementById(`edu-section-${sec}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 120);
   };
 
   const clearEduSection = (sec) => {
@@ -1214,6 +1224,11 @@ function HrOnboarding() {
         phdDocumentUrl: "",
       }));
     }
+  };
+
+  const removeEduSection = (sec) => {
+    clearEduSection(sec);
+    setExpandedEduSections((prev) => ({ ...prev, [sec]: false }));
   };
 
   const handleEduFieldChange = (e, val) => {
@@ -1985,8 +2000,8 @@ function HrOnboarding() {
     return null;
   };
 
-  const handleUploadBankDoc = async (e) => {
-    const file = e.target.files?.[0];
+  const handleUploadBankDoc = async (eOrFile) => {
+    const file = eOrFile && eOrFile.target ? eOrFile.target.files?.[0] : eOrFile;
     if (!file || !selectedOnboarding?._id) return;
     setUploadingBankDoc(true);
     setErrorMsg("");
@@ -1998,7 +2013,9 @@ function HrOnboarding() {
       setErrorMsg(`Failed to upload bank document: ${err.message}`);
     } finally {
       setUploadingBankDoc(false);
-      e.target.value = "";
+      if (eOrFile && eOrFile.target) {
+        eOrFile.target.value = "";
+      }
     }
   };
 
@@ -5361,12 +5378,12 @@ function HrOnboarding() {
 
   const formTabs = [
     { id: "personal", label: "Personal", icon: <FaUser /> },
-    { id: "professional", label: "Professional", icon: <FaBuilding /> },
+    { id: "professional", label: "Company", icon: <FaBuilding /> },
     { id: "education", label: "Education", icon: <FaGraduationCap /> },
     ...(!isFresher ? [{ id: "experience", label: "Experience", icon: <FaBriefcase /> }] : []),
     { id: "address", label: "Address", icon: <FaHome /> },
-    { id: "compensation", label: "Compensation", icon: <FaMoneyBillWave /> },
-    { id: "documents", label: "Bank & Statutory", icon: <FaUniversity /> },
+    { id: "compensation", label: "Salary", icon: <FaMoneyBillWave /> },
+    { id: "documents", label: "Bank", icon: <FaUniversity /> },
     { id: "family", label: "Family", icon: <FaUsers /> },
     { id: "review", label: "Review", icon: <FaClipboardCheck /> },
   ];
@@ -5491,14 +5508,14 @@ function HrOnboarding() {
               className={`onboarding-section-tab-btn ${viewTab === "pipeline" ? "active" : ""}`}
               onClick={() => setViewTab("pipeline")}
             >
-              <FaTasks className="me-1.5" /> Onboarding Pipeline ({totalPipelineCount})
+              <FaTasks className="me-2" /> Onboarding Pipeline ({totalPipelineCount})
             </button>
             <button
               type="button"
               className={`onboarding-section-tab-btn ${viewTab === "directory" ? "active" : ""}`}
               onClick={() => setViewTab("directory")}
             >
-              <FaUsers className="me-1.5" /> Employee Directory ({employees.length})
+              <FaUsers className="me-2" /> Employee Directory ({employees.length})
             </button>
           </div>
         </div>
@@ -6940,7 +6957,7 @@ function HrOnboarding() {
                                   </Form.Label>
                                   <Form.Control
                                     size="sm"
-                                    placeholder="e.g. ₹6,50,000 / 6.5 LPA"
+                                    placeholder="Enter The Salary"
                                     value={prof.salary !== undefined && prof.salary !== null ? prof.salary : ""}
                                     isInvalid={Boolean(formErrors[`prof_salary_${idx}`])}
                                     onChange={(e) => {
@@ -7174,105 +7191,312 @@ function HrOnboarding() {
                     />
 
                     {/* Academic Qualifications Section */}
-                    <div className="mb-4">
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                          <h6 className="fw-bold mb-0 text-dark">Academic Qualifications</h6>
-                          <span className="extra-small text-muted">
-                            Fill in formal schooling, technical certifications, bachelor's, master's, and doctoral details.
-                          </span>
+                    {(() => {
+                      const hasItiEduData = Boolean(
+                        formData.itiinstituteName?.trim() ||
+                        formData.iticourse?.trim() ||
+                        formData.itiduration?.trim() ||
+                        formData.itiyearOfPassing ||
+                        formData.itipercentage ||
+                        formData.itiDocumentFile ||
+                        formData.itiDocumentUrl ||
+                        formData.itiDocument
+                      );
+                      const hasDiplomaEduData = Boolean(
+                        formData.diplomainstitution?.trim() ||
+                        formData.diplomacourse?.trim() ||
+                        formData.diplomaduration?.trim() ||
+                        formData.diplomayearOfPassing ||
+                        formData.diplomapercentage ||
+                        formData.diplomaDocumentFile ||
+                        formData.diplomaDocumentUrl ||
+                        formData.diplomaDocument
+                      );
+                      const hasPgEduData = Boolean(
+                        formData.pgInstituteName?.trim() ||
+                        formData.pgUniversityName?.trim() ||
+                        formData.pgDegree?.trim() ||
+                        formData.pgDepartmentCourse?.trim() ||
+                        formData.pgYearOfPassing ||
+                        formData.pgCgpa ||
+                        formData.pgDocumentFile ||
+                        formData.pgDocumentUrl ||
+                        formData.pgDocument
+                      );
+                      const hasPhdEduData = Boolean(
+                        formData.phdInstituteName?.trim() ||
+                        formData.phdUniversityName?.trim() ||
+                        formData.phdResearchArea?.trim() ||
+                        formData.phdYearOfPassing ||
+                        formData.phdDocumentFile ||
+                        formData.phdDocumentUrl ||
+                        formData.phdDocument
+                      );
+
+                      const isItiActive = expandedEduSections.iti || hasItiEduData;
+                      const isDiplomaActive = expandedEduSections.diploma || hasDiplomaEduData;
+                      const isPgActive = expandedEduSections.pg || hasPgEduData;
+                      const isPhdActive = expandedEduSections.phd || hasPhdEduData;
+
+                      return (
+                        <div className="mb-4">
+                          <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                            <div>
+                              <h6 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                                <FaGraduationCap className="text-primary" /> Academic Qualifications
+                              </h6>
+                              <span className="extra-small text-muted">
+                                Core formal schooling (SSLC, HSC, UG) and technical/advanced qualifications.
+                              </span>
+                            </div>
+
+                            {/* Top-Right Add Qualification Dropdown */}
+                            <Dropdown align="end">
+                              <Dropdown.Toggle
+                                variant="light"
+                                id="dropdown-add-other-edu"
+                                size="sm"
+                                className="d-inline-flex align-items-center gap-1.5 fw-bold rounded-pill px-3 py-1.5 border transition-all shadow-xs"
+                                style={{
+                                  background: "linear-gradient(135deg, rgba(196,154,85,0.12) 0%, rgba(226,194,120,0.22) 100%)",
+                                  borderColor: "#C49A55",
+                                  color: "#8B651B",
+                                  fontSize: "12px",
+                                }}
+                              >
+                                <FaPlus size={11} /> Add Other Qualification
+                              </Dropdown.Toggle>
+                              <Dropdown.Menu className="shadow-lg border-0 rounded-3 p-2" style={{ minWidth: "290px", zIndex: 1050 }}>
+                                <Dropdown.Header className="extra-small text-uppercase fw-bold text-muted pb-1">
+                                  Select Qualification to Add
+                                </Dropdown.Header>
+
+                                {/* ITI */}
+                                <Dropdown.Item
+                                  as="button"
+                                  className="rounded-2 p-2 d-flex align-items-center justify-content-between mb-1"
+                                  onClick={() => addEduSection("iti")}
+                                >
+                                  <div className="d-flex align-items-center gap-2">
+                                    <div className="rounded-circle p-1.5 bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                                      <FaTools size={12} />
+                                    </div>
+                                    <div>
+                                      <div className="fw-semibold small text-dark">ITI Certificate</div>
+                                      <div className="extra-small text-muted">Industrial Training Institute</div>
+                                    </div>
+                                  </div>
+                                  {isItiActive ? (
+                                    <Badge bg="success-subtle" className="text-success border border-success-subtle extra-small rounded-pill">
+                                      <FaCheckCircle className="me-1" /> Added
+                                    </Badge>
+                                  ) : (
+                                    <Badge bg="light" className="text-muted border extra-small rounded-pill">
+                                      <FaPlus className="me-1" /> Add
+                                    </Badge>
+                                  )}
+                                </Dropdown.Item>
+
+                                {/* Diploma */}
+                                <Dropdown.Item
+                                  as="button"
+                                  className="rounded-2 p-2 d-flex align-items-center justify-content-between mb-1"
+                                  onClick={() => addEduSection("diploma")}
+                                >
+                                  <div className="d-flex align-items-center gap-2">
+                                    <div className="rounded-circle p-1.5 bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                                      <FaCertificate size={12} />
+                                    </div>
+                                    <div>
+                                      <div className="fw-semibold small text-dark">Diploma</div>
+                                      <div className="extra-small text-muted">Polytechnic / 3-Year Diploma</div>
+                                    </div>
+                                  </div>
+                                  {isDiplomaActive ? (
+                                    <Badge bg="success-subtle" className="text-success border border-success-subtle extra-small rounded-pill">
+                                      <FaCheckCircle className="me-1" /> Added
+                                    </Badge>
+                                  ) : (
+                                    <Badge bg="light" className="text-muted border extra-small rounded-pill">
+                                      <FaPlus className="me-1" /> Add
+                                    </Badge>
+                                  )}
+                                </Dropdown.Item>
+
+                                {/* PG */}
+                                <Dropdown.Item
+                                  as="button"
+                                  className="rounded-2 p-2 d-flex align-items-center justify-content-between mb-1"
+                                  onClick={() => addEduSection("pg")}
+                                >
+                                  <div className="d-flex align-items-center gap-2">
+                                    <div className="rounded-circle p-1.5 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                                      <FaUserGraduate size={12} />
+                                    </div>
+                                    <div>
+                                      <div className="fw-semibold small text-dark">Postgraduate (PG)</div>
+                                      <div className="extra-small text-muted">Master's Degree (M.Tech, MBA, etc.)</div>
+                                    </div>
+                                  </div>
+                                  {isPgActive ? (
+                                    <Badge bg="success-subtle" className="text-success border border-success-subtle extra-small rounded-pill">
+                                      <FaCheckCircle className="me-1" /> Added
+                                    </Badge>
+                                  ) : (
+                                    <Badge bg="light" className="text-muted border extra-small rounded-pill">
+                                      <FaPlus className="me-1" /> Add
+                                    </Badge>
+                                  )}
+                                </Dropdown.Item>
+
+                                {/* PhD / Dr */}
+                                <Dropdown.Item
+                                  as="button"
+                                  className="rounded-2 p-2 d-flex align-items-center justify-content-between"
+                                  onClick={() => addEduSection("phd")}
+                                >
+                                  <div className="d-flex align-items-center gap-2">
+                                    <div className="rounded-circle p-1.5 bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                                      <FaBook size={12} />
+                                    </div>
+                                    <div>
+                                      <div className="fw-semibold small text-dark">Doctorate / PhD (Dr.)</div>
+                                      <div className="extra-small text-muted">Doctor of Philosophy / Research</div>
+                                    </div>
+                                  </div>
+                                  {isPhdActive ? (
+                                    <Badge bg="success-subtle" className="text-success border border-success-subtle extra-small rounded-pill">
+                                      <FaCheckCircle className="me-1" /> Added
+                                    </Badge>
+                                  ) : (
+                                    <Badge bg="light" className="text-muted border extra-small rounded-pill">
+                                      <FaPlus className="me-1" /> Add
+                                    </Badge>
+                                  )}
+                                </Dropdown.Item>
+                              </Dropdown.Menu>
+                            </Dropdown>
+                          </div>
+
+                          {/* 1. SSLC Section (Mandatory Primary) */}
+                          <SSLCSection
+                            data={formData}
+                            onChange={handleEduFieldChange}
+                            errors={formErrors}
+                            file={formData.sslcDocumentFile}
+                            docUrl={formData.sslcDocumentUrl || formData.sslcDocument}
+                            onFileChange={(f) => handleEduFileChange("sslcDocument", f)}
+                            onFileRemove={() => handleEduFileRemove("sslcDocument")}
+                          />
+
+                          {/* 2. HSC Section (Mandatory Secondary) */}
+                          <HSCSection
+                            data={formData}
+                            onChange={handleEduFieldChange}
+                            errors={formErrors}
+                            file={formData.hscDocumentFile}
+                            docUrl={formData.hscDocumentUrl || formData.hscDocument}
+                            onFileChange={(f) => handleEduFileChange("hscDocument", f)}
+                            onFileRemove={() => handleEduFileRemove("hscDocument")}
+                          />
+
+                          {/* 3. Undergraduate (UG) Section (Mandatory Bachelor's) */}
+                          <UGSection
+                            data={formData}
+                            onChange={handleEduFieldChange}
+                            errors={formErrors}
+                            file={formData.ugDocumentFile}
+                            docUrl={formData.ugDocumentUrl || formData.ugDocument}
+                            onFileChange={(f) => handleEduFileChange("ugDocument", f)}
+                            onFileRemove={() => handleEduFileRemove("ugDocument")}
+                          />
+
+                          {/* Additional & Higher Qualifications (Shown when added or contains data) */}
+                          {(isItiActive || isDiplomaActive || isPgActive || isPhdActive) && (
+                            <div className="d-flex align-items-center gap-2 mb-3 mt-4 pt-2 border-top">
+                              <h6 className="fw-bold mb-0 text-dark small text-uppercase tracking-wider">
+                                Additional & Higher Qualifications
+                              </h6>
+                              <Badge bg="primary-subtle" className="text-primary border border-primary-subtle extra-small rounded-pill">
+                                {[isItiActive, isDiplomaActive, isPgActive, isPhdActive].filter(Boolean).length} Added
+                              </Badge>
+                            </div>
+                          )}
+
+                          {/* ITI Section */}
+                          {isItiActive && (
+                            <div id="edu-section-iti">
+                              <ITISection
+                                data={formData}
+                                onChange={handleEduFieldChange}
+                                errors={formErrors}
+                                file={formData.itiDocumentFile}
+                                docUrl={formData.itiDocumentUrl || formData.itiDocument}
+                                onFileChange={(f) => handleEduFileChange("itiDocument", f)}
+                                onFileRemove={() => handleEduFileRemove("itiDocument")}
+                                isOpen={true}
+                                onToggle={() => removeEduSection("iti")}
+                                onClear={() => removeEduSection("iti")}
+                              />
+                            </div>
+                          )}
+
+                          {/* Diploma Section */}
+                          {isDiplomaActive && (
+                            <div id="edu-section-diploma">
+                              <DiplomaSection
+                                data={formData}
+                                onChange={handleEduFieldChange}
+                                errors={formErrors}
+                                file={formData.diplomaDocumentFile}
+                                docUrl={formData.diplomaDocumentUrl || formData.diplomaDocument}
+                                onFileChange={(f) => handleEduFileChange("diplomaDocument", f)}
+                                onFileRemove={() => handleEduFileRemove("diplomaDocument")}
+                                isOpen={true}
+                                onToggle={() => removeEduSection("diploma")}
+                                onClear={() => removeEduSection("diploma")}
+                              />
+                            </div>
+                          )}
+
+                          {/* Postgraduate (PG) Section */}
+                          {isPgActive && (
+                            <div id="edu-section-pg">
+                              <PGSection
+                                data={formData}
+                                onChange={handleEduFieldChange}
+                                errors={formErrors}
+                                file={formData.pgDocumentFile}
+                                docUrl={formData.pgDocumentUrl || formData.pgDocument}
+                                onFileChange={(f) => handleEduFileChange("pgDocument", f)}
+                                onFileRemove={() => handleEduFileRemove("pgDocument")}
+                                isOpen={true}
+                                onToggle={() => removeEduSection("pg")}
+                                onClear={() => removeEduSection("pg")}
+                              />
+                            </div>
+                          )}
+
+                          {/* Doctorate / PhD Section */}
+                          {isPhdActive && (
+                            <div id="edu-section-phd">
+                              <PhDSection
+                                data={formData}
+                                onChange={handleEduFieldChange}
+                                errors={formErrors}
+                                file={formData.phdDocumentFile}
+                                docUrl={formData.phdDocumentUrl || formData.phdDocument}
+                                onFileChange={(f) => handleEduFileChange("phdDocument", f)}
+                                onFileRemove={() => handleEduFileRemove("phdDocument")}
+                                isOpen={true}
+                                onToggle={() => removeEduSection("phd")}
+                                onClear={() => removeEduSection("phd")}
+                              />
+                            </div>
+                          )}
                         </div>
-                      </div>
-
-                      {/* SSLC Section (Mandatory) */}
-                      <SSLCSection
-                        data={formData}
-                        onChange={handleEduFieldChange}
-                        errors={formErrors}
-                        file={formData.sslcDocumentFile}
-                        docUrl={formData.sslcDocumentUrl || formData.sslcDocument}
-                        onFileChange={(f) => handleEduFileChange("sslcDocument", f)}
-                        onFileRemove={() => handleEduFileRemove("sslcDocument")}
-                      />
-
-                      {/* HSC Section (Mandatory) */}
-                      <HSCSection
-                        data={formData}
-                        onChange={handleEduFieldChange}
-                        errors={formErrors}
-                        file={formData.hscDocumentFile}
-                        docUrl={formData.hscDocumentUrl || formData.hscDocument}
-                        onFileChange={(f) => handleEduFileChange("hscDocument", f)}
-                        onFileRemove={() => handleEduFileRemove("hscDocument")}
-                      />
-
-                      {/* ITI Section (Optional Expandable) */}
-                      <ITISection
-                        data={formData}
-                        onChange={handleEduFieldChange}
-                        errors={formErrors}
-                        file={formData.itiDocumentFile}
-                        docUrl={formData.itiDocumentUrl || formData.itiDocument}
-                        onFileChange={(f) => handleEduFileChange("itiDocument", f)}
-                        onFileRemove={() => handleEduFileRemove("itiDocument")}
-                        isOpen={expandedEduSections.iti}
-                        onToggle={() => toggleEduSection("iti")}
-                        onClear={() => clearEduSection("iti")}
-                      />
-
-                      {/* Diploma Section (Optional Expandable) */}
-                      <DiplomaSection
-                        data={formData}
-                        onChange={handleEduFieldChange}
-                        errors={formErrors}
-                        file={formData.diplomaDocumentFile}
-                        docUrl={formData.diplomaDocumentUrl || formData.diplomaDocument}
-                        onFileChange={(f) => handleEduFileChange("diplomaDocument", f)}
-                        onFileRemove={() => handleEduFileRemove("diplomaDocument")}
-                        isOpen={expandedEduSections.diploma}
-                        onToggle={() => toggleEduSection("diploma")}
-                        onClear={() => clearEduSection("diploma")}
-                      />
-
-                      {/* Undergraduate (UG) Section (Mandatory) */}
-                      <UGSection
-                        data={formData}
-                        onChange={handleEduFieldChange}
-                        errors={formErrors}
-                        file={formData.ugDocumentFile}
-                        docUrl={formData.ugDocumentUrl || formData.ugDocument}
-                        onFileChange={(f) => handleEduFileChange("ugDocument", f)}
-                        onFileRemove={() => handleEduFileRemove("ugDocument")}
-                      />
-
-                      {/* Postgraduate (PG) Section (Optional Expandable) */}
-                      <PGSection
-                        data={formData}
-                        onChange={handleEduFieldChange}
-                        errors={formErrors}
-                        file={formData.pgDocumentFile}
-                        docUrl={formData.pgDocumentUrl || formData.pgDocument}
-                        onFileChange={(f) => handleEduFileChange("pgDocument", f)}
-                        onFileRemove={() => handleEduFileRemove("pgDocument")}
-                        isOpen={expandedEduSections.pg}
-                        onToggle={() => toggleEduSection("pg")}
-                        onClear={() => clearEduSection("pg")}
-                      />
-
-                      {/* PhD Section (Optional Expandable) */}
-                      <PhDSection
-                        data={formData}
-                        onChange={handleEduFieldChange}
-                        errors={formErrors}
-                        file={formData.phdDocumentFile}
-                        docUrl={formData.phdDocumentUrl || formData.phdDocument}
-                        onFileChange={(f) => handleEduFileChange("phdDocument", f)}
-                        onFileRemove={() => handleEduFileRemove("phdDocument")}
-                        isOpen={expandedEduSections.phd}
-                        onToggle={() => toggleEduSection("phd")}
-                        onClear={() => clearEduSection("phd")}
-                      />
-                    </div>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -7800,12 +8024,14 @@ function HrOnboarding() {
                     {(formData.compensationType === "UNPAID" || formData.isUnpaid || formData.professional?.some((p) => p.compensationType === "UNPAID" || p.isUnpaid)) ? (
                       <Card className="border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden">
                         <Card.Header className="bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
-                          <div className="d-flex align-items-center gap-2.5">
+                          <div className="d-flex align-items-center" style={{ gap: "14px" }}>
                             <div
-                              className="rounded-circle d-flex align-items-center justify-content-center"
+                              className="rounded-circle d-flex align-items-center justify-content-center me-3"
                               style={{
                                 width: 38,
                                 height: 38,
+                                minWidth: 38,
+                                marginRight: "14px",
                                 background: "linear-gradient(135deg, rgba(226, 194, 120, 0.25) 0%, rgba(196, 154, 85, 0.18) 100%)",
                                 color: "var(--color-primary, #C49A55)",
                                 fontSize: 18,
@@ -7850,7 +8076,15 @@ function HrOnboarding() {
                           setFormData((prev) => ({
                             ...prev,
                             passbookFile: file,
-                            passbookFileName: file.name,
+                            passbookFileName: file?.name || "",
+                          }));
+                        }}
+                        onPassbookRemove={() => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            passbookFile: null,
+                            passbookFileName: "",
+                            passbookUrl: "",
                           }));
                         }}
                         onPassbookPreview={handleOpenDocPreview}
@@ -7883,9 +8117,10 @@ function HrOnboarding() {
                     {formData.familyContacts.map((contact, idx) => (
                       <Card key={idx} className="border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden">
                         <Card.Header className="bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
-                          <div className="d-flex align-items-center gap-2.5">
+                          <div className="d-flex align-items-center" style={{ gap: "14px" }}>
                             <div
-                              className={idx === 0 ? "company-badge-primary rounded-circle" : "company-badge-secondary rounded-circle"}
+                              className={(idx === 0 ? "company-badge-primary rounded-circle" : "company-badge-secondary rounded-circle") + " me-3"}
+                              style={{ marginRight: "14px", minWidth: 38 }}
                             >
                               <FaUsers />
                             </div>
@@ -8598,12 +8833,12 @@ function HrOnboarding() {
                       </Card.Body>
                     </Card>
 
-                    {/* Section 7: Compensation & Remuneration Structure */}
+                    {/* Section 7: Salary & Remuneration Structure */}
                     <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
                       <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center gap-2">
                           <FaMoneyBillWave style={{ color: "var(--color-primary, #C49A55)" }} />
-                          <span className="fw-bold small text-dark">7. Compensation & Remuneration Structure</span>
+                          <span className="fw-bold small text-dark">7. Salary & Remuneration Structure</span>
                         </div>
                         <Button
                           variant="outline-secondary"
@@ -8738,117 +8973,287 @@ function HrOnboarding() {
                     </Card>
 
                     {/* Section 9: Family & Emergency Contacts */}
-                    <Card className="border shadow-xs rounded-3 mb-4 bg-white overflow-hidden">
-                      <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
+                    <Card className="border shadow-xs rounded-4 mb-4 bg-white overflow-hidden" style={{ borderColor: "rgba(196, 154, 85, 0.28)" }}>
+                      <Card.Header className="bg-light py-2.5 px-3.5 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <div className="d-flex align-items-center gap-2">
-                          <FaUsers style={{ color: "var(--color-primary, #C49A55)" }} />
+                          <div
+                            className="rounded-circle d-flex align-items-center justify-content-center"
+                            style={{ width: "26px", height: "26px", background: "rgba(196, 154, 85, 0.16)", color: "#C49A55" }}
+                          >
+                            <FaUsers size={12} />
+                          </div>
                           <span className="fw-bold small text-dark">9. Family Members & Emergency Contacts</span>
+                          <span
+                            className="badge rounded-pill fw-semibold ms-1"
+                            style={{ background: "rgba(196, 154, 85, 0.12)", color: "#8E651F", fontSize: "11px", padding: "3px 9px" }}
+                          >
+                            {(formData.familyContacts || []).length} {(formData.familyContacts || []).length === 1 ? "Contact Registered" : "Contacts Registered"}
+                          </span>
                         </div>
                         <Button
                           variant="outline-secondary"
                           size="sm"
-                          className="py-0.5 px-2 extra-small rounded-pill d-flex align-items-center gap-1"
+                          className="py-1 px-3 extra-small rounded-pill d-flex align-items-center gap-1.5 shadow-none"
+                          style={{ borderColor: "#D5CEBF", color: "#555", fontWeight: 600 }}
                           onClick={() => setActiveFormTab("family")}
                         >
                           <FaEdit size={11} /> Edit Section
                         </Button>
                       </Card.Header>
-                      <Card.Body className="p-3">
+                      <Card.Body className="p-3.5 p-md-4">
                         {formData.familyContacts && formData.familyContacts.length > 0 ? (
-                          <Row className="g-3">
-                            {formData.familyContacts.map((contact, idx) => {
-                              const initial = (contact.name || "C").trim().charAt(0).toUpperCase();
-                              const isPrimary = idx === 0;
-                              return (
-                                <Col md={6} key={idx}>
-                                  <div
-                                    className="p-3 rounded-3 border h-100 bg-white shadow-xs position-relative"
-                                    style={{
-                                      borderColor: isPrimary ? "rgba(196, 154, 85, 0.45)" : "#EBE5D8",
-                                      background: isPrimary ? "linear-gradient(180deg, #FDFAF5 0%, #FFFFFF 100%)" : "#FFFFFF",
-                                      transition: "all 0.2s ease",
-                                    }}
-                                  >
-                                    {/* Header: Avatar, Name & Badges */}
-                                    <div className="d-flex justify-content-between align-items-start gap-2 mb-3 pb-2 border-bottom">
-                                      <div className="d-flex align-items-center gap-2.5 min-w-0">
-                                        <div
-                                          className="rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
-                                          style={{
-                                            width: "36px",
-                                            height: "36px",
-                                            background: isPrimary
-                                              ? "linear-gradient(135deg, #E2C278 0%, #C49A55 100%)"
-                                              : "#F0ECE1",
-                                            color: isPrimary ? "#FFFFFF" : "#55524A",
-                                            fontSize: "14px",
-                                            boxShadow: isPrimary ? "0 2px 6px rgba(196, 154, 85, 0.3)" : "none",
-                                          }}
-                                        >
-                                          {initial}
-                                        </div>
-                                        <div className="min-w-0">
-                                          <div className="fw-bold text-dark text-truncate" style={{ fontSize: "13px" }}>
-                                            {contact.name || `Contact #${idx + 1}`}
-                                          </div>
-                                          <div className="extra-small text-muted text-capitalize">
-                                            {contact.relationship || "Family Member"}
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div className="d-flex flex-wrap align-items-center gap-1 flex-shrink-0">
-                                        {isPrimary ? (
-                                          <Badge
-                                            bg="success-subtle"
-                                            className="text-success border border-success-subtle rounded-pill extra-small px-2 py-0.5 fw-semibold"
-                                          >
-                                            <FaCheckCircle className="me-1" size={9} /> Primary
-                                          </Badge>
-                                        ) : (
-                                          <Badge
-                                            bg="light"
-                                            className="text-muted border rounded-pill extra-small px-2 py-0.5 fw-normal"
-                                          >
-                                            Secondary
-                                          </Badge>
+                          (() => {
+                            const singleContact = formData.familyContacts.length === 1;
+                            return (
+                              <Row className="g-3">
+                                {formData.familyContacts.map((contact, idx) => {
+                                  const initial = (contact.name || "C").trim().charAt(0).toUpperCase();
+                                  const isPrimary = idx === 0;
+                                  return (
+                                    <Col xs={12} md={singleContact ? 12 : 6} key={idx}>
+                                      <div
+                                        className="p-3.5 p-md-4 rounded-3 border h-100 position-relative transition-all"
+                                        style={{
+                                          background: isPrimary
+                                            ? "linear-gradient(145deg, #FFFFFF 0%, #FDFCF9 55%, #F9F6F0 100%)"
+                                            : "#FFFFFF",
+                                          borderColor: isPrimary ? "rgba(196, 154, 85, 0.42)" : "#EBE6DC",
+                                          boxShadow: isPrimary
+                                            ? "0 4px 18px rgba(196, 154, 85, 0.09), 0 1px 3px rgba(0, 0, 0, 0.02)"
+                                            : "0 2px 8px rgba(0, 0, 0, 0.02)",
+                                          borderRadius: "14px",
+                                        }}
+                                      >
+                                        {isPrimary && (
+                                          <div
+                                            style={{
+                                              position: "absolute",
+                                              top: 0,
+                                              left: "18px",
+                                              right: "18px",
+                                              height: "3px",
+                                              background: "linear-gradient(90deg, transparent, #C49A55 35%, #E2C278 65%, transparent)",
+                                              borderRadius: "3px 3px 0 0",
+                                            }}
+                                          />
                                         )}
-                                      </div>
-                                    </div>
 
-                                    {/* Contact Details Grid */}
-                                    <div className="d-flex flex-column gap-2 extra-small">
-                                      <div className="d-flex align-items-center justify-content-between py-1 px-2 rounded bg-light border-0">
-                                        <span className="text-muted d-inline-flex align-items-center gap-1.5">
-                                          <FaPhoneAlt size={10} style={{ color: "var(--color-primary, #C49A55)" }} /> Phone
-                                        </span>
-                                        <span className="fw-semibold text-dark">
-                                          {contact.phone ? `+91 ${contact.phone}` : "—"}
-                                        </span>
-                                      </div>
+                                        {/* Header Row: Avatar, Name, Relationship, and Emergency Badge */}
+                                        <div
+                                          className="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3 pb-3 border-bottom"
+                                          style={{ borderColor: isPrimary ? "rgba(196, 154, 85, 0.22)" : "rgba(0,0,0,0.06)" }}
+                                        >
+                                          <div className="d-flex align-items-center min-w-0" style={{ gap: "16px" }}>
+                                            <div
+                                              className="rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0 me-3"
+                                              style={{
+                                                width: "48px",
+                                                height: "48px",
+                                                minWidth: "48px",
+                                                marginRight: "14px",
+                                                background: isPrimary
+                                                  ? "linear-gradient(135deg, #E2C278 0%, #C49A55 60%, #9B7229 100%)"
+                                                  : "linear-gradient(135deg, #EBE6DC 0%, #D8D2C4 100%)",
+                                                color: isPrimary ? "#FFFFFF" : "#4A4740",
+                                                fontSize: "18px",
+                                                boxShadow: isPrimary
+                                                  ? "0 4px 14px rgba(196, 154, 85, 0.32)"
+                                                  : "0 2px 6px rgba(0, 0, 0, 0.08)",
+                                                border: "2.5px solid #FFFFFF",
+                                              }}
+                                            >
+                                              {initial}
+                                            </div>
+                                            <div className="min-w-0">
+                                              <div className="d-flex align-items-center gap-2 flex-wrap">
+                                                <span
+                                                  className="fw-bold text-dark text-truncate"
+                                                  style={{ fontSize: "15px", letterSpacing: "-0.01em" }}
+                                                >
+                                                  {contact.name || `Contact #${idx + 1}`}
+                                                </span>
+                                                <span
+                                                  className="badge rounded-pill fw-semibold"
+                                                  style={{
+                                                    background: "rgba(196, 154, 85, 0.12)",
+                                                    color: "#8B651B",
+                                                    border: "1px solid rgba(196, 154, 85, 0.3)",
+                                                    fontSize: "11px",
+                                                    padding: "3px 10px",
+                                                  }}
+                                                >
+                                                  {contact.relationship || "Family Member"}
+                                                </span>
+                                              </div>
+                                              <div className="extra-small text-muted mt-0.5">
+                                                {isPrimary ? "Designated Primary Emergency Contact" : "Secondary Contact Person"}
+                                              </div>
+                                            </div>
+                                          </div>
 
-                                      <div className="d-flex align-items-center justify-content-between py-1 px-2 rounded bg-light border-0">
-                                        <span className="text-muted d-inline-flex align-items-center gap-1.5">
-                                          <FaEnvelope size={10} style={{ color: "var(--color-primary, #C49A55)" }} /> Email
-                                        </span>
-                                        <span className="fw-semibold text-dark text-truncate" style={{ maxWidth: "200px" }}>
-                                          {contact.email || "—"}
-                                        </span>
-                                      </div>
+                                          <div>
+                                            {isPrimary ? (
+                                              <span
+                                                className="badge rounded-pill d-inline-flex align-items-center gap-1.5 fw-bold"
+                                                style={{
+                                                  background: "rgba(16, 185, 129, 0.12)",
+                                                  color: "#047857",
+                                                  border: "1px solid rgba(16, 185, 129, 0.3)",
+                                                  fontSize: "11px",
+                                                  padding: "5px 12px",
+                                                  letterSpacing: "0.3px",
+                                                }}
+                                              >
+                                                <FaShieldAlt size={11} color="#059669" /> PRIMARY EMERGENCY
+                                              </span>
+                                            ) : (
+                                              <span
+                                                className="badge rounded-pill fw-semibold text-secondary"
+                                                style={{
+                                                  background: "#F5F3EF",
+                                                  border: "1px solid #E2DDD3",
+                                                  fontSize: "11px",
+                                                  padding: "5px 11px",
+                                                }}
+                                              >
+                                                SECONDARY CONTACT
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
 
-                                      <div className="d-flex align-items-center justify-content-between py-1 px-2 rounded bg-light border-0">
-                                        <span className="text-muted d-inline-flex align-items-center gap-1.5">
-                                          <FaBriefcase size={10} style={{ color: "var(--color-primary, #C49A55)" }} /> Occupation
-                                        </span>
-                                        <span className="fw-semibold text-dark">
-                                          {contact.occupation || "—"}
-                                        </span>
+                                        {/* Contact Details Information Grid */}
+                                        <Row className="g-3">
+                                          {/* Phone Number */}
+                                          <Col xs={12} sm={singleContact ? 4 : 12}>
+                                            <div
+                                              className="p-3 rounded-3 d-flex align-items-center h-100"
+                                              style={{
+                                                gap: "16px",
+                                                background: "#FFFFFF",
+                                                border: "1px solid rgba(196, 154, 85, 0.24)",
+                                                boxShadow: "0 1px 4px rgba(0, 0, 0, 0.02)",
+                                              }}
+                                            >
+                                              <div
+                                                className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 me-3"
+                                                style={{
+                                                  width: "42px",
+                                                  height: "42px",
+                                                  minWidth: "42px",
+                                                  marginRight: "16px",
+                                                  background: "linear-gradient(135deg, rgba(226, 194, 120, 0.25) 0%, rgba(196, 154, 85, 0.25) 100%)",
+                                                  color: "#8B651B",
+                                                  border: "1px solid rgba(196, 154, 85, 0.35)",
+                                                }}
+                                              >
+                                                <FaPhoneAlt size={14} />
+                                              </div>
+                                              <div className="min-w-0 flex-grow-1">
+                                                <div
+                                                  className="text-uppercase fw-bold text-muted mb-1"
+                                                  style={{ fontSize: "10px", letterSpacing: "0.5px" }}
+                                                >
+                                                  Phone Number
+                                                </div>
+                                                <div className="fw-bold text-dark font-monospace" style={{ fontSize: "13.5px" }}>
+                                                  {contact.phone
+                                                    ? (contact.phone.startsWith("+") ? contact.phone : `+91 ${contact.phone}`)
+                                                    : "—"}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </Col>
+
+                                          {/* Email Address */}
+                                          <Col xs={12} sm={singleContact ? 4 : 12}>
+                                            <div
+                                              className="p-3 rounded-3 d-flex align-items-center h-100"
+                                              style={{
+                                                gap: "16px",
+                                                background: "#FFFFFF",
+                                                border: "1px solid rgba(37, 99, 235, 0.18)",
+                                                boxShadow: "0 1px 4px rgba(0, 0, 0, 0.02)",
+                                              }}
+                                            >
+                                              <div
+                                                className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 me-3"
+                                                style={{
+                                                  width: "42px",
+                                                  height: "42px",
+                                                  minWidth: "42px",
+                                                  marginRight: "16px",
+                                                  background: "rgba(37, 99, 235, 0.1)",
+                                                  color: "#2563EB",
+                                                  border: "1px solid rgba(37, 99, 235, 0.28)",
+                                                }}
+                                              >
+                                                <FaEnvelope size={14} />
+                                              </div>
+                                              <div className="min-w-0 flex-grow-1">
+                                                <div
+                                                  className="text-uppercase fw-bold text-muted mb-1"
+                                                  style={{ fontSize: "10px", letterSpacing: "0.5px" }}
+                                                >
+                                                  Email Address
+                                                </div>
+                                                <div
+                                                  className="fw-bold text-dark text-truncate"
+                                                  style={{ fontSize: "13px" }}
+                                                  title={contact.email || "Not Provided"}
+                                                >
+                                                  {contact.email || "Not Provided"}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </Col>
+
+                                          {/* Occupation */}
+                                          <Col xs={12} sm={singleContact ? 4 : 12}>
+                                            <div
+                                              className="p-3 rounded-3 d-flex align-items-center h-100"
+                                              style={{
+                                                gap: "16px",
+                                                background: "#FFFFFF",
+                                                border: "1px solid rgba(139, 92, 246, 0.18)",
+                                                boxShadow: "0 1px 4px rgba(0, 0, 0, 0.02)",
+                                              }}
+                                            >
+                                              <div
+                                                className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 me-3"
+                                                style={{
+                                                  width: "42px",
+                                                  height: "42px",
+                                                  minWidth: "42px",
+                                                  marginRight: "16px",
+                                                  background: "rgba(139, 92, 246, 0.1)",
+                                                  color: "#7C3AED",
+                                                  border: "1px solid rgba(139, 92, 246, 0.28)",
+                                                }}
+                                              >
+                                                <FaBriefcase size={14} />
+                                              </div>
+                                              <div className="min-w-0 flex-grow-1">
+                                                <div
+                                                  className="text-uppercase fw-bold text-muted mb-1"
+                                                  style={{ fontSize: "10px", letterSpacing: "0.5px" }}
+                                                >
+                                                  Occupation
+                                                </div>
+                                                <div className="fw-semibold text-dark text-truncate" style={{ fontSize: "13px" }}>
+                                                  {contact.occupation || "Not Specified"}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </Col>
+                                        </Row>
                                       </div>
-                                    </div>
-                                  </div>
-                                </Col>
-                              );
-                            })}
-                          </Row>
+                                    </Col>
+                                  );
+                                })}
+                              </Row>
+                            );
+                          })()
                         ) : (
                           <div className="text-center py-4 text-muted extra-small">
                             <FaUsers size={24} className="mb-2 opacity-50" />
@@ -8923,7 +9328,7 @@ function HrOnboarding() {
                       { id: "education", label: "Education Qualifications", complete: sectionStatus.education },
                       ...(!isFresher ? [{ id: "experience", label: "Past Work Experience", complete: sectionStatus.experience }] : []),
                       { id: "address", label: "Residential Addresses", complete: sectionStatus.address },
-                      { id: "compensation", label: "Compensation Structure", complete: sectionStatus.compensation },
+                      { id: "compensation", label: "Salary Details", complete: sectionStatus.compensation },
                       { id: "documents", label: "Bank & Statutory Details", complete: sectionStatus.documents },
                       { id: "family", label: "Family & Emergency Contact", complete: sectionStatus.family },
                       { id: "review", label: "Review & Initialize", complete: Object.values(sectionStatus).every(Boolean) },
@@ -9261,22 +9666,22 @@ function HrOnboarding() {
                     <Button
                       variant="light"
                       size="sm"
-                      className="border rounded-pill px-3 py-1 extra-small fw-bold d-flex align-items-center gap-1.5 shadow-xs"
+                      className="border rounded-pill px-3 py-1 extra-small fw-bold d-flex align-items-center gap-2 shadow-xs"
                       onClick={() => handleRunValidation(true)}
                       disabled={validating}
                     >
-                      <FaSyncAlt className={validating ? "fa-spin text-primary" : "text-primary"} size={11} />
+                      <FaSyncAlt className={validating ? "fa-spin text-primary me-1.5" : "text-primary me-1.5"} size={11} />
                       {validating ? "Validating..." : "Run Validation Engine"}
                     </Button>
 
                     {(selectedOnboarding?.status !== "COMPLETED" || validationReport?.valid) && (
                       <Button
                         size="sm"
-                        className="rounded-pill px-3 py-1 extra-small fw-bold text-white d-flex align-items-center gap-1.5 shadow-xs onboarding-btn-mint"
+                        className="rounded-pill px-3 py-1 extra-small fw-bold text-white d-flex align-items-center gap-2 shadow-xs onboarding-btn-mint"
                         onClick={handleCompleteOnboarding}
                         disabled={actionLoading}
                       >
-                        <FaCheckCircle size={11} /> Complete Onboarding
+                        <FaCheckCircle size={11} className="me-1.5" /> Complete Onboarding
                       </Button>
                     )}
 
@@ -9284,21 +9689,21 @@ function HrOnboarding() {
                       <Button
                         variant="info"
                         size="sm"
-                        className="rounded-pill px-3 py-1 extra-small fw-bold text-dark d-flex align-items-center gap-1.5 shadow-xs"
+                        className="rounded-pill px-3 py-1 extra-small fw-bold text-dark d-flex align-items-center gap-2 shadow-xs"
                         onClick={handleActivateEmployee}
                         disabled={actionLoading}
                       >
-                        <FaUnlock size={11} /> Activate Employee
+                        <FaUnlock size={11} className="me-1.5" /> Activate Employee
                       </Button>
                     )}
 
                     {!targetEmp.hasLoginAccess && (
                       <Button
                         size="sm"
-                        className="rounded-pill px-3 py-1 extra-small fw-bold text-white d-flex align-items-center gap-1.5 shadow-xs onboarding-btn-mint"
+                        className="rounded-pill px-3 py-1 extra-small fw-bold text-white d-flex align-items-center gap-2 shadow-xs onboarding-btn-mint"
                         onClick={() => handleOpenProvision(targetEmp)}
                       >
-                        <FaKey size={11} /> Provision Login Account
+                        <FaKey size={11} className="me-1.5" /> Provision Login Account
                       </Button>
                     )}
 
@@ -9306,10 +9711,10 @@ function HrOnboarding() {
                       <Button
                         variant="outline-secondary"
                         size="sm"
-                        className="rounded-pill px-3 py-1 extra-small fw-semibold d-flex align-items-center gap-1.5"
+                        className="rounded-pill px-3 py-1 extra-small fw-semibold d-flex align-items-center gap-2"
                         onClick={() => handleToggleLogin(selectedOnboarding._id, true)}
                       >
-                        <FaLock size={11} /> Disable Login Access
+                        <FaLock size={11} className="me-1.5" /> Disable Login Access
                       </Button>
                     )}
                   </div>
@@ -9324,13 +9729,16 @@ function HrOnboarding() {
                       <Nav.Link
                         active={detailActiveTab === tab.id}
                         onClick={() => setDetailActiveTab(tab.id)}
-                        className={`d-flex align-items-center gap-1.5 extra-small py-1.5 px-3 rounded-pill cursor-pointer fw-bold ${detailActiveTab === tab.id
+                        className={`d-flex align-items-center extra-small py-1.5 px-3 rounded-pill cursor-pointer fw-bold ${detailActiveTab === tab.id
                           ? "text-white shadow-xs"
                           : "text-secondary border-0 bg-transparent"
                           }`}
-                        style={detailActiveTab === tab.id ? { backgroundColor: "#2DC58A" } : {}}
+                        style={{
+                          gap: "8px",
+                          ...(detailActiveTab === tab.id ? { backgroundColor: "#2DC58A" } : {}),
+                        }}
                       >
-                        {tab.icon}
+                        <span className="me-1 d-inline-flex align-items-center">{tab.icon}</span>
                         <span>{tab.label}</span>
                         {tab.count !== null && tab.count !== undefined && (
                           <Badge
@@ -10049,7 +10457,7 @@ function HrOnboarding() {
                                               <Form.Label className="extra-small fw-bold">SALARY (CTC) <span className="text-danger">*</span></Form.Label>
                                               <Form.Control
                                                 size="sm"
-                                                placeholder="e.g. ₹6,50,000 / 6.5 LPA"
+                                                placeholder="Enter The Salary"
                                                 value={prof.salary !== undefined && prof.salary !== null ? prof.salary : ""}
                                                 onChange={(e) => {
                                                   const val = e.target.value;
@@ -11150,29 +11558,28 @@ function HrOnboarding() {
                                   </Col>
                                 </Row>
 
-                                <div className="d-flex align-items-center justify-content-between pt-2 border-top mt-2">
-                                  <span className="extra-small text-muted fw-semibold">Passbook / Cancelled Cheque:</span>
-                                  <div className="d-flex align-items-center gap-2">
-                                    {getBankPassbookDoc()?.url && (
-                                      <Button
-                                        variant="outline-primary"
-                                        size="sm"
-                                        className="py-0 px-2 extra-small rounded-pill"
-                                        onClick={() => handleOpenDocPreview(getBankPassbookDoc().url, getBankPassbookDoc().title, "bank_doc")}
-                                      >
-                                        <FaEye className="me-1" /> View Document
-                                      </Button>
-                                    )}
-                                    <label className="btn btn-outline-secondary btn-sm rounded-pill mb-0 py-0 px-2 extra-small cursor-pointer">
-                                      <FaFileUpload className="me-1" /> {getBankPassbookDoc()?.url ? "Re-upload" : "Upload Passbook / Cheque"}
-                                      <input
-                                        type="file"
-                                        hidden
-                                        accept=".pdf,.png,.jpg,.jpeg"
-                                        onChange={handleUploadBankDoc}
-                                      />
-                                    </label>
-                                  </div>
+                                <div className="mt-3 pt-3 border-top">
+                                  <DocumentUploadBox
+                                    label="Upload Bank Passbook / Cancelled Cheque (Optional)"
+                                    docUrl={getBankPassbookDoc()?.url || ""}
+                                    file={candidateProfileData?.passbookFile || null}
+                                    onFileChange={(file) => {
+                                      setCandidateProfileData((prev) => ({
+                                        ...prev,
+                                        passbookFile: file,
+                                      }));
+                                      handleUploadBankDoc(file);
+                                    }}
+                                    onFileRemove={() => {
+                                      setCandidateProfileData((prev) => ({
+                                        ...prev,
+                                        passbookFile: null,
+                                      }));
+                                    }}
+                                    fieldName="passbookFile"
+                                    accept=".pdf,.png,.jpg,.jpeg"
+                                    required={false}
+                                  />
                                 </div>
                               </div>
                             </div>

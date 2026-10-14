@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Card, Form, Row, Col, Button, Badge } from "react-bootstrap";
-import { FaUniversity, FaCheck, FaEye, FaEyeSlash, FaSave, FaFileAlt, FaFileUpload } from "react-icons/fa";
+import { FaUniversity, FaCheck, FaEye, FaEyeSlash, FaSave, FaFileAlt } from "react-icons/fa";
+import DocumentUploadBox from "../Education/DocumentUploadBox";
 
 const deriveBankName = (ifsc) => {
   if (!ifsc || typeof ifsc !== "string") return "";
@@ -49,10 +50,21 @@ const BankDetailsCard = ({
   saving,
   onPassbookChange,
   onPassbookPreview,
+  onPassbookRemove,
   errors: externalErrors = {},
 }) => {
   const [showAccountNo, setShowAccountNo] = useState(false);
   const [errors, setErrors] = useState({});
+
+  const passbookDocUrl =
+    (typeof data?.passbookFile === "string" ? data.passbookFile : data?.passbookFile?.url || "") ||
+    data?.passbookUrl ||
+    data?.passbookDoc?.url ||
+    (typeof data?.passbookDoc === "string" ? data.passbookDoc : "") ||
+    data?.cancelledCheque ||
+    data?.fileUrl ||
+    "";
+  const passbookFileObj = data?.passbookFile instanceof File ? data.passbookFile : null;
 
   const displayErrors = { ...errors, ...externalErrors };
 
@@ -99,12 +111,14 @@ const BankDetailsCard = ({
   return (
     <Card className="border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden">
       <Card.Header className="bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
-        <div className="d-flex align-items-center gap-2.5">
+        <div className="d-flex align-items-center" style={{ gap: "14px" }}>
           <div
-            className="rounded-circle d-flex align-items-center justify-content-center"
+            className="rounded-circle d-flex align-items-center justify-content-center me-3"
             style={{
               width: 38,
               height: 38,
+              minWidth: 38,
+              marginRight: "14px",
               background: "linear-gradient(135deg, rgba(226, 194, 120, 0.25) 0%, rgba(196, 154, 85, 0.18) 100%)",
               color: "var(--color-primary, #C49A55)",
               fontSize: 18,
@@ -232,48 +246,28 @@ const BankDetailsCard = ({
             </Row>
 
             {/* Optional Passbook / Cancelled Cheque Upload */}
-            <div className="p-3 bg-light rounded-3 border border-light-subtle mb-3">
-              <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                <div>
-                  <span className="extra-small fw-bold text-dark d-flex align-items-center gap-1.5 mb-0.5">
-                    <FaFileAlt style={{ color: "var(--color-primary, #C49A55)" }} /> Bank Passbook / Cancelled Cheque (Optional)
-                  </span>
-                  <span className="extra-small text-muted">Upload scan of bank passbook or cancelled cheque leaf</span>
-                </div>
-                <div className="d-flex align-items-center gap-2 flex-wrap">
-                  {data?.passbookFileName && (
-                    <Badge style={{ backgroundColor: "rgba(196, 154, 85, 0.15)", color: "#8E651F", border: "1px solid rgba(196, 154, 85, 0.3)" }} className="extra-small py-1 px-2.5 rounded-pill">
-                      <FaCheck className="me-1" /> {data.passbookFileName}
-                    </Badge>
-                  )}
-                  {onPassbookPreview && data?.passbookFile && (
-                    <Button
-                      variant="outline-secondary"
-                      size="sm"
-                      className="py-1 px-3 extra-small rounded-pill shadow-xs d-flex align-items-center gap-1"
-                      onClick={() => onPassbookPreview(data.passbookFile, data.passbookFileName || "Bank Passbook")}
-                    >
-                      <FaEye /> View File
-                    </Button>
-                  )}
-                  {onPassbookChange && (
-                    <label className="btn btn-sm py-1 px-3 extra-small rounded-pill mb-0 cursor-pointer shadow-xs d-flex align-items-center gap-1" style={{ border: "1px solid #C49A55", color: "#8E651F", background: "rgba(196, 154, 85, 0.08)" }}>
-                      <FaFileUpload /> {data?.passbookFileName ? "Change File" : "Upload File"}
-                      <input
-                        type="file"
-                        accept=".pdf,.png,.jpg,.jpeg"
-                        hidden
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            onPassbookChange(file);
-                          }
-                        }}
-                      />
-                    </label>
-                  )}
-                </div>
-              </div>
+            <div className="mt-3 pt-3 border-top mb-3">
+              <DocumentUploadBox
+                label="Upload Bank Passbook / Cancelled Cheque (Optional)"
+                docUrl={passbookDocUrl}
+                file={passbookFileObj}
+                onFileChange={(file) => {
+                  if (onPassbookChange) onPassbookChange(file);
+                  else if (onChange) onChange("passbookFile", file);
+                }}
+                onFileRemove={() => {
+                  if (onPassbookRemove) {
+                    onPassbookRemove();
+                  } else if (onPassbookChange) {
+                    onPassbookChange(null);
+                  } else if (onChange) {
+                    onChange("passbookFile", null);
+                  }
+                }}
+                fieldName="passbookFile"
+                accept=".pdf,.png,.jpg,.jpeg"
+                required={false}
+              />
             </div>
 
             {onSave && (
@@ -319,6 +313,34 @@ const BankDetailsCard = ({
               <div className="extra-small text-muted text-uppercase fw-bold">IFSC Code</div>
               <div className="fw-semibold text-dark small font-monospace mt-0.5">{data?.ifsc || "—"}</div>
             </Col>
+            {(passbookDocUrl || passbookFileObj || data?.passbookFileName) && (
+              <Col xs={12} className="pt-2 border-top">
+                <div className="d-flex align-items-center justify-content-between p-2 rounded-2 bg-light border border-light-subtle flex-wrap gap-2">
+                  <div className="d-flex align-items-center gap-2">
+                    <FaFileAlt style={{ color: "var(--color-primary, #C49A55)" }} />
+                    <span className="extra-small fw-semibold text-dark">
+                      Bank Passbook / Cheque: {data?.passbookFileName || "Attached Document"}
+                    </span>
+                  </div>
+                  {(onPassbookPreview || passbookDocUrl) && (
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      className="py-0 px-2.5 extra-small rounded-pill"
+                      onClick={() => {
+                        if (onPassbookPreview) {
+                          onPassbookPreview(passbookFileObj || passbookDocUrl, data?.passbookFileName || "Bank Passbook");
+                        } else if (passbookDocUrl) {
+                          window.open(passbookDocUrl, "_blank");
+                        }
+                      }}
+                    >
+                      <FaEye className="me-1" /> View
+                    </Button>
+                  )}
+                </div>
+              </Col>
+            )}
           </Row>
         )}
       </Card.Body>

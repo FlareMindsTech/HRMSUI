@@ -74,12 +74,14 @@ const IdentityDetailsCard = ({
   return (
     <Card className="border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden">
       <Card.Header className="bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
-        <div className="d-flex align-items-center gap-2.5">
+        <div className="d-flex align-items-center" style={{ gap: "14px" }}>
           <div
-            className="rounded-circle d-flex align-items-center justify-content-center"
+            className="rounded-circle d-flex align-items-center justify-content-center me-3"
             style={{
               width: 38,
               height: 38,
+              minWidth: 38,
+              marginRight: "14px",
               background: "linear-gradient(135deg, rgba(226, 194, 120, 0.25) 0%, rgba(196, 154, 85, 0.18) 100%)",
               color: "var(--color-primary, #C49A55)",
               fontSize: 18,
