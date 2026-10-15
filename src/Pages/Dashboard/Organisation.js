@@ -36,7 +36,6 @@ import LocationsSection from "../../Components/Organisation/LocationsSection";
 import JobGradesSection from "../../Components/Organisation/JobGradesSection";
 import CostCentersSection from "../../Components/Organisation/CostCentersSection";
 import WorkCalendarsSection from "../../Components/Organisation/WorkCalendarsSection";
-import AttendanceWorkspaceSection from "../../Components/Organisation/AttendanceWorkspaceSection";
 import ShiftsSection from "../../Components/Organisation/ShiftsSection";
 import FinancialYearsSection from "../../Components/Organisation/FinancialYearsSection";
 import HolidayCalendarsSection from "../../Components/Organisation/HolidayCalendarsSection";
@@ -71,7 +70,7 @@ const ORG_NAV_GROUPS = [
     tabs: [
       { key: "locations", label: "Locations", icon: FaMapMarkerAlt, perm: "location.view" },
       { key: "work-calendars", label: "Work Calendars", icon: FaCalendarWeek, perm: "workCalendar.view" },
-      { key: "attendance", label: "Attendance", icon: FaCalendarCheck, perm: "organization.view" },
+      { key: "attendance", label: "Attendance Settings", icon: FaCalendarCheck, perm: "organizationSettings.view" },
     ],
   },
   {
@@ -209,6 +208,10 @@ function Organisation() {
       navigate("/settings/branches", { replace: true });
       return;
     }
+    if (section === "attendance") {
+      navigate("/settings/organization?tab=attendance", { replace: true });
+      return;
+    }
     if (section === "profile") {
       setActiveTab("overview");
       setActiveCategory("Overview");
@@ -243,6 +246,10 @@ function Organisation() {
     }
     if (tabKey === "branch-settings") {
       navigate("/settings/branches");
+      return;
+    }
+    if (tabKey === "attendance") {
+      navigate("/settings/organization?tab=attendance");
       return;
     }
     if (tabKey === "profile") {
@@ -364,7 +371,7 @@ function Organisation() {
       case "work-calendars":
         return <WorkCalendarsSection />;
       case "attendance":
-        return <AttendanceWorkspaceSection onNavigateTab={handleTabSelect} />;
+        return <Navigate to="/settings/organization?tab=attendance" replace />;
       case "shifts":
         return <ShiftsSection />;
       case "holiday-calendars":

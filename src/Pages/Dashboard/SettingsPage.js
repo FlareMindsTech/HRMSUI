@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { FaCog, FaCodeBranch, FaSlidersH, FaBuilding } from "react-icons/fa";
+import { FaCog, FaCodeBranch, FaBuilding } from "react-icons/fa";
 import {
   selectAuthUser,
   selectIsSystemAdmin,
@@ -31,25 +31,52 @@ export default function SettingsPage() {
     user?.permissions?.includes("*");
 
   const canOrgSettings =
-    isSystemAdmin || isOwner || (hasPermission && hasPermission("orgSettings.view"));
+    isSystemAdmin ||
+    isOwner ||
+    (hasPermission && (
+      hasPermission("orgSettings.view") ||
+      hasPermission("organizationSettings.view") ||
+      hasPermission("attendance.modify") ||
+      hasPermission("leave.policy.manage") ||
+      hasPermission("payroll.view") ||
+      hasPermission("payroll.update")
+    ));
+
   const canBranchSettings =
-    isSystemAdmin || isOwner || (hasPermission && (hasPermission("branch.view") || hasPermission("branch.update")));
+    isSystemAdmin ||
+    isOwner ||
+    (hasPermission && (hasPermission("branch.view") || hasPermission("branch.update")));
 
-  // Determine active tab from URL or query
+  // If user only has branch access (e.g. Branch Head), lock them to their assigned branch
+  const userBranchId = user?.branchId?._id || user?.branchId || user?.assignedBranchIds?.[0] || null;
+  const lockedBranchId = (!isOwner && !isSystemAdmin && !hasPermission?.("orgSettings.view") && !hasPermission?.("organizationSettings.view"))
+    ? userBranchId
+    : null;
+
+  // Determine active tab from URL or query, respecting permission restrictions
   const queryTab = new URLSearchParams(location.search).get("tab");
-  const resolvedSubtab = subtab || queryTab || "organization";
+  const rawSubtab = subtab || queryTab;
 
-  const [activeTab, setActiveTab] = useState(
-    resolvedSubtab === "branches" || resolvedSubtab === "branch" ? "branches" : "organization"
-  );
+  let initialTab = "organization";
+  if (!canOrgSettings && canBranchSettings) {
+    initialTab = "branches";
+  } else if (rawSubtab === "branches" || rawSubtab === "branch") {
+    initialTab = canBranchSettings ? "branches" : "organization";
+  } else {
+    initialTab = canOrgSettings ? "organization" : "branches";
+  }
+
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   useEffect(() => {
-    if (subtab === "branches" || subtab === "branch" || queryTab === "branches") {
+    if (!canOrgSettings && canBranchSettings) {
       setActiveTab("branches");
-    } else {
+    } else if (subtab === "branches" || subtab === "branch" || queryTab === "branches") {
+      if (canBranchSettings) setActiveTab("branches");
+    } else if (canOrgSettings) {
       setActiveTab("organization");
     }
-  }, [subtab, queryTab]);
+  }, [subtab, queryTab, canOrgSettings, canBranchSettings]);
 
   const handleTabChange = useCallback(
     (newTab) => {
@@ -133,8 +160,18 @@ export default function SettingsPage() {
 
       {/* ── 3. Active Settings Workspace Viewport ── */}
       <div className="settings-content-viewport">
-        {activeTab === "branches" ? (
-          <BranchSettingsSection onNavigateTab={handleNavigateOrgTab} />
+        {!canOrgSettings && !canBranchSettings ? (
+          <div className="text-center py-5 bg-white rounded-3 border">
+            <h5 className="text-secondary fw-bold mb-2">Access Restricted</h5>
+            <p className="text-muted small mb-0">
+              You do not have administrative permissions to view or modify Enterprise Settings.
+            </p>
+          </div>
+        ) : activeTab === "branches" ? (
+          <BranchSettingsSection
+            lockedBranchId={lockedBranchId}
+            onNavigateTab={handleNavigateOrgTab}
+          />
         ) : (
           <OrganizationSettingsSection onNavigateTab={handleNavigateOrgTab} />
         )}
