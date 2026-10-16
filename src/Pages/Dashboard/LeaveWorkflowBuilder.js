@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Row, Col, Card, Form, Button, Badge, Modal, InputGroup } from "react-bootstrap";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { Row, Col, Card, Form, Button } from "react-bootstrap";
 import {
-  FaSitemap,
   FaCodeBranch,
   FaBuilding,
   FaPlus,
@@ -9,22 +8,24 @@ import {
   FaArrowUp,
   FaArrowDown,
   FaCheckCircle,
-  FaExclamationTriangle,
   FaUndo,
   FaShieldAlt,
   FaSave,
   FaInfoCircle,
-  FaLayerGroup
+  FaLayerGroup,
+  FaEye,
+  FaSitemap
 } from "react-icons/fa";
 import LoadingSpinner from "../../Components/Common/LoadingSpinner";
 import FeedbackAlert from "../../Components/Common/FeedbackAlert";
 import ConfirmModal from "../../Components/Common/ConfirmModal";
+import LeaveViewCustomizer from "./LeaveViewCustomizer";
 import {
   getWorkflows,
   configureWorkflow,
   deleteWorkflow
 } from "../../services/approvalWorkflowService";
-import { fetchAllRoles } from "../../services/rbacService";
+import { fetchAllRoles, fetchAssignableRoles } from "../../services/rbacService";
 import { fetchAccessibleBranches } from "../../services/accessService";
 
 const DEFAULT_LEVELS = [
@@ -46,6 +47,7 @@ function LeaveWorkflowBuilder({ currentUser, isOwner }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [alert, setAlert] = useState(null);
+  const [activeSection, setActiveSection] = useState("workflows"); // "workflows" | "views"
 
   // Revert / Delete Confirmation Modal
   const [showRevertModal, setShowRevertModal] = useState(false);
@@ -61,12 +63,12 @@ function LeaveWorkflowBuilder({ currentUser, isOwner }) {
   });
 
   // User's assigned branch IDs for authority scoping
-  const userAssignedBranchIds = [
+  const userAssignedBranchIds = useMemo(() => [
     ...(currentUser?.branchId ? [currentUser.branchId.toString()] : []),
     ...(Array.isArray(currentUser?.assignedBranchIds)
       ? currentUser.assignedBranchIds.map((b) => (b?._id ? b._id.toString() : b.toString()))
       : []),
-  ];
+  ], [currentUser?.branchId, currentUser?.assignedBranchIds]);
 
   // Load initial branches and roles
   useEffect(() => {
@@ -76,7 +78,13 @@ function LeaveWorkflowBuilder({ currentUser, isOwner }) {
       try {
         const [branchList, roleList] = await Promise.all([
           fetchAccessibleBranches().catch(() => []),
-          fetchAllRoles().catch(() => []),
+          fetchAllRoles().catch(async () => {
+            try {
+              return await fetchAssignableRoles();
+            } catch {
+              return [];
+            }
+          }),
         ]);
 
         if (!isMounted) return;
@@ -114,7 +122,62 @@ function LeaveWorkflowBuilder({ currentUser, isOwner }) {
     return () => {
       isMounted = false;
     };
-  }, [isAdmin, isOwner]);
+  }, [isAdmin, isOwner, userAssignedBranchIds, currentUser?.branchId]);
+
+  // Resolve level role value to matching role ID in current roles catalog
+  const resolveLevelRoleId = useCallback((roleVal, lvl, roleList) => {
+    if (!roleList || roleList.length === 0) return "";
+
+    // 1. Direct ID match
+    if (roleVal) {
+      const byId = roleList.find((r) => String(r._id || r.id) === String(roleVal));
+      if (byId) return String(byId._id || byId.id);
+
+      // Direct code match (e.g. "TEAM_LEAD", "HR", "ADMIN")
+      const byCode = roleList.find(
+        (r) => (r.roleCode || "").toUpperCase() === String(roleVal).toUpperCase()
+      );
+      if (byCode) return String(byCode._id || byCode.id);
+    }
+
+    // 2. Intelligent resolution based on level name heuristics
+    const lvlName = (lvl?.name || "").toLowerCase();
+    if (lvlName.includes("lead")) {
+      const leadRole = roleList.find(
+        (r) =>
+          (r.roleCode || "").toUpperCase() === "TEAM_LEAD" ||
+          r.priority === 4 ||
+          /lead/i.test(r.roleName)
+      );
+      if (leadRole) return String(leadRole._id || leadRole.id);
+    }
+    if (lvlName.includes("hr")) {
+      const hrRole = roleList.find(
+        (r) =>
+          (r.roleCode || "").toUpperCase() === "HR" ||
+          r.priority === 3 ||
+          /hr/i.test(r.roleName)
+      );
+      if (hrRole) return String(hrRole._id || hrRole.id);
+    }
+    if (lvlName.includes("admin")) {
+      const adminRole = roleList.find(
+        (r) =>
+          (r.roleCode || "").toUpperCase() === "ADMIN" ||
+          r.priority === 2 ||
+          /admin/i.test(r.roleName)
+      );
+      if (adminRole) return String(adminRole._id || adminRole.id);
+    }
+
+    // 3. Match by minimumPriority
+    if (lvl?.minimumPriority) {
+      const byPri = roleList.find((r) => r.priority === Number(lvl.minimumPriority));
+      if (byPri) return String(byPri._id || byPri.id);
+    }
+
+    return "";
+  }, []);
 
   // Fetch all LEAVE workflows
   const loadWorkflows = useCallback(async () => {
@@ -154,11 +217,14 @@ function LeaveWorkflowBuilder({ currentUser, isOwner }) {
   useEffect(() => {
     if (activeWorkflowDoc) {
       const levels = (activeWorkflowDoc.approvalLevels || []).map((lvl, idx) => {
-        const resolvedRoleId = lvl.requiredRole?._id
+        const rawRole = lvl.requiredRole?._id
           ? String(lvl.requiredRole._id)
           : lvl.requiredRole
-          ? String(lvl.requiredRole)
+          ? (lvl.requiredRole.roleCode || String(lvl.requiredRole))
           : lvl.roleId || "";
+
+        const resolvedRoleId = resolveLevelRoleId(rawRole, lvl, roles);
+
         return {
           level: lvl.level || idx + 1,
           name: lvl.name || `Level ${idx + 1}`,
@@ -179,6 +245,11 @@ function LeaveWorkflowBuilder({ currentUser, isOwner }) {
         approvalLevels: levels.length > 0 ? levels : DEFAULT_LEVELS,
       });
     } else {
+      const defaultLevelsWithRoles = DEFAULT_LEVELS.map((lvl) => ({
+        ...lvl,
+        requiredRole: resolveLevelRoleId("", lvl, roles),
+      }));
+
       setWorkflowForm({
         title: isScopeBranch
           ? `${accessibleBranches.find(b => String(b._id || b.id) === String(selectedScope))?.branchName || "Branch"} Leave Approval Flow`
@@ -186,10 +257,34 @@ function LeaveWorkflowBuilder({ currentUser, isOwner }) {
         description: "",
         allowSelfApproval: false,
         isActive: true,
-        approvalLevels: DEFAULT_LEVELS,
+        approvalLevels: defaultLevelsWithRoles,
       });
     }
-  }, [selectedScope, activeWorkflowDoc, hasBranchOverride, isScopeBranch, accessibleBranches]);
+  }, [selectedScope, activeWorkflowDoc, hasBranchOverride, isScopeBranch, accessibleBranches, roles, resolveLevelRoleId]);
+
+  // Auto-bind approval stage roles once roles list becomes available
+  useEffect(() => {
+    if (!roles || roles.length === 0) return;
+    setWorkflowForm((prev) => {
+      let changed = false;
+      const updatedLevels = (prev.approvalLevels || []).map((lvl) => {
+        if (!lvl.requiredRole) {
+          const resolved = resolveLevelRoleId("", lvl, roles);
+          if (resolved) {
+            changed = true;
+            const matchedRole = roles.find((r) => String(r._id || r.id) === String(resolved));
+            return {
+              ...lvl,
+              requiredRole: resolved,
+              minimumPriority: matchedRole?.priority ? Math.max(lvl.minimumPriority || 1, matchedRole.priority) : lvl.minimumPriority,
+            };
+          }
+        }
+        return lvl;
+      });
+      return changed ? { ...prev, approvalLevels: updatedLevels } : prev;
+    });
+  }, [roles, resolveLevelRoleId]);
 
   // Form Field Change Handlers
   const handleInputChange = (e) => {
@@ -224,11 +319,17 @@ function LeaveWorkflowBuilder({ currentUser, isOwner }) {
   const handleAddLevel = () => {
     setWorkflowForm((prev) => {
       const nextLvlNum = (prev.approvalLevels?.length || 0) + 1;
+      const defaultRole = roles.find(
+        (r) =>
+          (r.roleCode || "").toUpperCase() !== "EMPLOYEE" &&
+          (r.priority === 3 || (r.roleCode || "").toUpperCase() === "HR")
+      ) || roles.find((r) => (r.roleCode || "").toUpperCase() !== "EMPLOYEE" && (r.priority ?? 5) <= 4);
+
       const newLvl = {
         level: nextLvlNum,
         name: `Stage ${nextLvlNum} Review`,
-        requiredRole: "",
-        minimumPriority: 3,
+        requiredRole: defaultRole ? String(defaultRole._id || defaultRole.id) : "",
+        minimumPriority: defaultRole?.priority ?? 3,
         approvalType: "ANY",
         requiredApprovals: 1,
       };
@@ -285,7 +386,7 @@ function LeaveWorkflowBuilder({ currentUser, isOwner }) {
     setAlert(null);
 
     // Validation
-    if (!workflowForm.title.trim()) {
+    if (!workflowForm.title || !workflowForm.title.trim()) {
       setAlert({ type: "warning", message: "Workflow title is required." });
       return;
     }
@@ -298,17 +399,50 @@ function LeaveWorkflowBuilder({ currentUser, isOwner }) {
     // Role selection & priority validation
     for (let i = 0; i < workflowForm.approvalLevels.length; i++) {
       const lvl = workflowForm.approvalLevels[i];
-      if (!lvl.requiredRole) {
+      const stageNum = i + 1;
+
+      if (!lvl.name || !lvl.name.trim()) {
         setAlert({
           type: "warning",
-          message: `Please select a required approver role for Level ${lvl.level}.`,
+          message: `Stage name is required for Stage ${stageNum}.`,
         });
         return;
       }
-      if (!lvl.minimumPriority || Number(lvl.minimumPriority) < 1) {
+
+      if (!lvl.requiredRole) {
         setAlert({
           type: "warning",
-          message: `Valid minimum priority (>= 1) is required for Level ${lvl.level}.`,
+          message: `Please select a required approver role for Stage ${stageNum} ("${lvl.name.trim()}").`,
+        });
+        return;
+      }
+
+      // Check inappropriate approver configuration (e.g. Employee role cannot be an approval authority)
+      const matchedRole = roles.find((r) => String(r._id || r.id) === String(lvl.requiredRole));
+      if (matchedRole) {
+        const rName = String(matchedRole.roleName || matchedRole.roleCode || "").toUpperCase();
+        if (rName === "EMPLOYEE" || matchedRole.priority > 4) {
+          setAlert({
+            type: "warning",
+            message: `Role "${matchedRole.roleName}" cannot be an approval authority for Stage ${stageNum}. Approvers must have managerial or administrative authority (e.g., Team Lead, HR, Admin).`,
+          });
+          return;
+        }
+      }
+
+      const minPri = Number(lvl.minimumPriority);
+      if (isNaN(minPri) || minPri < 1 || minPri > 10) {
+        setAlert({
+          type: "warning",
+          message: `Valid minimum priority (between 1 and 10) is required for Stage ${stageNum}.`,
+        });
+        return;
+      }
+
+      if (lvl.approvalType === "ALL" && (!lvl.requiredApprovals || Number(lvl.requiredApprovals) < 1)) {
+        setAlert({
+          type: "warning",
+          message: `Required approvals must be at least 1 for ALL mode at Stage ${stageNum}.`,
         });
         return;
       }
@@ -390,19 +524,47 @@ function LeaveWorkflowBuilder({ currentUser, isOwner }) {
 
   return (
     <div className="leave-workflow-container">
-      {/* Alert Notification */}
-      {alert && (
-        <FeedbackAlert
-          variant={alert.type}
-          message={alert.message}
-          dismissible
-          onClose={() => setAlert(null)}
-          className="mb-3"
-        />
-      )}
+      {/* Sub-section Switcher */}
+      <div className="d-flex align-items-center justify-content-between mb-3 p-2 bg-light rounded-pill border shadow-xs">
+        <div className="d-flex gap-2">
+          <button
+            type="button"
+            className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold ${
+              activeSection === "workflows" ? "btn-dark text-gold shadow-xs" : "btn-light text-muted border-0"
+            }`}
+            onClick={() => setActiveSection("workflows")}
+          >
+            <FaSitemap className="me-2" /> Approval Stages & Hierarchy
+          </button>
+          <button
+            type="button"
+            className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold ${
+              activeSection === "views" ? "btn-dark text-gold shadow-xs" : "btn-light text-muted border-0"
+            }`}
+            onClick={() => setActiveSection("views")}
+          >
+            <FaEye className="me-2" /> Role View & Actions Customizer
+          </button>
+        </div>
+      </div>
 
-      {/* Scope / Branch Selection Bar */}
-      <div className="leave-workflow-scope-bar">
+      {activeSection === "views" ? (
+        <LeaveViewCustomizer currentUser={currentUser} isOwner={isOwner} />
+      ) : (
+        <>
+          {/* Alert Notification */}
+          {alert && (
+            <FeedbackAlert
+              variant={alert.type}
+              message={alert.message}
+              dismissible
+              onClose={() => setAlert(null)}
+              className="mb-3"
+            />
+          )}
+
+          {/* Scope / Branch Selection Bar */}
+          <div className="leave-workflow-scope-bar">
         <Row className="align-items-center g-3">
           <Col md={6}>
             <div className="d-flex align-items-center gap-2">
@@ -624,17 +786,23 @@ function LeaveWorkflowBuilder({ currentUser, isOwner }) {
                             </Form.Label>
                             <Form.Select
                               size="sm"
-                              value={lvl.requiredRole}
+                              value={lvl.requiredRole || ""}
                               onChange={(e) => handleLevelChange(index, "requiredRole", e.target.value)}
                               required
                               disabled={!isEditingAllowed || saving}
                             >
                               <option value="">-- Select Approver Role --</option>
-                              {roles.map((r) => (
-                                <option key={r._id || r.id} value={r._id || r.id}>
-                                  {r.roleName} (P≤{r.priority ?? 3})
-                                </option>
-                              ))}
+                              {roles
+                                .filter((r) => {
+                                  const isSelected = String(r._id || r.id) === String(lvl.requiredRole);
+                                  const code = String(r.roleCode || r.roleName || "").toUpperCase();
+                                  return isSelected || (code !== "EMPLOYEE" && (r.priority === undefined || r.priority <= 4));
+                                })
+                                .map((r) => (
+                                  <option key={r._id || r.id} value={String(r._id || r.id)}>
+                                    {r.roleName} (P≤{r.priority ?? 3})
+                                  </option>
+                                ))}
                             </Form.Select>
                           </Form.Group>
                         </Col>
@@ -734,17 +902,19 @@ function LeaveWorkflowBuilder({ currentUser, isOwner }) {
         </Card.Body>
       </Card>
 
-      {/* Confirmation Modal to Revert Branch Override */}
-      <ConfirmModal
-        show={showRevertModal}
-        title="Revert to Organization Default Workflow?"
-        message={`Are you sure you want to remove the custom workflow override for "${selectedBranchName}"? This branch will immediately inherit the organization-wide baseline. Existing pending leave requests will safely preserve their captured approval snapshot.`}
-        confirmText="Remove Override & Revert"
-        confirmVariant="danger"
-        isLoading={reverting}
-        onConfirm={handleConfirmRevert}
-        onCancel={() => setShowRevertModal(false)}
-      />
+        {/* Confirmation Modal to Revert Branch Override */}
+        <ConfirmModal
+          show={showRevertModal}
+          title="Revert to Organization Default Workflow?"
+          message={`Are you sure you want to remove the custom workflow override for "${selectedBranchName}"? This branch will immediately inherit the organization-wide baseline. Existing pending leave requests will safely preserve their captured approval snapshot.`}
+          confirmText="Remove Override & Revert"
+          confirmVariant="danger"
+          isLoading={reverting}
+          onConfirm={handleConfirmRevert}
+          onCancel={() => setShowRevertModal(false)}
+        />
+      </>
+      )}
     </div>
   );
 }

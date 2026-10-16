@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Container, Row, Col, Card, Form, Button, Table, Modal, Tab
+  Container, Row, Col, Card, Form, Button, Table, Modal, Tab, Badge
 } from "react-bootstrap";
 import {
   FaCalendarAlt, FaClock, FaCheckCircle,
@@ -27,7 +27,8 @@ import {
   rejectLeaveApi,
   fetchLeaveAuditApi,
   fetchLeaveTypesApi,
-  calculateLeaveDaysApi
+  calculateLeaveDaysApi,
+  fetchEffectiveLeaveViewConfigApi
 } from "../../Api/leave/leave";
 import "./LeaveRequest.css";
 
@@ -57,9 +58,106 @@ function LeaveRequest() {
   // Owner may configure workflows; Admin, HR, Branch Head when explicitly authorized; Employees must not access
   const canManageWorkflow = isOwner || (!isEmployee && hasWorkflowPermission);
 
+  // Configurable Role-Based View Configuration State
+  const [effectiveViewConfig, setEffectiveViewConfig] = useState(null);
+  const [viewConfigLoading, setViewConfigLoading] = useState(true);
+
   // Active Tab State
   const defaultTab = canReadOwn ? "my-leave" : (canApprove || canReject) ? "approvals" : canReadTeam ? "team" : canReadAll ? "all" : canManageWorkflow ? "workflow" : "my-leave";
   const [activeTab, setActiveTab] = useState(defaultTab);
+
+  // Load Effective Role-Based View Config
+  const loadEffectiveViewConfig = useCallback(async () => {
+    try {
+      const res = await fetchEffectiveLeaveViewConfigApi();
+      if (res?.data) {
+        setEffectiveViewConfig(res.data);
+        return res.data;
+      }
+    } catch (err) {
+      console.warn("Could not load effective leave view config, falling back to RBAC defaults:", err);
+    } finally {
+      setViewConfigLoading(false);
+    }
+    return null;
+  }, []);
+
+  // Determine Tab Visibility (Defense in Depth: explicit permission AND configured visible tab)
+  const isTabVisible = useCallback((tabKey) => {
+    if (tabKey === "my-leave") {
+      if (!canReadOwn) return false;
+      return effectiveViewConfig?.visibleTabs ? effectiveViewConfig.visibleTabs.includes("my-leave") : true;
+    }
+    if (tabKey === "approvals") {
+      if (!(canApprove || canReject)) return false;
+      return effectiveViewConfig?.visibleTabs ? effectiveViewConfig.visibleTabs.includes("approvals") : true;
+    }
+    if (tabKey === "team") {
+      if (!canReadTeam) return false;
+      return effectiveViewConfig?.visibleTabs ? effectiveViewConfig.visibleTabs.includes("team") : true;
+    }
+    if (tabKey === "all") {
+      if (!canReadAll) return false;
+      return effectiveViewConfig?.visibleTabs ? effectiveViewConfig.visibleTabs.includes("all") : true;
+    }
+    if (tabKey === "calendar") {
+      if (!(canReadTeam || canReadAll)) return false;
+      return effectiveViewConfig?.visibleTabs ? effectiveViewConfig.visibleTabs.includes("calendar") : true;
+    }
+    if (tabKey === "workflow") {
+      if (!canManageWorkflow) return false;
+      return effectiveViewConfig?.visibleTabs ? effectiveViewConfig.visibleTabs.includes("workflow") : true;
+    }
+    return false;
+  }, [canReadOwn, canApprove, canReject, canReadTeam, canReadAll, canManageWorkflow, effectiveViewConfig]);
+
+  // Determine Action Permission (Defense in Depth: explicit permission AND configured permitted action)
+  const isActionPermitted = useCallback((actionKey) => {
+    if (actionKey === "apply_leave") {
+      if (!canCreateOwn) return false;
+      return effectiveViewConfig?.permittedActions ? effectiveViewConfig.permittedActions.includes("apply_leave") : true;
+    }
+    if (actionKey === "cancel_leave") {
+      if (!canCancelOwn) return false;
+      return effectiveViewConfig?.permittedActions ? effectiveViewConfig.permittedActions.includes("cancel_leave") : true;
+    }
+    if (actionKey === "approve_leave") {
+      if (!canApprove) return false;
+      return effectiveViewConfig?.permittedActions ? effectiveViewConfig.permittedActions.includes("approve_leave") : true;
+    }
+    if (actionKey === "reject_leave") {
+      if (!canReject) return false;
+      return effectiveViewConfig?.permittedActions ? effectiveViewConfig.permittedActions.includes("reject_leave") : true;
+    }
+    if (actionKey === "view_audit") {
+      if (!canAudit) return false;
+      return effectiveViewConfig?.permittedActions ? effectiveViewConfig.permittedActions.includes("view_audit") : true;
+    }
+    if (actionKey === "manage_workflow") {
+      if (!canManageWorkflow) return false;
+      return effectiveViewConfig?.permittedActions ? effectiveViewConfig.permittedActions.includes("manage_workflow") : true;
+    }
+    return false;
+  }, [canCreateOwn, canCancelOwn, canApprove, canReject, canAudit, canManageWorkflow, effectiveViewConfig]);
+
+  // Synchronize initial landing tab when effective view config resolves
+  useEffect(() => {
+    let isMounted = true;
+    loadEffectiveViewConfig().then((cfg) => {
+      if (!isMounted || !cfg) return;
+      const targetDefault = cfg.defaultTab;
+      if (targetDefault && isTabVisible(targetDefault)) {
+        setActiveTab(targetDefault);
+      } else {
+        const order = ["my-leave", "approvals", "team", "all", "calendar", "workflow"];
+        const first = order.find((t) => isTabVisible(t));
+        if (first) setActiveTab(first);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [loadEffectiveViewConfig, isTabVisible]);
 
   // Data States
   const [balance, setBalance] = useState(null);
@@ -126,8 +224,10 @@ function LeaveRequest() {
   };
 
   const handleTabChange = (k) => {
+    if (!isTabVisible(k)) return;
     setActiveTab(k);
     setCurrentPage(1);
+    setErrorMsg(""); // Ensure workflow and configuration pages load independently of individual leave request errors
   };
 
   const handleResetFilters = () => {
@@ -272,6 +372,10 @@ function LeaveRequest() {
   }, [canReadAll]);
 
   useEffect(() => {
+    // Workflow and view customizers load independently of individual leave requests
+    if (activeTab === "workflow") {
+      return;
+    }
     loadBalance();
     if (activeTab === "my-leave") {
       loadMyLeaves();
@@ -285,7 +389,29 @@ function LeaveRequest() {
     }
   }, [activeTab, loadBalance, loadMyLeaves, loadTeamLeaves, loadAllLeaves, canReadAll, canReadTeam]);
 
-  // Live Working Days Calculation Preview
+  // Resolve Effective Policy for currently selected leave type
+  const activeEffectivePolicy = React.useMemo(() => {
+    if (!formData.leaveType && !formData.leaveTypeId) return null;
+    const match = dynamicBalancesList.find(
+      (item) =>
+        item.leaveType?.code === formData.leaveType ||
+        item.leaveType?._id === formData.leaveTypeId
+    );
+    return match?.effectivePolicy || calculationPreview?.effectivePolicy || null;
+  }, [formData.leaveType, formData.leaveTypeId, dynamicBalancesList, calculationPreview?.effectivePolicy]);
+
+  // Compute dynamic minimum start date based on policy backdated allowance
+  const minStartDate = React.useMemo(() => {
+    const allowBackdated = activeEffectivePolicy?.allowBackdatedDays || 0;
+    if (allowBackdated > 0) {
+      const d = new Date();
+      d.setDate(d.getDate() - allowBackdated);
+      return d.toISOString().split("T")[0];
+    }
+    return todayStr;
+  }, [activeEffectivePolicy, todayStr]);
+
+  // Live Working Days Calculation Preview & Policy Feedback
   useEffect(() => {
     if (!formData.startDate) return;
 
@@ -311,7 +437,10 @@ function LeaveRequest() {
         });
         if (isMounted && res?.data) {
           setCalculationPreview(res.data);
-          if (res.data.isHalfDay && res.data.totalWorkingDays !== 1) {
+          const policyErrors = res.data.policyValidation?.errors || [];
+          if (policyErrors.length > 0) {
+            setFormValidationErr(policyErrors[0]);
+          } else if (res.data.isHalfDay && res.data.totalWorkingDays !== 1) {
             setFormValidationErr("Half-day leave can only be applied for a single working day.");
           } else if (res.data.totalDays === 0) {
             setFormValidationErr("Selected date range has no working days (all days are weekly offs or holidays).");
@@ -342,10 +471,16 @@ function LeaveRequest() {
 
     if (name === "leaveType") {
       const selectedLt = availableLeaveTypes.find((lt) => lt.code === value);
+      const match = dynamicBalancesList.find(
+        (item) => item.leaveType?.code === value || item.leaveType?._id === selectedLt?._id
+      );
+      const policyForSelected = match?.effectivePolicy;
+
       setFormData((prev) => ({
         ...prev,
         leaveType: value,
         leaveTypeId: selectedLt?._id || null,
+        isHalfDay: policyForSelected && !policyForSelected.allowHalfDay ? false : prev.isHalfDay
       }));
       return;
     }
@@ -364,8 +499,13 @@ function LeaveRequest() {
         } else if (updated.endDate && updated.endDate < val) {
           updated.endDate = val;
         }
-        if (val < todayStr) {
-          setFormValidationErr("Self-service leave cannot be requested for past dates.");
+        if (val < minStartDate) {
+          const allowBackdated = activeEffectivePolicy?.allowBackdatedDays || 0;
+          setFormValidationErr(
+            allowBackdated > 0
+              ? `Selected date exceeds allowable backdated limit (${allowBackdated} day(s)).`
+              : "Self-service leave cannot be requested for past dates."
+          );
         } else {
           setFormValidationErr("");
         }
@@ -394,14 +534,42 @@ function LeaveRequest() {
       return;
     }
 
-    // Client-side validations
+    // Client-side validations aligned with backend rules
     if (!formData.reason || formData.reason.trim().length < 5) {
       setFormValidationErr("Reason must be at least 5 characters long.");
       return;
     }
 
+    // Check backdated policy allowance
     if (formData.startDate < todayStr) {
-      setFormValidationErr("Self-service leave cannot be requested for past dates.");
+      const allowBackdated = activeEffectivePolicy?.allowBackdatedDays || 0;
+      const todayDate = new Date(`${todayStr}T00:00:00Z`);
+      const startDateObj = new Date(`${formData.startDate}T00:00:00Z`);
+      const daysAgo = Math.round((todayDate - startDateObj) / (1000 * 60 * 60 * 24));
+      if (allowBackdated <= 0) {
+        setFormValidationErr("Self-service leave cannot be requested for past dates.");
+        return;
+      }
+      if (daysAgo > allowBackdated) {
+        setFormValidationErr(`Policy allows at most ${allowBackdated} backdated day(s). Date is ${daysAgo} day(s) in the past.`);
+        return;
+      }
+    }
+
+    // Check minimum advance notice policy
+    if (activeEffectivePolicy?.minimumNoticeDays > 0) {
+      const todayDate = new Date(`${todayStr}T00:00:00Z`);
+      const startDateObj = new Date(`${formData.startDate}T00:00:00Z`);
+      const diffDays = Math.round((startDateObj - todayDate) / (1000 * 60 * 60 * 24));
+      if (diffDays < activeEffectivePolicy.minimumNoticeDays) {
+        setFormValidationErr(`Policy requires at least ${activeEffectivePolicy.minimumNoticeDays} day(s) advance notice for this leave type.`);
+        return;
+      }
+    }
+
+    // Check consecutive days policy
+    if (activeEffectivePolicy?.maximumConsecutiveDays > 0 && calculationPreview?.totalDays > activeEffectivePolicy.maximumConsecutiveDays) {
+      setFormValidationErr(`Leave request exceeds maximum consecutive days allowed by policy (${activeEffectivePolicy.maximumConsecutiveDays} day(s)).`);
       return;
     }
 
@@ -412,6 +580,11 @@ function LeaveRequest() {
 
     if (formData.isHalfDay && (formData.startDate !== formData.endDate || calculationPreview?.totalWorkingDays !== 1)) {
       setFormValidationErr("Half-day leave can only be applied for a single working day.");
+      return;
+    }
+
+    if (formData.isHalfDay && activeEffectivePolicy && !activeEffectivePolicy.allowHalfDay) {
+      setFormValidationErr("Half-day leave is not permitted by policy for this leave type.");
       return;
     }
 
@@ -457,7 +630,12 @@ function LeaveRequest() {
   // handleConfirmCancel so accept/cancel semantics stay identical
   // to the previous window.confirm flow.
   const handleCancelRequest = (leaveId) => {
-    setPendingCancelId(leaveId);
+    const cleanId = leaveId?._id ? String(leaveId._id) : (leaveId ? String(leaveId) : "");
+    if (!cleanId || cleanId === "undefined" || cleanId === "null") {
+      setErrorMsg("Valid leave request ID is required for cancellation.");
+      return;
+    }
+    setPendingCancelId(cleanId);
     setShowCancelConfirm(true);
   };
 
@@ -467,7 +645,9 @@ function LeaveRequest() {
   };
 
   const handleConfirmCancel = async () => {
-    if (!pendingCancelId) return;
+    if (!pendingCancelId || typeof pendingCancelId !== "string" || !pendingCancelId.trim() || pendingCancelId === "undefined" || pendingCancelId === "null") {
+      return;
+    }
     setErrorMsg("");
     setSuccessMsg("");
 
@@ -488,12 +668,17 @@ function LeaveRequest() {
 
   // Approve Request Handler
   const handleApproveRequest = async (leaveId) => {
+    const cleanId = leaveId?._id ? String(leaveId._id) : (leaveId ? String(leaveId) : "");
+    if (!cleanId || cleanId === "undefined" || cleanId === "null") {
+      setErrorMsg("Valid leave request ID is required for approval.");
+      return;
+    }
     setErrorMsg("");
     setSuccessMsg("");
 
     try {
       setActionLoading(true);
-      await approveLeaveApi(leaveId);
+      await approveLeaveApi(cleanId);
       setSuccessMsg("Leave request approved successfully.");
       loadAllLeaves();
       if (canReadTeam) loadTeamLeaves();
@@ -506,14 +691,22 @@ function LeaveRequest() {
 
   // Open Reject Modal
   const openRejectModal = (leaveId) => {
-    setSelectedLeaveId(leaveId);
+    const cleanId = leaveId?._id ? String(leaveId._id) : (leaveId ? String(leaveId) : "");
+    if (!cleanId || cleanId === "undefined" || cleanId === "null") {
+      setErrorMsg("Valid leave request ID is required for rejection.");
+      return;
+    }
+    setSelectedLeaveId(cleanId);
     setRejectionReasonInput("");
     setShowRejectModal(true);
   };
 
   // Confirm Reject Handler
   const handleConfirmReject = async () => {
-    if (!selectedLeaveId) return;
+    if (!selectedLeaveId || typeof selectedLeaveId !== "string" || !selectedLeaveId.trim() || selectedLeaveId === "undefined" || selectedLeaveId === "null") {
+      setErrorMsg("Valid leave request ID is required for rejection.");
+      return;
+    }
     setErrorMsg("");
     setSuccessMsg("");
 
@@ -534,10 +727,15 @@ function LeaveRequest() {
   // View Audit History
   const handleViewAudit = async (leaveId) => {
     if (!canAudit) return;
+    const cleanId = leaveId?._id ? String(leaveId._id) : (leaveId ? String(leaveId) : "");
+    if (!cleanId || cleanId === "undefined" || cleanId === "null") {
+      setErrorMsg("Valid leave request ID is required to inspect audit logs.");
+      return;
+    }
     try {
       setAuditLoading(true);
       setShowAuditModal(true);
-      const res = await fetchLeaveAuditApi(leaveId);
+      const res = await fetchLeaveAuditApi(cleanId);
       if (res?.data) {
         setAuditData(res.data);
       }
@@ -660,8 +858,8 @@ function LeaveRequest() {
         <FeedbackAlert variant="success" dismissible onClose={() => setSuccessMsg("")} className="py-2 px-3 small mb-2 rounded-3 shadow-xs" message={<><FaCheckCircle className="me-2 text-success" />{successMsg}</>} />
       )}
 
-      {/* Balance Summary Header Cards (Hidden for Owner) */}
-      {canReadOwn && (
+      {/* Balance Summary Header Cards (Hidden for Owner or if my-leave hidden) */}
+      {isTabVisible("my-leave") && (
         <Row className="g-2 mb-3">
           {dynamicBalancesList.length > 0 ? (
             dynamicBalancesList.map((item) => {
@@ -777,7 +975,7 @@ function LeaveRequest() {
       <Tab.Container activeKey={activeTab} onSelect={(k) => handleTabChange(k)}>
         {/* Segmented Compact Pill Navigation */}
         <div className="leave-nav-pills">
-          {canReadOwn && (
+          {isTabVisible("my-leave") && (
             <button
               type="button"
               className={`leave-nav-btn ${activeTab === "my-leave" ? "active" : ""}`}
@@ -786,7 +984,7 @@ function LeaveRequest() {
               <FaCalendarAlt className="me-2" /> My Leave Requests
             </button>
           )}
-          {(canApprove || canReject) && (
+          {isTabVisible("approvals") && (
             <button
               type="button"
               className={`leave-nav-btn ${activeTab === "approvals" ? "active" : ""}`}
@@ -798,7 +996,7 @@ function LeaveRequest() {
               )}
             </button>
           )}
-          {canReadTeam && (
+          {isTabVisible("team") && (
             <button
               type="button"
               className={`leave-nav-btn ${activeTab === "team" ? "active" : ""}`}
@@ -807,7 +1005,7 @@ function LeaveRequest() {
               <FaUsers className="me-2" /> Team Requests
             </button>
           )}
-          {canReadAll && (
+          {isTabVisible("all") && (
             <button
               type="button"
               className={`leave-nav-btn ${activeTab === "all" ? "active" : ""}`}
@@ -816,7 +1014,7 @@ function LeaveRequest() {
               <FaUsers className="me-2" /> All Company Leaves
             </button>
           )}
-          {(canReadTeam || canReadAll) && (
+          {isTabVisible("calendar") && (
             <button
               type="button"
               className={`leave-nav-btn ${activeTab === "calendar" ? "active" : ""}`}
@@ -825,7 +1023,7 @@ function LeaveRequest() {
               <FaCalendarAlt className="me-2" /> Leave Schedule
             </button>
           )}
-          {canManageWorkflow && (
+          {isTabVisible("workflow") && (
             <button
               type="button"
               className={`leave-nav-btn ${activeTab === "workflow" ? "active" : ""}`}
@@ -838,13 +1036,20 @@ function LeaveRequest() {
 
         <Card className="leave-main-card">
           <Card.Body className="p-3">
+            {!["my-leave", "approvals", "team", "all", "calendar", "workflow"].some(isTabVisible) && !viewConfigLoading ? (
+              <div className="text-center p-5 bg-white rounded-4 border shadow-xs my-3">
+                <FaBan size={36} className="text-muted mb-3" />
+                <h6 className="fw-bold text-dark">No Leave Tabs Visible</h6>
+                <p className="text-muted small mb-0">No Leave Management views are currently configured for your role. Contact your administrator if you need access.</p>
+              </div>
+            ) : (
             <Tab.Content>
               {/* TAB 1: MY LEAVE (Apply Form + History) */}
-              {canReadOwn && (
+              {isTabVisible("my-leave") && (
                 <Tab.Pane eventKey="my-leave">
                   <Row className="g-3">
                     {/* Left: Apply Leave Form */}
-                    {canCreateOwn && (
+                    {isActionPermitted("apply_leave") && (
                       <Col lg={5}>
                         <div className="leave-apply-card">
                           <h6 className="fw-bold mb-3 text-dark d-flex align-items-center gap-2">
@@ -873,6 +1078,29 @@ function LeaveRequest() {
                                   <option value="">No configured leave types available</option>
                                 )}
                               </Form.Select>
+                              {activeEffectivePolicy && (
+                                <div className="d-flex flex-wrap gap-1 mt-1">
+                                  {activeEffectivePolicy.source && (
+                                    <Badge bg="secondary" className="extra-small px-2 py-1 fw-normal">
+                                      {activeEffectivePolicy.source === "BRANCH" ? "Branch Policy" : "Org Policy"}
+                                    </Badge>
+                                  )}
+                                  <Badge bg="info" className="extra-small px-2 py-1 fw-normal">
+                                    Notice: {activeEffectivePolicy.minimumNoticeDays || 0}d
+                                  </Badge>
+                                  <Badge bg={activeEffectivePolicy.allowBackdatedDays > 0 ? "success" : "light"} text={activeEffectivePolicy.allowBackdatedDays > 0 ? "white" : "dark"} className="extra-small px-2 py-1 fw-normal border">
+                                    Backdated: {activeEffectivePolicy.allowBackdatedDays || 0}d
+                                  </Badge>
+                                  {activeEffectivePolicy.maximumConsecutiveDays > 0 && (
+                                    <Badge bg="warning" text="dark" className="extra-small px-2 py-1 fw-normal">
+                                      Max Consec: {activeEffectivePolicy.maximumConsecutiveDays}d
+                                    </Badge>
+                                  )}
+                                  <Badge bg={activeEffectivePolicy.allowHalfDay ? "primary" : "secondary"} className="extra-small px-2 py-1 fw-normal">
+                                    {activeEffectivePolicy.allowHalfDay ? "Half-day allowed" : "Full-day only"}
+                                  </Badge>
+                                </div>
+                              )}
                             </Form.Group>
 
                             <Row className="g-2 mb-2">
@@ -882,7 +1110,7 @@ function LeaveRequest() {
                                   <Form.Control
                                     type="date"
                                     name="startDate"
-                                    min={todayStr}
+                                    min={minStartDate}
                                     value={formData.startDate}
                                     onChange={handleInputChange}
                                     className="form-control-sm shadow-none border"
@@ -948,7 +1176,12 @@ function LeaveRequest() {
                                   type="checkbox"
                                   id="isHalfDay"
                                   name="isHalfDay"
-                                  label="Apply as Half Day Leave (0.5 day)"
+                                  label={
+                                    activeEffectivePolicy && !activeEffectivePolicy.allowHalfDay
+                                      ? "Half Day Leave (Disabled by Policy)"
+                                      : "Apply as Half Day Leave (0.5 day)"
+                                  }
+                                  disabled={Boolean(activeEffectivePolicy && !activeEffectivePolicy.allowHalfDay)}
                                   checked={formData.isHalfDay}
                                   onChange={handleInputChange}
                                   className="small text-dark fw-semibold"
@@ -1010,7 +1243,7 @@ function LeaveRequest() {
                     )}
 
                     {/* Right: My Leave History */}
-                    <Col lg={canCreateOwn ? 7 : 12}>
+                    <Col lg={isActionPermitted("apply_leave") ? 7 : 12}>
                       <div className="d-flex justify-content-between align-items-center mb-2">
                         <h6 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
                           <FaHistory className="text-success" /> My Leave History
@@ -1072,7 +1305,7 @@ function LeaveRequest() {
                               cellClassName: "py-2 px-2 text-end",
                               render: (item) => (
                                 <div className="d-flex justify-content-end align-items-center gap-1">
-                                  {canCancelOwn && item.status === "Pending" && (
+                                  {isActionPermitted("cancel_leave") && item.status === "Pending" && (
                                     <Button
                                       variant="outline-danger"
                                       size="sm"
@@ -1083,7 +1316,7 @@ function LeaveRequest() {
                                       Cancel
                                     </Button>
                                   )}
-                                  {canAudit && (
+                                  {isActionPermitted("view_audit") && (
                                     <Button
                                       variant="light"
                                       size="sm"
@@ -1117,7 +1350,7 @@ function LeaveRequest() {
               )}
 
               {/* TAB 2: PENDING APPROVALS */}
-              {(canApprove || canReject) && (
+              {isTabVisible("approvals") && (
                 <Tab.Pane eventKey="approvals">
                   <div className="leave-toolbar d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                     <div className="d-flex align-items-center gap-2">
@@ -1228,7 +1461,7 @@ function LeaveRequest() {
                                         <span className="badge bg-light text-muted border px-2 py-1 rounded-pill extra-small">Self-approval Disabled</span>
                                       ) : (
                                         <div className="d-flex justify-content-end align-items-center gap-1">
-                                          {canApprove && (
+                                          {isActionPermitted("approve_leave") && (
                                             <button
                                               type="button"
                                               disabled={actionLoading}
@@ -1238,7 +1471,7 @@ function LeaveRequest() {
                                               Approve
                                             </button>
                                           )}
-                                          {canReject && (
+                                          {isActionPermitted("reject_leave") && (
                                             <Button
                                               variant="outline-danger"
                                               size="sm"
@@ -1249,7 +1482,7 @@ function LeaveRequest() {
                                               Reject
                                             </Button>
                                           )}
-                                          {canAudit && (
+                                          {isActionPermitted("view_audit") && (
                                             <Button
                                               variant="light"
                                               size="sm"
@@ -1278,7 +1511,7 @@ function LeaveRequest() {
               )}
 
               {/* TAB 3: TEAM LEAVES */}
-              {canReadTeam && (
+              {isTabVisible("team") && (
                 <Tab.Pane eventKey="team">
                   <div className="leave-toolbar d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                     <div className="d-flex align-items-center gap-2">
@@ -1387,7 +1620,7 @@ function LeaveRequest() {
                               </td>
                               <td className="py-2 px-3 text-center">{getStatusBadge(item.status)}</td>
                               <td className="py-2 px-3 text-end">
-                                {canAudit && (
+                                {isActionPermitted("view_audit") && (
                                   <Button
                                     variant="light"
                                     size="sm"
@@ -1410,7 +1643,7 @@ function LeaveRequest() {
               )}
 
               {/* TAB 4: ALL COMPANY LEAVES (Company-Wide Leave Directory - Main Focus) */}
-              {canReadAll && (
+              {isTabVisible("all") && (
                 <Tab.Pane eventKey="all">
                   <div className="leave-toolbar d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                     <div className="d-flex align-items-center gap-2">
@@ -1526,7 +1759,7 @@ function LeaveRequest() {
                                 </span>
                               </td>
                               <td className="py-2 px-3 text-end">
-                                {canAudit && (
+                                {isActionPermitted("view_audit") && (
                                   <Button
                                     variant="light"
                                     size="sm"
@@ -1549,7 +1782,7 @@ function LeaveRequest() {
               )}
 
               {/* TAB 5: LEAVE CALENDAR */}
-              {(canReadTeam || canReadAll) && (
+              {isTabVisible("calendar") && (
                 <Tab.Pane eventKey="calendar">
                   <h6 className="fw-bold mb-2 text-dark d-flex align-items-center gap-2">
                     <FaCalendarAlt className="text-success" /> Approved Leave Schedule
@@ -1572,13 +1805,14 @@ function LeaveRequest() {
                   </div>
                 </Tab.Pane>
               )}
-              {/* TAB 5: WORKFLOW & APPROVAL FLOW BUILDER */}
-              {canManageWorkflow && (
+              {/* TAB 6: WORKFLOW & APPROVAL FLOW BUILDER */}
+              {isTabVisible("workflow") && (
                 <Tab.Pane eventKey="workflow">
                   <LeaveWorkflowBuilder currentUser={user} isOwner={isOwner} />
                 </Tab.Pane>
               )}
             </Tab.Content>
+            )}
           </Card.Body>
         </Card>
       </Tab.Container>

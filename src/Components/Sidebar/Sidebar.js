@@ -76,7 +76,6 @@ function Sidebar({ isExpanded = false }) {
   const hasMenu = useHasMenu();
   const hasPermission = useHasPermission();
   const dispatch = useDispatch();
-  const [hovered, setHovered] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [openSubMenus, setOpenSubMenus] = useState({});
 
@@ -118,7 +117,6 @@ function Sidebar({ isExpanded = false }) {
     const isChildActive = hasChildren && item.children.some((c) => location.pathname.startsWith(c.path));
     const isExactParentActive = location.pathname === item.path || (!isChildActive && location.pathname.startsWith(item.path));
     const isParentActive = activePath === item.path || location.pathname.startsWith(item.path);
-    const isHovered = hovered === item.path;
     const isOpen = Boolean(openSubMenus[item.path]) || isChildActive;
     const Icon = item.icon;
 
@@ -128,7 +126,7 @@ function Sidebar({ isExpanded = false }) {
         className={`sidebar-item-group${hasChildren ? ' has-children' : ''}${isOpen ? ' is-open' : ''}`}
       >
         <li
-          className={`sidebar-menu-item${isExactParentActive ? ' active' : (isChildActive ? ' parent-active' : '')}${isHovered ? ' is-hovered' : ''}${hasChildren ? ' has-children' : ''}`}
+          className={`sidebar-menu-item${isExactParentActive ? ' active' : (isChildActive ? ' parent-active' : '')}${hasChildren ? ' has-children' : ''}`}
           onClick={() => {
             if (hasChildren) {
               setOpenSubMenus((prev) => ({ ...prev, [item.path]: !prev[item.path] }));
@@ -146,12 +144,10 @@ function Sidebar({ isExpanded = false }) {
               navigate(item.path);
             }
           }}
-          onMouseEnter={() => setHovered(item.path)}
-          onMouseLeave={() => setHovered(null)}
           role="button"
           tabIndex={0}
           aria-expanded={hasChildren ? isOpen : undefined}
-          title={item.name}
+          title={!isExpanded ? item.name : undefined}
         >
           <span className="sidebar-icon-wrap">
             <Icon className="sidebar-icon" />
@@ -184,9 +180,9 @@ function Sidebar({ isExpanded = false }) {
           )}
         </li>
 
-        {/* ── Sub-menu Tree (shows ONLY when clicked & sidebar is expanded) ── */}
-        {hasChildren && isOpen && isExpanded && (
-          <div className="sidebar-submenu-wrap">
+        {/* ── Sub-menu Tree (shows on hover or when open/active) ── */}
+        {hasChildren && (
+          <div className={`sidebar-submenu-wrap${isOpen ? ' is-open' : ''}`}>
             <ul className="sidebar-submenu">
               {item.children.filter((sub) => !sub.perm || isSystemAdmin || hasPermission(sub.perm)).map((sub) => {
                 const isSubActive =
@@ -211,7 +207,6 @@ function Sidebar({ isExpanded = false }) {
                     }}
                     role="button"
                     tabIndex={0}
-                    title={sub.name}
                   >
                     <span className="sidebar-submenu-icon-wrap">
                       <SubIcon className="sidebar-submenu-icon" />

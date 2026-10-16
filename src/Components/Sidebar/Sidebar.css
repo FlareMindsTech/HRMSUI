@@ -368,16 +368,44 @@
 /* ── Submenu Container & Items ── */
 .sidebar-item-group {
   margin-bottom: 4px;
+  position: relative;
 }
 
-/* Submenu is only visible when the sidebar is expanded */
-.sidebar:not(.is-expanded) .sidebar-submenu-wrap {
+/* Submenu is hidden by default */
+.sidebar-submenu-wrap {
+  display: none;
+  overflow: hidden;
+  animation: submenuFadeIn 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Submenu is NEVER displayed when sidebar is collapsed (not hovered, not open, not expanded) */
+.app-layout-sidebar:not(:hover):not(.is-hovered):not(.sidebar-open) .sidebar:not(.is-expanded) .sidebar-submenu-wrap {
   display: none !important;
 }
 
-.sidebar-submenu-wrap {
-  overflow: hidden;
-  animation: submenuFadeIn 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+/* Display submenu when pinned open OR hovered in an expanded sidebar */
+.sidebar.is-expanded .sidebar-item-group.is-open .sidebar-submenu-wrap,
+.sidebar.is-expanded .sidebar-item-group.has-children:hover .sidebar-submenu-wrap,
+.app-layout-sidebar:hover .sidebar.is-expanded .sidebar-item-group.has-children:hover .sidebar-submenu-wrap,
+.app-layout-sidebar.is-hovered .sidebar.is-expanded .sidebar-item-group.has-children:hover .sidebar-submenu-wrap,
+.app-layout-sidebar.sidebar-open .sidebar-item-group.is-open .sidebar-submenu-wrap {
+  display: block;
+}
+
+/* Rotate chevron when open OR hovered */
+.sidebar.is-expanded .sidebar-item-group.has-children:hover .sidebar-chevron,
+.app-layout-sidebar:hover .sidebar.is-expanded .sidebar-item-group.has-children:hover .sidebar-chevron,
+.app-layout-sidebar.is-hovered .sidebar.is-expanded .sidebar-item-group.has-children:hover .sidebar-chevron {
+  transform: rotate(90deg);
+  color: var(--color-primary-light, #E2C278);
+  filter: drop-shadow(0 0 6px rgba(226, 194, 120, 0.5));
+}
+
+/* Highlight parent item subtly when group with submenu is hovered */
+.sidebar.is-expanded .sidebar-item-group.has-children:hover > .sidebar-menu-item:not(.active) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--color-surface, #FFFFFF);
 }
 
 @keyframes submenuFadeIn {

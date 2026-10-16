@@ -5,6 +5,12 @@ import {
   FaSave,
   FaClock,
   FaBuilding,
+  FaShieldAlt,
+  FaCheckCircle,
+  FaUndo,
+  FaPlus,
+  FaExclamationTriangle,
+  FaMapMarkerAlt,
 } from "react-icons/fa";
 
 import {
@@ -19,26 +25,34 @@ import {
   selectShiftsDropdown,
   selectWorkCalendarsDropdown,
   selectHolidayCalendarsDropdown,
+  selectAttendancePolicy,
+  selectOrgSettings,
 } from "../../redux/slices/organizationSlice";
 import FeedbackAlert from "../Common/FeedbackAlert";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { useBranch } from "../../context/BranchContext";
+import AttendanceVerificationMethodConfig from "../Attendance/AttendanceVerificationMethodConfig";
+import { VERIFICATION_OPTIONS } from "./OrganizationSettingsSection";
 
 export default function BranchSettingsSection({ lockedBranchId = null, onNavigateTab }) {
   const hasPermission = useHasPermission();
   const { branches: contextBranches, selectedBranchId, refreshBranches } = useBranch();
   const dispatch = useDispatch();
 
-  // Shared shift/calendar dropdowns (single guarded fetches); branch data
-  // stays Context-owned and the settings form stays local.
+  // Shared shift/calendar dropdowns & org policy
   const cachedShifts = useSelector(selectShiftsDropdown);
   const cachedWorkCalendars = useSelector(selectWorkCalendarsDropdown);
   const cachedHolidayCalendars = useSelector(selectHolidayCalendarsDropdown);
+  const cachedPolicyBody = useSelector(selectAttendancePolicy);
+  const cachedOrgSettings = useSelector(selectOrgSettings);
+
   const dropdownCacheRef = useRef(null);
   dropdownCacheRef.current = {
     sh: cachedShifts,
     wc: cachedWorkCalendars,
     hol: cachedHolidayCalendars,
+    pol: cachedPolicyBody,
+    sett: cachedOrgSettings,
   };
 
   const [branches, setBranches] = useState([]);
@@ -69,9 +83,34 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
     branchType: "",
     city: "",
     state: "",
+    // Attendance Override Fields
+    attendanceMode: null,
+    staticIp: { enabled: false, allowedIps: [] },
+    isOverridden: false,
   });
 
-  // Load Dropdowns
+  // Organization baseline defaults (from cached policy/settings)
+  const orgDefaultAttendanceMode =
+    (cachedPolicyBody?.data || cachedPolicyBody)?.attendanceMode ||
+    cachedOrgSettings?.attendanceMode ||
+    "GEOFENCE";
+  const orgDefaultShiftId =
+    cachedOrgSettings?.defaultShiftId?._id || cachedOrgSettings?.defaultShiftId || "";
+  const orgDefaultWcId =
+    cachedOrgSettings?.defaultWorkCalendarId?._id || cachedOrgSettings?.defaultWorkCalendarId || "";
+  const orgDefaultHolId =
+    cachedOrgSettings?.defaultHolidayCalendarId?._id || cachedOrgSettings?.defaultHolidayCalendarId || "";
+
+  const orgDefaultShiftName = shifts.find((s) => s._id === orgDefaultShiftId)?.shiftName;
+  const orgDefaultWcName = workCalendars.find((c) => c._id === orgDefaultWcId)?.calendarName;
+  const orgDefaultHolName = holidayCalendars.find((h) => h._id === orgDefaultHolId)?.calendarName;
+
+  const activeOrgOption =
+    VERIFICATION_OPTIONS.find((opt) => opt.key === orgDefaultAttendanceMode) ||
+    VERIFICATION_OPTIONS[0];
+  const ActiveOrgIcon = activeOrgOption?.icon || FaMapMarkerAlt;
+
+  // Load Dropdowns & Policy
   const loadDropdowns = useCallback(async () => {
     try {
       const [brList, shRes, wcRes, holRes] = await Promise.all([
@@ -79,19 +118,23 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
         dispatch(fetchOrgResource({ key: "shifts" })).catch(() => null),
         dispatch(fetchOrgResource({ key: "workCalendars" })).catch(() => null),
         dispatch(fetchOrgResource({ key: "holidayCalendars" })).catch(() => null),
+        dispatch(fetchOrgResource({ key: "attendancePolicy" })).catch(() => null),
+        dispatch(fetchOrgResource({ key: "settings" })).catch(() => null),
       ]);
       setBranches(brList.length > 0 ? brList : contextBranches || []);
       setShifts(shRes?.payload?.data ?? dropdownCacheRef.current?.sh ?? []);
       setWorkCalendars(wcRes?.payload?.data ?? dropdownCacheRef.current?.wc ?? []);
       setHolidayCalendars(holRes?.payload?.data ?? dropdownCacheRef.current?.hol ?? []);
 
-      if (!activeBranchId && brList.length > 0) {
+      if (lockedBranchId) {
+        setActiveBranchId(lockedBranchId);
+      } else if (!activeBranchId && brList.length > 0) {
         setActiveBranchId(String(brList[0]._id || brList[0].id));
       }
     } catch (e) {
       console.warn("Dropdown loading notice:", e);
     }
-  }, [contextBranches, activeBranchId, dispatch]);
+  }, [contextBranches, activeBranchId, lockedBranchId, dispatch]);
 
   // Load Active Branch Details
   const loadBranchConfig = useCallback(async (bId) => {
@@ -101,6 +144,8 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
       setError("");
       const data = await fetchBranchById(bId);
       if (data) {
+        const rawMode = data.attendanceMode || null;
+        const isOverridden = Boolean(rawMode && rawMode !== "INHERIT");
         setFormData({
           timeZone: data.timeZone || "Asia/Kolkata",
           defaultShiftId: data.defaultShiftId?._id || data.defaultShiftId || "",
@@ -111,6 +156,9 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
           branchType: data.branchType || "",
           city: data.city || "",
           state: data.state || "",
+          attendanceMode: isOverridden ? rawMode : null,
+          staticIp: data.staticIp || { enabled: false, allowedIps: [] },
+          isOverridden,
         });
       }
     } catch (err) {
@@ -130,6 +178,24 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
     }
   }, [activeBranchId, loadBranchConfig]);
 
+  const handleEnableOverride = () => {
+    setFormData((prev) => ({
+      ...prev,
+      isOverridden: true,
+      attendanceMode: prev.attendanceMode || orgDefaultAttendanceMode || "GEOFENCE",
+      staticIp: prev.staticIp || { enabled: false, allowedIps: [] },
+    }));
+  };
+
+  const handleRevertToOrgDefault = () => {
+    setFormData((prev) => ({
+      ...prev,
+      isOverridden: false,
+      attendanceMode: null,
+      staticIp: { enabled: false, allowedIps: [] },
+    }));
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     if (!activeBranchId) return;
@@ -144,10 +210,22 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
         defaultShiftId: formData.defaultShiftId || null,
         defaultWorkCalendarId: formData.defaultWorkCalendarId || null,
         defaultHolidayCalendarId: formData.defaultHolidayCalendarId || null,
+        attendanceMode: formData.isOverridden ? (formData.attendanceMode || "GEOFENCE") : null,
+        staticIp: formData.isOverridden
+          ? (formData.staticIp || { enabled: false, allowedIps: [] })
+          : { enabled: false, allowedIps: [] },
       };
 
+      if (formData.isOverridden && (payload.attendanceMode === "STATIC_IP" || payload.attendanceMode === "BOTH")) {
+        if (!payload.staticIp?.allowedIps || payload.staticIp.allowedIps.length === 0) {
+          setError("At least one valid static public IP is required for Wi-Fi / Office Network or Both mode.");
+          setSaving(false);
+          return;
+        }
+      }
+
       const res = await updateBranch(activeBranchId, payload);
-      setSuccess(res?.message || "Branch configuration saved successfully!");
+      setSuccess(res?.message || "Branch configuration and overrides saved successfully!");
       if (refreshBranches) refreshBranches();
       await loadBranchConfig(activeBranchId);
       setTimeout(() => setSuccess(""), 4000);
@@ -167,12 +245,12 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
             <FaCodeBranch className="text-success" /> Branch Settings
           </h3>
           <p className="text-muted small mb-0">
-            Configure default work shift schedules, work calendars, holiday catalogs, and operational time zone.
+            Configure default work shift schedules, work calendars, holiday catalogs, operational time zone, and attendance verification overrides.
           </p>
         </div>
 
-        {/* Branch Selector (Hidden if locked in branch detail view) */}
-        {!lockedBranchId && branches.length > 0 && (
+        {/* Branch Selector */}
+        {!lockedBranchId && branches.length > 0 ? (
           <div className="d-flex align-items-center gap-2">
             <span className="small fw-semibold text-secondary">Branch:</span>
             <Form.Select
@@ -188,7 +266,12 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
               ))}
             </Form.Select>
           </div>
-        )}
+        ) : lockedBranchId ? (
+          <div className="d-flex align-items-center gap-2 px-3 py-1 bg-light rounded border">
+            <span className="badge bg-secondary-subtle text-secondary border">Scoped Branch</span>
+            <span className="small fw-bold text-dark">{formData.branchName || "Assigned Branch"}</span>
+          </div>
+        ) : null}
       </div>
 
       <FeedbackAlert variant="danger" dismissible onClose={() => setError("")} message={error} />
@@ -202,17 +285,42 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
       ) : (
         <Card className="border shadow-sm bg-white">
           <Card.Header className="bg-white border-bottom p-0">
-            <div className="d-flex border-bottom flex-wrap">
+            <div className="d-flex border-bottom flex-wrap" role="tablist">
               <button
                 type="button"
-                className={`btn btn-link text-decoration-none py-3 px-4 border-0 rounded-0 fw-semibold ${activeTab === "schedules" ? "text-success border-bottom border-success border-2 bg-light" : "text-secondary"}`}
+                role="tab"
+                aria-selected={activeTab === "schedules"}
+                className={`btn btn-link text-decoration-none py-3 px-4 border-0 rounded-0 fw-semibold ${
+                  activeTab === "schedules"
+                    ? "text-success border-bottom border-success border-2 bg-light"
+                    : "text-secondary"
+                }`}
                 onClick={() => setActiveTab("schedules")}
               >
                 <FaClock className="me-2" /> Schedules &amp; Calendars
               </button>
               <button
                 type="button"
-                className={`btn btn-link text-decoration-none py-3 px-4 border-0 rounded-0 fw-semibold ${activeTab === "profile" ? "text-success border-bottom border-success border-2 bg-light" : "text-secondary"}`}
+                role="tab"
+                aria-selected={activeTab === "attendance"}
+                className={`btn btn-link text-decoration-none py-3 px-4 border-0 rounded-0 fw-semibold ${
+                  activeTab === "attendance"
+                    ? "text-success border-bottom border-success border-2 bg-light"
+                    : "text-secondary"
+                }`}
+                onClick={() => setActiveTab("attendance")}
+              >
+                <FaShieldAlt className="me-2" /> Attendance &amp; Verification Override
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "profile"}
+                className={`btn btn-link text-decoration-none py-3 px-4 border-0 rounded-0 fw-semibold ${
+                  activeTab === "profile"
+                    ? "text-success border-bottom border-success border-2 bg-light"
+                    : "text-secondary"
+                }`}
                 onClick={() => setActiveTab("profile")}
               >
                 <FaBuilding className="me-2" /> Branch Profile / Timezone
@@ -227,7 +335,7 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
                 <div>
                   <h6 className="fw-bold text-dark mb-1">Branch Schedules &amp; Default Catalogs</h6>
                   <p className="text-muted small mb-3">
-                    Assign the default work shift and calendars for employees belonging to this branch.
+                    Assign the default work shift and calendars for employees belonging to this branch. Empty selections inherit organization defaults.
                   </p>
                   <Row className="g-3">
                     <Col md={6}>
@@ -238,13 +346,18 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
                           onChange={(e) => setFormData({ ...formData, defaultShiftId: e.target.value })}
                           disabled={!canUpdate}
                         >
-                          <option value="">-- Select Default Shift --</option>
+                          <option value="">-- Inherit Organization Default --</option>
                           {shifts.map((s) => (
                             <option key={s._id} value={s._id}>
                               {s.shiftName} ({s.startTime} - {s.endTime})
                             </option>
                           ))}
                         </Form.Select>
+                        <Form.Text className="text-muted extra-small">
+                          {formData.defaultShiftId
+                            ? "Custom shift assigned for this branch."
+                            : `Currently inheriting Organization Default: ${orgDefaultShiftName || "Standard General Shift"}.`}
+                        </Form.Text>
                       </Form.Group>
                     </Col>
 
@@ -256,11 +369,16 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
                           onChange={(e) => setFormData({ ...formData, defaultWorkCalendarId: e.target.value })}
                           disabled={!canUpdate}
                         >
-                          <option value="">-- Select Work Calendar --</option>
+                          <option value="">-- Inherit Organization Default --</option>
                           {workCalendars.map((c) => (
                             <option key={c._id} value={c._id}>{c.calendarName}</option>
                           ))}
                         </Form.Select>
+                        <Form.Text className="text-muted extra-small">
+                          {formData.defaultWorkCalendarId
+                            ? "Custom work calendar assigned for this branch."
+                            : `Currently inheriting Organization Default: ${orgDefaultWcName || "Standard Work Week"}.`}
+                        </Form.Text>
                       </Form.Group>
                     </Col>
 
@@ -272,18 +390,162 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
                           onChange={(e) => setFormData({ ...formData, defaultHolidayCalendarId: e.target.value })}
                           disabled={!canUpdate}
                         >
-                          <option value="">-- Select Holiday Catalog --</option>
+                          <option value="">-- Inherit Organization Default --</option>
                           {holidayCalendars.map((h) => (
                             <option key={h._id} value={h._id}>{h.calendarName} ({h.year})</option>
                           ))}
                         </Form.Select>
+                        <Form.Text className="text-muted extra-small">
+                          {formData.defaultHolidayCalendarId
+                            ? "Custom holiday calendar assigned for this branch."
+                            : `Currently inheriting Organization Default: ${orgDefaultHolName || "Standard Holiday Calendar"}.`}
+                        </Form.Text>
                       </Form.Group>
                     </Col>
                   </Row>
                 </div>
               )}
 
-              {/* TAB 2: Branch Profile / Timezone */}
+              {/* TAB 2: Attendance & Verification Override */}
+              {activeTab === "attendance" && (
+                <div>
+                  <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                    <div>
+                      <h6 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                        <FaShieldAlt className="text-success" /> Attendance Verification Mode &amp; Network Rules
+                      </h6>
+                      <p className="text-muted small mb-0">
+                        Configure branch-level clock-in verification rules or inherit the organization baseline policy.
+                      </p>
+                    </div>
+
+                    {formData.isOverridden ? (
+                      <Button
+                        variant="outline-danger"
+                        size="sm"
+                        onClick={handleRevertToOrgDefault}
+                        disabled={!canUpdate || saving}
+                        className="d-flex align-items-center gap-1 fw-semibold"
+                      >
+                        <FaUndo /> Revert to Organization Default
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline-primary"
+                        size="sm"
+                        onClick={handleEnableOverride}
+                        disabled={!canUpdate || saving}
+                        className="d-flex align-items-center gap-1 fw-semibold"
+                      >
+                        <FaPlus /> Override for this Branch
+                      </Button>
+                    )}
+                  </div>
+
+                  {!formData.isOverridden ? (
+                    <div className="p-4 bg-light rounded-3 border mb-3">
+                      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                        <span className="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fw-semibold">
+                          <FaCheckCircle className="me-1" /> Inheriting Organization Default Policy
+                        </span>
+                        <span className="text-muted small">No branch-specific override configured</span>
+                      </div>
+                      <p className="text-secondary small mb-3">
+                        Employees assigned to <strong>{formData.branchName || "this branch"}</strong> verify clock-ins according to the active enterprise-wide organization attendance policy:
+                      </p>
+
+                      <div className="card p-3 border-0 bg-white rounded-3 shadow-xs">
+                        <div className="d-flex align-items-center gap-3">
+                          <div className={`verification-card__icon ${activeOrgOption?.iconClass || "verification-icon--geofence"}`}>
+                            <ActiveOrgIcon />
+                          </div>
+                          <div>
+                            <div className="fw-bold text-dark fs-6">{activeOrgOption?.title || orgDefaultAttendanceMode}</div>
+                            <p className="text-muted extra-small mb-0">{activeOrgOption?.desc}</p>
+                          </div>
+                          <span className="badge bg-secondary-subtle text-secondary ms-auto px-2 py-1">
+                            {activeOrgOption?.badge || "Org Default"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 text-muted extra-small">
+                        Need branch-specific Wi-Fi IPs or different enforcement for this office? Click <strong>Override for this Branch</strong> above.
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="alert alert-warning py-2 px-3 small d-flex align-items-center justify-content-between mb-4 border">
+                        <div className="d-flex align-items-center gap-2">
+                          <FaExclamationTriangle className="text-warning flex-shrink-0" />
+                          <span>
+                            <strong>Branch Override Active:</strong> This branch enforces custom clock-in verification rules independent of the organization default. Click "Revert to Organization Default" at any time to clear this override.
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="verification-options-grid mb-4">
+                        {VERIFICATION_OPTIONS.map((opt) => {
+                          const IconComp = opt.icon;
+                          const isSelected = formData.attendanceMode === opt.key;
+                          return (
+                            <div
+                              key={opt.key}
+                              className={`verification-card ${
+                                isSelected ? "verification-card--selected" : ""
+                              } ${!canUpdate ? "verification-card--disabled" : ""}`}
+                              onClick={() => {
+                                if (!canUpdate) return;
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  attendanceMode: opt.key,
+                                  staticIp: {
+                                    ...prev.staticIp,
+                                    enabled: opt.key === "STATIC_IP" || opt.key === "BOTH",
+                                  },
+                                }));
+                              }}
+                              role="button"
+                              tabIndex={0}
+                            >
+                              <div className="verification-card-header">
+                                <div className={`verification-card__icon ${opt.iconClass}`}>
+                                  <IconComp />
+                                </div>
+                                <span
+                                  className={`badge ${
+                                    isSelected ? "bg-success" : "bg-light text-secondary border"
+                                  }`}
+                                >
+                                  {opt.badge}
+                                </span>
+                              </div>
+                              <h6 className="verification-card-title">{opt.title}</h6>
+                              <p className="verification-card-desc">{opt.desc}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Reusable contextual verification config (IP list, Geofence preview) */}
+                      <AttendanceVerificationMethodConfig
+                        value={formData.attendanceMode}
+                        staticIp={formData.staticIp}
+                        onChange={(newMode, updatedStaticIp) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            attendanceMode: newMode,
+                            staticIp: updatedStaticIp,
+                          }));
+                        }}
+                        disabled={!canUpdate}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: Branch Profile / Timezone */}
               {activeTab === "profile" && (
                 <div>
                   <h6 className="fw-bold text-dark mb-1">Branch Profile &amp; Timezone Configuration</h6>
@@ -361,8 +623,8 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
                           <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
                           <option value="UTC">UTC (+00:00)</option>
                         </Form.Select>
-                        <Form.Text className="text-muted">
-                          Shift schedules and attendance punch time stamps are evaluated in this branch time zone.
+                        <Form.Text className="text-muted extra-small">
+                          Shift schedules and attendance punch timestamps are evaluated in this branch time zone.
                         </Form.Text>
                       </Form.Group>
                     </Col>
@@ -371,7 +633,7 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
               )}
 
               {/* Action Footer */}
-              {canUpdate && (
+              {canUpdate ? (
                 <div className="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
                   <Button
                     variant="outline-secondary"
@@ -390,6 +652,14 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
                   >
                     {saving ? <LoadingSpinner variant="button" size="sm" /> : <FaSave />} Save Branch Settings
                   </Button>
+                </div>
+              ) : (
+                <div className="d-flex align-items-center justify-content-between p-3 bg-light rounded-3 border mt-4">
+                  <div className="text-muted small d-flex align-items-center gap-2">
+                    <FaShieldAlt className="text-secondary" />
+                    <span>You have read-only access to branch settings. Modifications require branch administrative authority.</span>
+                  </div>
+                  <span className="badge bg-secondary-subtle text-secondary border px-3 py-1">View Only</span>
                 </div>
               )}
             </Form>

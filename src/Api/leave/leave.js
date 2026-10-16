@@ -91,12 +91,26 @@ export const fetchAllLeavesApi = async () => {
   return result.data;
 };
 
+const isValidId = (id) => {
+  return Boolean(
+    id &&
+    typeof id === "string" &&
+    id.trim() !== "" &&
+    id !== "undefined" &&
+    id !== "null" &&
+    id !== "[object Object]"
+  );
+};
+
 /**
  * Fetch leave request details by ID.
  * @param {string} id
  */
 export const fetchLeaveByIdApi = async (id) => {
-  const result = await apiFetch(`/leave/${id}`, { method: "GET" });
+  if (!isValidId(id)) {
+    throw new Error("Valid leave request ID is required.");
+  }
+  const result = await apiFetch(`/leave/${encodeURIComponent(id.trim())}`, { method: "GET" });
   if (!result.ok) {
     throw apiError(result, "Failed to fetch leave application details.");
   }
@@ -108,7 +122,10 @@ export const fetchLeaveByIdApi = async (id) => {
  * @param {string} id
  */
 export const cancelLeaveApi = async (id) => {
-  const result = await apiFetch(`/leave/cancel/${id}`, { method: "PUT" });
+  if (!isValidId(id)) {
+    throw new Error("Valid leave request ID is required.");
+  }
+  const result = await apiFetch(`/leave/cancel/${encodeURIComponent(id.trim())}`, { method: "PUT" });
   if (!result.ok) {
     throw apiError(result, "Failed to cancel leave request.");
   }
@@ -120,7 +137,10 @@ export const cancelLeaveApi = async (id) => {
  * @param {string} id
  */
 export const approveLeaveApi = async (id) => {
-  const result = await apiFetch(`/leave/approve/${id}`, { method: "PUT" });
+  if (!isValidId(id)) {
+    throw new Error("Valid leave request ID is required.");
+  }
+  const result = await apiFetch(`/leave/approve/${encodeURIComponent(id.trim())}`, { method: "PUT" });
   if (!result.ok) {
     throw apiError(result, "Failed to approve leave request.");
   }
@@ -133,7 +153,10 @@ export const approveLeaveApi = async (id) => {
  * @param {string} [reason]
  */
 export const rejectLeaveApi = async (id, reason = "") => {
-  const result = await apiFetch(`/leave/reject/${id}`, {
+  if (!isValidId(id)) {
+    throw new Error("Valid leave request ID is required.");
+  }
+  const result = await apiFetch(`/leave/reject/${encodeURIComponent(id.trim())}`, {
     method: "PUT",
     body: JSON.stringify({ reason }),
   });
@@ -148,7 +171,10 @@ export const rejectLeaveApi = async (id, reason = "") => {
  * @param {string} id
  */
 export const fetchLeaveAuditApi = async (id) => {
-  const result = await apiFetch(`/leave/audit/${id}`, { method: "GET" });
+  if (!isValidId(id)) {
+    throw new Error("Valid leave request ID is required.");
+  }
+  const result = await apiFetch(`/leave/audit/${encodeURIComponent(id.trim())}`, { method: "GET" });
   if (!result.ok) {
     throw apiError(result, "Failed to fetch leave audit log.");
   }
@@ -209,6 +235,7 @@ export const fetchLeavePoliciesApi = async (params = {}) => {
   const queryParams = new URLSearchParams();
   if (params.branchId) queryParams.append("branchId", params.branchId);
   if (params.leaveTypeId) queryParams.append("leaveTypeId", params.leaveTypeId);
+  if (params.includeInherited) queryParams.append("includeInherited", params.includeInherited);
 
   const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
   const result = await apiFetch(`/leave-policies${queryString}`, { method: "GET" });
@@ -281,10 +308,61 @@ export const configureLeaveWorkflowApi = async (workflowData) => {
 };
 
 export const deleteLeaveWorkflowApi = async (id) => {
-  const result = await apiFetch(`/approval-workflow/workflows/${id}`, { method: "DELETE" });
+  if (!isValidId(id)) {
+    throw new Error("Valid workflow ID is required.");
+  }
+  const result = await apiFetch(`/approval-workflow/workflows/${encodeURIComponent(id.trim())}`, { method: "DELETE" });
   if (!result.ok) {
     throw apiError(result, "Failed to delete leave approval workflow.");
   }
   return result.data;
 };
+
+/**
+ * ── Role-Based Leave Management View Customization APIs ──
+ */
+export const fetchEffectiveLeaveViewConfigApi = async () => {
+  const result = await apiFetch("/leave/view-config/effective", { method: "GET" });
+  if (!result.ok) {
+    throw apiError(result, "Failed to fetch effective leave view configuration.");
+  }
+  return result.data;
+};
+
+export const fetchLeaveViewConfigApi = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  if (params.branchId && isValidId(params.branchId)) {
+    queryParams.append("branchId", params.branchId.trim());
+  }
+
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  const result = await apiFetch(`/leave/view-config${queryString}`, { method: "GET" });
+  if (!result.ok) {
+    throw apiError(result, "Failed to fetch leave view configuration.");
+  }
+  return result.data;
+};
+
+export const saveLeaveViewConfigApi = async (configData) => {
+  const result = await apiFetch("/leave/view-config", {
+    method: "POST",
+    body: JSON.stringify(configData),
+  });
+  if (!result.ok) {
+    throw apiError(result, "Failed to save leave view configuration.");
+  }
+  return result.data;
+};
+
+export const deleteLeaveViewConfigApi = async (branchId) => {
+  if (!isValidId(branchId) || branchId === "default") {
+    throw new Error("Valid branch ID is required to revert branch view override.");
+  }
+  const result = await apiFetch(`/leave/view-config/${encodeURIComponent(branchId.trim())}`, { method: "DELETE" });
+  if (!result.ok) {
+    throw apiError(result, "Failed to revert branch leave view override.");
+  }
+  return result.data;
+};
+
 
