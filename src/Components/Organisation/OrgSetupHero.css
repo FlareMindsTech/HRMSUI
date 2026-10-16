@@ -953,9 +953,14 @@ body:has(.org-setup-hero-page) {
   background: #4A2E18 !important;
 }
 
-/* ── Equal Size Back and Continue Navigation Buttons ── */
+/* ── Equal Size Back, Continue and Submit Navigation Buttons ── */
 .org-setup-form-page .onboarding-nav-btn {
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  box-sizing: border-box !important;
   white-space: nowrap !important;
+  line-height: 1 !important;
 }
 
 .org-setup-form-page .onboarding-prev-btn,
@@ -963,6 +968,8 @@ body:has(.org-setup-hero-page) {
   width: 140px !important;
   min-width: 140px !important;
   height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
   padding: 0 16px !important;
   text-align: center !important;
   display: inline-flex !important;
@@ -970,6 +977,21 @@ body:has(.org-setup-hero-page) {
   justify-content: center !important;
   box-sizing: border-box !important;
   white-space: nowrap !important;
+  line-height: 1 !important;
+}
+
+.org-setup-form-page .onboarding-submit-btn {
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  padding: 0 24px !important;
+  text-align: center !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+  line-height: 1 !important;
 }
 
 

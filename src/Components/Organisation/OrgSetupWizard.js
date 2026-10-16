@@ -390,8 +390,8 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
         errs.ownerPhone = "Owner Phone Number is required.";
       }
       if (!effectiveUser) {
-        if (!formData.ownerPassword || formData.ownerPassword.length < 6) {
-          errs.ownerPassword = "Password must be at least 6 characters.";
+        if (!formData.ownerPassword || formData.ownerPassword.length < 6 || formData.ownerPassword.length > 64) {
+          errs.ownerPassword = "Password must be between 6 and 64 characters.";
         }
         if (!formData.ownerConfirmPassword) {
           errs.ownerConfirmPassword = "Confirm Password is required.";
@@ -399,8 +399,8 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
           errs.ownerConfirmPassword = "Passwords do not match.";
         }
       } else {
-        if (formData.ownerPassword && formData.ownerPassword.length < 6) {
-          errs.ownerPassword = "Password must be at least 6 characters.";
+        if (formData.ownerPassword && (formData.ownerPassword.length < 6 || formData.ownerPassword.length > 64)) {
+          errs.ownerPassword = "Password must be between 6 and 64 characters.";
         }
         if (formData.ownerPassword && formData.ownerPassword !== formData.ownerConfirmPassword) {
           errs.ownerConfirmPassword = "Passwords do not match.";
@@ -1790,6 +1790,8 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
                       required
                       className="ps-2"
                       placeholder="Enter password"
+                      minLength={6}
+                      maxLength={64}
                       value={formData.ownerPassword}
                       isInvalid={!!validationErrors.ownerPassword}
                       onChange={(e) => updateField("ownerPassword", e.target.value)}
@@ -1808,7 +1810,7 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
                       <FaExclamationTriangle size={11} /> {validationErrors.ownerPassword}
                     </div>
                   ) : (
-                    <Form.Text className="text-muted extra-small">Minimum 6 characters.</Form.Text>
+                    <Form.Text className="text-muted extra-small">Minimum 6 characters, maximum 64 characters.</Form.Text>
                   )}
                 </Form.Group>
               </Col>
@@ -1830,6 +1832,8 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
                       required
                       className="ps-2"
                       placeholder="Confirm password"
+                      minLength={6}
+                      maxLength={64}
                       value={formData.ownerConfirmPassword}
                       isInvalid={!!validationErrors.ownerConfirmPassword}
                       onChange={(e) => updateField("ownerConfirmPassword", e.target.value)}

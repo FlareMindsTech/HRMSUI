@@ -1258,19 +1258,24 @@
 
 /* ── Wizard Navigation Buttons (Luxury Dark & Gold Badge Theme) ── */
 .onboarding-nav-btn {
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
   border-radius: 9999px !important;
   font-size: 12px !important;
   font-weight: 700 !important;
   letter-spacing: 0.8px !important;
   text-transform: uppercase !important;
   white-space: nowrap !important;
-  padding: 8px 22px !important;
+  padding: 0 22px !important;
+  box-sizing: border-box !important;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   gap: 8px !important;
   cursor: pointer !important;
+  line-height: 1 !important;
 }
 
 .onboarding-prev-btn,
@@ -1278,6 +1283,8 @@
   width: 140px !important;
   min-width: 140px !important;
   height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
   padding: 0 16px !important;
   text-align: center !important;
   display: inline-flex !important;
@@ -1285,6 +1292,7 @@
   justify-content: center !important;
   box-sizing: border-box !important;
   white-space: nowrap !important;
+  line-height: 1 !important;
 }
 
 .onboarding-prev-btn {
@@ -1327,9 +1335,19 @@
 }
 
 .onboarding-submit-btn {
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  padding: 0 24px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+  line-height: 1 !important;
   background: linear-gradient(135deg, var(--color-sidebar, #1C1D1D) 0%, #2E261D 100%) !important;
   color: var(--color-primary-light, #E2C278) !important;
-  border: 1.5px solid var(--color-primary, #C49A55) !important;
+  border: 1px solid var(--color-primary, #C49A55) !important;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), 0 0 12px rgba(196, 154, 85, 0.25) !important;
 }
 
@@ -1444,10 +1462,19 @@
   align-items: center !important;
 }
 
-/* ── HRMS Themed Stepper & Step Tabs Navigation (Static & Evenly Distributed) ── */
+/* ── HRMS Themed Stepper & Step Tabs Navigation (Responsive & Fully Displayed) ── */
 .onboarding-step-tabs-container {
-  width: 100%;
-  overflow: hidden !important;
+  width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  padding-bottom: 2px !important;
+}
+
+.onboarding-step-tabs-container::-webkit-scrollbar {
+  display: none !important;
 }
 
 .onboarding-step-tabs-nav {
@@ -1457,22 +1484,26 @@
   padding: 4px !important;
   display: flex !important;
   width: 100% !important;
+  min-width: 100% !important;
   gap: 4px !important;
-  align-items: center !important;
+  align-items: stretch !important;
+  justify-content: space-between !important;
   flex-wrap: nowrap !important;
+  box-sizing: border-box !important;
 }
 
 .onboarding-step-tabs-nav .nav-item {
-  flex: 1 1 0% !important;
-  min-width: 0 !important;
-  width: 0 !important;
+  flex: 1 1 auto !important;
+  min-width: max-content !important;
   display: flex !important;
+  align-items: stretch !important;
+  justify-content: center !important;
   margin: 0 !important;
 }
 
 .onboarding-step-nav-link {
   width: 100% !important;
-  padding: 7px 4px !important;
+  padding: 7px 10px !important;
   border-radius: 8px !important;
   background: transparent !important;
   color: var(--color-secondary-text, #77736B) !important;
@@ -1481,13 +1512,15 @@
   border: 1px solid transparent !important;
   cursor: pointer !important;
   white-space: nowrap !important;
-  display: flex !important;
+  display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 8px !important;
+  gap: 6px !important;
   position: relative !important;
   user-select: none !important;
-  overflow: hidden !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+  min-height: 38px !important;
 }
 
 .onboarding-step-nav-link .onboarding-tab-icon {
@@ -1499,7 +1532,17 @@
   transition: all 0.2s ease !important;
   flex-shrink: 0 !important;
   line-height: 1 !important;
-  margin-right: 3px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.onboarding-step-nav-link .onboarding-tab-icon svg,
+.onboarding-step-nav-link .onboarding-tab-icon i,
+.onboarding-step-nav-link svg,
+.onboarding-step-nav-link i {
+  margin: 0 !important;
+  margin-right: 0 !important;
+  flex-shrink: 0 !important;
 }
 
 .onboarding-step-nav-link .onboarding-tab-label {
@@ -1508,8 +1551,9 @@
   letter-spacing: -0.01em !important;
   color: inherit !important;
   white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  line-height: 1.2 !important;
 }
 
 /* Hover State */
@@ -1544,9 +1588,14 @@
 }
 
 @media (max-width: 1200px) {
+  .onboarding-step-tabs-nav {
+    gap: 3px !important;
+    padding: 3px !important;
+  }
+
   .onboarding-step-nav-link {
-    padding: 6px 4px !important;
-    gap: 6px !important;
+    padding: 6px 8px !important;
+    gap: 5px !important;
   }
 
   .onboarding-step-nav-link .onboarding-tab-label {
@@ -1555,7 +1604,26 @@
 
   .onboarding-step-nav-link .onboarding-tab-icon {
     font-size: 11px !important;
-    margin-right: 2px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .onboarding-step-tabs-nav {
+    gap: 5px !important;
+    padding: 4px !important;
+  }
+
+  .onboarding-step-nav-link {
+    padding: 8px 12px !important;
+    gap: 6px !important;
+  }
+
+  .onboarding-step-nav-link .onboarding-tab-label {
+    font-size: 11.5px !important;
+  }
+
+  .onboarding-step-nav-link .onboarding-tab-icon {
+    font-size: 12px !important;
   }
 }
 
@@ -2355,12 +2423,12 @@ input[type="date"].is-invalid,
 
 /* Ensure step navigation and icon-name pairings have consistent breathing room */
 .onboarding-step-nav-link {
-  display: flex !important;
+  display: inline-flex !important;
   align-items: center !important;
-  gap: 8px !important;
+  gap: 6px !important;
 }
 
 .onboarding-step-nav-link svg,
 .onboarding-step-nav-link i {
-  margin-right: 4px !important;
+  margin-right: 0 !important;
 }

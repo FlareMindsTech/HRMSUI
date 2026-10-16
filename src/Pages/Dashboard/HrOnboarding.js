@@ -1138,6 +1138,11 @@ function HrOnboarding() {
     try {
       sessionStorage.setItem("hrms_onboarding_activeFormTab", activeFormTab);
     } catch (e) { }
+
+    const activeEl = document.querySelector(".onboarding-step-tabs-nav .onboarding-step-nav-link.active");
+    if (activeEl && typeof activeEl.scrollIntoView === "function") {
+      activeEl.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
   }, [activeFormTab]);
 
   useEffect(() => {

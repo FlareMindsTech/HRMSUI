@@ -160,8 +160,8 @@ const Login = ({ onLogin, initialMode }) => {
     }
     if (!signinForm.password) {
       errs.password = 'Password is required';
-    } else if (signinForm.password.length < 6) {
-      errs.password = 'Must be at least 6 characters';
+    } else if (signinForm.password.length < 6 || signinForm.password.length > 64) {
+      errs.password = 'Password must be between 6 and 64 characters';
     }
     setSigninErrors(errs);
     return Object.keys(errs).length === 0;
@@ -184,8 +184,8 @@ const Login = ({ onLogin, initialMode }) => {
     }
     if (!signupForm.password) {
       errs.password = 'Password is required';
-    } else if (signupForm.password.length < 6) {
-      errs.password = 'Must be at least 6 characters';
+    } else if (signupForm.password.length < 6 || signupForm.password.length > 64) {
+      errs.password = 'Password must be between 6 and 64 characters';
     }
     if (!signupForm.confirmPassword) {
       errs.confirmPassword = 'Confirm password is required';
@@ -540,6 +540,8 @@ const Login = ({ onLogin, initialMode }) => {
                         id="auth-signup-pass"
                         type={showSignupPass ? 'text' : 'password'}
                         className="auth-input"
+                        minLength={6}
+                        maxLength={64}
                         value={signupForm.password}
                         onChange={(e) => {
                           setSignupForm({ ...signupForm, password: e.target.value });
@@ -551,8 +553,8 @@ const Login = ({ onLogin, initialMode }) => {
                           setSignupTouched((p) => ({ ...p, password: true }));
                           if (!signupForm.password) {
                             setSignupErrors((p) => ({ ...p, password: 'Password is required' }));
-                          } else if (signupForm.password.length < 6) {
-                            setSignupErrors((p) => ({ ...p, password: 'Must be at least 6 characters' }));
+                          } else if (signupForm.password.length < 6 || signupForm.password.length > 64) {
+                            setSignupErrors((p) => ({ ...p, password: 'Password must be between 6 and 64 characters' }));
                           }
                         }}
                         autoComplete="new-password"
@@ -586,6 +588,8 @@ const Login = ({ onLogin, initialMode }) => {
                         id="auth-signup-confpass"
                         type={showSignupConfirmPass ? 'text' : 'password'}
                         className="auth-input"
+                        minLength={6}
+                        maxLength={64}
                         value={signupForm.confirmPassword}
                         onChange={(e) => {
                           setSignupForm({ ...signupForm, confirmPassword: e.target.value });
@@ -721,6 +725,8 @@ const Login = ({ onLogin, initialMode }) => {
                         id="auth-signin-pass"
                         type={showSigninPass ? 'text' : 'password'}
                         className="auth-input"
+                        minLength={6}
+                        maxLength={64}
                         value={signinForm.password}
                         onChange={(e) => {
                           setSigninForm({ ...signinForm, password: e.target.value });
@@ -734,8 +740,8 @@ const Login = ({ onLogin, initialMode }) => {
                           setSigninTouched((p) => ({ ...p, password: true }));
                           if (!signinForm.password) {
                             setSigninErrors((p) => ({ ...p, password: 'Password is required' }));
-                          } else if (signinForm.password.length < 6) {
-                            setSigninErrors((p) => ({ ...p, password: 'Must be at least 6 characters' }));
+                          } else if (signinForm.password.length < 6 || signinForm.password.length > 64) {
+                            setSigninErrors((p) => ({ ...p, password: 'Password must be between 6 and 64 characters' }));
                           }
                         }}
                         autoComplete="current-password"

@@ -1160,3 +1160,37 @@ export const registerSystemOwner = async (payload) => {
   return res.data;
 };
 
+/**
+ * Uploads an organization logo directly to Bunny.net via the backend.
+ * Supports File/Blob objects or base64 data URIs.
+ */
+export const uploadOrganizationLogo = async (fileOrBase64, organizationId = null) => {
+  if (!fileOrBase64) throw new Error("No logo provided to upload");
+
+  let res;
+  if (fileOrBase64 instanceof File || fileOrBase64 instanceof Blob) {
+    const formData = new FormData();
+    formData.append("logo", fileOrBase64);
+    if (organizationId) formData.append("organizationId", organizationId);
+    res = await apiFetch("/organization/upload-logo", {
+      method: "POST",
+      body: formData,
+    });
+  } else if (typeof fileOrBase64 === "string") {
+    res = await apiFetch("/organization/upload-logo", {
+      method: "POST",
+      body: JSON.stringify({
+        logo: fileOrBase64,
+        organizationId: organizationId || localStorage.getItem("organizationId") || undefined,
+      }),
+    });
+  }
+
+  if (!res || !res.ok) {
+    throw apiError(res, "Failed to upload logo to Bunny.net");
+  }
+
+  const data = res.data?.data || res.data;
+  return data?.logoUrl || data?.logo || data?.fileUrl || data?.url;
+};
+
