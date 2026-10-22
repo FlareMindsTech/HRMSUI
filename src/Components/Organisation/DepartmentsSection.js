@@ -931,12 +931,12 @@ function DepartmentsSection({
               </Col>
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label>Department Head / HOD</Form.Label>
+                  <Form.Label>Head of Department</Form.Label>
                   <Form.Select
                     value={formData.departmentHeadId}
                     onChange={(e) => setFormData({ ...formData, departmentHeadId: e.target.value })}
                   >
-                    <option value="">-- Select Department Head --</option>
+                    <option value="">-- Select Head of Department --</option>
                     {employees.map((emp) => (
                       <option key={emp._id} value={emp._id}>
                         {emp.firstName} {emp.lastName} ({emp.employeeCode})

@@ -712,8 +712,8 @@ export const fetchCostCenters = async (params = {}) => {
   return res.data;
 };
 
-export const fetchCostCentersDropdown = async () => {
-  const res = await apiFetch("/cost-centers/dropdown", { method: "GET" });
+export const fetchCostCentersDropdown = async (params = {}) => {
+  const res = await apiFetch(`/cost-centers/dropdown${buildQuery(params)}`, { method: "GET" });
   if (!res.ok) throw apiError(res, "Failed to fetch cost center dropdown");
   return res.data?.data || [];
 };

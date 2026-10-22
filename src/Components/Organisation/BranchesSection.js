@@ -510,6 +510,7 @@ export default function BranchesSection({
     setFormData(initialForm);
     setAddStep(1);
     setModalError("");
+    setFormErrors({});
     setShowAddModal(true);
     if (onToggleFullView) onToggleFullView(true);
   };
@@ -540,6 +541,7 @@ export default function BranchesSection({
     });
     setAddStep(1);
     setModalError("");
+    setFormErrors({});
     setShowAddModal(true);
     if (onToggleFullView) onToggleFullView(true);
   };
@@ -547,6 +549,7 @@ export default function BranchesSection({
   const handleCloseWizard = () => {
     setShowAddModal(false);
     setModalError("");
+    setFormErrors({});
     if (onToggleFullView) onToggleFullView(false);
     setSearchParams(
       (prev) => {
@@ -592,6 +595,9 @@ export default function BranchesSection({
       if (!formData.branchCode || !formData.branchCode.trim()) {
         errs.branchCode = "Branch Code is required.";
       }
+      if (!formData.branchHeadId || !String(formData.branchHeadId).trim()) {
+        errs.branchHeadId = "Branch Manager / Head is required.";
+      }
     }
     if (step === 2) {
       if (!formData.city || !formData.city.trim()) {
@@ -624,7 +630,14 @@ export default function BranchesSection({
   // Submit Final Branch Creation / Update
   const handleSubmitBranch = async (e) => {
     if (e) e.preventDefault();
-    if (!validateStep(1) || !validateStep(2)) return;
+    if (!validateStep(1)) {
+      setAddStep(1);
+      return;
+    }
+    if (!validateStep(2)) {
+      setAddStep(2);
+      return;
+    }
 
     try {
       setModalLoading(true);
@@ -1004,25 +1017,43 @@ export default function BranchesSection({
 
                     <Col md={6}>
                       <Form.Group>
-                        <Form.Label className="small fw-bold text-dark mb-1">BRANCH MANAGER / HEAD</Form.Label>
-                        <InputGroup>
+                        <Form.Label className="small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                          <span>
+                            BRANCH MANAGER / HEAD <span className="text-danger">*</span>
+                          </span>
+                          {formErrors.branchHeadId && (
+                            <span className="text-danger extra-small fw-semibold">Required</span>
+                          )}
+                        </Form.Label>
+                        <InputGroup hasValidation>
                           <InputGroup.Text className="bg-light text-muted px-3 border-end-0">
                             <FaUserTie size={14} />
                           </InputGroup.Text>
                           <Form.Select
+                            required
                             value={formData.branchHeadId}
-                            onChange={(e) => setFormData({ ...formData, branchHeadId: e.target.value })}
+                            isInvalid={!!formErrors.branchHeadId}
+                            onChange={(e) => {
+                              setFormData({ ...formData, branchHeadId: e.target.value });
+                              if (formErrors.branchHeadId) setFormErrors((p) => ({ ...p, branchHeadId: "" }));
+                            }}
                             className="onboarding-dash-select ps-2"
                           >
-                            <option value="">-- Select Manager (Optional) --</option>
+                            <option value="">-- Select Branch Manager / Head --</option>
                             {employees.map((e) => (
                               <option key={e._id || e.id} value={e._id || e.id}>
-                                {e.fullName || `${e.firstName} ${e.lastName || ""}`}
+                                {e.fullName || `${e.firstName} ${e.lastName || ""}`.trim()}
                               </option>
                             ))}
                           </Form.Select>
                         </InputGroup>
-                        <Form.Text className="text-muted extra-small">Principal leader responsible for this branch unit.</Form.Text>
+                        {formErrors.branchHeadId ? (
+                          <div className="text-danger small mt-1.5 fw-semibold d-flex align-items-center gap-1">
+                            <FaExclamationTriangle size={11} /> {formErrors.branchHeadId}
+                          </div>
+                        ) : (
+                          <Form.Text className="text-muted extra-small">Principal leader responsible for this branch unit.</Form.Text>
+                        )}
                       </Form.Group>
                     </Col>
                   </Row>
@@ -1429,7 +1460,10 @@ export default function BranchesSection({
                       <Col md={6}>
                         <span className="text-muted extra-small d-block text-uppercase fw-semibold mb-1">Designated Manager</span>
                         <div className="text-dark">
-                          {employees.find((e) => String(e._id || e.id) === String(formData.branchHeadId))?.fullName || "Not Assigned"}
+                          {(() => {
+                            const emp = employees.find((e) => String(e._id || e.id) === String(formData.branchHeadId));
+                            return emp ? (emp.fullName || `${emp.firstName} ${emp.lastName || ""}`.trim()) : "Not Assigned";
+                          })()}
                         </div>
                       </Col>
                       <Col md={6}>

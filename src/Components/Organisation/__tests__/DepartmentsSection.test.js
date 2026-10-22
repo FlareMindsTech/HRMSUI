@@ -4,6 +4,7 @@ import {
   updateDepartment,
   deleteDepartment,
   fetchDepartmentsDropdown,
+  fetchCostCentersDropdown,
 } from '../../../services/organizationService';
 
 jest.mock('../../../config/api', () => {
@@ -110,5 +111,16 @@ describe('Department Service Contract & Alignment', () => {
 
     await fetchDepartmentsDropdown({ branchId: 'br-123' });
     expect(apiFetch).toHaveBeenCalledWith('/departments/dropdown?branchId=br-123', { method: 'GET' });
+  });
+
+  it('fetchCostCentersDropdown calls canonical /cost-centers/dropdown with optional branch scope', async () => {
+    apiFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      data: { success: true, data: [] },
+    });
+
+    await fetchCostCentersDropdown({ branchId: 'br-456' });
+    expect(apiFetch).toHaveBeenCalledWith('/cost-centers/dropdown?branchId=br-456', { method: 'GET' });
   });
 });
