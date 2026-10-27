@@ -7,7 +7,7 @@ import { apiFetch, apiError } from "../config/api";
 export const requestPasswordReset = async (email) => {
   const res = await apiFetch("/password-reset/request", {
     method: "POST",
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ identifier: email }),
   });
   if (!res.ok) throw apiError(res, "Failed to submit password reset request.");
   return res.data;

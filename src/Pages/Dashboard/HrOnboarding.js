@@ -298,20 +298,6 @@ const sanitizeValidationReport = (rawReport, isCandidateUnpaid) => {
     ...(rawData.sections || rawReport.sections || {}),
   };
 
-  if (isCandidateUnpaid) {
-    missingList = missingList.filter((req) => {
-      const text = String(req).toLowerCase();
-      return !(
-        text.includes("bank") ||
-        text.includes("account number") ||
-        text.includes("ifsc") ||
-        text.includes("payroll") ||
-        text.includes("salary")
-      );
-    });
-    sections.payroll = true;
-  }
-
   // Derive domain boolean status from missing requirements
   missingList.forEach((req) => {
     const text = String(req).toLowerCase();
@@ -334,7 +320,7 @@ const sanitizeValidationReport = (rawReport, isCandidateUnpaid) => {
       sections.systemAccess = false;
     }
     if (text.includes("bank") || text.includes("salary") || text.includes("compensation") || text.includes("payroll") || text.includes("ifsc") || text.includes("account number")) {
-      if (!isCandidateUnpaid) sections.payroll = false;
+      sections.payroll = false;
     }
     // Only flag employeeInformation if genuinely personal profile missing, not just because "Bank Name" contains "name"
     if (
@@ -357,7 +343,7 @@ const sanitizeValidationReport = (rawReport, isCandidateUnpaid) => {
 
   ALL_COMPLIANCE_DOMAINS.forEach((k) => {
     if (sections[k] === undefined) {
-      sections[k] = isValid ? true : true;
+      sections[k] = false;
     }
   });
 
@@ -672,6 +658,44 @@ const parseEducationToQualificationList = (rawEdu, dbEduRecord = null) => {
   return list;
 };
 
+// Auto-capitalize the first letter of every word as the user types
+// (supports spaces, hyphens and apostrophes, e.g. "mary-anne o'neil" -> "Mary-Anne O'Neil").
+const capitalizeWords = (value = "") =>
+  String(value).replace(/(^|[\s'-])([a-z])/g, (match, prefix, char) => `${prefix}${char.toUpperCase()}`);
+
+// Onboarding accepts personal email addresses only. Company/custom domains are rejected.
+const PERSONAL_EMAIL_DOMAINS = [
+  "gmail.com", "googlemail.com",
+  "yahoo.com", "yahoo.co.in", "yahoo.co.uk", "yahoo.in",
+  "outlook.com", "hotmail.com", "hotmail.co.uk", "live.com", "live.in", "msn.com",
+  "icloud.com", "me.com", "mac.com",
+  "rediffmail.com",
+  "protonmail.com", "proton.me",
+  "aol.com", "gmx.com", "gmx.net", "mail.com", "yandex.com",
+];
+
+const EMAIL_FORMAT_PATTERN = /^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/i;
+
+const PERSONAL_EMAIL_ERROR =
+  "Please enter a personal email address (Gmail, Yahoo, Outlook, Hotmail, iCloud, etc.). Company email domains are not allowed.";
+
+const isPersonalEmail = (value = "") => {
+  const email = String(value).toLowerCase().trim();
+  if (!EMAIL_FORMAT_PATTERN.test(email)) return false;
+  const domain = email.split("@").pop();
+  return PERSONAL_EMAIL_DOMAINS.includes(domain);
+};
+
+const getMaximumAdultDob = () => {
+  const maximumDob = new Date();
+  maximumDob.setFullYear(maximumDob.getFullYear() - 18);
+  return [
+    maximumDob.getFullYear(),
+    String(maximumDob.getMonth() + 1).padStart(2, "0"),
+    String(maximumDob.getDate()).padStart(2, "0"),
+  ].join("-");
+};
+
 const INITIAL_ONBOARDING_FORM_DATA = {
   firstName: "",
   middleName: "",
@@ -685,7 +709,7 @@ const INITIAL_ONBOARDING_FORM_DATA = {
   countryIso2: "IN",
   department: "",
   designation: "",
-  joiningDate: new Date().toISOString().split("T")[0],
+  joiningDate: "",
   employmentType: "",
   compensationType: "SALARY",
   compensationAmount: "",
@@ -693,7 +717,7 @@ const INITIAL_ONBOARDING_FORM_DATA = {
   selectedMenuIds: [],
   selectedPermissionCodes: [],
   isCustomRole: false,
-  password: "Welcome@123",
+  password: "",
   bloodGroup: "",
   employeeCode: "",
   hasLoginAccess: true,
@@ -749,7 +773,7 @@ const INITIAL_ONBOARDING_FORM_DATA = {
       compensationAmount: "",
       employmentType: "",
       isUnpaid: false,
-      joiningDate: new Date().toISOString().split("T")[0],
+      joiningDate: "",
       reportedTo: "",
       noticePeriod: "",
       expectedLastWorkingDate: "",
@@ -1153,6 +1177,7 @@ function HrOnboarding() {
       // restored draft falls back to the clean initial values instead.
       const serializable = {};
       for (const [key, value] of Object.entries(formData)) {
+        if (key.toLowerCase().includes("password") || key.toLowerCase().includes("token")) continue;
         if (value instanceof File || value instanceof Blob) continue;
         if (typeof value === "string" && value.startsWith("blob:")) continue;
         serializable[key] = value;
@@ -2040,9 +2065,11 @@ function HrOnboarding() {
       }
 
       if (!formData.email?.trim()) {
-        errors.email = "Email Address is required";
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
-        errors.email = "Please enter a valid email address (e.g. name@company.com)";
+        errors.email = "Personal Email Address is required";
+      } else if (!EMAIL_FORMAT_PATTERN.test(formData.email.trim())) {
+        errors.email = "Please enter a valid email address (e.g. name@gmail.com)";
+      } else if (!isPersonalEmail(formData.email)) {
+        errors.email = PERSONAL_EMAIL_ERROR;
       }
 
       const rawMobile = (formData.mobileNo || "").trim();
@@ -2060,11 +2087,11 @@ function HrOnboarding() {
         errors.dob = "Date of Birth is required";
       } else {
         const dobDate = new Date(formData.dob);
-        const today = new Date();
+        const maximumAdultDob = getMaximumAdultDob();
         if (isNaN(dobDate.getTime())) {
           errors.dob = "Please enter a valid Date of Birth";
-        } else if (dobDate >= today) {
-          errors.dob = "Date of Birth cannot be in the future";
+        } else if (formData.dob > maximumAdultDob) {
+          errors.dob = "Employee must be at least 18 years old";
         }
       }
 
@@ -2083,15 +2110,33 @@ function HrOnboarding() {
 
     if (sectionId === "professional") {
       const isCandidateFresher = Boolean(formData.isFresher || formData.professional?.some((p) => p.isFresher));
+      if (!formData.employmentType && !formData.professional?.[0]?.employmentType) {
+        errors.employmentType = "Employment type is required";
+      }
+      if (!formData.compensationType && !formData.professional?.[0]?.compensationType) {
+        errors.compensationType = "Compensation type is required";
+      }
       if (isCandidateFresher) {
         const firstProf = formData.professional?.[0] || {};
-        if (!formData.joiningDate && !firstProf.joiningDate) {
-          errors.joiningDate = "Joining Date is required for fresher";
+        if (!formData.department?.trim()) {
+          errors.department = "Department is required";
         }
-        if (!formData.reportingManager && !firstProf.reportedTo) {
-          errors.reportingManager = "Reporting Manager is required for fresher";
+        if (!formData.designation?.trim()) {
+          errors.designation = "Designation is required";
+        }
+        if (!formData.roleId) {
+          errors.roleId = "Role is required";
+        }
+        if (!formData.joiningDate && !firstProf.joiningDate) {
+          errors.joiningDate = "Joining Date is required";
         }
       } else {
+        if (!formData.department?.trim()) errors.department = "Department is required";
+        if (!formData.designation?.trim()) errors.designation = "Designation is required";
+        if (!formData.roleId) errors.roleId = "Role is required";
+        if (!formData.joiningDate && !formData.professional?.[0]?.joiningDate) {
+          errors.joiningDate = "Joining Date is required";
+        }
         if (Array.isArray(formData.professional) && formData.professional.length > 0) {
           formData.professional.forEach((prof, idx) => {
             if (!prof.isFresher) {
@@ -2117,17 +2162,14 @@ function HrOnboarding() {
                 errors[`prof_joiningDate_${idx}`] = `Company #${idx + 1}: Joining Date is required`;
               }
               if (!prof.expectedLastWorkingDate) {
-                errors[`prof_lastDate_${idx}`] = `Company #${idx + 1}: Expected Last Working Date is required`;
+                errors[`prof_lastDate_${idx}`] = `Company #${idx + 1}: Last Working Date is required`;
               }
               if (!prof.noticePeriod?.trim()) {
-                errors[`prof_noticePeriod_${idx}`] = `Company #${idx + 1}: Notice Period is required`;
-              }
-              if (!prof.reportedTo && !formData.reportingManager) {
-                errors[`prof_reportedTo_${idx}`] = `Company #${idx + 1}: Reporting Manager is required`;
+                errors[`prof_noticePeriod_${idx}`] = `Company #${idx + 1}: Notice Period Served is required`;
               }
               if (prof.joiningDate && prof.expectedLastWorkingDate) {
                 if (new Date(prof.joiningDate) < new Date(prof.expectedLastWorkingDate)) {
-                  errors[`prof_dates_${idx}`] = `Company #${idx + 1}: Joining date must be on or after the expected last working date`;
+                  errors[`prof_dates_${idx}`] = `Company #${idx + 1}: Last Working Date must be on or after the Joining Date`;
                 }
               }
             }
@@ -2460,7 +2502,32 @@ function HrOnboarding() {
 
   const handleEmailBlur = async () => {
     const normalizedEmail = (formData.email || "").toLowerCase().trim();
-    if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) return;
+    if (!normalizedEmail) {
+      if (formErrors.email) {
+        setFormErrors((prev) => ({ ...prev, email: "Personal Email Address is required" }));
+      }
+      return;
+    }
+
+    if (!EMAIL_FORMAT_PATTERN.test(normalizedEmail)) {
+      setFormErrors((prev) => ({
+        ...prev,
+        email: "Please enter a valid email address (e.g. name@gmail.com)",
+      }));
+      return;
+    }
+
+    if (!isPersonalEmail(normalizedEmail)) {
+      setFormErrors((prev) => ({
+        ...prev,
+        email: PERSONAL_EMAIL_ERROR,
+      }));
+      return;
+    }
+
+    if (formErrors.email) {
+      setFormErrors((prev) => ({ ...prev, email: "" }));
+    }
 
     const duplicateInPipeline = (onboardings || []).some((item) => {
       const emp = item?.employeeId || {};
@@ -2617,7 +2684,7 @@ function HrOnboarding() {
   const [provisionTarget, setProvisionTarget] = useState(null);
   const [provisionForm, setProvisionForm] = useState({
     roleId: "",
-    password: "Welcome@123",
+    password: "",
     isActive: true,
     showPass: false,
   });
@@ -2978,7 +3045,7 @@ function HrOnboarding() {
         reportedTo: p.reportedTo?._id || p.reportedTo || candidateManagerId || "",
         noticePeriod: p.noticePeriod || (emp.noticePeriodDays ? `${emp.noticePeriodDays} Days` : "") || (data.noticePeriodDays ? `${data.noticePeriodDays} Days` : "") || "",
         expectedLastWorkingDate: p.expectedLastWorkingDate ? new Date(p.expectedLastWorkingDate).toISOString().split("T")[0] : "",
-        employmentStatus: p.employmentStatus || "CURRENTLY_EMPLOYED",
+        employmentStatus: p.employmentStatus || "",
         isCurrent: p.isCurrent !== undefined ? Boolean(p.isCurrent) : true,
         isFresher: p.isFresher !== undefined ? Boolean(p.isFresher) : false,
         documentType: p.documentType || "OFFER_LETTER",
@@ -3329,6 +3396,32 @@ function HrOnboarding() {
   // ── Save Full Candidate Profile Updates (All Domains) ──
   const handleSaveCandidateProfile = async () => {
     if (!selectedOnboarding?._id || !candidateProfileData) return;
+
+    const profileEmail = (candidateProfileData.email || "").trim();
+    if (!profileEmail) {
+      setErrorMsg("Personal Email Address is required");
+      return;
+    }
+    if (!EMAIL_FORMAT_PATTERN.test(profileEmail)) {
+      setErrorMsg("Please enter a valid email address (e.g. name@gmail.com)");
+      return;
+    }
+    if (!isPersonalEmail(profileEmail)) {
+      setErrorMsg(PERSONAL_EMAIL_ERROR);
+      return;
+    }
+
+    if (candidateProfileData.dob) {
+      const dobDate = new Date(candidateProfileData.dob);
+      if (isNaN(dobDate.getTime())) {
+        setErrorMsg("Please enter a valid Date of Birth");
+        return;
+      }
+      if (candidateProfileData.dob > getMaximumAdultDob()) {
+        setErrorMsg("Employee must be at least 18 years old");
+        return;
+      }
+    }
 
     if (!candidateProfileData.gender) {
       setErrorMsg("Gender is required");
@@ -4190,12 +4283,12 @@ function HrOnboarding() {
           compensationType: prev.compensationType || "SALARY",
           compensationAmount: "",
           isUnpaid: Boolean(prev.compensationType === "UNPAID" || prev.isUnpaid),
-          joiningDate: new Date().toISOString().split("T")[0],
+          joiningDate: "",
           reportedTo: "",
           noticePeriod: "",
           expectedLastWorkingDate: "",
           employmentStatus: "",
-          isFresher: false,
+          isFresher: Boolean(prev.isFresher),
           location: "",
           isCurrent: false,
           docType: "",
@@ -4347,7 +4440,6 @@ function HrOnboarding() {
 
     setSubmittingForm(true);
     try {
-      const defaultRole = assignableRoles.find((r) => r.roleCode === "EMPLOYEE") || assignableRoles[0];
       const primaryFamily = formData.familyContacts[0] || {};
       const isFresher = Boolean(formData.isFresher || formData.professional?.some((p) => p.isFresher));
 
@@ -4356,7 +4448,7 @@ function HrOnboarding() {
       if (formData.sslcSchoolName || formData.sslcBoard || formData.sslcYearOfPassing || formData.sslcPercentage) {
         aggregatedEducation.push({
           degree: "SSLC / 10th",
-          stream: formData.sslcBoard || "General",
+          stream: formData.sslcBoard || "",
           university: formData.sslcSchoolName || "",
           percentage: formData.sslcPercentage || "",
           yearOfPassing: formData.sslcYearOfPassing || "",
@@ -4365,7 +4457,7 @@ function HrOnboarding() {
       if (formData.hscSchoolName || formData.hscBoard || formData.hscYearOfPassing || formData.hscPercentage) {
         aggregatedEducation.push({
           degree: "HSC / 12th",
-          stream: formData.hscBoard || "General",
+          stream: formData.hscBoard || "",
           university: formData.hscSchoolName || "",
           percentage: formData.hscPercentage || "",
           yearOfPassing: formData.hscYearOfPassing || "",
@@ -4430,16 +4522,16 @@ function HrOnboarding() {
         });
       }
 
-      const candidateFirstName = formData.firstName?.trim() || "Candidate";
-      const candidateLastName = formData.lastName?.trim() || "Employee";
-      const candidateEmail = formData.email?.trim().toLowerCase() || `candidate_${Date.now()}@company.com`;
-      const candidateMobileNo = formData.mobileNo?.trim() || "9876543210";
-      const candidateDob = formData.dob || "2000-01-01";
-      const candidateDept = formData.department?.trim() || "General";
-      const candidateDesig = formData.designation?.trim() || "Employee";
-      const candidateJoiningDate = formData.joiningDate || formData.professional?.[0]?.joiningDate || new Date().toISOString().split("T")[0];
-      const candidateEmploymentType = formData.employmentType || formData.professional?.[0]?.employmentType || "FULL_TIME";
-      const candidateCompensationType = formData.compensationType || formData.professional?.[0]?.compensationType || "SALARY";
+      const candidateFirstName = formData.firstName.trim();
+      const candidateLastName = formData.lastName.trim();
+      const candidateEmail = formData.email.trim().toLowerCase();
+      const candidateMobileNo = formData.mobileNo.trim();
+      const candidateDob = formData.dob;
+      const candidateDept = formData.department.trim();
+      const candidateDesig = formData.designation.trim();
+      const candidateJoiningDate = formData.joiningDate || formData.professional?.[0]?.joiningDate;
+      const candidateEmploymentType = formData.employmentType || formData.professional?.[0]?.employmentType;
+      const candidateCompensationType = formData.compensationType || formData.professional?.[0]?.compensationType;
       const isUnpaidCandidate = candidateCompensationType === "UNPAID" || formData.isUnpaid || formData.professional?.some((p) => p.compensationType === "UNPAID" || p.isUnpaid);
       const candidateCompensationAmount = isUnpaidCandidate ? "" : (formData.compensationAmount || formData.salary || formData.professional?.[0]?.compensationAmount || formData.professional?.[0]?.salary || "");
 
@@ -4447,25 +4539,25 @@ function HrOnboarding() {
       const candidateMarriageStatus = formData.marriageStatus || "";
 
       const normalizedProfessional = formData.professional.map((p) => ({
-        companyName: p.companyName || "Arise",
+        companyName: p.companyName || "",
         companyWebsite: p.companyWebsite || p.website || "",
-        department: p.department || candidateDept,
-        designation: p.designation || candidateDesig,
+        department: p.department || "",
+        designation: p.designation || "",
         role: p.role || "",
         employmentType: p.employmentType || candidateEmploymentType,
         compensationType: p.compensationType || candidateCompensationType,
         compensationAmount: (p.compensationType === "UNPAID" || isUnpaidCandidate) ? "" : (p.compensationAmount || p.salary || candidateCompensationAmount),
         salary: (p.compensationType === "UNPAID" || isUnpaidCandidate) ? "UNPAID" : (p.compensationAmount || p.salary || candidateCompensationAmount),
         isUnpaid: Boolean(p.compensationType === "UNPAID" || isUnpaidCandidate),
-        joiningDate: p.joiningDate || candidateJoiningDate,
+        joiningDate: p.joiningDate || "",
         reportedTo: p.reportedTo || "",
-        noticePeriod: p.noticePeriod || "60 Days",
+        noticePeriod: p.noticePeriod || "",
         expectedLastWorkingDate: p.expectedLastWorkingDate || null,
         employmentStatus: p.employmentStatus || "CURRENTLY_EMPLOYED",
         isFresher: Boolean(p.isFresher || isFresher),
         isCurrent: true,
         location: p.location || "",
-        docType: p.docType || "OFFER_LETTER",
+        docType: p.docType || "",
       }));
 
       const normalizedExperience = isFresher ? [] : formData.experience
@@ -4499,7 +4591,7 @@ function HrOnboarding() {
           .filter((f) => f.name || f.phone)
           .map((f) => ({
             name: f.name || "",
-            relationship: f.relationship || "Guardian",
+            relationship: f.relationship || "",
             phone: f.phone || "",
             email: f.email || "",
             occupation: f.occupation || "",
@@ -4526,7 +4618,7 @@ function HrOnboarding() {
         compensation: formData.compensation || {},
         isUnpaid: isUnpaidCandidate,
         salary: isUnpaidCandidate ? "UNPAID" : candidateCompensationAmount,
-        roleId: formData.roleId || defaultRole?._id,
+        roleId: formData.roleId,
         organizationId: formData.organizationId || organization?._id || organization?.id || undefined,
         accessLevel: creatorBranchId ? "BRANCH" : (formData.accessLevel || "ORGANIZATION"),
         primaryBranchId: creatorBranchId || formData.primaryBranchId || null,
@@ -4553,9 +4645,9 @@ function HrOnboarding() {
           uanNo: formData.uanNo,
         },
         emergencyContact: {
-          name: primaryFamily.name || "Emergency Contact",
-          relationship: primaryFamily.relationship || "Guardian",
-          phone: primaryFamily.phone || "0000000000",
+          name: primaryFamily.name,
+          relationship: primaryFamily.relationship,
+          phone: primaryFamily.phone,
           email: primaryFamily.email || "",
         },
         familyContacts: normalizedFamily,
@@ -4605,9 +4697,9 @@ function HrOnboarding() {
             addresses: normalizedAddresses,
             address: normalizedAddresses,
             emergencyContact: {
-              name: primaryFamily.name || "Emergency Contact",
-              relationship: primaryFamily.relationship || "Guardian",
-              phone: primaryFamily.phone || "0000000000",
+              name: primaryFamily.name,
+              relationship: primaryFamily.relationship,
+              phone: primaryFamily.phone,
               email: primaryFamily.email || "",
             },
             family: normalizedFamily.length > 0 ? normalizedFamily : [
@@ -4833,7 +4925,7 @@ function HrOnboarding() {
     const defaultRole = assignableRoles.find((r) => r.roleCode === "EMPLOYEE") || assignableRoles[0];
     setProvisionForm({
       roleId: defaultRole?._id || "",
-      password: "Welcome@123",
+      password: "",
       isActive: true,
       showPass: false,
     });
@@ -4844,6 +4936,10 @@ function HrOnboarding() {
   const handleProvisionSubmit = async (e) => {
     e.preventDefault();
     if (!provisionTarget || !provisionForm.roleId) return;
+    if (typeof provisionForm.password !== "string" || provisionForm.password.trim().length < 6) {
+      setErrorMsg("Enter a password of at least 6 characters before provisioning login access.");
+      return;
+    }
 
     setProvisionLoading(true);
     setErrorMsg("");
@@ -5058,77 +5154,16 @@ function HrOnboarding() {
 
   // ── Calculate Form Progress & Section Breakdown ──
   const sectionStatus = {
-    personal: Boolean(
-      formData.firstName?.trim() &&
-      formData.lastName?.trim() &&
-      formData.email?.trim()
-    ),
-    professional: Boolean(
-      formData.department?.trim() ||
-      formData.designation?.trim() ||
-      formData.roleId
-    ),
-    education: Boolean(
-      formData.education?.some((e) => e.degree?.trim() || e.stream?.trim() || e.university?.trim()) ||
-      formData.sslcSchoolName?.trim() ||
-      formData.hscSchoolName?.trim() ||
-      formData.ugDegree?.trim()
-    ),
-    ...(!isFresher
-      ? {
-        experience: Boolean(
-          formData.experience?.some((e) => e.companyName?.trim() || e.prevCompany?.trim() || e.designation?.trim())
-        ),
-      }
-      : {}),
-    address: Boolean(
-      formData.addresses?.some((a) => a.addressLine1?.trim() || a.city?.trim() || a.state?.trim() || a.pincode?.trim())
-    ),
-    compensation: (() => {
-      const comp = formData.compensation || {};
-      const cType = comp.compensationType || (formData.isUnpaid ? "UNPAID" : (formData.compensationType || "SALARY"));
-      if (cType === "UNPAID" || formData.isUnpaid === true || comp.isUnpaid === true) {
-        return true;
-      }
-      if (cType === "SALARY") {
-        return Boolean(comp.annualCtc && Number(String(comp.annualCtc).replace(/[^0-9.]/g, "")) > 0);
-      }
-      if (cType === "STIPEND") {
-        return Boolean(comp.stipendAmount && Number(String(comp.stipendAmount).replace(/[^0-9.]/g, "")) > 0);
-      }
-      if (cType === "CONTRACT" || cType === "CONTRACT_PAYMENT") {
-        return Boolean(comp.contractRate && Number(String(comp.contractRate).replace(/[^0-9.]/g, "")) > 0);
-      }
-      return Boolean(
-        (comp.annualCtc && Number(String(comp.annualCtc).replace(/[^0-9.]/g, "")) > 0) ||
-        (comp.monthlyGross && Number(String(comp.monthlyGross).replace(/[^0-9.]/g, "")) > 0) ||
-        (comp.basicSalary && Number(String(comp.basicSalary).replace(/[^0-9.]/g, "")) > 0) ||
-        (comp.stipendAmount && Number(String(comp.stipendAmount).replace(/[^0-9.]/g, "")) > 0) ||
-        (comp.contractRate && Number(String(comp.contractRate).replace(/[^0-9.]/g, "")) > 0)
-      );
-    })(),
-    documents: isCandidateUnpaidForm
-      ? Boolean(
-        formData.statutoryDetails?.panNo?.trim() ||
-        formData.statutoryDetails?.aadhaarNo?.trim() ||
-        formData.panNo?.trim() ||
-        formData.aadhaarNo?.trim() ||
-        true // Unpaid engagements are always complete without requiring bank fields
-      )
-      : Boolean(
-        formData.statutoryDetails?.panNo?.trim() ||
-        formData.statutoryDetails?.aadhaarNo?.trim() ||
-        formData.bankDetails?.accountNumber?.trim() ||
-        formData.panNo?.trim() ||
-        formData.bankName?.trim() ||
-        formData.accountNo?.trim()
-      ),
-    family: Boolean(
-      formData.emergencyContact?.name?.trim() ||
-      formData.emergencyContact?.mobileNo?.trim() ||
-      formData.familyContacts?.some((f) => f.name?.trim())
-    ),
+    personal: validateSection("personal").isValid,
+    professional: validateSection("professional").isValid,
+    education: validateSection("education").isValid,
+    experience: validateSection("experience").isValid,
+    address: validateSection("address").isValid,
+    compensation: validateSection("compensation").isValid,
+    documents: validateSection("documents").isValid,
+    family: validateSection("family").isValid,
   };
+  sectionStatus.review = Object.values(sectionStatus).every(Boolean);
 
   const handleInitiateNewOnboarding = () => {
     setFormData({
@@ -5144,12 +5179,12 @@ function HrOnboarding() {
       countryIso2: "IN",
       department: "",
       designation: "",
-      joiningDate: new Date().toISOString().split("T")[0],
+      joiningDate: "",
       employmentType: "",
       compensationType: "SALARY",
       compensationAmount: "",
       roleId: "",
-      password: "Welcome@123",
+      password: "",
       bloodGroup: "",
       employeeCode: "",
       hasLoginAccess: true,
@@ -5201,7 +5236,7 @@ function HrOnboarding() {
           compensationType: "SALARY",
           compensationAmount: "",
           isUnpaid: false,
-          joiningDate: new Date().toISOString().split("T")[0],
+          joiningDate: "",
           reportedTo: "",
           noticePeriod: "",
           expectedLastWorkingDate: "",
@@ -5385,7 +5420,7 @@ function HrOnboarding() {
     { id: "personal", label: "Personal", icon: <FaUser /> },
     { id: "professional", label: "Company", icon: <FaBuilding /> },
     { id: "education", label: "Education", icon: <FaGraduationCap /> },
-    ...(!isFresher ? [{ id: "experience", label: "Experience", icon: <FaBriefcase /> }] : []),
+    { id: "experience", label: "Experience", icon: <FaBriefcase /> },
     { id: "address", label: "Address", icon: <FaHome /> },
     { id: "compensation", label: "Salary", icon: <FaMoneyBillWave /> },
     { id: "documents", label: "Bank", icon: <FaUniversity /> },
@@ -6236,7 +6271,7 @@ function HrOnboarding() {
                             value={formData.firstName}
                             isInvalid={!!formErrors.firstName}
                             onChange={(e) => {
-                              setFormData({ ...formData, firstName: e.target.value });
+                              setFormData({ ...formData, firstName: capitalizeWords(e.target.value) });
                               if (formErrors.firstName) setFormErrors((p) => ({ ...p, firstName: "" }));
                             }}
                           />
@@ -6256,7 +6291,7 @@ function HrOnboarding() {
                             type="text"
                             placeholder="Enter middle name (optional)"
                             value={formData.middleName}
-                            onChange={(e) => setFormData({ ...formData, middleName: e.target.value })}
+                            onChange={(e) => setFormData({ ...formData, middleName: capitalizeWords(e.target.value) })}
                           />
                         </Form.Group>
                       </Col>
@@ -6271,7 +6306,7 @@ function HrOnboarding() {
                             value={formData.lastName}
                             isInvalid={!!formErrors.lastName}
                             onChange={(e) => {
-                              setFormData({ ...formData, lastName: e.target.value });
+                              setFormData({ ...formData, lastName: capitalizeWords(e.target.value) });
                               if (formErrors.lastName) setFormErrors((p) => ({ ...p, lastName: "" }));
                             }}
                           />
@@ -6284,12 +6319,12 @@ function HrOnboarding() {
                       </Col>
                     </Row>
 
-                    {/* Row 2: Email Address, Mobile Number, Date of Birth (3 in a Row) */}
+                    {/* Row 2: Personal Email, Mobile Number, Date of Birth (3 in a Row) */}
                     <Row className="g-3 mb-3">
                       <Col md={4}>
                         <Form.Group>
                           <Form.Label className="small fw-bold">
-                            Email Address <span className="text-danger">*</span>
+                            Personal Email Address <span className="text-danger">*</span>
                           </Form.Label>
                           <InputGroup hasValidation>
                             <InputGroup.Text className="bg-light text-muted">
@@ -6297,7 +6332,7 @@ function HrOnboarding() {
                             </InputGroup.Text>
                             <Form.Control
                               type="email"
-                              placeholder="Enter work email address"
+                              placeholder="Enter personal email address"
                               value={formData.email}
                               isInvalid={!!formErrors.email}
                               onChange={(e) => {
@@ -6363,7 +6398,7 @@ function HrOnboarding() {
                           <Form.Control
                             type="date"
                             value={formData.dob}
-                            max={new Date().toISOString().split("T")[0]}
+                          max={getMaximumAdultDob()}
                             isInvalid={!!formErrors.dob}
                             onChange={(e) => {
                               setFormData({ ...formData, dob: e.target.value });
@@ -6540,7 +6575,7 @@ function HrOnboarding() {
                             <option value="">Select Role</option>
                             {assignableRoles.map((r) => (
                               <option key={r._id} value={r._id}>
-                                {r.roleName} (Level {r.priority})
+                                {r.roleName}
                               </option>
                             ))}
                           </Form.Select>
@@ -6576,7 +6611,7 @@ function HrOnboarding() {
                         </div>
                         <div>
                           <h5 className="fw-bold mb-0 text-dark" style={{ fontSize: "16px" }}>
-                            Current & Past Company Experience
+                            Experience
                           </h5>
                          
                         </div>
@@ -6661,7 +6696,9 @@ function HrOnboarding() {
                                   onChange={(e) => {
                                     const isVal = e.target.checked;
                                     const arr = [...formData.professional];
-                                    arr[idx].isFresher = isVal;
+                                    arr.forEach((record) => {
+                                      record.isFresher = isVal;
+                                    });
                                     setFormData({ ...formData, isFresher: isVal, professional: arr });
                                     if (isVal && activeFormTab === "experience") {
                                       setActiveFormTab("education");
@@ -6682,7 +6719,7 @@ function HrOnboarding() {
                           </div>
                         </div>
 
-                        {prof.isFresher ? (
+                        {formData.isFresher || prof.isFresher ? (
                           /* Fresher Mode: Joining Date, Manager, Employment Type & Compensation */
                           <div className="p-3 rounded-3 onboarding-fresher-mode-box">
                             <div className="d-flex align-items-center mb-3 text-muted extra-small">
@@ -6911,7 +6948,7 @@ function HrOnboarding() {
                               </Col>
                             </Row>
 
-                            {/* Row 3: Employment Type, Employment Status, Salary (CTC) */}
+                            {/* Row 3: Employment Type, Previous Employment Status, Salary (CTC) */}
                             <Row className="g-2 mb-2">
                               <Col md={4}>
                                 <Form.Group>
@@ -6937,7 +6974,7 @@ function HrOnboarding() {
                               </Col>
                               <Col md={4}>
                                 <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">Employment Status</Form.Label>
+                                  <Form.Label className="extra-small fw-bold">Previous Employment Status</Form.Label>
                                   <Form.Select
                                     size="sm"
                                     value={prof.employmentStatus || ""}
@@ -6947,11 +6984,9 @@ function HrOnboarding() {
                                       setFormData({ ...formData, professional: arr });
                                     }}
                                   >
-                                    <option value="">Select Employment Status</option>
-                                    <option value="CURRENTLY_EMPLOYED">Currently Employed</option>
+                                    <option value="">Select Previous Employment Status</option>
                                     <option value="RESIGNED">Resigned</option>
                                     <option value="RELIEVED">Relieved</option>
-                                    <option value="NOT_APPLICABLE">Not Applicable</option>
                                   </Form.Select>
                                 </Form.Group>
                               </Col>
@@ -6984,7 +7019,7 @@ function HrOnboarding() {
                               </Col>
                             </Row>
 
-                            {/* Row 4: Joining Date, Expected Last Working Date, Notice Period */}
+                            {/* Row 4: Joining Date, Last Working Date, Notice Period Served */}
                             <Row className="g-2 mb-2">
                               <Col md={4}>
                                 <Form.Group>
@@ -7015,7 +7050,7 @@ function HrOnboarding() {
                               <Col md={4}>
                                 <Form.Group>
                                   <Form.Label className="extra-small fw-bold">
-                                    Expected Last Working Date <span className="text-danger">*</span>
+                                    Last Working Date <span className="text-danger">*</span>
                                   </Form.Label>
                                   <Form.Control
                                     size="sm"
@@ -7041,7 +7076,7 @@ function HrOnboarding() {
                               <Col md={4}>
                                 <Form.Group>
                                   <Form.Label className="extra-small fw-bold">
-                                    Notice Period <span className="text-danger">*</span>
+                                    Notice Period Served <span className="text-danger">*</span>
                                   </Form.Label>
                                   <Form.Select
                                     size="sm"
@@ -7056,8 +7091,8 @@ function HrOnboarding() {
                                       }
                                     }}
                                   >
-                                    <option value="">Select Notice Period</option>
-                                    <option value="Immediate">Immediate / Serving Notice</option>
+                                    <option value="">Select Notice Period Served</option>
+                                    <option value="Immediate">No Notice / Immediate</option>
                                     <option value="15 Days">15 Days</option>
                                     <option value="30 Days">30 Days</option>
                                     <option value="60 Days">60 Days</option>
@@ -7072,41 +7107,9 @@ function HrOnboarding() {
                               </Col>
                             </Row>
 
-                            {/* Row 5: Reporting Manager & Document Type */}
+                            {/* Row 5: Previous Employment Document */}
                             <Row className="g-2 mb-3">
-                              <Col md={6}>
-                                <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">
-                                    Reporting Manager <span className="text-danger">*</span>
-                                  </Form.Label>
-                                  <Form.Select
-                                    size="sm"
-                                    value={prof.reportedTo || ""}
-                                    isInvalid={Boolean(formErrors[`prof_reportedTo_${idx}`])}
-                                    onChange={(e) => {
-                                      const arr = [...formData.professional];
-                                      arr[idx].reportedTo = e.target.value;
-                                      setFormData({ ...formData, professional: arr });
-                                      if (formErrors[`prof_reportedTo_${idx}`]) {
-                                        setFormErrors((p) => ({ ...p, [`prof_reportedTo_${idx}`]: "" }));
-                                      }
-                                    }}
-                                  >
-                                    <option value="">Select Reporting Manager</option>
-                                    {employees.map((emp) => (
-                                      <option key={emp._id || emp.id} value={emp._id || emp.id}>
-                                        {emp.firstName} {emp.lastName} ({emp.employeeCode || emp.designation || "Employee"})
-                                      </option>
-                                    ))}
-                                  </Form.Select>
-                                  {formErrors[`prof_reportedTo_${idx}`] && (
-                                    <Form.Control.Feedback type="invalid" className="d-block extra-small">
-                                      {formErrors[`prof_reportedTo_${idx}`]}
-                                    </Form.Control.Feedback>
-                                  )}
-                                </Form.Group>
-                              </Col>
-                              <Col md={6}>
+                              <Col md={12}>
                                 <Form.Group>
                                   <Form.Label className="extra-small fw-bold">Document Type</Form.Label>
                                   <Form.Select
@@ -7507,6 +7510,13 @@ function HrOnboarding() {
 
                 {/* Tab 4: Experience & Document Uploads */}
                 {activeFormTab === "experience" && (
+                  isFresher ? (
+                    <div className="p-4 rounded-3 onboarding-fresher-mode-box text-center">
+                      <div className="onboarding-fresher-mode-badge mb-2">Fresher Mode</div>
+                      <div className="small fw-semibold text-dark">No previous employment history is required.</div>
+                      <div className="extra-small text-muted mt-1">Turn off Fresher (No Prior Experience) in the Company section to add previous employers.</div>
+                    </div>
+                  ) : (
                   <div>
                     <div className="d-flex justify-content-between align-items-center mb-3">
                       <div>
@@ -7704,7 +7714,7 @@ function HrOnboarding() {
                             </Col>
                             <Col md={6} xs={12}>
                               <Form.Group>
-                                <Form.Label className="extra-small fw-bold">Expected Last Working Date</Form.Label>
+                                <Form.Label className="extra-small fw-bold">Last Working Date</Form.Label>
                                 <Form.Control
                                   size="sm"
                                   type="date"
@@ -7808,6 +7818,7 @@ function HrOnboarding() {
                       </Card>
                     ))}
                   </div>
+                  )
                 )}
 
                 {/* Tab 5: Address */}
@@ -9331,7 +9342,7 @@ function HrOnboarding() {
                       { id: "personal", label: "Personal Information", complete: sectionStatus.personal },
                       { id: "professional", label: "Company & Professional", complete: sectionStatus.professional },
                       { id: "education", label: "Education Qualifications", complete: sectionStatus.education },
-                      ...(!isFresher ? [{ id: "experience", label: "Past Work Experience", complete: sectionStatus.experience }] : []),
+                      { id: "experience", label: "Past Work Experience", complete: sectionStatus.experience },
                       { id: "address", label: "Residential Addresses", complete: sectionStatus.address },
                       { id: "compensation", label: "Salary Details", complete: sectionStatus.compensation },
                       { id: "documents", label: "Bank & Statutory Details", complete: sectionStatus.documents },
@@ -9811,7 +9822,7 @@ function HrOnboarding() {
                                       size="sm"
                                       placeholder="First Name"
                                       value={candidateProfileData.firstName || ""}
-                                      onChange={(e) => setCandidateProfileData({ ...candidateProfileData, firstName: e.target.value })}
+                                      onChange={(e) => setCandidateProfileData({ ...candidateProfileData, firstName: capitalizeWords(e.target.value) })}
                                     />
                                   </Form.Group>
                                 </Col>
@@ -9822,7 +9833,7 @@ function HrOnboarding() {
                                       size="sm"
                                       placeholder="Middle Name"
                                       value={candidateProfileData.middleName || ""}
-                                      onChange={(e) => setCandidateProfileData({ ...candidateProfileData, middleName: e.target.value })}
+                                      onChange={(e) => setCandidateProfileData({ ...candidateProfileData, middleName: capitalizeWords(e.target.value) })}
                                     />
                                   </Form.Group>
                                 </Col>
@@ -9833,17 +9844,17 @@ function HrOnboarding() {
                                       size="sm"
                                       placeholder="Last Name"
                                       value={candidateProfileData.lastName || ""}
-                                      onChange={(e) => setCandidateProfileData({ ...candidateProfileData, lastName: e.target.value })}
+                                      onChange={(e) => setCandidateProfileData({ ...candidateProfileData, lastName: capitalizeWords(e.target.value) })}
                                     />
                                   </Form.Group>
                                 </Col>
                                 <Col md={4}>
                                   <Form.Group>
-                                    <Form.Label className="extra-small fw-bold text-secondary">Email Address</Form.Label>
+                                    <Form.Label className="extra-small fw-bold text-secondary">Personal Email Address</Form.Label>
                                     <Form.Control
                                       size="sm"
                                       type="email"
-                                      placeholder="Email"
+                                      placeholder="Personal Email"
                                       value={candidateProfileData.email || ""}
                                       onChange={(e) => setCandidateProfileData({ ...candidateProfileData, email: e.target.value })}
                                     />
@@ -9867,6 +9878,7 @@ function HrOnboarding() {
                                       size="sm"
                                       type="date"
                                       value={candidateProfileData.dob || ""}
+                                      max={getMaximumAdultDob()}
                                       onChange={(e) => setCandidateProfileData({ ...candidateProfileData, dob: e.target.value })}
                                     />
                                   </Form.Group>
@@ -9994,7 +10006,7 @@ function HrOnboarding() {
                                       <option value="">Select Role</option>
                                       {assignableRoles.map((r) => (
                                         <option key={r._id} value={r._id}>
-                                          {r.roleName} (Level {r.priority})
+                                          {r.roleName}
                                         </option>
                                       ))}
                                     </Form.Select>
@@ -10062,7 +10074,7 @@ function HrOnboarding() {
                                       <td className="fw-bold text-dark small py-2">{candidateProfileData.firstName} {candidateProfileData.middleName || ""} {candidateProfileData.lastName}</td>
                                     </tr>
                                     <tr className="border-top border-light-subtle">
-                                      <td className="text-muted extra-small py-2 text-uppercase fw-semibold">Email Address</td>
+                                      <td className="text-muted extra-small py-2 text-uppercase fw-semibold">Personal Email</td>
                                       <td className="fw-semibold text-dark small py-2 text-break">{candidateProfileData.email || "—"}</td>
                                     </tr>
                                     <tr className="border-top border-light-subtle">
@@ -10160,7 +10172,7 @@ function HrOnboarding() {
                       <Card className="p-3 bg-light border-0 rounded-3 mb-3 shadow-xs">
                         <div className="d-flex justify-content-between align-items-center mb-3">
                           <span className="fw-bold small text-dark d-flex align-items-center gap-1.5">
-                            <FaBuilding className="text-success" /> Current & Past Company Experience ({candidateProfileData.professional?.length || 0})
+                            <FaBuilding className="text-success" /> Experience ({candidateProfileData.professional?.length || 0})
                           </span>
                           {isEditingCandidateProfile && (
                             <button
@@ -10237,7 +10249,9 @@ function HrOnboarding() {
                                               checked={Boolean(prof.isFresher === true)}
                                               onChange={(e) => {
                                                 const arr = [...candidateProfileData.professional];
-                                                arr[i].isFresher = e.target.checked;
+                                                arr.forEach((record) => {
+                                                  record.isFresher = e.target.checked;
+                                                });
                                                 setCandidateProfileData({ ...candidateProfileData, professional: arr });
                                               }}
                                             />
@@ -10519,7 +10533,7 @@ function HrOnboarding() {
                                         <Row className="g-2 mb-2">
                                           <Col md={4}>
                                             <Form.Group>
-                                              <Form.Label className="extra-small fw-bold">NOTICE PERIOD <span className="text-danger">*</span></Form.Label>
+                                              <Form.Label className="extra-small fw-bold">NOTICE PERIOD SERVED <span className="text-danger">*</span></Form.Label>
                                               <Form.Select
                                                 size="sm"
                                                 value={prof.noticePeriod || ""}
@@ -10529,8 +10543,8 @@ function HrOnboarding() {
                                                   setCandidateProfileData({ ...candidateProfileData, professional: arr });
                                                 }}
                                               >
-                                                <option value="">Select Notice Period</option>
-                                                <option value="Immediate">Immediate / Serving Notice</option>
+                                                <option value="">Select Notice Period Served</option>
+                                                <option value="Immediate">No Notice / Immediate</option>
                                                 <option value="15 Days">15 Days</option>
                                                 <option value="30 Days">30 Days</option>
                                                 <option value="60 Days">60 Days</option>
@@ -10540,7 +10554,7 @@ function HrOnboarding() {
                                           </Col>
                                           <Col md={4}>
                                             <Form.Group>
-                                              <Form.Label className="extra-small fw-bold">EXPECTED LAST WORKING DATE <span className="text-danger">*</span></Form.Label>
+                                              <Form.Label className="extra-small fw-bold">LAST WORKING DATE <span className="text-danger">*</span></Form.Label>
                                               <Form.Control
                                                 size="sm"
                                                 type="date"
@@ -10555,7 +10569,7 @@ function HrOnboarding() {
                                           </Col>
                                           <Col md={4}>
                                             <Form.Group>
-                                              <Form.Label className="extra-small fw-bold">EMPLOYMENT STATUS</Form.Label>
+                                              <Form.Label className="extra-small fw-bold">PREVIOUS EMPLOYMENT STATUS</Form.Label>
                                               <Form.Select
                                                 size="sm"
                                                 value={prof.employmentStatus || ""}
@@ -10565,11 +10579,9 @@ function HrOnboarding() {
                                                   setCandidateProfileData({ ...candidateProfileData, professional: arr });
                                                 }}
                                               >
-                                                <option value="">Select Employment Status</option>
-                                                <option value="CURRENTLY_EMPLOYED">Currently Employed</option>
+                                                <option value="">Select Previous Employment Status</option>
                                                 <option value="RESIGNED">Resigned</option>
                                                 <option value="RELIEVED">Relieved</option>
-                                                <option value="NOT_APPLICABLE">Not Applicable</option>
                                               </Form.Select>
                                             </Form.Group>
                                           </Col>
@@ -12919,7 +12931,7 @@ function HrOnboarding() {
                 <option value="">-- Select Role --</option>
                 {assignableRoles.map((r) => (
                   <option key={r._id} value={r._id}>
-                    {r.roleName} (Level {r.priority})
+                    {r.roleName}
                   </option>
                 ))}
               </Form.Select>
@@ -13002,7 +13014,7 @@ function HrOnboarding() {
                 <option value="">-- Select Role --</option>
                 {assignableRoles.map((r) => (
                   <option key={r._id} value={r._id}>
-                    {r.roleName} (Level {r.priority})
+                    {r.roleName}
                   </option>
                 ))}
               </Form.Select>

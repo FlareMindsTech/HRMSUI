@@ -1,44 +1,22 @@
 import React from "react";
-import { Badge } from "react-bootstrap";
 
 /**
- * StatusBadge — shared status → pill mapping.
+ * StatusBadge — shared status pill badge.
  *
- * Centralizes the status→variant maps that are otherwise re-invented per
- * file (EmployeeAttachments, Attendance, ProjectManagement, …). It renders
- * the same react-bootstrap `Badge` element the inline helpers render today —
- * only the lookup moves here. Colors, classes, icons, text and fallbacks
- * come from the caller-supplied `map`, so no visual or behavioral change.
- *
- * Presentational only: callers own the status value, filtering and all
- * handlers. Each domain keeps its own `map` (vocabularies are disjoint);
- * there is intentionally no global default map.
- *
- * Entry shape — map[KEY] / defaultEntry:
- *  bg               Badge `bg` (e.g. "success", "success-subtle")
- *  text             Badge `text` prop (e.g. "dark"); omit when unused
- *  className        per-status classes (appended after `className`)
- *  icon             optional react-icons component (e.g. FaCheckCircle)
- *  iconClassName    optional icon classes (e.g. "me-1")
- *  label            fixed label text; when omitted the raw `status` is shown
- *                   (with `fallbackLabel` when status is falsy)
- *
- * Props:
- *  status           status string (required)
- *  map              { KEY: entry } domain vocabulary (required)
- *  normalize        "exact" (default) | "lower" — "lower" matches
- *                   String(status).toLowerCase(), mirroring helpers that
- *                   switch on (status || '').toLowerCase()
- *  defaultEntry     entry used on no match (required — every migrated helper
- *                   has a default branch; preserves e.g. PENDING-on-unknown)
- *  className        classes appended to every badge (e.g. shared pill shape)
- *  fallbackLabel    label when status is falsy and the entry has no `label`
+ * Rules:
+ * - Pill shape (--r-pill), 12px (--fs-small)
+ * - 3 status colours only:
+ *    success (--c-success)
+ *    warning (--c-warning)
+ *    danger  (--c-danger)
+ *   plus neutral grey (--c-text-2 / --c-bg) and gold tint (--c-gold-tint / --c-gold-dark)
+ * - Tokens only (no hex, no !important)
  */
 function StatusBadge({
   status,
   map = {},
   normalize = "exact",
-  defaultEntry = { bg: "secondary" },
+  defaultEntry = { variant: "neutral" },
   className = "",
   fallbackLabel = "",
 }) {
@@ -46,21 +24,32 @@ function StatusBadge({
   const entry = (map && Object.prototype.hasOwnProperty.call(map, key) ? map[key] : null) || defaultEntry || {};
   const label = entry.label !== undefined ? entry.label : status || fallbackLabel;
   const Icon = entry.icon || null;
-  const badgeClassName = [className, entry.className].filter(Boolean).join(" ") || undefined;
+
+  // Resolve badge variant: success | warning | danger | gold | neutral
+  let variant = entry.variant;
+  if (!variant) {
+    const bg = String(entry.bg || "").toLowerCase();
+    if (bg.includes("success")) variant = "success";
+    else if (bg.includes("danger")) variant = "danger";
+    else if (bg.includes("warning")) variant = "warning";
+    else if (bg.includes("gold") || bg.includes("primary") || bg.includes("info")) variant = "gold";
+    else variant = "neutral";
+  }
+
+  const badgeClass = [
+    "badge-ui",
+    `badge-ui-${variant}`,
+    className,
+    entry.className,
+  ].filter(Boolean).join(" ");
 
   return (
-    <Badge
-      bg={entry.bg}
-      text={entry.text}
-      className={badgeClassName}
-    >
-      {Icon ? (
-        <>
-          <Icon className={entry.iconClassName || undefined} />{" "}
-        </>
-      ) : null}
-      {label}
-    </Badge>
+    <span className={badgeClass}>
+      {Icon && (
+        <Icon className={entry.iconClassName || undefined} />
+      )}
+      <span>{label}</span>
+    </span>
   );
 }
 

@@ -1,35 +1,29 @@
 /* ==========================================================================
    Footer Stylesheet (Footer.css)
    Scoped styling for TeamHub Enterprise HRMS bottom status & copyright bar.
+   Tokens only, 12px grey.
    ========================================================================== */
 
 .app-footer {
-  font-size: 12px;
-  color: var(--color-secondary-text, #77736B);
+  font-size: var(--fs-small);
+  color: var(--c-text-2);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s-2);
   letter-spacing: 0.01em;
   user-select: none;
 }
 
 .app-footer-brand {
-  color: var(--color-primary, #C49A55);
+  color: var(--c-gold);
   font-weight: 700;
 }
 
 .app-footer-dot {
-  color: var(--color-primary, #C49A55);
+  color: var(--c-gold);
 }
 
 .app-footer-copy {
-  color: var(--color-secondary-text, #77736B);
+  color: var(--c-text-2);
   white-space: nowrap;
-}
-
-@media (max-width: 480px) {
-  .app-footer {
-    font-size: 10.5px;
-    gap: 4px;
-  }
 }

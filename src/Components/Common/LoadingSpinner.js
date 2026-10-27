@@ -4,25 +4,10 @@ import { Spinner } from "react-bootstrap";
 /**
  * LoadingSpinner — shared wrapper around react-bootstrap `Spinner`.
  *
- * Mirrors the four loading contexts already used across the app so call sites
- * render byte-identical markup to the inline spinners they replace:
- *  - "page":   centered block (`div.text-center.py-5`) with optional caption
- *  - "table":  table loading row (`tr > td.text-center.py-4` with colSpan)
- *  - "inline": bare spinner (caller keeps surrounding text/layout)
- *  - "button": bare small spinner (caller keeps the loading ternary/icon)
- *
- * `animation` is always "border" — no "grow" spinner exists in the codebase.
- *
- * Props:
- *  variant            "inline" (default) | "page" | "table" | "button"
- *  color              react-bootstrap variant (success, warning, info, ...)
- *  size               "sm" | undefined (react-bootstrap sizes)
- *  style              inline style passthrough (e.g. { width: 40, height: 40 })
- *  className          extra classes passthrough (e.g. "me-1 spinner-mini")
- *  message            caption text for the "page" variant (exact copy per site)
- *  messageAs          caption element for "page" (default "p")
- *  messageClassName   caption classes for "page" (default "text-muted small mt-2")
- *  colSpan            <td> span for the "table" variant (default 5)
+ * Rules:
+ * - Tokens only (no hex, no inline styles, no !important)
+ * - Gold spinner border by default (.spinner-ui)
+ * - Centered, icon/spinner + 1 line caption
  */
 function LoadingSpinner({
   variant = "inline",
@@ -32,16 +17,21 @@ function LoadingSpinner({
   className = "",
   message = null,
   messageAs: MessageAs = "p",
-  messageClassName = "text-muted small mt-2",
+  messageClassName = "text-muted small mt-2 mb-0",
   colSpan = 5,
 }) {
+  const spinnerClasses = [
+    !color ? "spinner-ui" : "",
+    className,
+  ].filter(Boolean).join(" ");
+
   const spinner = (
     <Spinner
       animation="border"
       variant={color}
       size={size}
       style={style}
-      className={className || undefined}
+      className={spinnerClasses || undefined}
     />
   );
 
@@ -49,7 +39,10 @@ function LoadingSpinner({
     return (
       <tr>
         <td colSpan={colSpan} className="text-center py-4">
-          {spinner}
+          <div className="d-flex flex-column align-items-center justify-content-center">
+            {spinner}
+            {message ? <MessageAs className={messageClassName}>{message}</MessageAs> : null}
+          </div>
         </td>
       </tr>
     );
@@ -57,7 +50,7 @@ function LoadingSpinner({
 
   if (variant === "page") {
     return (
-      <div className="text-center py-5">
+      <div className="text-center py-5 d-flex flex-column align-items-center justify-content-center">
         {spinner}
         {message ? <MessageAs className={messageClassName}>{message}</MessageAs> : null}
       </div>

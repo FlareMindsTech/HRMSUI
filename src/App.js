@@ -23,6 +23,7 @@ import UserManagement from './Pages/Dashboard/UserManagement';
 import Attendance from './Pages/Dashboard/Attendance';
 import Epfo from './Pages/Dashboard/Epfo';
 import Login from './view/Login';
+import ResetPassword from './view/ResetPassword';
 import ProjectManagement from './Pages/Dashboard/ProjectManagement';
 import TasksPage from './Pages/Dashboard/TasksPage';
 import AssetManagement from './Pages/Dashboard/AssetManagement';
@@ -187,6 +188,7 @@ function App() {
               )
             }
           />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Protected Dashboard Routes */}
           {isAuthenticated ? (

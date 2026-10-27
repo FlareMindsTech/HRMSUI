@@ -4,20 +4,10 @@ import { Form } from "react-bootstrap";
 /**
  * FilterSelect — shared dropdown filter for table filter bars.
  *
- * Mirrors the small filter `<Form.Select>` controls used across list pages
- * (UserManagement users/roles tables) so every filter dropdown renders and
- * behaves identically. Presentational only: value/onChange (including side
- * effects such as pagination resets) and option lists stay with the caller.
- *
- * Props (value + onChange + options required; rest optional):
- *  value, onChange   controlled select props (event passed straight through)
- *  options           [{ value, label }] (placeholder rendered separately)
- *  placeholder       label for the "all" option (e.g. "Role")
- *  allValue          value meaning "no filter" (default "all")
- *  size              select size (default "sm")
- *  minWidth          wrapper min-width px (default 160)
- *  className         Control classes passthrough
- *  ariaLabel         optional; falls back to placeholder
+ * Rules:
+ * - Tokens only (no hex, no !important)
+ * - Height: 36px (--control-h) or 30px for sm (--control-h-sm)
+ * - Radius: 8px (--r-sm), Border: --c-border with gold focus ring
  */
 function FilterSelect({
   value,
@@ -26,15 +16,28 @@ function FilterSelect({
   placeholder = "Filter",
   allValue = "all",
   size = "sm",
-  minWidth = 160,
-  className,
+  minWidth,
+  className = "",
   ariaLabel,
+  style,
 }) {
+  const isSm = size === "sm";
+
+  const selectClasses = [
+    "form-select-ui",
+    isSm ? "form-select-sm" : "",
+    className,
+  ].filter(Boolean).join(" ");
+
+  const wrapperStyle = minWidth
+    ? { minWidth: typeof minWidth === "number" ? `${minWidth}px` : minWidth, ...style }
+    : style;
+
   return (
-    <div style={{ minWidth }}>
+    <div className="filter-select-wrapper" style={wrapperStyle}>
       <Form.Select
         size={size}
-        className={className || undefined}
+        className={selectClasses}
         value={value}
         onChange={onChange}
         aria-label={ariaLabel || placeholder}

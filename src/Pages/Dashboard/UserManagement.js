@@ -245,7 +245,7 @@ function UserManagement({ initialTab = "users" }) {
   const [provisioningUser, setProvisioningUser] = useState(null);
   const [provisionForm, setProvisionForm] = useState({
     roleId: "",
-    password: "Welcome@123",
+    password: "",
     isActive: true,
     showPass: false,
   });
@@ -635,7 +635,7 @@ function UserManagement({ initialTab = "users" }) {
     const defaultRole = assignableRoles.find((r) => r.roleCode === "EMPLOYEE") || assignableRoles[0];
     setProvisionForm({
       roleId: defaultRole?._id || "",
-      password: "Welcome@123",
+      password: "",
       isActive: true,
       showPass: false,
     });
@@ -646,6 +646,10 @@ function UserManagement({ initialTab = "users" }) {
   const handleProvisionSubmit = async (e) => {
     e.preventDefault();
     if (!provisioningUser || !provisionForm.roleId) return;
+    if (typeof provisionForm.password !== "string" || provisionForm.password.trim().length < 6) {
+      setErrorMessage("Enter a password of at least 6 characters before provisioning login access.");
+      return;
+    }
     // Pre-flight mirror of backend canAssignRole (server enforces).
     const targetRole = assignableRoles.find((r) => String(r._id) === String(provisionForm.roleId))
       || roles.find((r) => String(r._id) === String(provisionForm.roleId));
@@ -2614,7 +2618,14 @@ function UserManagement({ initialTab = "users" }) {
       </Modal>
 
       {/* ── Approved Reset Token Display Modal ── */}
-      <Modal show={showTokenModal} onHide={() => setShowTokenModal(false)} centered>
+      <Modal
+        show={showTokenModal}
+        onHide={() => {
+          setShowTokenModal(false);
+          setApprovedTokenInfo(null);
+        }}
+        centered
+      >
         <Modal.Header closeButton>
           <Modal.Title className="h6 fw-bold text-success d-flex align-items-center gap-2">
             <FaCheckCircle /> Password Reset Approved

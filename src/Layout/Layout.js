@@ -7,6 +7,7 @@ import { useBranch } from "../context/BranchContext";
 import { fetchTheme } from "../redux/slices/themeSlice";
 import { selectAuthUser, selectIsSystemAdmin, selectAuthStatus } from "../redux/slices/authSlice";
 import OrgSetupWizard from "../Components/Organisation/OrgSetupWizard";
+import LoadingSpinner from "../Components/Common/LoadingSpinner";
 import "./Layout.css";
 
 function Layout() {
@@ -58,11 +59,8 @@ function Layout() {
   // ── Show subtle loader while checking initial context ──
   if ((branchLoading || authLoading) && !organization && !storedOrgId && !user?.organizationId) {
     return (
-      <div className="d-flex align-items-center justify-content-center vh-100 bg-light">
-        <div className="text-center">
-          <div className="spinner-border text-warning mb-2" role="status" />
-          <div className="small text-muted fw-semibold">Loading TeamHub HRMS...</div>
-        </div>
+      <div className="d-flex align-items-center justify-content-center vh-100">
+        <LoadingSpinner variant="page" message="Loading TeamHub HRMS..." />
       </div>
     );
   }
@@ -109,7 +107,7 @@ function Layout() {
       {/* ── Main Workspace ── */}
       <div className="app-layout-main">
         {/* Content */}
-        <div className={`app-layout-content no-scrollbar${isMobile ? " is-mobile" : ""}`}>
+        <div className={`app-layout-content${isMobile ? " is-mobile" : ""}`}>
           <Outlet />
         </div>
 

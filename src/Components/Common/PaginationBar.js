@@ -4,44 +4,23 @@ import { Pagination } from "react-bootstrap";
 /**
  * PaginationBar — shared presentational pagination control.
  *
- * Mirrors the pagination markup already used across the app:
- *  - variant "full" (default): Prev + page items + Next
- *  - variant "prev-next": Prev + Next only, no page items
- *  - showEllipsis: the V-B window algorithm (first/last pinned, ±2 around
- *    current, ellipsis at the 2nd / second-to-last positions)
- *
- * Presentational only. Callers own page state, setPage logic, the
- * `{totalPages > 1 && ...}` gate, page-size/totalRecords math, info text,
- * fetching and filtering. `info` accepts a caller-computed ReactNode that is
- * rendered exactly where the caller places this component's output.
- *
- * Props (page, totalPages, onPageChange required; rest optional):
- *  page, totalPages      current page + page count (numbers)
- *  onPageChange          (pg) => void — Prev/Next clamp to [1, totalPages],
- *                        matching every caller's existing handlers
- *  size                  Pagination size passthrough (all sites use "sm")
- *  variant               "full" (default) | "prev-next"
- *  showEllipsis          V-B ellipsis window (default false)
- *  ellipsisKeyPrefix     key prefix, e.g. "u" renders ell-u-5 (default "")
- *  prevLabel / nextLabel button labels; omitted = icon-only Prev/Next
- *  info                  optional ReactNode rendered before the control
- *                        (e.g. "Showing X–Y of Z records")
- *  wrapperClassName      outer div classes passthrough
- *  paginationClassName   Pagination classes passthrough (e.g. "mb-0")
+ * Rules:
+ * - Tokens only (no hex, no !important)
+ * - Styled with .pagination-ui for gold active items and token borders
  */
 function PaginationBar({
   page,
   totalPages,
   onPageChange,
-  size,
+  size = "sm",
   variant = "full",
   showEllipsis = false,
   ellipsisKeyPrefix = "",
-  prevLabel = "",
-  nextLabel = "",
+  prevLabel = "Previous",
+  nextLabel = "Next",
   info = null,
-  wrapperClassName = "",
-  paginationClassName = "",
+  wrapperClassName = "d-flex align-items-center justify-content-between flex-wrap gap-2 pt-3",
+  paginationClassName = "mb-0",
 }) {
   const current = Number(page) || 1;
   const total = Math.max(Number(totalPages) || 0, 0);
@@ -77,19 +56,21 @@ function PaginationBar({
     });
   };
 
+  const paginationClasses = ["pagination-ui", paginationClassName].filter(Boolean).join(" ");
+
   return (
-    <div className={wrapperClassName || undefined}>
-      {info}
-      <Pagination size={size} className={paginationClassName || undefined}>
+    <div className={wrapperClassName}>
+      {info ? <div className="text-muted small">{info}</div> : <div />}
+      <Pagination size={size} className={paginationClasses}>
         <Pagination.Prev disabled={current <= 1} onClick={() => goTo(Math.max(1, current - 1))}>
-          {prevLabel || null}
+          {prevLabel}
         </Pagination.Prev>
         {variant !== "prev-next" ? renderItems() : null}
         <Pagination.Next
           disabled={current >= total}
           onClick={() => goTo(Math.min(total, current + 1))}
         >
-          {nextLabel || null}
+          {nextLabel}
         </Pagination.Next>
       </Pagination>
     </div>

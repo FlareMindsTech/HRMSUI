@@ -1,176 +1,49 @@
-import React, { useEffect, useLayoutEffect } from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  Form,
   Row,
   Col,
-  Button,
-  Badge,
 } from "react-bootstrap";
 import {
   FaPalette,
-  FaSave,
-  FaUndo,
-  FaCheck,
-  FaExclamationTriangle,
-  FaEye,
-  FaSlidersH,
+  FaLock,
+  FaCheckCircle,
 } from "react-icons/fa";
 import {
-  setPreviewColor,
-  setFullPreviewTheme,
-  saveTheme,
-  resetPreviewToSaved,
-  resetToDefaultTheme,
-  clearThemeStatus,
   DEFAULT_THEME,
-  THEME_PRESETS,
   fetchTheme,
-  applyThemeToCssVariables,
-  selectTheme,
-  selectPreviewTheme,
   selectThemeLoading,
-  selectThemeSaving,
-  selectThemeError,
-  selectThemeSuccessMessage,
 } from "../../redux/slices/themeSlice";
-import { useHasPermission, selectIsSystemAdmin } from '../../redux/slices/authSlice';
 import LoadingSpinner from "../Common/LoadingSpinner";
-import FeedbackAlert from "../Common/FeedbackAlert";
 import "./ThemeCustomizationSection.css";
 
-const COLOR_METADATA = [
-  {
-    key: "primaryColor",
-    label: "Primary Color",
-    description: "Main brand color used for primary buttons, active highlights, and key icons.",
-  },
-  {
-    key: "primaryDarkColor",
-    label: "Primary Dark Color",
-    description: "Darker accent shade used for hover states and subtle gradients.",
-  },
-  {
-    key: "primaryLightColor",
-    label: "Primary Light Color",
-    description: "Light cream accent shade used for subtle highlights and badge fills.",
-  },
-  {
-    key: "sidebarColor",
-    label: "Sidebar Color",
-    description: "Background color of the main navigation sidebar panel.",
-  },
-  {
-    key: "backgroundColor",
-    label: "Background Color",
-    description: "Global canvas background color behind all content panels.",
-  },
-  {
-    key: "surfaceColor",
-    label: "Surface Color",
-    description: "Background color for cards, modals, dropdowns, and form containers.",
-  },
-  {
-    key: "textColor",
-    label: "Text Color",
-    description: "Primary typography color used for headings and main body text.",
-  },
-  {
-    key: "secondaryTextColor",
-    label: "Secondary Text Color",
-    description: "Muted text color used for subtitles, metadata, and timestamps.",
-  },
-  {
-    key: "borderColor",
-    label: "Border Color",
-    description: "Standard border color for card dividers, table rows, and form outlines.",
-  },
-  {
-    key: "successColor",
-    label: "Success Color",
-    description: "Semantic indicator for approved requests, active status, and positive alerts.",
-  },
-  {
-    key: "warningColor",
-    label: "Warning Color",
-    description: "Semantic indicator for pending actions, grace periods, and caution alerts.",
-  },
-  {
-    key: "dangerColor",
-    label: "Danger Color",
-    description: "Semantic indicator for rejections, deletions, overdue alerts, and errors.",
-  },
-  {
-    key: "infoColor",
-    label: "Info Color",
-    description: "Semantic indicator for informative notes, documentation, and help badges.",
-  },
+const BRAND_PALETTE = [
+  { name: "Charcoal (Primary Brand 1)", hex: "#1C1D1D", desc: "Sidebar, headers, dark buttons, text" },
+  { name: "Gold (Primary Brand 2)", hex: "#C79D58", desc: "Primary CTA, active tabs, highlights" },
+  { name: "Gold Dark", hex: "#A98245", desc: "Hover state, secondary accent" },
+  { name: "Gold Tint", hex: "#F1E8D6", desc: "Active badge fills, icon chip backgrounds" },
+  { name: "Page Background", hex: "#F7F5F0", desc: "Default app background" },
+  { name: "Card & Surface", hex: "#FFFFFF", desc: "Cards, panels, modal dialogs" },
+  { name: "Border Neutral", hex: "#E5E0D7", desc: "Card borders, divider lines" },
+  { name: "Muted Text", hex: "#77736B", desc: "Subtitles, table header labels" },
 ];
-
-const HEX_REGEX = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
 
 function ThemeCustomizationSection() {
   const dispatch = useDispatch();
-  const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
-  const theme = useSelector(selectTheme);
-  const previewTheme = useSelector(selectPreviewTheme);
   const loading = useSelector(selectThemeLoading);
-  const saving = useSelector(selectThemeSaving);
-  const error = useSelector(selectThemeError);
-  const successMessage = useSelector(selectThemeSuccessMessage);
-
-  const canUpdate =
-    isSystemAdmin ||
-    hasPermission("orgSettings.update") ||
-    hasPermission("organizationSettings.update");
 
   useEffect(() => {
-    // Ensure theme is loaded from backend if not already present
-    if (!theme || Object.keys(theme).length === 0) {
-      dispatch(fetchTheme());
-    }
-  }, [dispatch, theme]);
-
-  // Live preview: reducers are pure state transitions, so the DOM
-  // CSS-variable update they used to perform happens here in the editor
-  // that owns preview state. Layout timing preserves the previous
-  // synchronous paint behavior on every preview change (keystroke, preset,
-  // reset) and on save-failure revert.
-  useLayoutEffect(() => {
-    applyThemeToCssVariables(previewTheme);
-  }, [previewTheme]);
-
-  const handleColorChange = (key, val) => {
-    dispatch(setPreviewColor({ key, value: val }));
-  };
-
-  const handleSelectPreset = (presetColors) => {
-    if (canUpdate && !saving) {
-      dispatch(setFullPreviewTheme(presetColors));
-    }
-  };
-
-  const handleSave = () => {
-    dispatch(clearThemeStatus());
-    dispatch(saveTheme(previewTheme));
-  };
-
-  const handleResetToSaved = () => {
-    dispatch(clearThemeStatus());
-    dispatch(resetPreviewToSaved());
-  };
-
-  const handleResetToDefault = () => {
-    dispatch(clearThemeStatus());
-    dispatch(resetToDefaultTheme());
-  };
-
-  const isModifiedFromSaved = JSON.stringify(previewTheme) !== JSON.stringify(theme);
-  const isModifiedFromDefault = JSON.stringify(previewTheme) !== JSON.stringify(DEFAULT_THEME);
+    // Keep theme fetch contract safe
+    dispatch(fetchTheme());
+  }, [dispatch]);
 
   if (loading) {
     return (
-      <LoadingSpinner variant="page" color="warning" message="Loading organization theme configuration..." messageClassName="mt-3 text-muted" />
+      <LoadingSpinner
+        variant="page"
+        message="Loading organization theme..."
+        messageClassName="mt-3 text-muted"
+      />
     );
   }
 
@@ -179,245 +52,64 @@ function ThemeCustomizationSection() {
       {/* ── Section Title ── */}
       <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <div>
-          <h4 className="fw-bold mb-1 d-flex align-items-center gap-2" style={{ color: "var(--color-text)" }}>
-            <FaPalette style={{ color: "var(--color-primary)" }} /> Organization Theme Customization
+          <h4 className="fw-bold mb-1 d-flex align-items-center gap-2 text-dark">
+            <FaPalette className="text-warning" /> Organization Visual Theme
           </h4>
           <p className="text-muted small mb-0">
-            Customize the live visual identity and brand colors for your organization across all HRMS modules.
+            System-wide visual identity and brand colors are locked to ensure design consistency across all HRMS modules.
           </p>
         </div>
-        {!canUpdate && (
-          <Badge bg="secondary" className="px-3 py-2">
-            Read-Only (Requires orgSettings.update)
-          </Badge>
-        )}
+        <span className="badge-ui badge-ui-gold px-3 py-2 d-inline-flex align-items-center gap-1">
+          <FaLock className="me-1" /> Theme Locked (Enterprise Standard)
+        </span>
       </div>
 
-      {/* ── Status Alerts ── */}
-      {error && (
-        <FeedbackAlert
-          variant="danger"
-          dismissible
-          onClose={() => dispatch(clearThemeStatus())}
-          message={<><FaExclamationTriangle className="me-2" />{error}</>}
-        />
-      )}
-
-      {successMessage && (
-        <FeedbackAlert
-          variant="success"
-          dismissible
-          onClose={() => dispatch(clearThemeStatus())}
-          message={<><FaCheck className="me-2" />{successMessage}</>}
-        />
-      )}
-
-      {/* ── Built-in Theme Presets Row ── */}
-      <div className="mb-4">
-        <h6 className="fw-bold text-xs text-uppercase tracking-wider text-muted mb-2.5 d-flex align-items-center gap-2">
-          <FaPalette /> Built-in Theme Presets
-        </h6>
-        <Row className="g-3">
-          {THEME_PRESETS.map((preset) => {
-            const isPresetActive =
-              preset.colors.primaryColor === previewTheme.primaryColor &&
-              preset.colors.sidebarColor === previewTheme.sidebarColor &&
-              preset.colors.backgroundColor === previewTheme.backgroundColor;
-
-            return (
-              <Col key={preset.key} xs={12} sm={6} lg={3}>
-                <div
-                  className={`theme-preset-card ${isPresetActive ? "active" : ""}`}
-                  onClick={() => handleSelectPreset(preset.colors)}
-                  role="button"
-                  tabIndex={0}
-                >
-                  <div className="theme-preset-header">
-                    <span className="theme-preset-title">{preset.name}</span>
-                    {isPresetActive && (
-                      <Badge bg="warning" text="dark" className="text-xs px-2 py-1">
-                        Active
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="theme-color-desc mb-2">{preset.description}</p>
-                  <div className="theme-preset-palette">
-                    <div className="theme-preset-color-pill" style={{ backgroundColor: preset.colors.primaryColor }} title="Primary" />
-                    <div className="theme-preset-color-pill" style={{ backgroundColor: preset.colors.sidebarColor }} title="Sidebar" />
-                    <div className="theme-preset-color-pill" style={{ backgroundColor: preset.colors.backgroundColor }} title="Background" />
-                    <div className="theme-preset-color-pill" style={{ backgroundColor: preset.colors.surfaceColor }} title="Surface" />
-                  </div>
-                </div>
-              </Col>
-            );
-          })}
-        </Row>
-      </div>
-
-      {/* ── Live Preview Banner & Swatch Bar ── */}
-      <div className="theme-preview-banner">
-        <div>
-          <div className="fw-semibold small d-flex align-items-center gap-2 mb-1" style={{ color: "var(--color-text)" }}>
-            <FaEye style={{ color: "var(--color-primary)" }} /> Live Theme Preview Active
+      {/* ── Current Standard Theme Card ── */}
+      <div className="card-ui mb-4">
+        <div className="d-flex align-items-center justify-content-between mb-3">
+          <div>
+            <h6 className="fw-bold mb-1 text-dark">Gold &amp; Charcoal Enterprise Theme</h6>
+            <p className="text-muted small mb-0">
+              The official 2-colour palette approved for all workspaces, tables, modals and navigation.
+            </p>
           </div>
-          <span className="text-muted text-xs">
-            Color changes apply instantly to the current session interface before saving.
+          <span className="badge-ui badge-ui-success">
+            <FaCheckCircle className="me-1" /> Active
           </span>
         </div>
-        <div className="theme-preview-swatch-bar">
-          {COLOR_METADATA.map(({ key, label }) => (
-            <div
-              key={key}
-              className="theme-preview-swatch"
-              style={{ backgroundColor: previewTheme[key] || DEFAULT_THEME[key] }}
-              title={`${label}: ${previewTheme[key]}`}
-            />
-          ))}
-        </div>
-      </div>
 
-      {/* ── Interactive Component Sample Preview ── */}
-      <div className="theme-live-preview-box">
-        <h6 className="fw-bold text-xs text-uppercase tracking-wider text-muted mb-3 d-flex align-items-center gap-2">
-          <FaSlidersH /> Component Live Preview Demo
-        </h6>
-        <Row className="g-3 align-items-center">
-          <Col md={3}>
-            <Button
-              className="w-100 border-0 fw-semibold"
-              style={{
-                backgroundColor: "var(--color-primary)",
-                color: "#ffffff",
-              }}
-            >
-              Primary Button
-            </Button>
-          </Col>
-          <Col md={3}>
-            <div
-              className="p-2 text-center rounded fw-semibold text-xs"
-              style={{
-                backgroundColor: "var(--color-sidebar)",
-                color: "#ffffff",
-              }}
-            >
-              Sidebar Accent Panel
-            </div>
-          </Col>
-          <Col md={6} className="d-flex gap-2 justify-content-end">
-            <span className="badge px-3 py-2 fw-semibold" style={{ backgroundColor: "var(--color-success)", color: "#fff" }}>
-              Success State
-            </span>
-            <span className="badge px-3 py-2 fw-semibold" style={{ backgroundColor: "var(--color-warning)", color: "#fff" }}>
-              Warning State
-            </span>
-            <span className="badge px-3 py-2 fw-semibold" style={{ backgroundColor: "var(--color-danger)", color: "#fff" }}>
-              Danger State
-            </span>
-            <span className="badge px-3 py-2 fw-semibold" style={{ backgroundColor: "var(--color-info)", color: "#fff" }}>
-              Info State
-            </span>
-          </Col>
+        <Row className="g-3 mt-1">
+          {BRAND_PALETTE.map((item) => (
+            <Col key={item.name} xs={12} sm={6} md={3}>
+              <div
+                className="p-3 rounded border"
+                style={{ backgroundColor: "var(--c-bg)", borderColor: "var(--c-border)" }}
+              >
+                <div className="d-flex align-items-center gap-2 mb-2">
+                  <div
+                    style={{
+                      width: "28px",
+                      height: "28px",
+                      borderRadius: "6px",
+                      backgroundColor: item.hex,
+                      border: "1px solid var(--c-border)",
+                    }}
+                  />
+                  <div>
+                    <div className="fw-bold small">{item.hex}</div>
+                    <div className="text-muted" style={{ fontSize: "11px" }}>{item.name}</div>
+                  </div>
+                </div>
+                <div className="text-muted small">{item.desc}</div>
+              </div>
+            </Col>
+          ))}
         </Row>
       </div>
 
-      {/* ── 13 Configurable Theme Color Cards ── */}
-      <Row className="g-3">
-        {COLOR_METADATA.map(({ key, label, description }) => {
-          const currentColor = previewTheme[key] || DEFAULT_THEME[key];
-          const isValidHex = HEX_REGEX.test(currentColor);
-
-          return (
-            <Col md={6} lg={4} key={key}>
-              <div className="theme-color-card">
-                <div>
-                  <div className="theme-color-header">
-                    <h6 className="theme-color-title">{label}</h6>
-                    <span className="badge rounded-pill text-xs border" style={{ backgroundColor: "var(--color-background)", color: "var(--color-text)", borderColor: "var(--color-border)" }}>
-                      {key}
-                    </span>
-                  </div>
-                  <p className="theme-color-desc">{description}</p>
-                </div>
-
-                <div className="theme-color-input-group">
-                  <Form.Control
-                    type="color"
-                    className="theme-color-picker"
-                    value={isValidHex ? currentColor : "#000000"}
-                    onChange={(e) => handleColorChange(key, e.target.value)}
-                    disabled={!canUpdate || saving}
-                    title={`Pick ${label}`}
-                  />
-                  <Form.Control
-                    type="text"
-                    className="theme-color-hex-input"
-                    value={currentColor}
-                    onChange={(e) => handleColorChange(key, e.target.value)}
-                    disabled={!canUpdate || saving}
-                    isInvalid={!isValidHex}
-                    placeholder="#RRGGBB"
-                  />
-                </div>
-              </div>
-            </Col>
-          );
-        })}
-      </Row>
-
-      {/* ── Sticky Action Bar ── */}
-      {canUpdate && (
-        <div className="theme-action-bar">
-          <div className="d-flex align-items-center gap-2">
-            {isModifiedFromSaved && (
-              <Badge bg="warning" text="dark" className="px-3 py-2">
-                Unsaved Changes
-              </Badge>
-            )}
-            {isModifiedFromDefault && (
-              <Badge bg="info" className="px-3 py-2">
-                Custom Organization Palette
-              </Badge>
-            )}
-          </div>
-
-          <div className="d-flex align-items-center gap-2">
-            <Button
-              variant="outline-secondary"
-              className="d-flex align-items-center gap-2"
-              onClick={handleResetToSaved}
-              disabled={!isModifiedFromSaved || saving}
-            >
-              <FaUndo /> Revert Unsaved
-            </Button>
-            <Button
-              variant="outline-dark"
-              className="d-flex align-items-center gap-2"
-              onClick={handleResetToDefault}
-              disabled={saving}
-            >
-              <FaUndo /> Reset to HRMS Default
-            </Button>
-            <Button
-              variant="warning"
-              className="d-flex align-items-center gap-2 fw-semibold px-4"
-              style={{ backgroundColor: "var(--color-primary)", borderColor: "var(--color-primary-dark)", color: "#ffffff" }}
-              onClick={handleSave}
-              disabled={saving}
-            >
-              {saving ? (
-                <>
-                  <LoadingSpinner variant="inline" size="sm" /> Saving Theme...
-                </>
-              ) : (
-                <>
-                  <FaSave /> Save Organization Theme
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      )}
+      <div className="p-3 rounded bg-light border text-muted small d-flex align-items-center gap-2">
+        <FaLock /> Custom theme editing has been restricted by system policy to maintain enterprise brand guidelines.
+      </div>
     </div>
   );
 }

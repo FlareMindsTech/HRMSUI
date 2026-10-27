@@ -1,20 +1,20 @@
-/* ── Branch Access Selector Stylesheet ── */
+/* ── Branch Access Selector Stylesheet (Tokens Only) ── */
 
 .branch-access-selector-card {
   width: 100%;
 }
 
 .branch-access-header-wrap {
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: var(--s-3);
+  border-bottom: 1px solid var(--c-border);
 }
 
 /* ── Access Level Cards ── */
 .access-level-card {
-  border: 1.5px solid #e2e8f0;
-  border-radius: var(--radius-md, 12px);
-  padding: 1rem;
-  background: var(--color-surface, #FFFFFF);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  padding: var(--s-4);
+  background: var(--c-card);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -22,15 +22,15 @@
 }
 
 .access-level-card:hover:not(.disabled) {
-  border-color: #cbd5e1;
-  background: #f8fafc;
+  border-color: var(--c-gold-dark);
+  background: var(--c-bg);
   transform: translateY(-1px);
 }
 
 .access-level-card.selected {
-  border-color: #10b981;
-  background: #f0fdf4;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
+  border-color: var(--c-gold);
+  background: var(--c-gold-tint);
+  box-shadow: var(--sh-1);
 }
 
 .access-level-card.disabled {
@@ -46,8 +46,8 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  border: 2px solid #cbd5e1;
-  background: var(--color-surface, #FFFFFF);
+  border: 2px solid var(--c-border);
+  background: var(--c-card);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -55,21 +55,21 @@
 }
 
 .radio-indicator.checked {
-  border-color: #10b981;
+  border-color: var(--c-gold);
 }
 
 .radio-indicator.checked::after {
   content: "";
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: #10b981;
+  background: var(--c-gold);
 }
 
 /* ── Branch-specific Panel ── */
 .branch-specific-panel {
   animation: fadeInDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  border-color: #e2e8f0 !important;
+  border-color: var(--c-border);
 }
 
 @keyframes fadeInDown {
@@ -84,22 +84,23 @@
 }
 
 .branch-select-ctrl {
-  background-color: var(--color-surface, #FFFFFF);
-  border-color: #cbd5e1;
-  border-radius: var(--radius-sm, 8px);
+  background-color: var(--c-card);
+  border-color: var(--c-border);
+  border-radius: var(--r-sm);
   font-weight: 500;
+  height: var(--control-h);
 }
 
 .branch-select-ctrl:focus {
-  border-color: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+  border-color: var(--c-gold);
+  box-shadow: 0 0 0 3px rgba(199, 157, 88, 0.25);
 }
 
 /* ── Branch Checklist Items ── */
 .branch-checklist-scroll {
   max-height: 220px;
   overflow-y: auto;
-  padding-right: 4px;
+  padding-right: var(--s-1);
 }
 
 .branch-checklist-scroll::-webkit-scrollbar {
@@ -107,33 +108,33 @@
 }
 
 .branch-checklist-scroll::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
+  background: var(--c-border);
+  border-radius: var(--r-pill);
 }
 
 .branch-check-item {
-  border: 1.5px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 0.65rem 0.85rem;
-  background: var(--color-surface, #FFFFFF);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  padding: var(--s-2) var(--s-3);
+  background: var(--c-card);
   cursor: pointer;
   transition: all 0.15s ease;
   user-select: none;
 }
 
 .branch-check-item:hover:not(.disabled) {
-  border-color: #94a3b8;
-  background: #f8fafc;
+  border-color: var(--c-gold-dark);
+  background: var(--c-bg);
 }
 
 .branch-check-item.checked {
-  border-color: #10b981;
-  background: var(--color-surface, #FFFFFF);
+  border-color: var(--c-gold);
+  background: var(--c-card);
 }
 
 .branch-check-item.primary-item {
-  border-color: #f59e0b;
-  background: #fffbeb;
+  border-color: var(--c-gold);
+  background: var(--c-gold-tint);
 }
 
 .branch-check-item.disabled {
@@ -144,12 +145,12 @@
 .branch-custom-check .form-check-input {
   cursor: pointer;
   border-radius: 4px;
-  border-color: #94a3b8;
+  border-color: var(--c-border);
   width: 16px;
   height: 16px;
 }
 
 .branch-custom-check .form-check-input:checked {
-  background-color: #10b981;
-  border-color: #10b981;
+  background-color: var(--c-gold);
+  border-color: var(--c-gold);
 }

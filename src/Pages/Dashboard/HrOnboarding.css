@@ -1627,6 +1627,32 @@
   }
 }
 
+@media (max-width: 600px) {
+  .onboarding-step-tabs-container {
+    overflow-x: hidden !important;
+  }
+
+  .onboarding-step-tabs-nav {
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+  }
+
+  .onboarding-step-tabs-nav .nav-item {
+    flex: 1 1 calc(33.333% - 5px) !important;
+    min-width: 0 !important;
+  }
+
+  .onboarding-step-nav-link {
+    padding: 7px 5px !important;
+    gap: 4px !important;
+  }
+
+  .onboarding-step-nav-link .onboarding-tab-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 /* ── Universal Icon Spacing Utilities across Entire HR Onboarding ── */
 .gap-1\.5 {
   gap: 0.5rem !important;

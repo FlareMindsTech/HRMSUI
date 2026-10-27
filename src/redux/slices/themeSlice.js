@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk, createSelector } from "@reduxjs/toolkit";
 import {
   fetchOrganizationSettings,
-  updateOrganizationSettings as updateOrgSettingsApi,
 } from "../../services/organizationService";
 
 export const DEFAULT_THEME = Object.freeze({
@@ -17,184 +16,73 @@ export const DEFAULT_THEME = Object.freeze({
   successColor: "#2E7D32",
   warningColor: "#ED9F24",
   dangerColor: "#D64545",
-  infoColor: "#3B82F6",
+  infoColor: "#A98245",
 });
 
 export const THEME_PRESETS = [
   {
-    name: "Gold (Default)",
+    name: "Gold & Charcoal (Default)",
     key: "gold",
-    description: "Classic HRMS Gold & Dark Charcoal Enterprise Theme",
+    description: "Enterprise Gold & Dark Charcoal Theme",
     colors: { ...DEFAULT_THEME },
-  },
-  {
-    name: "Ocean Blue",
-    key: "ocean-blue",
-    description: "Modern Sapphire & Navy Corporate Palette",
-    colors: {
-      primaryColor: "#2563EB",
-      primaryDarkColor: "#1D4ED8",
-      primaryLightColor: "#DBEAFE",
-      sidebarColor: "#0F172A",
-      backgroundColor: "#F8FAFC",
-      surfaceColor: "#FFFFFF",
-      textColor: "#0F172A",
-      secondaryTextColor: "#64748B",
-      borderColor: "#E2E8F0",
-      successColor: "#16A34A",
-      warningColor: "#D97706",
-      dangerColor: "#DC2626",
-      infoColor: "#0284C7",
-    },
-  },
-  {
-    name: "Emerald",
-    key: "emerald",
-    description: "Sleek Forest Emerald & Mint Professional Palette",
-    colors: {
-      primaryColor: "#059669",
-      primaryDarkColor: "#047857",
-      primaryLightColor: "#D1FAE5",
-      sidebarColor: "#064E3B",
-      backgroundColor: "#F0FDF4",
-      surfaceColor: "#FFFFFF",
-      textColor: "#064E3B",
-      secondaryTextColor: "#4B5563",
-      borderColor: "#E5E7EB",
-      successColor: "#10B981",
-      warningColor: "#F59E0B",
-      dangerColor: "#EF4444",
-      infoColor: "#3B82F6",
-    },
-  },
-  {
-    name: "Royal Purple",
-    key: "royal-purple",
-    description: "Luxury Violet & Deep Obsidian Theme",
-    colors: {
-      primaryColor: "#7C3AED",
-      primaryDarkColor: "#6D28D9",
-      primaryLightColor: "#EDE9FE",
-      sidebarColor: "#1E1B4B",
-      backgroundColor: "#FAF5FF",
-      surfaceColor: "#FFFFFF",
-      textColor: "#1E1B4B",
-      secondaryTextColor: "#6B7280",
-      borderColor: "#E5E7EB",
-      successColor: "#10B981",
-      warningColor: "#F59E0B",
-      dangerColor: "#EF4444",
-      infoColor: "#3B82F6",
-    },
   },
 ];
 
 /**
  * Applies theme color definitions directly to document.documentElement CSS custom variables
  */
-export const applyThemeToCssVariables = (themeObj = {}) => {
+export const applyThemeToCssVariables = () => {
   if (typeof document === "undefined") return;
-  const theme = { ...DEFAULT_THEME, ...(themeObj || {}) };
   const root = document.documentElement;
 
-  root.style.setProperty("--color-primary", theme.primaryColor || DEFAULT_THEME.primaryColor);
-  root.style.setProperty("--color-primary-dark", theme.primaryDarkColor || DEFAULT_THEME.primaryDarkColor);
-  root.style.setProperty("--color-primary-light", theme.primaryLightColor || DEFAULT_THEME.primaryLightColor);
-  root.style.setProperty("--color-sidebar", theme.sidebarColor || DEFAULT_THEME.sidebarColor);
-  root.style.setProperty("--color-background", theme.backgroundColor || DEFAULT_THEME.backgroundColor);
-  root.style.setProperty("--color-surface", theme.surfaceColor || DEFAULT_THEME.surfaceColor);
-  root.style.setProperty("--color-text", theme.textColor || DEFAULT_THEME.textColor);
-  root.style.setProperty("--color-secondary-text", theme.secondaryTextColor || DEFAULT_THEME.secondaryTextColor);
-  root.style.setProperty("--color-border", theme.borderColor || DEFAULT_THEME.borderColor);
-  root.style.setProperty("--color-success", theme.successColor || DEFAULT_THEME.successColor);
-  root.style.setProperty("--color-warning", theme.warningColor || DEFAULT_THEME.warningColor);
-  root.style.setProperty("--color-danger", theme.dangerColor || DEFAULT_THEME.dangerColor);
-  root.style.setProperty("--color-info", theme.infoColor || DEFAULT_THEME.infoColor);
+  root.style.setProperty("--color-primary", DEFAULT_THEME.primaryColor);
+  root.style.setProperty("--color-primary-dark", DEFAULT_THEME.primaryDarkColor);
+  root.style.setProperty("--color-primary-light", DEFAULT_THEME.primaryLightColor);
+  root.style.setProperty("--color-sidebar", DEFAULT_THEME.sidebarColor);
+  root.style.setProperty("--color-background", DEFAULT_THEME.backgroundColor);
+  root.style.setProperty("--color-surface", DEFAULT_THEME.surfaceColor);
+  root.style.setProperty("--color-text", DEFAULT_THEME.textColor);
+  root.style.setProperty("--color-secondary-text", DEFAULT_THEME.secondaryTextColor);
+  root.style.setProperty("--color-border", DEFAULT_THEME.borderColor);
+  root.style.setProperty("--color-success", DEFAULT_THEME.successColor);
+  root.style.setProperty("--color-warning", DEFAULT_THEME.warningColor);
+  root.style.setProperty("--color-danger", DEFAULT_THEME.dangerColor);
+  root.style.setProperty("--color-info", DEFAULT_THEME.infoColor);
 };
 
-// Persisted saved-theme cache so a refresh paints the last saved theme
-// instantly (before the server revalidation lands) instead of flashing the
-// default. Preview (unsaved) state is intentionally never persisted —
-// refreshing after preview-without-save correctly restores the saved theme.
-const THEME_STORAGE_KEY = "hrms_org_theme";
+// Persisted saved-theme cache locked to DEFAULT_THEME
+const initialSavedTheme = { ...DEFAULT_THEME };
+applyThemeToCssVariables();
 
-const readCachedTheme = () => {
-  try {
-    const raw = localStorage.getItem(THEME_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed.primaryColor === "string") return parsed;
-  } catch {
-    // Corrupt cache: fall through to defaults below.
-  }
-  return null;
-};
-
-const persistTheme = (themeObj) => {
-  try {
-    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(themeObj));
-  } catch {
-    // ignore storage errors — server remains the source of truth
-  }
-};
-
-// Async thunk to fetch organization theme settings
+// Async thunk to fetch organization theme settings (keeps contract safe)
 export const fetchTheme = createAsyncThunk(
   "theme/fetchTheme",
   async (_, { rejectWithValue }) => {
     try {
       const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : null;
-      if (!token) return DEFAULT_THEME;
-      const settings = await fetchOrganizationSettings();
-      const themeData = settings?.theme || DEFAULT_THEME;
-      applyThemeToCssVariables(themeData);
-      // Only persist when the server actually returned a theme: a response
-      // without one must not wipe a previously saved cache.
-      if (settings?.theme) persistTheme(themeData);
-      return themeData;
+      if (token) {
+        await fetchOrganizationSettings();
+      }
+      applyThemeToCssVariables();
+      return DEFAULT_THEME;
     } catch (err) {
-      // Keep whatever is currently applied (boot cache or live preview):
-      // a transient failure must not clobber the theme back to default.
-      return rejectWithValue(err.message || "Failed to load theme");
+      applyThemeToCssVariables();
+      return DEFAULT_THEME;
     }
   },
   {
-    // Collapse concurrent mount dispatches (Layout + editor, StrictMode
-    // remounts) into a single request. Genuine reloads dispatch after the
-    // in-flight one settles.
     condition: (_, { getState }) => getState().theme?.loading !== true,
   }
 );
 
-// Async thunk to save theme settings to backend
+// Async thunk to save theme settings to backend (locked to DEFAULT_THEME)
 export const saveTheme = createAsyncThunk(
   "theme/saveTheme",
-  async (themePayload, { rejectWithValue }) => {
-    try {
-      const response = await updateOrgSettingsApi({ theme: themePayload });
-      const updatedTheme = response?.data?.theme || themePayload;
-      applyThemeToCssVariables(updatedTheme);
-      persistTheme(updatedTheme);
-      return updatedTheme;
-    } catch (err) {
-      return rejectWithValue(err.message || "Failed to save theme settings");
-    }
-  },
-  {
-    // Drop double-submit saves while one is in flight; the first save wins.
-    condition: (_, { getState }) => getState().theme?.saving !== true,
+  async () => {
+    applyThemeToCssVariables();
+    return DEFAULT_THEME;
   }
 );
-
-const cachedTheme = readCachedTheme();
-const initialSavedTheme = cachedTheme
-  ? { ...DEFAULT_THEME, ...cachedTheme }
-  : { ...DEFAULT_THEME };
-
-// Apply the cached saved theme synchronously at module load (before first
-// paint) so refresh never flashes the default. Mirrors the auth module's
-// storage hydration; no reducer is involved.
-applyThemeToCssVariables(initialSavedTheme);
 
 const initialState = {
   theme: { ...initialSavedTheme },

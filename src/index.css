@@ -52,88 +52,88 @@ body {
   line-height: 1.6;
 }
 
-/* ── Dynamic Organization Theme Tokens (13 Standard Properties) ── */
+/* ── Dynamic Organization Theme Tokens Aliased to UI System Tokens ── */
 :root {
-  --color-primary: #C79D58;
-  --color-primary-dark: #A98245;
-  --color-primary-light: #F1E8D6;
-  --color-sidebar: #1C1D1D;
-  --color-background: #F7F5F0;
-  --color-surface: #FFFFFF;
-  --color-text: #1C1D1D;
-  --color-secondary-text: #77736B;
-  --color-border: #E5E0D7;
-  --color-success: #2E7D32;
-  --color-warning: #ED9F24;
-  --color-danger: #D64545;
-  --color-info: #3B82F6;
+  --color-primary: var(--c-gold);
+  --color-primary-dark: var(--c-gold-dark);
+  --color-primary-light: var(--c-gold-tint);
+  --color-sidebar: var(--c-charcoal);
+  --color-background: var(--c-bg);
+  --color-surface: var(--c-card);
+  --color-text: var(--c-text);
+  --color-secondary-text: var(--c-text-2);
+  --color-border: var(--c-border);
+  --color-success: var(--c-success);
+  --color-warning: var(--c-warning);
+  --color-danger: var(--c-danger);
+  --color-info: var(--c-gold-dark);
 
   /* Key Brand Combination (Linked to Dynamic Theme) */
-  --brand-gold: var(--color-primary);
-  --brand-gold-outer: var(--color-primary-dark);
-  --brand-cream: var(--color-primary-light);
-  --brand-cream-light: var(--color-background);
-  --brand-dark: var(--color-text);
+  --brand-gold: var(--c-gold);
+  --brand-gold-outer: var(--c-gold-dark);
+  --brand-cream: var(--c-gold-tint);
+  --brand-cream-light: var(--c-bg);
+  --brand-dark: var(--c-charcoal);
   --brand-dark-card: #242525;
-  --brand-text-secondary: var(--color-secondary-text);
-  --brand-card-bg: var(--color-surface);
+  --brand-text-secondary: var(--c-text-2);
+  --brand-card-bg: var(--c-card);
 
   /* Primary Theme Aliases */
-  --primary: var(--color-primary);
-  --primary-dark: var(--color-primary-dark);
-  --primary-darker: var(--color-primary-dark);
-  --primary-light: var(--color-primary-light);
-  --primary-subtle: rgba(199, 157, 88, 0.12);
+  --primary: var(--c-gold);
+  --primary-dark: var(--c-gold-dark);
+  --primary-darker: var(--c-gold-dark);
+  --primary-light: var(--c-gold-tint);
+  --primary-subtle: var(--c-gold-tint);
   --primary-subtle2: rgba(199, 157, 88, 0.06);
-  --primary-gradient: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  --primary-gradient: var(--c-gold);
 
   /* Sidebar */
-  --sidebar-bg: var(--color-sidebar);
+  --sidebar-bg: var(--c-charcoal);
   --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-active-bg: rgba(196, 154, 85, 0.14);
-  --sidebar-active-text: var(--color-surface, #FFFFFF);
+  --sidebar-active-bg: var(--c-gold-tint);
+  --sidebar-active-text: var(--c-charcoal);
   --sidebar-text: #C7C5C0;
   --sidebar-hover: rgba(255, 255, 255, 0.06);
 
   /* Surface */
-  --page-bg: var(--color-background);
-  --card-bg: var(--color-surface);
-  --card-border: var(--color-border);
-  --header-bg: var(--color-background);
+  --page-bg: var(--c-bg);
+  --card-bg: var(--c-card);
+  --card-border: var(--c-border);
+  --header-bg: var(--c-bg);
 
   /* Text */
-  --text-primary: var(--color-text);
-  --text-secondary: var(--color-secondary-text);
-  --text-muted: #8E8A82;
+  --text-primary: var(--c-text);
+  --text-secondary: var(--c-text-2);
+  --text-muted: var(--c-text-2);
 
   /* Chart & Status Palette */
-  --chart-red: var(--color-danger);
-  --chart-blue: var(--color-info);
-  --chart-green: var(--color-success);
-  --chart-yellow: var(--color-warning);
+  --chart-red: var(--c-danger);
+  --chart-blue: var(--c-gold-dark);
+  --chart-green: var(--c-success);
+  --chart-yellow: var(--c-warning);
 
-  --success: var(--color-success);
-  --warning: var(--color-warning);
-  --danger: var(--color-danger);
-  --info: var(--color-info);
+  --success: var(--c-success);
+  --warning: var(--c-warning);
+  --danger: var(--c-danger);
+  --info: var(--c-gold-dark);
 
   /* Layout */
   --sidebar-width: 230px;
   --header-height: 64px;
 
   /* Radius */
-  --radius-xs: 6px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
+  --radius-xs: var(--r-sm);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-md);
+  --radius-xl: var(--r-md);
 
   /* Shadows */
-  --shadow-xs: 0 1px 3px rgba(28, 29, 29, 0.04);
-  --shadow-sm: 0 2px 8px rgba(28, 29, 29, 0.05), 0 1px 2px rgba(28, 29, 29, 0.03);
-  --shadow-md: 0 6px 20px rgba(28, 29, 29, 0.07), 0 2px 6px rgba(28, 29, 29, 0.03);
-  --shadow-lg: 0 12px 32px rgba(28, 29, 29, 0.1), 0 4px 10px rgba(28, 29, 29, 0.04);
-  --shadow-gold: 0 4px 16px rgba(199, 157, 88, 0.3);
+  --shadow-xs: var(--sh-1);
+  --shadow-sm: var(--sh-1);
+  --shadow-md: var(--sh-2);
+  --shadow-lg: var(--sh-2);
+  --shadow-gold: 0 4px 16px rgba(199, 157, 88, 0.2);
 }
 
 /* ── Custom Scrollbar ── */

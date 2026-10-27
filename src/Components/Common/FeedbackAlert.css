@@ -1,15 +1,15 @@
-/* ── App-wide notification banner (themed, variant-driven) ── */
+/* ── App-wide notification banner (themed, token-driven) ── */
 .app-notify {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--s-2);
   width: 100%;
-  padding: 11px 14px;
-  border-radius: 10px;
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-sm);
   border: 1px solid transparent;
-  font-size: 0.84rem;
+  font-size: var(--fs-body);
   line-height: 1.45;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--sh-1);
 }
 
 .app-notify-icon {
@@ -21,7 +21,7 @@
 .app-notify-body {
   flex: 1;
   min-width: 0;
-  color: var(--color-text, #1C1D1D);
+  color: var(--c-text);
   overflow-wrap: anywhere;
 }
 
@@ -31,10 +31,10 @@
   background: transparent;
   color: inherit;
   opacity: 0.6;
-  font-size: 1.05rem;
+  font-size: 1rem;
   line-height: 1;
   padding: 2px 4px;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   cursor: pointer;
 }
 
@@ -44,41 +44,41 @@
 }
 
 .app-notify-success {
-  background: color-mix(in srgb, var(--color-success, #16A34A) 12%, #fff);
-  border-color: color-mix(in srgb, var(--color-success, #16A34A) 32%, #fff);
-  color: var(--color-success, #16A34A);
+  background: rgba(46, 125, 50, 0.1);
+  border-color: rgba(46, 125, 50, 0.25);
+  color: var(--c-success);
 }
 
 .app-notify-success .app-notify-body {
-  color: var(--color-text, #1C1D1D);
+  color: var(--c-text);
 }
 
 .app-notify-danger {
-  background: color-mix(in srgb, var(--color-danger, #DC3545) 10%, #fff);
-  border-color: color-mix(in srgb, var(--color-danger, #DC3545) 30%, #fff);
-  color: var(--color-danger, #DC3545);
+  background: rgba(214, 69, 69, 0.1);
+  border-color: rgba(214, 69, 69, 0.25);
+  color: var(--c-danger);
 }
 
 .app-notify-danger .app-notify-body {
-  color: var(--color-text, #1C1D1D);
+  color: var(--c-text);
 }
 
 .app-notify-warning {
-  background: color-mix(in srgb, var(--color-warning, #E8930C) 14%, #fff);
-  border-color: color-mix(in srgb, var(--color-warning, #E8930C) 35%, #fff);
-  color: var(--color-warning, #E8930C);
+  background: rgba(237, 159, 36, 0.12);
+  border-color: rgba(237, 159, 36, 0.3);
+  color: var(--c-warning);
 }
 
 .app-notify-warning .app-notify-body {
-  color: var(--color-text, #1C1D1D);
+  color: var(--c-text);
 }
 
 .app-notify-info {
-  background: color-mix(in srgb, var(--color-info, #0284C7) 10%, #fff);
-  border-color: color-mix(in srgb, var(--color-info, #0284C7) 30%, #fff);
-  color: var(--color-info, #0284C7);
+  background: var(--c-gold-tint);
+  border-color: rgba(199, 157, 88, 0.3);
+  color: var(--c-gold-dark);
 }
 
 .app-notify-info .app-notify-body {
-  color: var(--color-text, #1C1D1D);
+  color: var(--c-text);
 }
