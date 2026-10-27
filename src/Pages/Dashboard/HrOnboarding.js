@@ -1138,6 +1138,37 @@ function HrOnboarding() {
     return () => { isMounted = false; };
   }, []);
 
+  const [editingOnboardingId, setEditingOnboardingId] = useState(() => {
+    try {
+      return sessionStorage.getItem("hrms_onboarding_editingId") || null;
+    } catch {
+      return null;
+    }
+  });
+  const [editingCandidateUser, setEditingCandidateUser] = useState(null);
+  const [initialCandidateIdentity, setInitialCandidateIdentity] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("hrms_onboarding_initialIdentity");
+      if (saved) return JSON.parse(saved);
+    } catch { }
+    return { email: "", mobileNo: "" };
+  });
+
+  useEffect(() => {
+    try {
+      if (editingOnboardingId) {
+        sessionStorage.setItem("hrms_onboarding_editingId", editingOnboardingId);
+      } else {
+        sessionStorage.removeItem("hrms_onboarding_editingId");
+      }
+      if (editingOnboardingId && (initialCandidateIdentity.email || initialCandidateIdentity.mobileNo)) {
+        sessionStorage.setItem("hrms_onboarding_initialIdentity", JSON.stringify(initialCandidateIdentity));
+      } else if (!editingOnboardingId) {
+        sessionStorage.removeItem("hrms_onboarding_initialIdentity");
+      }
+    } catch (e) { }
+  }, [editingOnboardingId, initialCandidateIdentity]);
+
   const [formData, setFormData] = useState(() => {
     try {
       const saved = sessionStorage.getItem("hrms_onboarding_formData");
@@ -2402,13 +2433,60 @@ function HrOnboarding() {
     const cleanedMobile = rawMobile.replace(/\D/g, "").slice(-10);
     const normalizedEmail = (formData.email || "").toLowerCase().trim();
 
-    // 1. Pipeline records check
+    const origEmail = (
+      initialCandidateIdentity.email ||
+      editingCandidateUser?.email ||
+      selectedOnboarding?.email ||
+      selectedOnboarding?.employeeId?.email ||
+      ""
+    ).toLowerCase().trim();
+
+    const origMobile = (
+      initialCandidateIdentity.mobileNo ||
+      editingCandidateUser?.mobileNo ||
+      editingCandidateUser?.phone ||
+      selectedOnboarding?.mobileNo ||
+      selectedOnboarding?.employeeId?.mobileNo ||
+      ""
+    ).replace(/\D/g, "").slice(-10);
+
+    const isEditMode = Boolean(editingOnboardingId);
+    // In edit mode: ONLY check if the user actually modified the field from its original value!
+    const emailChanged = !isEditMode || (normalizedEmail && normalizedEmail !== origEmail);
+    const mobileChanged = !isEditMode || (cleanedMobile && cleanedMobile !== origMobile);
+
+    // If neither field was changed in edit mode, pass immediately without showing error
+    if (isEditMode && !emailChanged && !mobileChanged) {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        if (next.email?.includes("already exists")) delete next.email;
+        if (next.mobileNo?.includes("already exists")) delete next.mobileNo;
+        return next;
+      });
+      return true;
+    }
+
+    const currentCandidateId = String(editingOnboardingId || selectedOnboarding?._id || selectedOnboarding?.id || "");
+    const currentEmpId = String(editingCandidateUser?._id || selectedOnboarding?.employeeId?._id || selectedOnboarding?.userId || "");
+
+    // 1. Pipeline records check (exclude current candidate being edited)
     const duplicateInPipeline = (onboardings || []).some((item) => {
+      const itemId = String(item?._id || item?.id || "");
       const emp = item?.employeeId || {};
+      const empId = String(emp?._id || emp?.id || "");
+
+      // Exclude self in edit mode
+      if (isEditMode && ((currentCandidateId && itemId === currentCandidateId) || (currentEmpId && empId === currentEmpId))) {
+        return false;
+      }
+
       const itemMobile = (emp.mobileNo || emp.phone || item.mobileNo || item.phone || "").replace(/\D/g, "").slice(-10);
       const itemEmail = (emp.email || item.email || "").toLowerCase().trim();
-      return (cleanedMobile && cleanedMobile.length >= 10 && itemMobile === cleanedMobile) ||
-             (normalizedEmail && itemEmail === normalizedEmail);
+
+      const mobileMatch = mobileChanged && cleanedMobile && cleanedMobile.length >= 10 && itemMobile === cleanedMobile;
+      const emailMatch = emailChanged && normalizedEmail && itemEmail === normalizedEmail;
+
+      return mobileMatch || emailMatch;
     });
 
     if (duplicateInPipeline) {
@@ -2416,40 +2494,41 @@ function HrOnboarding() {
       setErrorMsg(msg);
       setFormErrors((prev) => ({
         ...prev,
-        mobileNo: "An employee with this email or mobile number already exists in the system.",
+        ...(mobileChanged ? { mobileNo: "An employee with this mobile number already exists in the system." } : {}),
+        ...(emailChanged ? { email: "An employee with this email already exists in the system." } : {}),
       }));
       return false;
     }
 
-    // 2. Database User & SaaSAccount existence check via existing endpoints
+    // 2. Database User & SaaSAccount existence check via backend endpoints
     try {
-      if (cleanedMobile && cleanedMobile.length === 10) {
+      if (mobileChanged && cleanedMobile && cleanedMobile.length === 10) {
         const phoneRes = await apiFetch("/auth/check-phone", {
           method: "POST",
           body: JSON.stringify({ phone: cleanedMobile }),
         });
         if (phoneRes?.data?.exists || phoneRes?.exists) {
-          const msg = "An employee with this email or mobile number already exists in the system.";
+          const msg = "An employee with this mobile number already exists in the system.";
           setErrorMsg(msg);
           setFormErrors((prev) => ({
             ...prev,
-            mobileNo: "An employee with this email or mobile number already exists in the system.",
+            mobileNo: msg,
           }));
           return false;
         }
       }
 
-      if (normalizedEmail) {
+      if (emailChanged && normalizedEmail) {
         const emailRes = await apiFetch("/auth/check-email", {
           method: "POST",
           body: JSON.stringify({ email: normalizedEmail }),
         });
         if (emailRes?.data?.exists || emailRes?.exists) {
-          const msg = "An employee with this email or mobile number already exists in the system.";
+          const msg = "An employee with this email already exists in the system.";
           setErrorMsg(msg);
           setFormErrors((prev) => ({
             ...prev,
-            email: "An employee with this email or mobile number already exists in the system.",
+            email: msg,
           }));
           return false;
         }
@@ -2457,6 +2536,14 @@ function HrOnboarding() {
     } catch (err) {
       console.warn("Personal details duplicate check error:", err);
     }
+
+    // Clean up duplicate errors if checks passed
+    setFormErrors((prev) => {
+      const next = { ...prev };
+      if (next.email?.includes("already exists")) delete next.email;
+      if (next.mobileNo?.includes("already exists")) delete next.mobileNo;
+      return next;
+    });
 
     return true;
   };
@@ -2466,18 +2553,48 @@ function HrOnboarding() {
     const cleanedMobile = rawMobile.replace(/\D/g, "").slice(-10);
     if (!cleanedMobile || cleanedMobile.length !== 10) return;
 
+    const isEditMode = Boolean(editingOnboardingId);
+    const origMobile = (
+      initialCandidateIdentity.mobileNo ||
+      editingCandidateUser?.mobileNo ||
+      editingCandidateUser?.phone ||
+      selectedOnboarding?.mobileNo ||
+      selectedOnboarding?.employeeId?.mobileNo ||
+      ""
+    ).replace(/\D/g, "").slice(-10);
+
+    // If in edit mode and the phone number was not changed, skip duplicate check!
+    if (isEditMode && origMobile && cleanedMobile === origMobile) {
+      if (formErrors.mobileNo?.includes("already exists")) {
+        setFormErrors((prev) => {
+          const next = { ...prev };
+          delete next.mobileNo;
+          return next;
+        });
+      }
+      return;
+    }
+
+    const currentCandidateId = String(editingOnboardingId || selectedOnboarding?._id || selectedOnboarding?.id || "");
+    const currentEmpId = String(editingCandidateUser?._id || selectedOnboarding?.employeeId?._id || selectedOnboarding?.userId || "");
+
     const duplicateInPipeline = (onboardings || []).some((item) => {
+      const itemId = String(item?._id || item?.id || "");
       const emp = item?.employeeId || {};
+      const empId = String(emp?._id || emp?.id || "");
+      if (isEditMode && ((currentCandidateId && itemId === currentCandidateId) || (currentEmpId && empId === currentEmpId))) {
+        return false;
+      }
       const itemMobile = (emp.mobileNo || emp.phone || item.mobileNo || item.phone || "").replace(/\D/g, "").slice(-10);
       return itemMobile === cleanedMobile;
     });
 
     if (duplicateInPipeline) {
-      const msg = "An employee with this email or mobile number already exists in the system.";
+      const msg = "An employee with this mobile number already exists in the system.";
       setErrorMsg(msg);
       setFormErrors((prev) => ({
         ...prev,
-        mobileNo: "An employee with this email or mobile number already exists in the system.",
+        mobileNo: msg,
       }));
       return;
     }
@@ -2488,12 +2605,18 @@ function HrOnboarding() {
         body: JSON.stringify({ phone: cleanedMobile }),
       });
       if (phoneRes?.data?.exists || phoneRes?.exists) {
-        const msg = "An employee with this email or mobile number already exists in the system.";
+        const msg = "An employee with this mobile number already exists in the system.";
         setErrorMsg(msg);
         setFormErrors((prev) => ({
           ...prev,
-          mobileNo: "An employee with this email or mobile number already exists in the system.",
+          mobileNo: msg,
         }));
+      } else if (formErrors.mobileNo?.includes("already exists")) {
+        setFormErrors((prev) => {
+          const next = { ...prev };
+          delete next.mobileNo;
+          return next;
+        });
       }
     } catch (err) {
       console.warn("Mobile blur check error:", err);
@@ -2529,18 +2652,40 @@ function HrOnboarding() {
       setFormErrors((prev) => ({ ...prev, email: "" }));
     }
 
+    const isEditMode = Boolean(editingOnboardingId);
+    const origEmail = (
+      initialCandidateIdentity.email ||
+      editingCandidateUser?.email ||
+      selectedOnboarding?.email ||
+      selectedOnboarding?.employeeId?.email ||
+      ""
+    ).toLowerCase().trim();
+
+    // If in edit mode and the email address was not changed, skip duplicate check!
+    if (isEditMode && origEmail && normalizedEmail === origEmail) {
+      return;
+    }
+
+    const currentCandidateId = String(editingOnboardingId || selectedOnboarding?._id || selectedOnboarding?.id || "");
+    const currentEmpId = String(editingCandidateUser?._id || selectedOnboarding?.employeeId?._id || selectedOnboarding?.userId || "");
+
     const duplicateInPipeline = (onboardings || []).some((item) => {
+      const itemId = String(item?._id || item?.id || "");
       const emp = item?.employeeId || {};
+      const empId = String(emp?._id || emp?.id || "");
+      if (isEditMode && ((currentCandidateId && itemId === currentCandidateId) || (currentEmpId && empId === currentEmpId))) {
+        return false;
+      }
       const itemEmail = (emp.email || item.email || "").toLowerCase().trim();
       return itemEmail === normalizedEmail;
     });
 
     if (duplicateInPipeline) {
-      const msg = "An employee with this email or mobile number already exists in the system.";
+      const msg = "An employee with this email already exists in the system.";
       setErrorMsg(msg);
       setFormErrors((prev) => ({
         ...prev,
-        email: "An employee with this email or mobile number already exists in the system.",
+        email: msg,
       }));
       return;
     }
@@ -2551,11 +2696,11 @@ function HrOnboarding() {
         body: JSON.stringify({ email: normalizedEmail }),
       });
       if (emailRes?.data?.exists || emailRes?.exists) {
-        const msg = "An employee with this email or mobile number already exists in the system.";
+        const msg = "An employee with this email already exists in the system.";
         setErrorMsg(msg);
         setFormErrors((prev) => ({
           ...prev,
-          email: "An employee with this email or mobile number already exists in the system.",
+          email: msg,
         }));
       }
     } catch (err) {
@@ -3360,7 +3505,9 @@ function HrOnboarding() {
     } catch (err) {
       if (!isLatest()) return;
       setErrorMsg(`Failed to load candidate details: ${err.message}`);
-      setShowDetailModal(false);
+      if (!selectedOnboarding) {
+        setShowDetailModal(false);
+      }
     } finally {
       if (isLatest()) setLoadingDetails(false);
     }
@@ -3390,6 +3537,387 @@ function HrOnboarding() {
       if (agreeRes) setDetailAgreements(toArray(agreeRes));
     } catch (err) {
       console.warn("Reload details error:", err.message);
+    }
+  };
+
+  // ── Initiate Edit Mode for Candidate Onboarding in Multi-Step Wizard ──
+  const handleStartEditOnboarding = async (targetOnboarding, existingProfile = null, initialTab = "personal") => {
+    try {
+      setShowDetailModal(false);
+      const onboardingId =
+        typeof targetOnboarding === "string"
+          ? targetOnboarding
+          : (targetOnboarding?._id || targetOnboarding?.id || selectedOnboarding?._id || selectedOnboarding?.id);
+      if (!onboardingId) return;
+
+      let profile = existingProfile;
+      let onbRecord = typeof targetOnboarding === "object" ? targetOnboarding : null;
+
+      // If we don't have full profile details yet, fetch them
+      if (!profile || !onbRecord) {
+        setLoadingPipeline(true);
+        try {
+          const res = await fetchOnboardingById(onboardingId);
+          onbRecord = res?.data?.data || res?.data || res || {};
+          const empInfo = await fetchEmployeeInfo(onboardingId);
+          profile = empInfo;
+        } catch (e) {
+          console.warn("fetchOnboardingById / fetchEmployeeInfo error:", e);
+        } finally {
+          setLoadingPipeline(false);
+        }
+      }
+
+      // Resolve candidate user / employee object
+      const emp = onbRecord?.employeeId || onbRecord?.employee || onbRecord?.user || profile?.personal || {};
+      const candidateUserId = emp._id || onbRecord?.employeeId?._id || onbRecord?.userId || "";
+
+      // Also try to load education record for clean mapping if not already in profile
+      let dbEdu = profile?.educationRecord || null;
+      if (!dbEdu && candidateUserId) {
+        try {
+          dbEdu = await getEducationByUserId(candidateUserId);
+        } catch (e) { }
+      }
+
+      const rawMobile = profile?.personal?.mobileNo || emp.mobileNo || profile?.mobileNo || onbRecord?.mobileNo || "";
+      const parsedPhone = parsePhoneNumber(rawMobile);
+
+      const candidateComp = profile?.compensation || onbRecord?.compensation || {};
+      const isCandidateUnpaid = Boolean(
+        profile?.isUnpaid ||
+        profile?.compensationType === "UNPAID" ||
+        candidateComp.compensationType === "UNPAID" ||
+        candidateComp.isUnpaid ||
+        emp.compensationType === "UNPAID" ||
+        emp.isUnpaid
+      );
+
+      const candidateJoiningDate = profile?.personal?.joiningDate || emp.joiningDate || profile?.joiningDate || onbRecord?.joiningDate || "";
+      const candidateManagerId = emp.reportingManager?._id || emp.reportingManager || onbRecord?.reportingManager?._id || onbRecord?.reportingManager || "";
+
+      // Professional records
+      const rawProf = (Array.isArray(profile?.professional) && profile.professional.length > 0)
+        ? profile.professional
+        : (profile?.currentCompany && Object.keys(profile.currentCompany).length > 0)
+          ? [profile.currentCompany]
+          : (Array.isArray(emp.professional) && emp.professional.length > 0)
+            ? emp.professional
+            : (Array.isArray(onbRecord?.professional) && onbRecord.professional.length > 0)
+              ? onbRecord.professional
+              : [];
+
+      const mappedProf = rawProf.length > 0
+        ? rawProf.map((p) => ({
+            companyName: p.companyName || "",
+            companyWebsite: p.companyWebsite || p.website || p.linkedin || "",
+            department: p.department || profile?.personal?.department || emp.department || "",
+            designation: p.designation || profile?.personal?.designation || emp.designation || "",
+            role: p.role || "",
+            salary: p.salary || p.compensationAmount || "",
+            compensationType: p.compensationType || (isCandidateUnpaid ? "UNPAID" : "SALARY"),
+            compensationAmount: p.compensationAmount || p.salary || "",
+            employmentType: p.employmentType || emp.employmentType || "FULL_TIME",
+            isUnpaid: Boolean(p.isUnpaid || isCandidateUnpaid),
+            joiningDate: p.joiningDate ? new Date(p.joiningDate).toISOString().split("T")[0] : (candidateJoiningDate ? new Date(candidateJoiningDate).toISOString().split("T")[0] : ""),
+            reportedTo: p.reportedTo?._id || p.reportedTo || candidateManagerId || "",
+            noticePeriod: p.noticePeriod || "",
+            expectedLastWorkingDate: p.expectedLastWorkingDate ? new Date(p.expectedLastWorkingDate).toISOString().split("T")[0] : "",
+            employmentStatus: p.employmentStatus || "CURRENTLY_EMPLOYED",
+            isFresher: Boolean(p.isFresher || profile?.isFresher || emp.isFresher),
+            location: p.location || "",
+            isCurrent: p.isCurrent !== false,
+            docType: p.docType || p.documentType || "OFFER_LETTER",
+            docFile: null,
+            docName: p.docName || p.documentName || "",
+            docUrl: p.docUrl || p.documentUrl || "",
+          }))
+        : [
+            {
+              ...INITIAL_ONBOARDING_FORM_DATA.professional[0],
+              department: profile?.personal?.department || emp.department || "",
+              designation: profile?.personal?.designation || emp.designation || "",
+              joiningDate: candidateJoiningDate ? new Date(candidateJoiningDate).toISOString().split("T")[0] : "",
+              reportedTo: candidateManagerId || "",
+            },
+          ];
+
+      // Experience records
+      const rawExp = (Array.isArray(profile?.experience) && profile.experience.length > 0)
+        ? profile.experience
+        : (Array.isArray(emp.experience) && emp.experience.length > 0)
+          ? emp.experience
+          : [];
+
+      const mappedExp = rawExp.length > 0
+        ? rawExp.map((e) => ({
+            companyName: e.companyName || e.prevCompany || "",
+            prevCompany: e.prevCompany || e.companyName || "",
+            designation: e.designation || "",
+            experience: e.experience || e.experienceYears || "",
+            experienceYears: e.experienceYears || e.experience || "",
+            description: e.description || e.roleDescription || "",
+            roleDescription: e.roleDescription || e.description || "",
+            salary: e.salary || "",
+            startDate: e.startDate ? new Date(e.startDate).toISOString().split("T")[0] : "",
+            endDate: e.endDate ? new Date(e.endDate).toISOString().split("T")[0] : "",
+            isCurrentJob: Boolean(e.isCurrentJob),
+            noticePeriod: e.noticePeriod || "",
+            expectedLastWorkingDate: e.expectedLastWorkingDate ? new Date(e.expectedLastWorkingDate).toISOString().split("T")[0] : "",
+            employmentStatus: e.employmentStatus || "RELIEVED",
+            docType: e.docType || "EXPERIENCE_LETTER",
+            experienceDocFile: null,
+            experienceDocName: e.experienceDocName || (e.experienceDocUrl ? "Experience Letter" : ""),
+            experienceDocUrl: e.experienceDocUrl || e.docUrl || "",
+          }))
+        : INITIAL_ONBOARDING_FORM_DATA.experience;
+
+      // Address records
+      const rawAddrs = (Array.isArray(profile?.addresses) && profile.addresses.length > 0)
+        ? profile.addresses
+        : (Array.isArray(emp.addresses) && emp.addresses.length > 0)
+          ? emp.addresses
+          : [];
+
+      const mappedAddrs = rawAddrs.length > 0
+        ? rawAddrs.map((a) => ({
+            addressType: a.addressType || "Permanent",
+            addressLine1: a.addressLine1 || a.address1 || "",
+            addressLine2: a.addressLine2 || a.address2 || "",
+            city: a.city || "",
+            state: a.state || "",
+            country: a.country || "India",
+            pincode: a.pincode || a.postalCode || a.zipCode || "",
+          }))
+        : INITIAL_ONBOARDING_FORM_DATA.addresses;
+
+      // Bank & Statutory
+      const bank = profile?.bankDetails || emp.bankDetails || onbRecord?.bankDetails || {};
+      const statutory = profile?.statutoryDetails || emp.statutoryDetails || onbRecord?.statutoryDetails || {};
+
+      // Family
+      const rawFamily = (Array.isArray(profile?.family) && profile.family.length > 0)
+        ? profile.family
+        : (Array.isArray(emp.family) && emp.family.length > 0)
+          ? emp.family
+          : profile?.emergencyContact && (profile.emergencyContact.name || profile.emergencyContact.phone)
+            ? [profile.emergencyContact]
+            : emp.emergencyContact && (emp.emergencyContact.name || emp.emergencyContact.phone)
+              ? [emp.emergencyContact]
+              : [];
+
+      const mappedFamily = rawFamily.length > 0
+        ? rawFamily.map((f) => ({
+            name: f.name || f.fullName || "",
+            relationship: f.relationship || f.relation || "Father",
+            phone: f.phone || f.mobileNo || f.contactNo || "",
+            email: f.email || "",
+            occupation: f.occupation || "",
+          }))
+        : INITIAL_ONBOARDING_FORM_DATA.familyContacts;
+
+      const mappedForm = {
+        ...INITIAL_ONBOARDING_FORM_DATA,
+        firstName: profile?.personal?.firstName || emp.firstName || profile?.firstName || onbRecord?.firstName || "",
+        middleName: profile?.personal?.middleName || emp.middleName || profile?.middleName || onbRecord?.middleName || "",
+        lastName: profile?.personal?.lastName || emp.lastName || profile?.lastName || onbRecord?.lastName || "",
+        email: profile?.personal?.email || emp.email || profile?.email || onbRecord?.email || "",
+        dob: (profile?.personal?.dob || emp.dob || profile?.dob || onbRecord?.dob)
+          ? new Date(profile?.personal?.dob || emp.dob || profile?.dob || onbRecord?.dob).toISOString().split("T")[0]
+          : "",
+        gender: profile?.personal?.gender || emp.gender || profile?.gender || onbRecord?.gender || "",
+        marriageStatus: profile?.personal?.marriageStatus || emp.marriageStatus || profile?.marriageStatus || onbRecord?.marriageStatus || "",
+        mobileNo: parsedPhone?.nationalNumber || rawMobile,
+        countryCode: parsedPhone?.country?.dialCode || "+91",
+        countryIso2: parsedPhone?.country?.iso2 || "IN",
+        bloodGroup: profile?.personal?.bloodGroup || emp.bloodGroup || profile?.bloodGroup || onbRecord?.bloodGroup || "",
+        department: profile?.personal?.department || emp.department || profile?.department || onbRecord?.department || "",
+        designation: profile?.personal?.designation || emp.designation || profile?.designation || onbRecord?.designation || "",
+        joiningDate: candidateJoiningDate ? new Date(candidateJoiningDate).toISOString().split("T")[0] : "",
+        employmentType: emp.employmentType || profile?.employmentType || onbRecord?.employmentType || "FULL_TIME",
+        compensationType: isCandidateUnpaid ? "UNPAID" : (candidateComp.compensationType || profile?.compensationType || emp.compensationType || "SALARY"),
+        compensationAmount: isCandidateUnpaid ? "" : (candidateComp.annualCtc || candidateComp.stipendAmount || candidateComp.contractRate || profile?.compensationAmount || emp.compensationAmount || ""),
+        roleId: emp.roleId?._id || emp.roleId || emp.role?._id || profile?.roleId || onbRecord?.roleId || "",
+        employeeCode: emp.employeeCode || profile?.employeeCode || onbRecord?.employeeCode || "",
+        hasLoginAccess: emp.hasLoginAccess !== undefined ? emp.hasLoginAccess : true,
+        skills: Array.isArray(emp.skills) ? emp.skills : [],
+        isFresher: Boolean(profile?.isFresher || emp.isFresher || onbRecord?.isFresher),
+        isUnpaid: isCandidateUnpaid,
+        profilePicFile: null,
+        profilePicPreview: profile?.personal?.avatar || emp.avatar || emp.avatarUrl || profile?.avatar || "",
+        profilePicUrl: profile?.personal?.avatar || emp.avatar || emp.avatarUrl || profile?.avatar || "",
+
+        // Compensation
+        compensation: {
+          ...INITIAL_ONBOARDING_FORM_DATA.compensation,
+          ...candidateComp,
+          compensationType: isCandidateUnpaid ? "UNPAID" : (candidateComp.compensationType || "SALARY"),
+          annualCtc: isCandidateUnpaid ? "" : (candidateComp.annualCtc || profile?.compensationAmount || emp.salary || ""),
+          monthlyGross: candidateComp.monthlyGross || "",
+          basicSalary: candidateComp.basicSalary || "",
+          hra: candidateComp.hra || "",
+          netTakeHome: candidateComp.netTakeHome || "",
+          effectiveDate: candidateComp.effectiveDate
+            ? new Date(candidateComp.effectiveDate).toISOString().split("T")[0]
+            : (candidateJoiningDate ? new Date(candidateJoiningDate).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]),
+          isUnpaid: isCandidateUnpaid,
+        },
+
+        // Professional
+        professional: mappedProf,
+
+        // Education Qualifications (All Sections)
+        sslcSchoolName: dbEdu?.sslcSchoolName || "",
+        sslcBoard: dbEdu?.sslcBoard || "",
+        sslcYearOfPassing: dbEdu?.sslcYearOfPassing ? String(dbEdu.sslcYearOfPassing) : "",
+        sslcPercentage: dbEdu?.sslcPercentage ? String(dbEdu.sslcPercentage).replace(/[^0-9.]/g, "") : "",
+        sslcDocumentUrl: dbEdu?.sslcDocumentUrl || dbEdu?.sslcDocument || "",
+        sslcDocumentName: dbEdu?.sslcDocumentName || (dbEdu?.sslcDocumentUrl ? "SSLC Certificate" : ""),
+
+        hscSchoolName: dbEdu?.hscSchoolName || "",
+        hscBoard: dbEdu?.hscBoard || "",
+        hscYearOfPassing: dbEdu?.hscYearOfPassing ? String(dbEdu.hscYearOfPassing) : "",
+        hscPercentage: dbEdu?.hscPercentage ? String(dbEdu.hscPercentage).replace(/[^0-9.]/g, "") : "",
+        hscDocumentUrl: dbEdu?.hscDocumentUrl || dbEdu?.hscDocument || "",
+        hscDocumentName: dbEdu?.hscDocumentName || (dbEdu?.hscDocumentUrl ? "HSC Certificate" : ""),
+
+        itiinstituteName: dbEdu?.itiinstituteName || "",
+        iticourse: dbEdu?.iticourse || "",
+        itiduration: dbEdu?.itiduration || "",
+        itiyearOfPassing: dbEdu?.itiyearOfPassing ? String(dbEdu.itiyearOfPassing) : "",
+        itipercentage: dbEdu?.itipercentage ? String(dbEdu.itipercentage).replace(/[^0-9.]/g, "") : "",
+        itiDocumentUrl: dbEdu?.itiDocumentUrl || dbEdu?.itiDocument || "",
+        itiDocumentName: dbEdu?.itiDocumentName || (dbEdu?.itiDocumentUrl ? "ITI Certificate" : ""),
+
+        diplomainstitution: dbEdu?.diplomainstitution || "",
+        diplomacourse: dbEdu?.diplomacourse || "",
+        diplomaduration: dbEdu?.diplomaduration || "",
+        diplomayearOfPassing: dbEdu?.diplomayearOfPassing ? String(dbEdu.diplomayearOfPassing) : "",
+        diplomapercentage: dbEdu?.diplomapercentage ? String(dbEdu.diplomapercentage).replace(/[^0-9.]/g, "") : "",
+        diplomaDocumentUrl: dbEdu?.diplomaDocumentUrl || dbEdu?.diplomaDocument || "",
+        diplomaDocumentName: dbEdu?.diplomaDocumentName || (dbEdu?.diplomaDocumentUrl ? "Diploma Certificate" : ""),
+
+        ugInstituteName: dbEdu?.ugInstituteName || dbEdu?.ugUniversityName || "",
+        ugUniversityName: dbEdu?.ugUniversityName || dbEdu?.ugInstituteName || "",
+        ugDegree: dbEdu?.ugDegree || "",
+        ugDepartmentCourse: dbEdu?.ugDepartmentCourse || "",
+        ugYearOfPassing: dbEdu?.ugYearOfPassing ? String(dbEdu.ugYearOfPassing) : "",
+        ugCgpa: dbEdu?.ugCgpa ? String(dbEdu.ugCgpa) : (dbEdu?.ugPercentage ? String(dbEdu.ugPercentage) : ""),
+        ugDocumentUrl: dbEdu?.ugDocumentUrl || dbEdu?.ugDocument || "",
+        ugDocumentName: dbEdu?.ugDocumentName || (dbEdu?.ugDocumentUrl ? "UG Certificate" : ""),
+
+        pgInstituteName: dbEdu?.pgInstituteName || dbEdu?.pgUniversityName || "",
+        pgUniversityName: dbEdu?.pgUniversityName || dbEdu?.pgInstituteName || "",
+        pgDegree: dbEdu?.pgDegree || "",
+        pgDepartmentCourse: dbEdu?.pgDepartmentCourse || "",
+        pgYearOfPassing: dbEdu?.pgYearOfPassing ? String(dbEdu.pgYearOfPassing) : "",
+        pgCgpa: dbEdu?.pgCgpa ? String(dbEdu.pgCgpa) : "",
+        pgDocumentUrl: dbEdu?.pgDocumentUrl || dbEdu?.pgDocument || "",
+        pgDocumentName: dbEdu?.pgDocumentName || (dbEdu?.pgDocumentUrl ? "PG Certificate" : ""),
+
+        phdInstituteName: dbEdu?.phdInstituteName || dbEdu?.phdUniversityName || "",
+        phdUniversityName: dbEdu?.phdUniversityName || dbEdu?.phdInstituteName || "",
+        phdResearchArea: dbEdu?.phdResearchArea || "",
+        phdYearOfPassing: dbEdu?.phdYearOfPassing ? String(dbEdu.phdYearOfPassing) : "",
+        phdDocumentUrl: dbEdu?.phdDocumentUrl || dbEdu?.phdDocument || "",
+        phdDocumentName: dbEdu?.phdDocumentName || (dbEdu?.phdDocumentUrl ? "PhD Certificate" : ""),
+
+        // Experience
+        experience: mappedExp,
+
+        // Addresses
+        addresses: mappedAddrs,
+
+        // Bank & Statutory
+        bankName: bank.bankName || "",
+        accountNo: bank.accountNumber || bank.accountNo || "",
+        ifsc: bank.ifsc || bank.ifscCode || "",
+        branchName: bank.branchName || "",
+        panNo: statutory.panNo || "",
+        aadhaarNo: statutory.aadhaarNo || "",
+        passportNo: statutory.passportNo || "",
+        uanNo: statutory.uanNo || "",
+        pfNo: statutory.pfNo || "",
+        esiNo: statutory.esiNo || "",
+        passbookUrl: bank.passbookDoc || bank.passbookUrl || "",
+
+        // Family Contacts
+        familyContacts: mappedFamily,
+      };
+
+      // Fallback education from array if dbEdu was missing
+      if (!dbEdu && Array.isArray(profile?.education) && profile.education.length > 0) {
+        const eduArr = profile.education;
+        const sslcItem = eduArr.find((e) => (e.degree || "").toLowerCase().includes("sslc") || (e.degree || "").toLowerCase().includes("10th"));
+        if (sslcItem) {
+          mappedForm.sslcSchoolName = sslcItem.university || "";
+          mappedForm.sslcBoard = sslcItem.stream || "";
+          mappedForm.sslcYearOfPassing = sslcItem.yearOfPassing ? String(sslcItem.yearOfPassing) : "";
+          mappedForm.sslcPercentage = sslcItem.percentage ? String(sslcItem.percentage).replace(/[^0-9.]/g, "") : "";
+          mappedForm.sslcDocumentUrl = sslcItem.certificateUrl || "";
+        }
+        const hscItem = eduArr.find((e) => (e.degree || "").toLowerCase().includes("hsc") || (e.degree || "").toLowerCase().includes("12th"));
+        if (hscItem) {
+          mappedForm.hscSchoolName = hscItem.university || "";
+          mappedForm.hscBoard = hscItem.stream || "";
+          mappedForm.hscYearOfPassing = hscItem.yearOfPassing ? String(hscItem.yearOfPassing) : "";
+          mappedForm.hscPercentage = hscItem.percentage ? String(hscItem.percentage).replace(/[^0-9.]/g, "") : "";
+          mappedForm.hscDocumentUrl = hscItem.certificateUrl || "";
+        }
+        const ugItem = eduArr.find((e) => {
+          const d = (e.degree || "").toLowerCase();
+          return !d.includes("sslc") && !d.includes("10th") && !d.includes("hsc") && !d.includes("12th") && !d.includes("pg") && !d.includes("master") && !d.includes("phd") && !d.includes("iti") && !d.includes("diploma");
+        });
+        if (ugItem) {
+          mappedForm.ugInstituteName = ugItem.university || "";
+          mappedForm.ugDegree = ugItem.degree || "";
+          mappedForm.ugDepartmentCourse = ugItem.stream || "";
+          mappedForm.ugYearOfPassing = ugItem.yearOfPassing ? String(ugItem.yearOfPassing) : "";
+          mappedForm.ugCgpa = ugItem.percentage ? String(ugItem.percentage).replace(/[^0-9.]/g, "") : "";
+          mappedForm.ugDocumentUrl = ugItem.certificateUrl || "";
+        }
+        const pgItem = eduArr.find((e) => (e.degree || "").toLowerCase().includes("pg") || (e.degree || "").toLowerCase().includes("master"));
+        if (pgItem) {
+          mappedForm.pgInstituteName = pgItem.university || "";
+          mappedForm.pgDegree = pgItem.degree || "";
+          mappedForm.pgDepartmentCourse = pgItem.stream || "";
+          mappedForm.pgYearOfPassing = pgItem.yearOfPassing ? String(pgItem.yearOfPassing) : "";
+          mappedForm.pgCgpa = pgItem.percentage ? String(pgItem.percentage).replace(/[^0-9.]/g, "") : "";
+          mappedForm.pgDocumentUrl = pgItem.certificateUrl || "";
+        }
+      }
+
+      setExpandedEduSections({
+        iti: Boolean(mappedForm.itiinstituteName || mappedForm.iticourse),
+        diploma: Boolean(mappedForm.diplomainstitution || mappedForm.diplomacourse),
+        pg: Boolean(mappedForm.pgInstituteName || mappedForm.pgDegree),
+        phd: Boolean(mappedForm.phdInstituteName || mappedForm.phdResearchArea),
+      });
+
+      setFormData(mappedForm);
+      setEditingOnboardingId(onboardingId);
+      setEditingCandidateUser(emp);
+      const candInitialEmail = (mappedForm.email || "").toLowerCase().trim();
+      const candInitialMobile = (mappedForm.mobileNo || "").replace(/\D/g, "").slice(-10);
+      setInitialCandidateIdentity({
+        email: candInitialEmail,
+        mobileNo: candInitialMobile,
+      });
+      try {
+        sessionStorage.setItem(
+          "hrms_onboarding_initialIdentity",
+          JSON.stringify({ email: candInitialEmail, mobileNo: candInitialMobile })
+        );
+      } catch (e) { }
+      setIsEditingCandidateProfile(false);
+      setFormErrors({});
+      setErrorMsg("");
+      setActiveFormTab(initialTab || "personal");
+      setViewTab("onboard");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (err) {
+      console.error("handleStartEditOnboarding failed:", err);
+      setErrorMsg("Failed to open candidate onboarding for editing.");
     }
   };
 
@@ -4438,6 +4966,296 @@ function HrOnboarding() {
     }
     setFormErrors({});
 
+    // ── EDIT MODE SUBMIT: Update Existing Candidate Onboarding ──
+    if (editingOnboardingId) {
+      setSubmittingForm(true);
+      try {
+        const candidateUserId = editingCandidateUser?._id || selectedOnboarding?.employeeId?._id || selectedOnboarding?.userId;
+        const candEmpType = formData.employmentType || formData.professional?.[0]?.employmentType || "FULL_TIME";
+        const candCompType = formData.compensationType || formData.professional?.[0]?.compensationType || "SALARY";
+        const isCandUnpaid = candCompType === "UNPAID" || formData.isUnpaid || formData.professional?.some((p) => p.compensationType === "UNPAID");
+        const candCompAmount = isCandUnpaid ? "" : (formData.compensationAmount || formData.compensation?.annualCtc || formData.professional?.[0]?.compensationAmount || formData.professional?.[0]?.salary || "");
+
+        const normalizedProf = (formData.professional || []).map((p) => ({
+          ...p,
+          employmentType: p.employmentType || candEmpType,
+          compensationType: p.compensationType || candCompType,
+          compensationAmount: (p.compensationType === "UNPAID" || isCandUnpaid) ? "" : (p.compensationAmount || p.salary || candCompAmount),
+          salary: (p.compensationType === "UNPAID" || isCandUnpaid) ? "UNPAID" : (p.compensationAmount || p.salary || candCompAmount),
+          isUnpaid: Boolean(p.compensationType === "UNPAID" || isCandUnpaid),
+        }));
+
+        // 1. Update Core Employee Info
+        await updateEmployeeInfo(editingOnboardingId, {
+          personal: {
+            firstName: formData.firstName,
+            middleName: formData.middleName,
+            lastName: formData.lastName,
+            email: formData.email,
+            mobileNo: formData.mobileNo,
+            dob: formData.dob,
+            gender: formData.gender,
+            marriageStatus: formData.marriageStatus,
+            bloodGroup: formData.bloodGroup,
+            department: formData.department,
+            designation: formData.designation,
+            joiningDate: formData.joiningDate,
+            reportingManager: formData.reportingManager,
+            employmentType: candEmpType,
+            compensationType: candCompType,
+            compensationAmount: candCompAmount,
+            isUnpaid: isCandUnpaid,
+            noticePeriodDays: formData.noticePeriodDays,
+          },
+          firstName: formData.firstName,
+          middleName: formData.middleName,
+          lastName: formData.lastName,
+          email: formData.email,
+          mobileNo: formData.mobileNo,
+          dob: formData.dob,
+          gender: formData.gender,
+          marriageStatus: formData.marriageStatus,
+          bloodGroup: formData.bloodGroup,
+          department: formData.department,
+          designation: formData.designation,
+          joiningDate: formData.joiningDate,
+          reportingManager: formData.reportingManager,
+          employmentType: candEmpType,
+          compensationType: candCompType,
+          compensationAmount: candCompAmount,
+          isUnpaid: isCandUnpaid,
+          salary: isCandUnpaid ? "UNPAID" : candCompAmount,
+          compensation: formData.compensation || {},
+          noticePeriodDays: formData.noticePeriodDays,
+          professional: normalizedProf,
+          currentCompany: normalizedProf[0] || {},
+          education: formData.education || [],
+          educationDetails: formData.education || [],
+          experience: formData.experience || [],
+          experienceDetails: formData.experience || [],
+          addresses: formData.addresses || [],
+          address: formData.addresses || [],
+          emergencyContact: formData.familyContacts?.[0] || {},
+          family: formData.familyContacts || [],
+        });
+
+        // 2. Persist full compensation structure
+        if (formData.compensation) {
+          try {
+            await updateCandidateCompensation(editingOnboardingId, formData.compensation);
+          } catch (compErr) {
+            console.warn("updateCandidateCompensation notice:", compErr.message);
+          }
+        }
+
+        // 3. Update employment parameters
+        try {
+          await updateEmployment(editingOnboardingId, {
+            department: formData.department,
+            designation: formData.designation,
+            joiningDate: formData.joiningDate,
+            reportingManager: formData.reportingManager,
+            employmentType: candEmpType,
+            compensationType: candCompType,
+            compensationAmount: candCompAmount,
+            isUnpaid: isCandUnpaid,
+            salary: isCandUnpaid ? "UNPAID" : candCompAmount,
+            roleId: formData.roleId,
+          });
+        } catch (empErr) {
+          console.warn("updateEmployment notice:", empErr.message);
+        }
+
+        // 4. Sync role to user account if candidateUserId & roleId
+        if (candidateUserId && formData.roleId) {
+          try {
+            await assignUserRole(candidateUserId, formData.roleId);
+          } catch (roleErr) {
+            console.warn("assignUserRole notice:", roleErr.message);
+          }
+        }
+
+        // 5. Sync Education qualifications via FormData
+        if (candidateUserId) {
+          try {
+            const eduFormData = new FormData();
+            eduFormData.append("userId", String(candidateUserId));
+            eduFormData.append("employeeId", String(candidateUserId));
+            eduFormData.append("highestQualification", formData.highestQualification || "UG");
+
+            if (formData.sslcSchoolName) eduFormData.append("sslcSchoolName", formData.sslcSchoolName);
+            if (formData.sslcBoard) eduFormData.append("sslcBoard", formData.sslcBoard);
+            if (formData.sslcYearOfPassing) eduFormData.append("sslcYearOfPassing", String(formData.sslcYearOfPassing));
+            if (formData.sslcPercentage) eduFormData.append("sslcPercentage", String(formData.sslcPercentage));
+            if (formData.sslcDocumentFile instanceof File) eduFormData.append("sslcDocument", formData.sslcDocumentFile);
+
+            if (formData.hscSchoolName) eduFormData.append("hscSchoolName", formData.hscSchoolName);
+            if (formData.hscBoard) eduFormData.append("hscBoard", formData.hscBoard);
+            if (formData.hscYearOfPassing) eduFormData.append("hscYearOfPassing", String(formData.hscYearOfPassing));
+            if (formData.hscPercentage) eduFormData.append("hscPercentage", String(formData.hscPercentage));
+            if (formData.hscDocumentFile instanceof File) eduFormData.append("hscDocument", formData.hscDocumentFile);
+
+            if (formData.itiinstituteName) eduFormData.append("itiinstituteName", formData.itiinstituteName);
+            if (formData.iticourse) eduFormData.append("iticourse", formData.iticourse);
+            if (formData.itiyearOfPassing) eduFormData.append("itiyearOfPassing", String(formData.itiyearOfPassing));
+            if (formData.itipercentage) eduFormData.append("itipercentage", String(formData.itipercentage));
+            if (formData.itiDocumentFile instanceof File) eduFormData.append("itiDocument", formData.itiDocumentFile);
+
+            if (formData.diplomainstitution) eduFormData.append("diplomainstitution", formData.diplomainstitution);
+            if (formData.diplomacourse) eduFormData.append("diplomacourse", formData.diplomacourse);
+            if (formData.diplomayearOfPassing) eduFormData.append("diplomayearOfPassing", String(formData.diplomayearOfPassing));
+            if (formData.diplomapercentage) eduFormData.append("diplomapercentage", String(formData.diplomapercentage));
+            if (formData.diplomaDocumentFile instanceof File) eduFormData.append("diplomaDocument", formData.diplomaDocumentFile);
+
+            if (formData.ugInstituteName) eduFormData.append("ugInstituteName", formData.ugInstituteName);
+            if (formData.ugUniversityName) eduFormData.append("ugUniversityName", formData.ugUniversityName);
+            if (formData.ugDegree) eduFormData.append("ugDegree", formData.ugDegree);
+            if (formData.ugDepartmentCourse) eduFormData.append("ugDepartmentCourse", formData.ugDepartmentCourse);
+            if (formData.ugYearOfPassing) eduFormData.append("ugYearOfPassing", String(formData.ugYearOfPassing));
+            if (formData.ugCgpa) eduFormData.append("ugCgpa", String(formData.ugCgpa));
+            if (formData.ugDocumentFile instanceof File) eduFormData.append("ugDocument", formData.ugDocumentFile);
+
+            if (formData.pgInstituteName) eduFormData.append("pgInstituteName", formData.pgInstituteName);
+            if (formData.pgUniversityName) eduFormData.append("pgUniversityName", formData.pgUniversityName);
+            if (formData.pgDegree) eduFormData.append("pgDegree", formData.pgDegree);
+            if (formData.pgDepartmentCourse) eduFormData.append("pgDepartmentCourse", formData.pgDepartmentCourse);
+            if (formData.pgYearOfPassing) eduFormData.append("pgYearOfPassing", String(formData.pgYearOfPassing));
+            if (formData.pgCgpa) eduFormData.append("pgCgpa", String(formData.pgCgpa));
+            if (formData.pgDocumentFile instanceof File) eduFormData.append("pgDocument", formData.pgDocumentFile);
+
+            if (formData.phdInstituteName) eduFormData.append("phdInstituteName", formData.phdInstituteName);
+            if (formData.phdUniversityName) eduFormData.append("phdUniversityName", formData.phdUniversityName);
+            if (formData.phdResearchArea) eduFormData.append("phdResearchArea", formData.phdResearchArea);
+            if (formData.phdYearOfPassing) eduFormData.append("phdYearOfPassing", String(formData.phdYearOfPassing));
+            if (formData.phdDocumentFile instanceof File) eduFormData.append("phdDocument", formData.phdDocumentFile);
+
+            await updateEducation(candidateUserId, eduFormData).catch(async () => {
+              await createEducation(eduFormData).catch((e) => console.warn("Education sync notice:", e.message));
+            });
+          } catch (eduSyncErr) {
+            console.warn("Education update sync notice:", eduSyncErr.message);
+          }
+        }
+
+        // 6. Sync Current Company & Professional records
+        if (candidateUserId && Array.isArray(formData.professional) && formData.professional.length > 0) {
+          try {
+            const primaryComp = formData.professional.find((p) => p.isCurrent) || formData.professional[0];
+            if (primaryComp && (primaryComp.companyName || primaryComp.isFresher)) {
+              if (primaryComp.docFile instanceof File) {
+                const compFormData = new FormData();
+                compFormData.append("userId", String(candidateUserId));
+                compFormData.append("employeeId", String(candidateUserId));
+                compFormData.append("document", primaryComp.docFile);
+                compFormData.append("documentType", primaryComp.docType || "OFFER_LETTER");
+                compFormData.append("companyName", primaryComp.companyName || "");
+                compFormData.append("companyWebsite", primaryComp.companyWebsite || "");
+                compFormData.append("location", primaryComp.location || "");
+                compFormData.append("department", primaryComp.department || formData.department || "");
+                compFormData.append("designation", primaryComp.designation || formData.designation || "");
+                compFormData.append("role", primaryComp.role || "");
+                compFormData.append("salary", String(primaryComp.salary || ""));
+                compFormData.append("joiningDate", primaryComp.joiningDate || formData.joiningDate || "");
+                compFormData.append("reportedTo", primaryComp.reportedTo || formData.reportingManager || "");
+                compFormData.append("noticePeriod", primaryComp.noticePeriod || "");
+                compFormData.append("expectedLastWorkingDate", primaryComp.expectedLastWorkingDate || "");
+                compFormData.append("employmentStatus", primaryComp.employmentStatus || "CURRENTLY_EMPLOYED");
+                compFormData.append("isFresher", String(primaryComp.isFresher || false));
+                await updateCurrentCompanyApi(String(candidateUserId), compFormData).catch((e) => console.warn("updateCurrentCompanyApi notice:", e.message));
+                await uploadProfessionalDocument(editingOnboardingId, primaryComp.docFile, primaryComp.companyName, primaryComp.docType || "OFFER_LETTER").catch((e) => console.warn("uploadProfessionalDocument notice:", e.message));
+              } else {
+                const compPayload = {
+                  userId: String(candidateUserId),
+                  employeeId: String(candidateUserId),
+                  companyName: primaryComp.companyName || (primaryComp.isFresher ? "Current Organization (Fresher)" : ""),
+                  companyWebsite: primaryComp.companyWebsite || "",
+                  location: primaryComp.location || "",
+                  department: primaryComp.department || formData.department || "",
+                  designation: primaryComp.designation || formData.designation || "",
+                  role: primaryComp.role || "",
+                  salary: primaryComp.salary || "",
+                  joiningDate: primaryComp.joiningDate || formData.joiningDate || "",
+                  reportedTo: primaryComp.reportedTo || formData.reportingManager || "",
+                  noticePeriod: primaryComp.noticePeriod || "",
+                  expectedLastWorkingDate: primaryComp.expectedLastWorkingDate || "",
+                  employmentStatus: primaryComp.employmentStatus || "CURRENTLY_EMPLOYED",
+                  isCurrent: primaryComp.isCurrent !== false,
+                  isFresher: primaryComp.isFresher || false,
+                  documentType: primaryComp.docType || "OFFER_LETTER",
+                  documentUrl: primaryComp.docUrl || "",
+                };
+                await updateCurrentCompanyApi(String(candidateUserId), compPayload).catch((e) => console.warn("updateCurrentCompanyApi notice:", e.message));
+              }
+            }
+          } catch (compSyncErr) {
+            console.warn("Company sync notice:", compSyncErr.message);
+          }
+        }
+
+        // 7. Update Bank & Statutory Details
+        const ifscValue = (formData.ifsc || "").trim().toUpperCase();
+        const resolvedBankName = (formData.bankName || "").trim() || deriveBankNameFromIfsc(ifscValue) || (ifscValue ? `${ifscValue.slice(0, 4)} Bank` : "Primary Bank");
+        const resolvedAccountHolder = `${formData.firstName || ""} ${formData.lastName || ""}`.trim();
+
+        await updatePayroll(editingOnboardingId, {
+          bankDetails: {
+            bankName: resolvedBankName,
+            accountHolderName: resolvedAccountHolder,
+            accountNumber: (formData.accountNo || "").trim(),
+            accountType: "SAVINGS",
+            ifsc: ifscValue,
+            ifscCode: ifscValue,
+            branchName: (formData.branchName || "").trim(),
+          },
+          statutoryDetails: {
+            panNo: (formData.panNo || "").trim().toUpperCase(),
+            aadhaarNo: (formData.aadhaarNo || "").trim(),
+            uanNo: (formData.uanNo || "").trim(),
+            pfNo: (formData.pfNo || "").trim(),
+            esiNo: (formData.esiNo || "").trim(),
+          },
+        });
+
+        // 8. Upload files if newly attached
+        if (formData.passbookFile instanceof File) {
+          await uploadBankPassbook(editingOnboardingId, formData.passbookFile).catch((e) => console.warn("Bank passbook upload notice:", e.message));
+        }
+        if (formData.profilePicFile instanceof File) {
+          await uploadCandidateProfilePic(editingOnboardingId, formData.profilePicFile).catch((e) => console.warn("Profile pic upload notice:", e.message));
+        }
+
+        setSuccessMsg(`Candidate onboarding updated successfully for ${formData.firstName} ${formData.lastName}!`);
+        const savedOid =
+          (typeof editingOnboardingId === "string" ? editingOnboardingId : null) ||
+          selectedOnboarding?._id ||
+          selectedOnboarding?.id;
+        setEditingOnboardingId(null);
+        setEditingCandidateUser(null);
+        setInitialCandidateIdentity({ email: "", mobileNo: "" });
+        try {
+          sessionStorage.removeItem("hrms_onboarding_editingId");
+          sessionStorage.removeItem("hrms_onboarding_formData");
+          sessionStorage.removeItem("hrms_onboarding_activeFormTab");
+          sessionStorage.removeItem("hrms_onboarding_initialIdentity");
+        } catch (e) { }
+
+        // Immediately return to pipeline view and display candidate workspace modal
+        setViewTab("pipeline");
+        if (savedOid) {
+          handleOpenCandidateWorkspace(savedOid);
+        }
+
+        // Background refresh pipeline & master records
+        loadPipelineData({ force: true }).catch(() => null);
+        loadMasterData({ forceDirectory: true }).catch(() => null);
+      } catch (err) {
+        setErrorMsg(err.message || "Failed to update candidate onboarding");
+      } finally {
+        setSubmittingForm(false);
+      }
+      return;
+    }
+
     setSubmittingForm(true);
     try {
       const primaryFamily = formData.familyContacts[0] || {};
@@ -5030,6 +5848,7 @@ function HrOnboarding() {
   // ── Toggle Login Access (Enable/Disable) ──
   const handleToggleLogin = async (onboardingId, currentlyHasAccess) => {
     if (!onboardingId) return;
+    setActionLoading(true);
     try {
       if (currentlyHasAccess) {
         await disableLogin(onboardingId);
@@ -5038,11 +5857,22 @@ function HrOnboarding() {
         await enableLogin(onboardingId);
         setSuccessMsg("Employee login access enabled.");
       }
+      setSelectedOnboarding((prev) => {
+        if (!prev) return prev;
+        const emp = prev.employeeId && typeof prev.employeeId === "object" ? { ...prev.employeeId } : {};
+        emp.hasLoginAccess = !currentlyHasAccess;
+        return {
+          ...prev,
+          employeeId: emp,
+        };
+      });
       await reloadCandidateDetails(onboardingId);
       await loadPipelineData({ force: true });
       await loadMasterData({ forceDirectory: true });
     } catch (err) {
       setErrorMsg(err.message || "Failed to toggle login access");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -5165,7 +5995,55 @@ function HrOnboarding() {
   };
   sectionStatus.review = Object.values(sectionStatus).every(Boolean);
 
+  const handleBackFromOnboarding = () => {
+    const targetOid =
+      (typeof editingOnboardingId === "string" ? editingOnboardingId : null) ||
+      selectedOnboarding?._id ||
+      selectedOnboarding?.id ||
+      (() => {
+        try {
+          const stored = sessionStorage.getItem("hrms_onboarding_editingId");
+          return typeof stored === "string" && stored !== "[object Object]" ? stored : null;
+        } catch {
+          return null;
+        }
+      })();
+
+    setEditingOnboardingId(null);
+    setEditingCandidateUser(null);
+    setInitialCandidateIdentity({ email: "", mobileNo: "" });
+    try {
+      sessionStorage.removeItem("hrms_onboarding_editingId");
+      sessionStorage.removeItem("hrms_onboarding_formData");
+      sessionStorage.removeItem("hrms_onboarding_activeFormTab");
+      sessionStorage.removeItem("hrms_onboarding_initialIdentity");
+    } catch (e) { }
+
+    setViewTab("pipeline");
+
+    if (selectedOnboarding && (selectedOnboarding._id || selectedOnboarding.id)) {
+      setShowDetailModal(true);
+      setDetailActiveTab("profile");
+      setIsEditingCandidateProfile(false);
+      setLoadingDetails(false);
+      const oid = selectedOnboarding._id || selectedOnboarding.id;
+      if (oid) {
+        reloadCandidateDetails(oid);
+      }
+    } else if (targetOid) {
+      handleOpenCandidateWorkspace(targetOid);
+    }
+  };
+
   const handleInitiateNewOnboarding = () => {
+    setEditingOnboardingId(null);
+    setEditingCandidateUser(null);
+    setInitialCandidateIdentity({ email: "", mobileNo: "" });
+    try {
+      sessionStorage.removeItem("hrms_onboarding_editingId");
+      sessionStorage.removeItem("hrms_onboarding_formData");
+      sessionStorage.removeItem("hrms_onboarding_initialIdentity");
+    } catch (e) { }
     setFormData({
       firstName: "",
       middleName: "",
@@ -5492,16 +6370,37 @@ function HrOnboarding() {
             <button
               type="button"
               className="onboarding-back-btn"
-              onClick={() => setViewTab("pipeline")}
-              title="Back to Pipeline"
+              onClick={handleBackFromOnboarding}
+              title={editingOnboardingId ? "Back to Candidate Workspace" : "Back to Pipeline"}
             >
               <FaChevronLeft size={13} />
             </button>
             <div>
-              <h5 className="mb-0 fw-bold text-dark">New Onboarding</h5>
-              <small className="text-muted extra-small">New Candidate Profile Setup</small>
+              <div className="d-flex align-items-center gap-2">
+                <h5 className="mb-0 fw-bold text-dark">
+                  {editingOnboardingId ? "Edit Onboarding" : "New Onboarding"}
+                </h5>
+                {editingOnboardingId && (
+                  <Badge bg="warning-subtle" className="text-warning-emphasis border border-warning-subtle rounded-pill extra-small px-2.5 py-0.5">
+                    Editing: {formData.firstName} {formData.lastName} ({formData.employeeCode || "Candidate"})
+                  </Badge>
+                )}
+              </div>
+              <small className="text-muted extra-small">
+                {editingOnboardingId ? "Update Candidate Onboarding Profile & Records" : "New Candidate Profile Setup"}
+              </small>
             </div>
           </div>
+          {editingOnboardingId && (
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              className="rounded-pill px-3 extra-small fw-semibold"
+              onClick={handleBackFromOnboarding}
+            >
+              Back to Workspace
+            </Button>
+          )}
         </div>
       ) : (
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
@@ -5850,8 +6749,7 @@ function HrOnboarding() {
                           <th>ROLE & DEPARTMENT</th>
                           <th>STATUS</th>
                           <th>PROGRESS</th>
-                          <th>JOINING DATE</th>
-                          <th className="text-end pe-3 pe-md-4">ACTIONS</th>
+                          <th className="text-end pe-3 pe-md-4">JOINING DATE</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -5947,33 +6845,12 @@ function HrOnboarding() {
                                 </div>
                               </td>
 
-                              <td>
+                              <td className="text-end pe-3 pe-md-4">
                                 <span className="joining-date-lbl">
                                   {item.joiningDate
                                     ? new Date(item.joiningDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
                                     : "15 Sep 2026"}
                                 </span>
-                              </td>
-
-                              <td className="text-end pe-3 pe-md-4" onClick={(e) => e.stopPropagation()}>
-                                <div className="d-flex align-items-center justify-content-end gap-1.5">
-                                  <Dropdown align="end">
-                                    <Dropdown.Toggle variant="light" size="sm" className="candidate-more-btn shadow-none p-0">
-                                      <FaEllipsisV size={12} />
-                                    </Dropdown.Toggle>
-                                    <Dropdown.Menu className="shadow-sm border-0 rounded-3 extra-small">
-                                      <Dropdown.Item onClick={() => handleOpenCandidateWorkspace(item._id)}>
-                                        <FaCog className="me-2 text-primary" /> Full Workspace
-                                      </Dropdown.Item>
-                                      <Dropdown.Item onClick={() => { setSelectedOnboarding(item); handleRunValidation(true); }}>
-                                        <FaShieldAlt className="me-2 text-warning" /> Run Validation
-                                      </Dropdown.Item>
-                                      <Dropdown.Item onClick={() => handleOpenProvision(emp)}>
-                                        <FaKey className="me-2 text-success" /> Provision Account
-                                      </Dropdown.Item>
-                                    </Dropdown.Menu>
-                                  </Dropdown>
-                                </div>
                               </td>
                             </tr>
                           );
@@ -8310,14 +9187,16 @@ function HrOnboarding() {
                         <div>
                           <div className="d-flex align-items-center gap-2 flex-wrap">
                             <h5 className="fw-bold mb-0 text-dark">
-                              HR Onboarding Summary & Verification Review
+                              {editingOnboardingId ? "HR Onboarding Summary & Update Review" : "HR Onboarding Summary & Verification Review"}
                             </h5>
                             <Badge bg="success-subtle" className="text-success border border-success-subtle rounded-pill extra-small px-2.5 py-1">
-                              ● Ready for Initialization
+                              {editingOnboardingId ? "● Ready to Save Changes" : "● Ready for Initialization"}
                             </Badge>
                           </div>
                           <span className="extra-small text-muted d-block mt-0.5">
-                            Please verify all candidate profile information, academic records, compensation, statutory IDs, and emergency contacts before initiating candidate onboarding.
+                            {editingOnboardingId
+                              ? "Please review all updated candidate details, compensation, academic records, and emergency contacts before saving changes."
+                              : "Please verify all candidate profile information, academic records, compensation, statutory IDs, and emergency contacts before initiating candidate onboarding."}
                           </span>
                         </div>
                       </div>
@@ -9291,14 +10170,31 @@ function HrOnboarding() {
 
                 {/* Navigation Buttons */}
                 <div className="mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
-                  <button
-                    type="button"
-                    className="onboarding-nav-btn onboarding-prev-btn"
-                    onClick={handlePrevStep}
-                    disabled={activeFormTab === formTabs[0].id}
-                  >
-                    <FaChevronLeft size={10} /> Previous
-                  </button>
+                  <div className="d-flex align-items-center gap-2">
+                    <button
+                      type="button"
+                      className="onboarding-nav-btn onboarding-prev-btn"
+                      onClick={() => {
+                        if (activeFormTab === formTabs[0].id) {
+                          handleBackFromOnboarding();
+                        } else {
+                          handlePrevStep();
+                        }
+                      }}
+                    >
+                      <FaChevronLeft size={10} /> {activeFormTab === formTabs[0].id ? (editingOnboardingId ? "Back to Workspace" : "Cancel & Return") : "Previous"}
+                    </button>
+                    {editingOnboardingId && activeFormTab !== formTabs[0].id && (
+                      <Button
+                        variant="outline-secondary"
+                        size="sm"
+                        className="rounded-pill px-3 extra-small fw-semibold"
+                        onClick={handleBackFromOnboarding}
+                      >
+                        Back to Workspace
+                      </Button>
+                    )}
+                  </div>
 
                   {activeFormTab !== formTabs[formTabs.length - 1].id ? (
                     <button
@@ -9314,8 +10210,16 @@ function HrOnboarding() {
                       className="onboarding-nav-btn onboarding-submit-btn"
                       onClick={handleOnboardSubmit}
                       disabled={submittingForm}
+                      style={editingOnboardingId ? { background: "#2DC58A" } : {}}
                     >
-                      {submittingForm ? <LoadingSpinner variant="button" size="sm" /> : <FaUserCheck size={13} />} Initialize Candidate Onboarding
+                      {submittingForm ? (
+                        <LoadingSpinner variant="button" size="sm" />
+                      ) : editingOnboardingId ? (
+                        <FaSave size={13} />
+                      ) : (
+                        <FaUserCheck size={13} />
+                      )}{" "}
+                      {editingOnboardingId ? "Save Onboarding Changes" : "Initialize Candidate Onboarding"}
                     </button>
                   )}
                 </div>
@@ -9733,6 +10637,15 @@ function HrOnboarding() {
                         <FaLock size={11} className="me-1.5" /> Disable Login Access
                       </Button>
                     )}
+                    <Button
+                      variant="outline-success"
+                      size="sm"
+                      className="rounded-pill px-3 py-1 extra-small fw-bold d-flex align-items-center gap-1.5 shadow-xs"
+                      onClick={() => handleStartEditOnboarding(selectedOnboarding, candidateProfileData)}
+                      title="Edit this candidate's onboarding profile in the onboarding wizard"
+                    >
+                      <FaEdit size={11} className="me-1" /> Edit Onboarding
+                    </Button>
                   </div>
                 </div>
               </Card>
@@ -9790,7 +10703,13 @@ function HrOnboarding() {
                           </Button>
                         </div>
                       ) : (
-                        <Button variant="outline-success" size="sm" className="rounded-pill px-3 extra-small fw-semibold" onClick={() => setIsEditingCandidateProfile(true)}>
+                        <Button
+                          variant="outline-success"
+                          size="sm"
+                          className="rounded-pill px-3 extra-small fw-semibold"
+                          onClick={() => handleStartEditOnboarding(selectedOnboarding, candidateProfileData)}
+                          title="Open this candidate in the multi-step Onboarding form to edit all profile records"
+                        >
                           <FaEdit className="me-1" /> Edit Profile Records
                         </Button>
                       )}

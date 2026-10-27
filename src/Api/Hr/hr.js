@@ -1146,7 +1146,10 @@ export const provisionOnboardingAccount = async (id, payload) => {
  * @param {string} id - Onboarding record ID
  */
 export const enableLogin = async (id) => {
-  const res = await apiFetch(`/onboarding/${id}/enable-login`, { method: "PUT" });
+  let res = await apiFetch(`/onboarding/${id}/enable-login`, { method: "PUT" });
+  if (!res.ok && res.status === 404) {
+    res = await apiFetch(`/onboarding/${id}/enable-login`, { method: "POST" });
+  }
   if (!res.ok) {
     throw apiError(res, "Failed to enable login.");
   }
@@ -1158,7 +1161,10 @@ export const enableLogin = async (id) => {
  * @param {string} id - Onboarding record ID
  */
 export const disableLogin = async (id) => {
-  const res = await apiFetch(`/onboarding/${id}/disable-login`, { method: "PUT" });
+  let res = await apiFetch(`/onboarding/${id}/disable-login`, { method: "PUT" });
+  if (!res.ok && res.status === 404) {
+    res = await apiFetch(`/onboarding/${id}/disable-login`, { method: "POST" });
+  }
   if (!res.ok) {
     throw apiError(res, "Failed to disable login.");
   }
