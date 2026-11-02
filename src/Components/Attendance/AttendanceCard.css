@@ -26,9 +26,11 @@
 
 /* State 1: Punch In Action */
 .btn-punch-in {
-  background: var(--primary-gradient, linear-gradient(135deg, #C79D58 0%, #C49A55 100%));
-  border: none;
-  color: var(--color-text, #1C1D1D);
+  background: var(--color-brand, #C7882C);
+  background-color: var(--color-brand, #C7882C);
+  background-image: none;
+  border: 1px solid var(--color-brand, #C7882C);
+  color: var(--brand-contrast-text, #1C1D1D);
   font-weight: 700;
   padding: 0.75rem 2rem;
   border-radius: 99px;
@@ -54,15 +56,17 @@
 
 /* State 2: Punch Out Action */
 .btn-punch-out {
-  background: linear-gradient(135deg, var(--color-danger, #D94A32) 0%, #B83A24 100%);
-  border: none;
-  color: var(--color-surface, #FFFFFF);
+  background: var(--status-danger, #C23934);
+  background-color: var(--status-danger, #C23934);
+  background-image: none;
+  border: 1px solid var(--status-danger, #C23934);
+  color: #FFFFFF;
   font-weight: 700;
   padding: 0.75rem 2rem;
   border-radius: 99px;
   font-size: 0.95rem;
   min-width: 180px;
-  box-shadow: 0 4px 14px rgba(217, 74, 50, 0.35);
+  box-shadow: 0 4px 14px rgba(194, 57, 52, 0.35);
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;

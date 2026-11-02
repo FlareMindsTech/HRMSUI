@@ -20,6 +20,9 @@ import {
   FaCrown,
   FaCalendarCheck,
   FaCodeBranch,
+  FaSitemap,
+  FaUsers,
+  FaNetworkWired,
 } from "react-icons/fa";
 import { useSelector, useDispatch } from 'react-redux';
 import { selectAuthUser, useHasPermission } from '../../redux/slices/authSlice';
@@ -41,6 +44,10 @@ import FinancialYearsSection from "../../Components/Organisation/FinancialYearsS
 import HolidayCalendarsSection from "../../Components/Organisation/HolidayCalendarsSection";
 import LeaveSettingsSection from "../../Components/Organisation/LeaveSettingsSection";
 import SubscriptionSection from "../../Components/Organisation/SubscriptionSection";
+import DepartmentsSection from "../../Components/Organisation/DepartmentsSection";
+import DesignationsSection from "../../Components/Organisation/DesignationsSection";
+import TeamsSection from "../../Components/Organisation/TeamsSection";
+import ReportingHierarchySection from "../../Components/Organisation/ReportingHierarchySection";
 import OrgSetupWizard from "../../Components/Organisation/OrgSetupWizard";
 import EditOrgProfilePage from "../../Components/Organisation/EditOrgProfilePage";
 import "./Organisation.css";
@@ -53,6 +60,17 @@ const ORG_NAV_GROUPS = [
     groupIcon: FaBuilding,
     tabs: [
       { key: "overview", label: "Overview", icon: FaBuilding, perm: "organization.view" },
+    ],
+  },
+  {
+    groupId: "structure",
+    groupTitle: "Structure",
+    groupIcon: FaSitemap,
+    tabs: [
+      { key: "departments", label: "Departments", icon: FaSitemap, perm: "department.view" },
+      { key: "designations", label: "Designations", icon: FaBriefcase, perm: "designation.view" },
+      { key: "teams", label: "Teams", icon: FaUsers, perm: "team.view" },
+      { key: "hierarchy", label: "Reporting Hierarchy", icon: FaNetworkWired, perm: "reportingHierarchy.view" },
     ],
   },
   {
@@ -70,7 +88,6 @@ const ORG_NAV_GROUPS = [
     tabs: [
       { key: "locations", label: "Locations", icon: FaMapMarkerAlt, perm: "location.view" },
       { key: "work-calendars", label: "Work Calendars", icon: FaCalendarWeek, perm: "workCalendar.view" },
-      { key: "attendance", label: "Attendance Settings", icon: FaCalendarCheck, perm: "organizationSettings.view" },
     ],
   },
   {
@@ -209,7 +226,17 @@ function Organisation() {
       return;
     }
     if (section === "attendance") {
-      navigate("/settings/organization?tab=attendance", { replace: true });
+      navigate("/attendance", { replace: true });
+      return;
+    }
+    if (section === "holidays") {
+      setActiveTab("holiday-calendars");
+      setActiveCategory("HR Masters");
+      return;
+    }
+    if (section === "reporting" || section === "reporting-hierarchy") {
+      setActiveTab("hierarchy");
+      setActiveCategory("Structure");
       return;
     }
     if (section === "profile") {
@@ -219,10 +246,6 @@ function Organisation() {
       setActiveTab(section);
       const foundGroup = ORG_NAV_GROUPS.find((g) => g.tabs.some((t) => t.key === section));
       if (foundGroup) setActiveCategory(foundGroup.groupTitle);
-    } else if (["departments", "designations", "teams", "reporting-hierarchy"].includes(section)) {
-      const tabParam = section === "reporting-hierarchy" ? "reporting" : section;
-      navigate(`/organisation/branches?tab=${tabParam}`, { replace: true });
-      return;
     } else if (section === "users" || section === "roles") {
       navigate(`/${section}`, { replace: true });
       return;
@@ -249,7 +272,7 @@ function Organisation() {
       return;
     }
     if (tabKey === "attendance") {
-      navigate("/settings/organization?tab=attendance");
+      navigate("/attendance");
       return;
     }
     if (tabKey === "profile") {
@@ -356,12 +379,15 @@ function Organisation() {
       case "subscription":
         return <SubscriptionSection />;
       case "departments":
+        return <DepartmentsSection />;
       case "designations":
+        return <DesignationsSection />;
       case "teams":
-      case "reporting-hierarchy": {
-        const tabParam = activeTab === "reporting-hierarchy" ? "reporting" : activeTab;
-        return <Navigate to={`/organisation/branches?tab=${tabParam}`} replace />;
-      }
+        return <TeamsSection />;
+      case "hierarchy":
+      case "reporting":
+      case "reporting-hierarchy":
+        return <ReportingHierarchySection />;
       case "locations":
         return <LocationsSection />;
       case "job-grades":
@@ -371,7 +397,7 @@ function Organisation() {
       case "work-calendars":
         return <WorkCalendarsSection />;
       case "attendance":
-        return <Navigate to="/settings/organization?tab=attendance" replace />;
+        return <Navigate to="/attendance" replace />;
       case "shifts":
         return <ShiftsSection />;
       case "holiday-calendars":
@@ -507,14 +533,14 @@ function Organisation() {
               <FaBolt className="me-1 text-warning" /> Quick Actions
             </Dropdown.Toggle>
             <Dropdown.Menu align="end" className="org-dropdown-menu shadow">
-              <Dropdown.Item onClick={() => navigate("/organisation/branches?tab=departments")}>
+              <Dropdown.Item onClick={() => handleTabSelect("departments")}>
                 <FaPlus className="me-2 text-primary" /> Add Department
               </Dropdown.Item>
               <Dropdown.Item onClick={() => navigate("/organisation/branches?action=create")}>
                 <FaPlus className="me-2 text-success" /> Add Branch
               </Dropdown.Item>
-              <Dropdown.Item onClick={() => navigate("/organisation/branches?tab=reporting")}>
-                <FaPlus className="me-2 text-info" /> Add Employee
+              <Dropdown.Item onClick={() => handleTabSelect("hierarchy")}>
+                <FaPlus className="me-2 text-info" /> Add Employee Hierarchy
               </Dropdown.Item>
               <Dropdown.Item onClick={() => handleTabSelect("locations")}>
                 <FaPlus className="me-2 text-warning" /> Add Location
@@ -651,96 +677,7 @@ function Organisation() {
         </div>
       )}
 
-      {/* ── 3. EXECUTIVE DUAL-TIER NAVIGATION CONSOLE ── */}
-      <div className="org-dual-nav-console mb-4">
-        {/* Tier 1: Category Level Navigation */}
-        <div className="org-category-tier">
-          <div className="org-category-track" role="tablist">
-            {ORG_NAV_GROUPS.map((group) => {
-              const GroupIcon = group.groupIcon;
-              const isGroupActive = activeCategory === group.groupTitle;
-              const subCount = group.tabs.length;
-              return (
-                <button
-                  key={group.groupTitle}
-                  type="button"
-                  role="tab"
-                  aria-selected={isGroupActive}
-                  className={`org-category-btn ${isGroupActive ? "active" : ""}`}
-                  onClick={() => handleCategorySelect(group)}
-                >
-                  {GroupIcon && <GroupIcon className="org-category-icon" />}
-                  <span className="org-category-btn-text">{group.groupTitle}</span>
-                  {subCount > 1 && (
-                    <span className="org-category-count-badge">
-                      {subCount}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="org-nav-tier-actions">
-            <div className="org-nav-status-badge d-none d-md-inline-flex">
-              <span className="org-nav-status-pulse" />
-              <span>Tenant Governance</span>
-            </div>
-            <button
-              type="button"
-              className="org-nav-branch-link-btn"
-              onClick={() => navigate("/organisation/branches")}
-              title="Open Branch Workspace"
-            >
-              <FaCodeBranch className="org-nav-branch-icon" />
-              <span>Branch Workspace</span>
-              <span className="org-nav-branch-arrow">↗</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Tier 2: Sub-Module Docked Rail (shown when active category has multiple modules) */}
-        {currentCategoryGroup && currentCategoryGroup.tabs.length > 1 && (
-          <div className="org-submodule-tier">
-            <div className="org-submodule-left-wrap">
-              <div className="org-submodule-scope-label">
-                <span className="org-submodule-scope-dot" />
-                <span>{currentCategoryGroup.groupTitle} Modules</span>
-              </div>
-              <div className="org-submodule-list" role="tablist">
-                {currentCategoryGroup.tabs.map((tab) => {
-                  const Icon = tab.icon;
-                  const isTabActive = activeTab === tab.key;
-                  return (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      role="tab"
-                      aria-selected={isTabActive}
-                      className={`org-submodule-pill ${isTabActive ? "active" : ""}`}
-                      onClick={() => handleTabSelect(tab.key)}
-                    >
-                      <Icon className="org-submodule-icon" />
-                      <span>{tab.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="org-submodule-right-meta d-none d-lg-flex">
-              <span className="org-submodule-meta-label">
-                {activeTabObj?.label ? `Configuring: ${activeTabObj.label}` : `${currentCategoryGroup.tabs.length} modules`}
-              </span>
-              <span className="org-submodule-step-counter">
-                {currentCategoryGroup.tabs.findIndex((t) => t.key === activeTab) + 1} of {currentCategoryGroup.tabs.length}
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── 5. ACTIVE MODULE VIEWPORT ── */}
+      {/* ── ACTIVE MODULE VIEWPORT ── */}
       <div className="org-tab-content-area">
         {renderActiveSection()}
       </div>

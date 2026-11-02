@@ -6,11 +6,12 @@
 
 /* ── Container ── */
 .onboarding-container {
-  padding: 0 !important;
+  padding: 24px 32px 48px 32px !important;
   max-width: 100% !important;
   width: 100% !important;
   overflow-x: auto;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .onboarding-container .row {
@@ -20,18 +21,18 @@
 
 /* ── Header & View Switcher ── */
 .onboarding-header-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: var(--primary-gradient, linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%));
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #0F172A !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  color: var(--color-text, #1C1D1D);
+  font-size: 20px;
+  color: #FFFFFF !important;
   flex-shrink: 0;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
 }
 
 .onboarding-header-title {
@@ -254,66 +255,66 @@
 }
 
 /* ── Prominent Start Onboarding Primary Action Button ── */
+.onboarding-container .onboarding-start-btn,
 .onboarding-start-btn {
-  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.25) !important;
-  padding: 8px 22px 8px 12px !important;
-  font-size: 0.9rem !important;
-  font-weight: 700 !important;
-  letter-spacing: -0.01em;
-  color: var(--color-text, #1C1D1D) !important;
+  background: var(--color-brand) !important;
+  background-color: var(--color-brand) !important;
+  background-image: none !important;
+  border: 1px solid var(--color-brand) !important;
+  border-color: var(--color-brand) !important;
+  padding: 8px 18px !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  color: var(--brand-contrast-text, #111827) !important;
+  border-radius: 8px !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 12px !important;
-  box-shadow: 0 4px 16px rgba(196, 154, 85, 0.4) !important;
-  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  gap: 8px !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
   position: relative;
   overflow: hidden;
-  cursor: pointer;
 }
 
-.onboarding-start-btn::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  transition: left 0.6s ease;
-}
-
-.onboarding-start-btn:hover::before {
-  left: 100%;
-}
-
+.onboarding-container .onboarding-start-btn:hover,
 .onboarding-start-btn:hover {
-  background: linear-gradient(135deg, var(--color-primary-light, #EAD08D) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #8E651F) 100%) !important;
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 8px 24px rgba(196, 154, 85, 0.52) !important;
+  background: var(--brand-hover) !important;
+  background-color: var(--brand-hover) !important;
+  background-image: none !important;
+  border-color: var(--brand-hover) !important;
+  color: var(--brand-contrast-text, #111827) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-1px) !important;
 }
 
+.onboarding-container .onboarding-start-btn:active,
 .onboarding-start-btn:active {
-  transform: translateY(0) scale(0.98);
+  background: var(--brand-active) !important;
+  background-color: var(--brand-active) !important;
+  background-image: none !important;
+  border-color: var(--brand-active) !important;
+  transform: translateY(0) !important;
 }
 
 .onboarding-start-btn-icon-wrap {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 13px;
+  color: #FFFFFF;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
   transition: transform 0.2s ease;
 }
 
 .onboarding-start-btn:hover .onboarding-start-btn-icon-wrap {
   transform: scale(1.1) rotate(5deg);
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.25);
 }
 
 /* ── Themed Circular Back Button ── */
@@ -347,56 +348,64 @@
 
 .onboarding-primary-action-btn,
 .onboarding-btn-mint {
-  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%) !important;
-  border-color: transparent !important;
-  color: var(--color-text, #1C1D1D) !important;
-  box-shadow: 0 4px 14px rgba(196, 154, 85, 0.35) !important;
-  transition: all 0.18s ease-in-out !important;
+  background: var(--color-brand) !important;
+  background-color: var(--color-brand) !important;
+  background-image: none !important;
+  border: 1px solid var(--color-brand) !important;
+  color: var(--brand-contrast-text, #111827) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08) !important;
 }
 
 .onboarding-primary-action-btn:hover,
 .onboarding-btn-mint:hover {
-  background: linear-gradient(135deg, var(--color-primary-light, #EAD08D) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #8E651F) 100%) !important;
-  box-shadow: 0 6px 18px rgba(196, 154, 85, 0.45) !important;
-  transform: translateY(-1px);
+  background: var(--brand-hover) !important;
+  background-color: var(--brand-hover) !important;
+  background-image: none !important;
+  border-color: var(--brand-hover) !important;
+  color: var(--brand-contrast-text, #111827) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
 }
 
 /* ── Section Navigation Bar ── */
 .onboarding-section-nav-wrapper {
-  background: var(--color-surface, #FFFFFF);
-  padding: 4px 6px;
-  border-radius: 9999px;
-  display: inline-flex;
-  border: 1px solid #E8E2D5;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  background: #F1F5F9 !important;
+  padding: 4px !important;
+  border-radius: 10px !important;
+  display: inline-flex !important;
+  border: 1px solid #E2E8F0 !important;
+  gap: 4px !important;
 }
 
 .onboarding-section-tab-btn {
   font-size: 0.84rem !important;
   font-weight: 600 !important;
   padding: 7px 18px !important;
-  border-radius: 9999px !important;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  border: none !important;
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
+  border-radius: 7px !important;
+  transition: all 0.18s ease !important;
+  border: 1px solid transparent !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  cursor: pointer !important;
+  line-height: 1.4 !important;
 }
 
 .onboarding-section-tab-btn.active {
-  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%) !important;
-  color: var(--color-text, #1C1D1D) !important;
-  box-shadow: 0 2px 8px rgba(196, 154, 85, 0.35) !important;
+  background: #0F172A !important;
+  color: #FFFFFF !important;
+  border-color: #0F172A !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25) !important;
 }
 
 .onboarding-section-tab-btn:not(.active) {
   background: transparent !important;
-  color: var(--color-secondary-text, #77736B) !important;
+  color: #475569 !important;
 }
 
 .onboarding-section-tab-btn:not(.active):hover {
-  background: var(--color-primary-light, #F1E8D6) !important;
-  color: var(--color-text, #1C1D1D) !important;
+  background: #1E293B !important;
+  color: #FFFFFF !important;
+  border-color: #1E293B !important;
 }
 
 /* ── Dashboard Cards Shell ── */
@@ -977,24 +986,35 @@
 /* ── Primary & Success Themed Action Buttons ── */
 .onboarding-container .btn-success,
 .onboarding-container .btn-primary {
-  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.25) !important;
-  color: var(--color-text, #1C1D1D) !important;
-  font-weight: 700 !important;
-  box-shadow: 0 4px 14px rgba(196, 154, 85, 0.35) !important;
+  background: var(--color-brand) !important;
+  background-color: var(--color-brand) !important;
+  background-image: none !important;
+  border: 1px solid var(--color-brand) !important;
+  border-color: var(--color-brand) !important;
+  color: var(--brand-contrast-text, #111827) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08) !important;
   transition: all 0.2s ease !important;
 }
 
 .onboarding-container .btn-success:hover,
 .onboarding-container .btn-primary:hover {
-  background: linear-gradient(135deg, var(--color-primary-light, #EAD08D) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #8E651F) 100%) !important;
-  box-shadow: 0 6px 20px rgba(196, 154, 85, 0.48) !important;
-  transform: translateY(-1px);
+  background: var(--brand-hover) !important;
+  background-color: var(--brand-hover) !important;
+  background-image: none !important;
+  border-color: var(--brand-hover) !important;
+  color: var(--brand-contrast-text, #111827) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-1px) !important;
 }
 
 .onboarding-container .btn-success:active,
 .onboarding-container .btn-primary:active {
-  transform: translateY(0);
+  background: var(--brand-active) !important;
+  background-color: var(--brand-active) !important;
+  background-image: none !important;
+  border-color: var(--brand-active) !important;
+  transform: translateY(0) !important;
 }
 
 .onboarding-container .btn-outline-success,
@@ -2164,17 +2184,7 @@
 }
 
 .org-welcome-ambient-glow {
-  position: absolute;
-  width: 500px;
-  height: 500px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(226, 194, 120, 0.22) 0%, rgba(196, 154, 85, 0.06) 50%, transparent 70%);
-  filter: blur(40px);
-  pointer-events: none;
-  z-index: 0;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  display: none !important;
 }
 
 .org-welcome-card {

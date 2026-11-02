@@ -37,6 +37,15 @@
   --auth-text-muted: var(--color-secondary-text, #77736B);
 }
 
+[data-surface="neumorphic"] .auth-card {
+  box-shadow: 14px 14px 32px rgba(0, 0, 0, 0.5), -10px -10px 24px rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+[data-surface="neumorphic"] .auth-input {
+  box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.25), inset -2px -2px 5px rgba(255, 255, 255, 0.05) !important;
+}
+
 /* ── Page Layout ── */
 .auth-page {
   min-height: 100vh;
@@ -677,7 +686,7 @@
   width: 100%;
   padding: 12px 20px;
   border-radius: 9999px;
-  background: linear-gradient(90deg, var(--auth-btn-start) 0%, var(--auth-btn-end) 100%);
+  background: var(--auth-btn-start, var(--color-brand, #C7882C));
   color: #ffffff;
   font-size: 14px;
   font-weight: 700;

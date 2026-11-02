@@ -1,4 +1,4 @@
-﻿import { apiFetch, apiError, buildQuery } from "../../config/api";
+import { apiFetch, apiError, buildQuery } from "../../config/api";
 
 // 1. Get Document by User ID
 export const getDocumentByUserId = async (userId) => {

@@ -33,7 +33,9 @@ function Button({
   const loadingClass = loading ? "btn-ui-loading" : "";
 
   const classes = [
+    "btn",
     "btn-ui",
+    `btn-${variant}`,
     variantClass,
     sizeClass,
     loadingClass,

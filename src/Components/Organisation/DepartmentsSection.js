@@ -48,6 +48,8 @@ import DataTable from "../Common/DataTable";
 import ConfirmModal from "../Common/ConfirmModal";
 import PaginationBar from "../Common/PaginationBar";
 import CrudModal from "../Common/CrudModal";
+import "./BranchesSection.css";
+import "./DepartmentsSection.css";
 
 // Recursive Department Tree Node Component
 function DeptTreeNode({ node, level = 0, onEdit, onDelete, canUpdate, canDelete }) {
@@ -1042,21 +1044,14 @@ function DepartmentsSection({
           <div className="d-flex align-items-center gap-2">
             <button
               type="button"
-              className="btn btn-sm btn-outline-secondary"
+              className="dept-nav-btn-secondary"
               onClick={() => onNavigateBranchTab("overview")}
             >
               Branch Overview
             </button>
             <button
               type="button"
-              className="btn btn-sm fw-bold shadow-sm"
-              style={{
-                background: "var(--org-gold-btn-gradient, linear-gradient(135deg, #E2C278 0%, #C49A55 100%))",
-                color: "#1C1D1D",
-                border: "none",
-                padding: "7px 16px",
-                borderRadius: 8,
-              }}
+              className="dept-nav-btn-primary"
               onClick={() => onNavigateBranchTab("members")}
             >
               Continue to Staff & Members &rarr;

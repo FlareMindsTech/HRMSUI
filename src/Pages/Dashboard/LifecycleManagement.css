@@ -1,7 +1,7 @@
 /* Lifecycle Management (Resignations & Offboardings) */
 .lifecycle-page {
   padding: 1.5rem;
-  background-color: var(--color-background, #F7F5F0);
+  background-color: var(--color-background, #FFFFFF);
   min-height: calc(100vh - 70px);
 }
 

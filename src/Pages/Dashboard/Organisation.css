@@ -7,22 +7,22 @@
   --org-primary: var(--color-primary, #C49A55);
   --org-primary-hover: var(--color-primary-dark, #B38845);
   --org-primary-dark: var(--color-primary-dark, #9B7229);
-  --org-primary-light: var(--color-background, #FDFBF7);
-  --org-primary-soft: var(--color-primary-light, #F5EFE3);
-  --org-primary-border: var(--color-border, #E8E2D5);
+  --org-primary-light: var(--color-background, #FFFFFF);
+  --org-primary-soft: var(--color-primary-light, #F8FAFC);
+  --org-primary-border: var(--color-border, #E2E8F0);
   --org-primary-border-gold: var(--color-border, rgba(196, 154, 85, 0.35));
-  --org-gold-gradient: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 55%, var(--color-primary-dark) 100%);
-  --org-gold-btn-gradient: var(--primary-gradient, linear-gradient(135deg, #C79D58 0%, #C49A55 100%));
-  --org-gold-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  --org-gold-gradient: var(--color-brand, #C7882C);
+  --org-gold-btn-gradient: var(--color-brand, #C7882C);
+  --org-gold-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
   
-  --org-bg-main: var(--color-background, #F7F5F0);
+  --org-bg-main: #FFFFFF;
   --org-card-bg: var(--color-surface, #FFFFFF);
-  --org-border: var(--color-border, #E8E2D5);
-  --org-border-light: var(--color-border, #F3EFE8);
+  --org-border: var(--color-border, #E2E8F0);
+  --org-border-light: var(--color-border, #F1F5F9);
   
   --org-text-main: var(--color-text, #1C1D1D);
-  --org-text-muted: var(--color-secondary-text, #77736B);
-  --org-text-secondary: var(--color-secondary-text, #45433E);
+  --org-text-muted: var(--color-secondary-text, #64748B);
+  --org-text-secondary: var(--color-secondary-text, #475569);
   
   --org-radius-sm: 8px;
   --org-radius-md: 12px;
@@ -31,7 +31,7 @@
 
 .org-dashboard-container {
   padding: 1.5rem 1.75rem;
-  background-color: var(--org-bg-main, #F7F5F0);
+  background-color: #FFFFFF;
   min-height: calc(100vh - 70px);
   color: var(--org-text-main, #1C1D1D);
 }
@@ -159,26 +159,31 @@
 }
 
 .org-btn-quick-actions {
-  background: linear-gradient(135deg, var(--color-primary, #C79D58) 0%, var(--color-primary-dark, #B38845) 100%) !important;
-  color: var(--color-text, #1C1D1D) !important;
-  border: none !important;
+  background: var(--color-brand, #C7882C) !important;
+  background-color: var(--color-brand, #C7882C) !important;
+  background-image: none !important;
+  color: var(--brand-contrast-text, #1C1D1D) !important;
+  border: 1px solid var(--color-brand, #C7882C) !important;
   font-weight: 700 !important;
   font-size: 0.84rem !important;
   padding: 0.52rem 1.15rem !important;
   border-radius: 10px !important;
   display: inline-flex !important;
   align-items: center !important;
-  box-shadow: 0 4px 14px rgba(196, 154, 85, 0.3) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
   transition: all 0.2s ease !important;
 }
 
 .org-btn-quick-actions:hover,
 .org-btn-quick-actions:focus,
 .org-btn-quick-actions:active {
-  background: linear-gradient(135deg, var(--color-primary-dark, #B38845) 0%, var(--color-primary-dark, #9B7229) 100%) !important;
-  color: var(--color-text, #1C1D1D) !important;
+  background: var(--brand-hover, #A96F1D) !important;
+  background-color: var(--brand-hover, #A96F1D) !important;
+  background-image: none !important;
+  border-color: var(--brand-hover, #A96F1D) !important;
+  color: var(--brand-contrast-text, #1C1D1D) !important;
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(196, 154, 85, 0.42) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
 .org-dropdown-menu {
@@ -225,15 +230,7 @@
 }
 
 .org-hero-bg-glow {
-  position: absolute;
-  top: -80px;
-  right: -80px;
-  width: 320px;
-  height: 320px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(196, 154, 85, 0.12) 0%, rgba(255, 255, 255, 0) 70%);
-  pointer-events: none;
-  z-index: 0;
+  display: none !important;
 }
 
 .org-hero-bg-waves {
@@ -487,23 +484,28 @@
 }
 
 .org-hero-btn-edit {
-  background: linear-gradient(135deg, var(--color-primary, #C79D58) 0%, var(--color-primary-dark, #B38845) 100%) !important;
-  border: none !important;
-  color: var(--color-text, #1C1D1D) !important;
+  background: var(--color-brand, #C7882C) !important;
+  background-color: var(--color-brand, #C7882C) !important;
+  background-image: none !important;
+  border: 1px solid var(--color-brand, #C7882C) !important;
+  color: var(--brand-contrast-text, #1C1D1D) !important;
   font-weight: 700 !important;
   font-size: 0.82rem !important;
   padding: 0.45rem 1.15rem !important;
   border-radius: var(--radius-sm, 8px) !important;
   display: inline-flex !important;
   align-items: center !important;
-  box-shadow: 0 2px 8px rgba(196, 154, 85, 0.25) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
   transition: all 0.18s ease !important;
 }
 
 .org-hero-btn-edit:hover {
-  background: linear-gradient(135deg, var(--color-primary-dark, #B38845) 0%, var(--color-primary-dark, #9B7229) 100%) !important;
+  background: var(--brand-hover, #A96F1D) !important;
+  background-color: var(--brand-hover, #A96F1D) !important;
+  background-image: none !important;
+  border-color: var(--brand-hover, #A96F1D) !important;
   transform: translateY(-1px) !important;
-  box-shadow: 0 4px 14px rgba(196, 154, 85, 0.4) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
 /* ── 3. Executive Dual-Tier Navigation Console ── */
@@ -2038,8 +2040,11 @@
 .btn-success:hover,
 .btn-success:focus,
 .btn-success:active {
-  background: linear-gradient(135deg, var(--color-primary-dark, #B38845) 0%, var(--color-primary-dark, #9B7229) 100%) !important;
-  color: var(--color-text, #1C1D1D) !important;
+  background: var(--brand-hover, #A96F1D) !important;
+  background-color: var(--brand-hover, #A96F1D) !important;
+  background-image: none !important;
+  border-color: var(--brand-hover, #A96F1D) !important;
+  color: var(--brand-contrast-text, #FFFFFF) !important;
   transform: translateY(-1px);
 }
 
@@ -2291,9 +2296,12 @@
 }
 
 .org-empty-create-btn:hover {
-  background: linear-gradient(135deg, var(--color-primary-dark, #B38845) 0%, var(--color-primary-dark, #9B7229) 100%) !important;
+  background: var(--brand-hover, #A96F1D) !important;
+  background-color: var(--brand-hover, #A96F1D) !important;
+  background-image: none !important;
+  border-color: var(--brand-hover, #A96F1D) !important;
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(196, 154, 85, 0.45) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15) !important;
 }
 
 /* ── 12. Hero Logo Display Card ── */
@@ -2551,7 +2559,10 @@
 }
 
 .org-setup-btn-next:hover {
-  background: linear-gradient(135deg, var(--color-primary-dark, #B38845) 0%, var(--color-primary-dark, #9B7229) 100%) !important;
+  background: var(--brand-hover, #A96F1D) !important;
+  background-color: var(--brand-hover, #A96F1D) !important;
+  background-image: none !important;
+  border-color: var(--brand-hover, #A96F1D) !important;
   transform: translateY(-1px);
 }
 
@@ -2568,9 +2579,12 @@
 }
 
 .org-setup-btn-launch:hover {
-  background: linear-gradient(135deg, var(--color-primary-dark, #B38845) 0%, var(--color-primary-dark, #9B7229) 100%) !important;
+  background: var(--brand-hover, #A96F1D) !important;
+  background-color: var(--brand-hover, #A96F1D) !important;
+  background-image: none !important;
+  border-color: var(--brand-hover, #A96F1D) !important;
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(196, 154, 85, 0.5) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15) !important;
 }
 
 /* ── Live Enterprise Preview Card ── */

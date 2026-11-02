@@ -1591,9 +1591,7 @@ function LeaveRequest() {
                       </thead>
                       <tbody>
                         {paginatedTeamLeaves.length === 0 ? (
-                          <tr>
-                            <EmptyState variant="table" colSpan={6} className="text-center py-4 text-muted" title="No team leave records found." />
-                          </tr>
+                          <EmptyState variant="table" colSpan={6} className="text-center py-4 text-muted" title="No team leave records found." />
                         ) : (
                           paginatedTeamLeaves.map((item) => (
                             <tr key={item._id}>
@@ -1725,9 +1723,7 @@ function LeaveRequest() {
                       </thead>
                       <tbody>
                         {paginatedAllLeaves.length === 0 ? (
-                          <tr>
-                            <EmptyState variant="table" colSpan={7} className="text-center py-4 text-muted" title="No company leave records found matching current filters." />
-                          </tr>
+                          <EmptyState variant="table" colSpan={7} className="text-center py-4 text-muted" title="No company leave records found matching current filters." />
                         ) : (
                           paginatedAllLeaves.map((item) => (
                             <tr key={item._id}>

@@ -1,0 +1,202 @@
+/* ==========================================================================
+   Server Down & Service Unavailable Error Page Stylesheet
+   Friendly, reassuring cloud maintenance design with live cluster status.
+   ========================================================================== */
+
+.th-server-card {
+  max-width: 620px;
+}
+
+.th-server-icon-circle {
+  background: var(--brand-tint, #FEF3E2) !important;
+  border-color: rgba(199, 136, 44, 0.35) !important;
+}
+
+.th-cloud-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #DC2626;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.3);
+  z-index: 3;
+}
+
+/* ── Blinking Server Rack Diagnostics Lights ── */
+.th-server-lights-wrap {
+  position: absolute;
+  top: -8px;
+  display: flex;
+  gap: 6px;
+  z-index: 4;
+}
+
+.th-srv-light {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.th-light-red {
+  background-color: #EF4444;
+  box-shadow: 0 0 6px #EF4444;
+  animation: thBlinkRed 1.2s infinite;
+}
+
+.th-light-amber {
+  background-color: #F59E0B;
+  box-shadow: 0 0 6px #F59E0B;
+  animation: thBlinkAmber 2s infinite;
+}
+
+.th-light-green {
+  background-color: #10B981;
+  box-shadow: 0 0 6px #10B981;
+  animation: thBlinkGreen 1.8s infinite;
+}
+
+@keyframes thBlinkRed {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.85); }
+}
+
+@keyframes thBlinkAmber {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+@keyframes thBlinkGreen {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 0.2; }
+}
+
+.th-status-dot-server {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #D97706;
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.2);
+}
+
+/* ── Live Cluster Status Box ── */
+.th-cluster-status-box {
+  width: 100%;
+  background: var(--ink-surface-subtle, #F8FAFC);
+  border: 1px solid var(--ink-border, #E2E8F0);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.th-cluster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.th-cluster-item {
+  background: #FFFFFF;
+  border: 1px solid var(--ink-border, #E2E8F0);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.th-cluster-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.th-cluster-online {
+  background-color: #10B981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.th-cluster-reconnecting {
+  background-color: #F59E0B;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+  animation: thPulseReconnecting 1.5s infinite;
+}
+
+@keyframes thPulseReconnecting {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.th-cluster-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.th-cluster-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink-primary, #0F172A);
+  line-height: 1.2;
+}
+
+.th-cluster-desc {
+  font-size: 10.5px;
+  color: var(--ink-tertiary, #64748B);
+  margin-top: 1px;
+}
+
+/* ── Incident Reference Box ── */
+.th-incident-ref-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--ink-surface-subtle, #F1F5F9);
+  border: 1px solid var(--ink-border, #CBD5E1);
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  margin-bottom: 22px;
+}
+
+.th-incident-label {
+  color: var(--ink-tertiary, #64748B);
+}
+
+.th-incident-code {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-weight: 700;
+  color: var(--ink-primary, #0F172A);
+  letter-spacing: 0.03em;
+}
+
+.th-copy-btn {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--color-brand, #C7882C) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 2px 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  cursor: pointer !important;
+}
+
+.th-copy-btn:hover {
+  transform: none !important;
+  color: var(--brand-hover, #9B7229) !important;
+}
+

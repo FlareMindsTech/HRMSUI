@@ -3651,6 +3651,7 @@ function HrOnboarding() {
 
       const mappedExp = rawExp.length > 0
         ? rawExp.map((e) => ({
+            _id: e._id || e.id || undefined,
             companyName: e.companyName || e.prevCompany || "",
             prevCompany: e.prevCompany || e.companyName || "",
             designation: e.designation || "",

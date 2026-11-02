@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { BranchProvider } from './context/BranchContext';
@@ -12,29 +12,35 @@ import {
 import { getAuthToken, clearAuthToken, setUnauthorizedHandler } from './config/api';
 import { store } from './redux/store';
 import Layout from './Layout/Layout';
-import Dashboard from './Pages/Dashboard/Dashboard';
-import Organisation from './Pages/Dashboard/Organisation';
-import BranchesPage from './Pages/Dashboard/BranchesPage';
-import HrOnboarding from './Pages/Dashboard/HrOnboarding';
-import LeaveRequest from './Pages/Dashboard/LeaveRequest';
-import Mis from './Pages/Dashboard/Mis';
-import Payslip from './Pages/Dashboard/Payslip';
-import UserManagement from './Pages/Dashboard/UserManagement';
-import Attendance from './Pages/Dashboard/Attendance';
-import Epfo from './Pages/Dashboard/Epfo';
 import Login from './view/Login';
 import ResetPassword from './view/ResetPassword';
-import ProjectManagement from './Pages/Dashboard/ProjectManagement';
-import TasksPage from './Pages/Dashboard/TasksPage';
-import AssetManagement from './Pages/Dashboard/AssetManagement';
-import InitialSetupPage from './Pages/Dashboard/InitialSetupPage';
-import SubscriptionRenewalPage from './Pages/Dashboard/SubscriptionRenewalPage';
-import LifecycleManagement from './Pages/Dashboard/LifecycleManagement';
-import ReimbursementManagement from './Pages/Dashboard/ReimbursementManagement';
-import ApprovalWorkflows from './Pages/Dashboard/ApprovalWorkflows';
-import AuditLogs from './Pages/Dashboard/AuditLogs';
-import PlatformAdmin from './Pages/Dashboard/PlatformAdmin';
-import SettingsPage from './Pages/Dashboard/SettingsPage';
+import NetworkStatusListener from './Components/Common/NetworkStatusListener';
+
+const NoNetworkPage = lazy(() => import('./Pages/Errors/NoNetworkPage'));
+const ServerDownPage = lazy(() => import('./Pages/Errors/ServerDownPage'));
+
+// Route-level code-splitting with React.lazy
+const Dashboard = lazy(() => import('./Pages/Dashboard/Dashboard'));
+const Organisation = lazy(() => import('./Pages/Dashboard/Organisation'));
+const BranchesPage = lazy(() => import('./Pages/Dashboard/BranchesPage'));
+const HrOnboarding = lazy(() => import('./Pages/Dashboard/HrOnboarding'));
+const LeaveRequest = lazy(() => import('./Pages/Dashboard/LeaveRequest'));
+const Mis = lazy(() => import('./Pages/Dashboard/Mis'));
+const Payslip = lazy(() => import('./Pages/Dashboard/Payslip'));
+const UserManagement = lazy(() => import('./Pages/Dashboard/UserManagement'));
+const Attendance = lazy(() => import('./Pages/Dashboard/Attendance'));
+const Epfo = lazy(() => import('./Pages/Dashboard/Epfo'));
+const ProjectManagement = lazy(() => import('./Pages/Dashboard/ProjectManagement'));
+const TasksPage = lazy(() => import('./Pages/Dashboard/TasksPage'));
+const AssetManagement = lazy(() => import('./Pages/Dashboard/AssetManagement'));
+const InitialSetupPage = lazy(() => import('./Pages/Dashboard/InitialSetupPage'));
+const SubscriptionRenewalPage = lazy(() => import('./Pages/Dashboard/SubscriptionRenewalPage'));
+const LifecycleManagement = lazy(() => import('./Pages/Dashboard/LifecycleManagement'));
+const ReimbursementManagement = lazy(() => import('./Pages/Dashboard/ReimbursementManagement'));
+const ApprovalWorkflows = lazy(() => import('./Pages/Dashboard/ApprovalWorkflows'));
+const AuditLogs = lazy(() => import('./Pages/Dashboard/AuditLogs'));
+const PlatformAdmin = lazy(() => import('./Pages/Dashboard/PlatformAdmin'));
+const SettingsPage = lazy(() => import('./Pages/Dashboard/SettingsPage'));
 
 const isAuthError = (payload) => {
   // 401 only — a 403 (AccessDenied with required* keys) must never bounce to
@@ -138,6 +144,7 @@ function App() {
   return (
     <BranchProvider>
       <BrowserRouter>
+        <NetworkStatusListener />
         <Routes>
           {/* Organization Setup Route */}
           <Route
@@ -147,7 +154,9 @@ function App() {
                 nextAction === 'RENEW_SUBSCRIPTION' ? (
                   <Navigate to="/subscription-renewal" replace />
                 ) : (
-                  <InitialSetupPage />
+                  <Suspense fallback={<div className="p-5 text-center text-muted">Loading setup...</div>}>
+                    <InitialSetupPage />
+                  </Suspense>
                 )
               ) : (
                 <Navigate to="/login" replace />
@@ -160,7 +169,9 @@ function App() {
             path="/subscription-renewal"
             element={
               isAuthenticated ? (
-                <SubscriptionRenewalPage />
+                <Suspense fallback={<div className="p-5 text-center text-muted">Loading renewal...</div>}>
+                  <SubscriptionRenewalPage />
+                </Suspense>
               ) : (
                 <Navigate to="/login" replace />
               )
@@ -189,6 +200,27 @@ function App() {
             }
           />
           <Route path="/reset-password" element={<ResetPassword />} />
+
+          {/* Dedicated Network & Server Error Pages (Publicly accessible) */}
+          <Route
+            path="/no-network"
+            element={
+              <Suspense fallback={<div className="p-5 text-center text-muted">Checking network status...</div>}>
+                <NoNetworkPage />
+              </Suspense>
+            }
+          />
+          <Route path="/offline" element={<Navigate to="/no-network" replace />} />
+          <Route
+            path="/server-down"
+            element={
+              <Suspense fallback={<div className="p-5 text-center text-muted">Checking server health...</div>}>
+                <ServerDownPage />
+              </Suspense>
+            }
+          />
+          <Route path="/server-error" element={<Navigate to="/server-down" replace />} />
+          <Route path="/500" element={<Navigate to="/server-down" replace />} />
 
           {/* Protected Dashboard Routes */}
           {isAuthenticated ? (

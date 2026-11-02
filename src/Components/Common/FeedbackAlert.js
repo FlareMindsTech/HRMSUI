@@ -9,53 +9,94 @@ import {
 import "./FeedbackAlert.css";
 
 /**
- * FeedbackAlert — the single app-wide notification banner.
+ * FeedbackAlert — the single app-wide notification banner & floating toast.
  *
  * Used by every dashboard page and org section for success/error/warning
- * feedback (same props everywhere, one themed design). Renders null when
- * `message` is falsy, preserving the existing `{x && <Alert …>}` gating.
+ * feedback (same props everywhere, unified enterprise design). Renders null
+ * when `message` is falsy, preserving the existing `{x && <Alert …>}` gating.
  *
- * Props (variant + message required; rest optional):
- *  variant       "success" | "danger" | "warning" | "info" (unknown → info)
- *  message       string or node (exact copy per site)
- *  dismissible   show the close button (default false)
- *  onClose       close handler (wired only when `dismissible` is true)
+ * Props:
+ *  variant       "success" | "danger" | "error" | "warning" | "info" (default "info")
+ *  message       string or React node (auto-extracts message from Error/objects)
+ *  title         optional header text for alert
+ *  dismissible   show the close button (default false, auto-true if floating)
+ *  onClose       close handler
  *  autoDismissMs optional ms after which onClose fires automatically
- *                (opt-in; existing callers without onClose are unaffected)
+ *  floating      render as a sleek, fixed floating toast (top-right, no layout shift)
  *  className     extra classes passthrough
  */
 const VARIANT_ICON = {
   success: FaCheckCircle,
   danger: FaExclamationCircle,
+  error: FaExclamationCircle,
   warning: FaExclamationTriangle,
   info: FaInfoCircle,
 };
 
 function FeedbackAlert({
-  variant,
+  variant = "info",
   message,
+  title,
   dismissible = false,
   onClose,
   autoDismissMs,
-  className,
+  floating = false,
+  className = "",
 }) {
-  useEffect(() => {
-    if (!message || !autoDismissMs || typeof onClose !== "function") return undefined;
-    const timer = setTimeout(onClose, autoDismissMs);
-    return () => clearTimeout(timer);
-  }, [message, autoDismissMs, onClose]);
-
-  if (!message) return null;
-  const kind = Object.prototype.hasOwnProperty.call(VARIANT_ICON, variant) ? variant : "info";
+  let safeVariant = String(variant || "info").toLowerCase();
+  if (safeVariant === "error") safeVariant = "danger";
+  const kind = Object.prototype.hasOwnProperty.call(VARIANT_ICON, safeVariant)
+    ? safeVariant
+    : "info";
   const Icon = VARIANT_ICON[kind];
 
+  const effectiveAutoDismiss =
+    autoDismissMs !== undefined
+      ? autoDismissMs
+      : floating || kind === "success"
+      ? 4500
+      : undefined;
+
+  useEffect(() => {
+    if (!message || !effectiveAutoDismiss || typeof onClose !== "function") return undefined;
+    const timer = setTimeout(onClose, effectiveAutoDismiss);
+    return () => clearTimeout(timer);
+  }, [message, effectiveAutoDismiss, onClose]);
+
+  if (!message) return null;
+
+  let displayMessage = message;
+  if (
+    displayMessage &&
+    typeof displayMessage === "object" &&
+    !React.isValidElement(displayMessage)
+  ) {
+    displayMessage =
+      displayMessage.message ||
+      displayMessage.error ||
+      displayMessage.detail ||
+      String(displayMessage);
+  }
+
+  const containerClasses = [
+    "app-notify",
+    `app-notify-${kind}`,
+    floating ? "app-notify-floating" : "",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <div className={`app-notify app-notify-${kind}${className ? ` ${className}` : ""}`} role="alert">
+    <div className={containerClasses} role="alert" aria-live="polite">
       <span className="app-notify-icon" aria-hidden="true">
         <Icon />
       </span>
-      <span className="app-notify-body">{message}</span>
-      {dismissible && (
+      <div className="app-notify-body">
+        {title && <span className="app-notify-title">{title}</span>}
+        <span className="app-notify-message">{displayMessage}</span>
+      </div>
+      {(dismissible || floating) && typeof onClose === "function" && (
         <button
           type="button"
           className="app-notify-close"

@@ -1,12 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-
 /* ==========================================================================
    Tasks Kanban Board Stylesheet (tasks.css)
    Scoped strictly under .tasks-page to prevent affecting Bootstrap / app styles.
    ========================================================================== */
 
 :root {
-  --tasks-font: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --tasks-font: var(--font-sans);
   --tasks-page-bg: var(--color-background, #F3F5F5);
   --tasks-col-bg: var(--color-surface, #F8F8F5);
   --tasks-card-bg: var(--color-surface, #FBFBF8);
@@ -59,7 +57,7 @@
 .tasks-page {
   font-family: var(--tasks-font);
   background: var(--tasks-page-bg);
-  background: linear-gradient(180deg, var(--color-background, #F5F7F7) 0%, #F1F3F3 100%);
+  background: var(--tasks-page-bg, #F3F5F5);
   min-height: calc(100vh - var(--header-height, 60px));
   padding: 16px 20px 32px;
   color: var(--tasks-text-main);
@@ -100,31 +98,41 @@
 }
 
 .tasks-new-btn {
-  background: linear-gradient(135deg, var(--tasks-green-dark) 0%, var(--tasks-green-light) 100%);
-  color: #FFFFFF !important;
-  border: none !important;
+  background: var(--color-brand, #C7882C) !important;
+  background-color: var(--color-brand, #C7882C) !important;
+  background-image: none !important;
+  color: var(--brand-contrast-text, #FFFFFF) !important;
+  border: 1px solid var(--color-brand, #C7882C) !important;
   border-radius: 9999px !important;
-  height: 46px;
-  padding: 0 22px !important;
-  font-size: 14.5px;
+  height: 42px;
+  padding: 0 20px !important;
+  font-size: 14px;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 4px 14px rgba(20, 90, 46, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
   cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s ease, filter 0.2s ease;
+  transition: all 0.2s ease;
   outline: none;
   flex-shrink: 0;
 }
 
 .tasks-new-btn:hover {
-  transform: translateY(-1.5px);
-  box-shadow: 0 6px 20px rgba(20, 90, 46, 0.35);
-  filter: brightness(1.06);
+  background: var(--brand-hover, #A96F1D) !important;
+  background-color: var(--brand-hover, #A96F1D) !important;
+  background-image: none !important;
+  border-color: var(--brand-hover, #A96F1D) !important;
+  color: var(--brand-contrast-text, #FFFFFF) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18) !important;
 }
 
 .tasks-new-btn:active {
+  background: var(--brand-active, #8B5A15) !important;
+  background-color: var(--brand-active, #8B5A15) !important;
+  background-image: none !important;
+  border-color: var(--brand-active, #8B5A15) !important;
   transform: translateY(0);
 }
 

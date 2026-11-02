@@ -95,7 +95,7 @@
 }
 
 .edit-org-btn-discard:hover {
-  background: var(--color-background, #F7F5F0) !important;
+  background: var(--color-background, #FFFFFF) !important;
   color: var(--color-text, #1C1D1D) !important;
   border-color: var(--color-primary, #C49A55) !important;
 }
@@ -448,8 +448,8 @@
 }
 
 .edit-org-chip-btn {
-  background: var(--color-background, #F7F5F0);
-  border: 1px solid #e8e2d5;
+  background: var(--color-background, #FFFFFF);
+  border: 1px solid #e2e8f0;
   border-radius: var(--radius-xl, 20px);
   padding: 0.2rem 0.65rem;
   font-size: 0.74rem;

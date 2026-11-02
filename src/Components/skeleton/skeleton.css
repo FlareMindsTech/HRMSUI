@@ -1,0 +1,248 @@
+:root {
+  --sk-space-1: 4px;
+  --sk-space-2: 8px;
+  --sk-space-3: 12px;
+  --sk-space-4: 16px;
+  --sk-space-5: 20px;
+  --sk-space-6: 24px;
+  --sk-space-8: 32px;
+
+  --sk-radius-xs: 4px;
+  --sk-radius-sm: 6px;
+  --sk-radius-md: 8px;
+  --sk-radius-lg: 12px;
+  --sk-radius-xl: 16px;
+  --sk-radius-full: 9999px;
+
+  /* Clean White Enterprise Palette */
+  --sk-card-bg: #ffffff;
+  --sk-card-border: #e8ecf1;
+  --sk-card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --sk-base: #edf2f7;
+  --sk-shimmer: #ffffff;
+  --sk-text-muted: #94a3b8;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.sk-block {
+  display: inline-block;
+  background-color: var(--sk-base, #edf2f7);
+  background-image: linear-gradient(
+    90deg,
+    var(--sk-base, #edf2f7) 0%,
+    var(--sk-shimmer, #ffffff) 50%,
+    var(--sk-base, #edf2f7) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-block {
+    animation: none;
+    background-image: none;
+    opacity: 0.85;
+  }
+}
+
+.sk-container {
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+  background: transparent;
+}
+
+.sk-container:focus-visible {
+  outline: 2px solid var(--sk-text-muted);
+  outline-offset: 2px;
+}
+
+.sk-card {
+  background-color: var(--sk-card-bg, #ffffff) !important;
+  border: 1px solid var(--sk-card-border, #e8ecf1) !important;
+  border-radius: var(--sk-radius-lg, 12px);
+  padding: var(--sk-space-5, 20px);
+  box-sizing: border-box;
+  box-shadow: var(--sk-card-shadow);
+}
+
+/* Page: Dashboard */
+.sk-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sk-space-4);
+  margin-bottom: var(--sk-space-6);
+}
+
+.sk-dashboard-body {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--sk-space-6);
+}
+
+/* Page: Projects & Tasks (Kanban board) */
+.sk-kanban-board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sk-space-4);
+  align-items: start;
+}
+
+.sk-kanban-column {
+  background-color: var(--sk-card-bg, #ffffff);
+  border: 1px solid var(--sk-card-border, #e8ecf1);
+  border-radius: var(--sk-radius-lg);
+  padding: var(--sk-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-3);
+  box-shadow: var(--sk-card-shadow);
+}
+
+/* Page: Employee List */
+.sk-table-container {
+  overflow-x: auto;
+  border-radius: var(--sk-radius-lg);
+  border: 1px solid var(--sk-card-border, #e8ecf1) !important;
+  background: var(--sk-card-bg, #ffffff) !important;
+  box-shadow: var(--sk-card-shadow);
+}
+
+.sk-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sk-table-head th {
+  padding: var(--sk-space-4);
+  text-align: left;
+  border-bottom: 1px solid var(--sk-card-border, #e8ecf1);
+}
+
+.sk-table-row td {
+  padding: var(--sk-space-4);
+  border-bottom: 1px solid var(--sk-card-border, #e8ecf1);
+  vertical-align: middle;
+}
+
+.sk-table-row:last-child td {
+  border-bottom: none;
+}
+
+.sk-table-cell-user {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-3);
+}
+
+.sk-mobile-cards {
+  display: none;
+}
+
+/* Page: Profile */
+.sk-profile-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-5);
+  margin-bottom: var(--sk-space-6);
+}
+
+.sk-tab-bar {
+  display: flex;
+  gap: var(--sk-space-3);
+  border-bottom: 1px solid var(--sk-card-border, #e8ecf1);
+  padding-bottom: var(--sk-space-3);
+  margin-bottom: var(--sk-space-6);
+}
+
+.sk-two-column-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sk-space-6);
+}
+
+/* Page: Payroll */
+.sk-payroll-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sk-space-4);
+  margin-bottom: var(--sk-space-6);
+}
+
+/* Page: Leave Requests */
+.sk-filter-chips {
+  display: flex;
+  gap: var(--sk-space-2);
+  margin-bottom: var(--sk-space-6);
+  flex-wrap: wrap;
+}
+
+.sk-leave-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-3);
+}
+
+.sk-leave-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sk-space-4) var(--sk-space-5);
+}
+
+/* Responsive Overrides */
+@media (max-width: 1024px) {
+  .sk-dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .sk-dashboard-body {
+    grid-template-columns: 1fr;
+  }
+  .sk-kanban-board {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .sk-two-column-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .sk-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  .sk-kanban-board {
+    grid-template-columns: 1fr;
+  }
+  .sk-payroll-summary-grid {
+    grid-template-columns: 1fr;
+  }
+  .sk-table-wrapper-desktop {
+    display: none;
+  }
+  .sk-mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sk-space-3);
+  }
+  .sk-profile-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .sk-leave-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sk-space-3);
+  }
+}
+

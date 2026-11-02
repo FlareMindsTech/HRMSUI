@@ -230,7 +230,7 @@ export default function ManualAttendanceModal({ show, onHide, onSuccess }) {
 
   return (
     <Modal show={show} onHide={onHide} centered size="lg" backdrop="static">
-      <Modal.Header closeButton className="border-0 pb-0">
+      <Modal.Header className="border-0 pb-0">
         <Modal.Title className="h6 fw-bold d-flex align-items-center gap-2">
           <FaUserCheck className="text-success" />
           Manual Attendance Entry by Branch Head

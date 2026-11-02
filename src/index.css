@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap');
+
 /* ============================================================
    HRMS UI — TeamHub Style Design System
    Clean Light Theme · Mint-Green Accent Palette
@@ -43,10 +45,11 @@
 
 body {
   margin: 0;
-  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-sans);
+  font-feature-settings: "tnum";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--color-background, #F7F5F0);
+  background-color: var(--color-background, #FFFFFF);
   color: var(--color-text, #1C1D1D);
   font-size: 14px;
   line-height: 1.6;
@@ -54,57 +57,65 @@ body {
 
 /* ── Dynamic Organization Theme Tokens Aliased to UI System Tokens ── */
 :root {
-  --color-primary: var(--c-gold);
-  --color-primary-dark: var(--c-gold-dark);
-  --color-primary-light: var(--c-gold-tint);
-  --color-sidebar: var(--c-charcoal);
-  --color-background: var(--c-bg);
-  --color-surface: var(--c-card);
-  --color-text: var(--c-text);
-  --color-secondary-text: var(--c-text-2);
-  --color-border: var(--c-border);
-  --color-success: var(--c-success);
-  --color-warning: var(--c-warning);
-  --color-danger: var(--c-danger);
-  --color-info: var(--c-gold-dark);
+  --color-primary: var(--color-brand);
+  --color-primary-dark: var(--brand-hover);
+  --color-primary-light: var(--brand-tint);
+  --color-sidebar: var(--color-ink);
+  --color-background: #FFFFFF;
+  --color-surface: var(--ink-surface, #FFFFFF);
+  --color-text: var(--ink-primary);
+  --color-secondary-text: var(--ink-secondary);
+  --color-border: var(--ink-border, #E2E8F0);
+  --color-success: var(--status-success);
+  --color-warning: var(--status-warning);
+  --color-danger: var(--status-danger);
+  --color-info: var(--status-info);
 
-  /* Key Brand Combination (Linked to Dynamic Theme) */
-  --brand-gold: var(--c-gold);
-  --brand-gold-outer: var(--c-gold-dark);
-  --brand-cream: var(--c-gold-tint);
-  --brand-cream-light: var(--c-bg);
-  --brand-dark: var(--c-charcoal);
-  --brand-dark-card: #242525;
-  --brand-text-secondary: var(--c-text-2);
-  --brand-card-bg: var(--c-card);
+  /* Legacy C-Token Aliases */
+  --c-charcoal: var(--color-ink);
+  --c-gold: var(--color-brand);
+  --c-gold-dark: var(--brand-hover);
+  --c-gold-tint: var(--brand-tint);
+  --c-bg: #FFFFFF;
+  --c-card: var(--ink-surface, #FFFFFF);
+  --c-border: var(--ink-border, #E2E8F0);
+  --c-text: var(--ink-primary);
+  --c-text-2: var(--ink-secondary);
+
+  /* Project Management Module Aliases */
+  --pm-primary: var(--color-brand);
+  --pm-secondary: #FFFFFF;
+  --pm-border: var(--ink-border);
+  --pm-border-light: var(--ink-border-subtle);
+  --pm-text-muted: var(--ink-secondary);
 
   /* Primary Theme Aliases */
-  --primary: var(--c-gold);
-  --primary-dark: var(--c-gold-dark);
-  --primary-darker: var(--c-gold-dark);
-  --primary-light: var(--c-gold-tint);
-  --primary-subtle: var(--c-gold-tint);
-  --primary-subtle2: rgba(199, 157, 88, 0.06);
-  --primary-gradient: var(--c-gold);
+  --primary: var(--color-brand);
+  --primary-dark: var(--brand-hover);
+  --primary-darker: var(--brand-active);
+  --primary-light: var(--brand-tint);
+  --primary-subtle: var(--brand-tint);
+  --primary-subtle2: var(--brand-tint-strong);
+  --primary-gradient: var(--color-brand);
 
   /* Sidebar */
-  --sidebar-bg: var(--c-charcoal);
-  --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-active-bg: var(--c-gold-tint);
-  --sidebar-active-text: var(--c-charcoal);
-  --sidebar-text: #C7C5C0;
-  --sidebar-hover: rgba(255, 255, 255, 0.06);
+  --sidebar-bg: var(--color-ink);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-active-bg: var(--brand-tint);
+  --sidebar-active-text: var(--color-brand);
+  --sidebar-text: color-mix(in srgb, white 82%, var(--color-ink));
+  --sidebar-hover: rgba(255, 255, 255, 0.08);
 
   /* Surface */
-  --page-bg: var(--c-bg);
-  --card-bg: var(--c-card);
-  --card-border: var(--c-border);
-  --header-bg: var(--c-bg);
+  --page-bg: #FFFFFF;
+  --card-bg: var(--ink-surface, #FFFFFF);
+  --card-border: var(--ink-border, #E2E8F0);
+  --header-bg: var(--ink-surface, #FFFFFF);
 
   /* Text */
-  --text-primary: var(--c-text);
-  --text-secondary: var(--c-text-2);
-  --text-muted: var(--c-text-2);
+  --text-primary: var(--ink-primary);
+  --text-secondary: var(--ink-secondary);
+  --text-muted: var(--ink-tertiary);
 
   /* Chart & Status Palette */
   --chart-red: var(--c-danger);
@@ -265,13 +276,13 @@ code {
 .btn-primary {
   background: var(--primary-gradient) !important;
   border: none !important;
-  color: var(--color-text, #1C1D1D) !important;
-  box-shadow: var(--shadow-gold);
+  color: var(--brand-contrast-text, #ffffff) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
 }
 
 .btn-primary:hover {
-  filter: brightness(1.07);
-  box-shadow: 0 8px 22px rgba(199, 157, 88, 0.4) !important;
+  filter: brightness(1.05);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18) !important;
   transform: translateY(-1px);
 }
 
@@ -288,8 +299,8 @@ code {
 
 .btn-outline-primary:hover {
   background: var(--primary) !important;
-  color: var(--color-surface, #FFFFFF) !important;
-  box-shadow: var(--shadow-gold);
+  color: var(--brand-contrast-text, #ffffff) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12) !important;
 }
 
 /* ── Form Controls (Bootstrap override) ── */
@@ -338,14 +349,14 @@ code {
 }
 
 .nav-pills .nav-link.active {
-  background: var(--primary-gradient);
-  color: var(--color-text, #1C1D1D);
-  box-shadow: var(--shadow-gold);
+  background: #0F172A !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25) !important;
 }
 
 .nav-pills .nav-link:not(.active):hover {
-  background: var(--primary-subtle);
-  color: var(--primary);
+  background: #1E293B !important;
+  color: #FFFFFF !important;
 }
 
 /* ── Tables ── */
@@ -484,15 +495,22 @@ code {
 
 /* ── Hero Welcome Card ── */
 .app-hero-card {
-  background: linear-gradient(135deg, var(--color-sidebar, #1C1D1D) 0%, #2A2A2A 50%, #161717 100%);
+  background: linear-gradient(135deg, var(--sidebar-bg) 0%, color-mix(in srgb, var(--sidebar-bg) 75%, black) 100%) !important;
   border-radius: var(--radius-lg);
   padding: 1.75rem 2rem;
-  color: var(--color-surface, #FFFFFF);
+  color: #FFFFFF !important;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(28, 29, 29, 0.25);
-  border: 1px solid rgba(199, 157, 88, 0.28);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--brand-border) !important;
   margin-bottom: 1.5rem;
+}
+
+.app-hero-card h1,
+.app-hero-card h2,
+.app-hero-card h3,
+.app-hero-card p {
+  color: #FFFFFF !important;
 }
 
 .app-hero-card::after {
@@ -503,7 +521,7 @@ code {
   width: 220px;
   height: 220px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(199, 157, 88, 0.2) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-brand) 30%, transparent) 0%, transparent 70%);
   pointer-events: none;
 }
 

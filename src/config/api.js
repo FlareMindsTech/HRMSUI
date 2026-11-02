@@ -217,6 +217,14 @@ export const apiFetch = async (path, options = {}, isRetry = false) => {
       notifyUnauthorized(cleanPath);
     }
 
+    if (res.status >= 500 && typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("teamhub:server-error", {
+          detail: { status: res.status, message: data?.message || "Server error" },
+        })
+      );
+    }
+
     return { ok: res.ok, status: res.status, data };
   } catch (netErr) {
     return {
@@ -263,4 +271,4 @@ export const apiError = (res, fallbackMessage = "Request failed") => {
   err.requiredMenu = res?.data?.requiredMenu;
   err.requiredAnyPermission = res?.data?.requiredAnyPermission;
   return err;
-};  
+};

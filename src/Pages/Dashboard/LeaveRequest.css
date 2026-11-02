@@ -443,7 +443,7 @@
 }
 
 .leave-btn-approve:hover:not(:disabled) {
-  background: linear-gradient(135deg, #28b880 0%, #1a9e6e 100%);
+  background: #1a9e6e;
   color: var(--color-surface, #FFFFFF);
 }
 

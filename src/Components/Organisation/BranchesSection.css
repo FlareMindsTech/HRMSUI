@@ -91,48 +91,52 @@
 
 /* ── Primary Action Button ── */
 .branches-btn-add {
-  background: var(--primary-gradient, linear-gradient(135deg, #E2C278 0%, #C49A55 55%, #9B7229 100%));
-  color: var(--color-text, #1C1D1D) !important;
-  font-weight: 700;
+  background: var(--color-brand) !important;
+  color: var(--brand-contrast-text, #111827) !important;
+  font-weight: 600;
   font-size: 13.5px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: var(--radius-md, 12px);
+  border: 1px solid var(--color-brand);
+  border-radius: 8px;
   padding: 9px 18px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 4px 16px rgba(196, 154, 85, 0.35);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   text-decoration: none;
 }
 
 .branches-btn-add:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(196, 154, 85, 0.45);
-  color: var(--color-surface, #FFFFFF) !important;
+  transform: translateY(-1px);
+  background: var(--brand-hover) !important;
+  border-color: var(--brand-hover);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14);
+  color: var(--brand-contrast-text, #111827) !important;
 }
 
 .branches-btn-secondary {
-  background: var(--color-surface, #FFFFFF);
-  color: #334155;
+  background: var(--color-brand) !important;
+  color: var(--brand-contrast-text, #111827) !important;
   font-weight: 600;
-  font-size: 13px;
-  border: 1px solid #e2e8f0;
-  border-radius: var(--radius-md, 12px);
-  padding: 9px 15px;
+  font-size: 13.5px;
+  border: 1px solid var(--color-brand);
+  border-radius: 8px;
+  padding: 9px 18px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
 }
 
 .branches-btn-secondary:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  color: #0f172a;
+  background: var(--brand-hover) !important;
+  border-color: var(--brand-hover);
+  color: var(--brand-contrast-text, #111827) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14);
 }
 
 /* ── KPI Metric Stats Cards ── */
@@ -367,6 +371,17 @@
   gap: 12px;
   border-bottom: 1px solid #f1f5f9;
   background: linear-gradient(180deg, #ffffff 0%, #fafbfd 100%);
+  min-width: 0;
+}
+
+.branch-card-header-left,
+.branch-card-header > .d-flex {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0 !important;
+  overflow: hidden;
 }
 
 .branch-card-avatar {
@@ -385,24 +400,28 @@
 }
 
 .branch-card-title-box {
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 auto;
+  min-width: 0 !important;
+  overflow: hidden;
 }
 
 .branch-card-name {
-  font-size: 15.5px;
+  font-size: 15px;
   font-weight: 700;
   color: #0f172a;
   margin: 0 0 4px;
-  line-height: 1.25;
-  white-space: nowrap;
+  line-height: 1.3;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
   cursor: pointer;
+  max-width: 100%;
 }
 
 .branch-card-name:hover {
-  color: var(--color-primary, #C49A55);
+  color: var(--color-brand, #C49A55);
 }
 
 .branch-card-meta {
@@ -433,28 +452,29 @@
 }
 
 .branch-status-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: var(--radius-xl, 20px);
-  white-space: nowrap;
-  flex-shrink: 0;
-  letter-spacing: 0.02em;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  padding: 4px 10px !important;
+  border-radius: var(--radius-xl, 20px) !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  letter-spacing: 0.02em !important;
+  margin-left: auto !important;
 }
 
 .branch-status-indicator.active {
-  background: #ecfdf5;
-  color: #047857;
-  border: 1px solid #a7f3d0;
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border: 1px solid #a7f3d0 !important;
 }
 
 .branch-status-indicator.inactive {
-  background: #f1f5f9;
-  color: #64748b;
-  border: 1px solid #cbd5e1;
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+  border: 1px solid #cbd5e1 !important;
 }
 
 .branch-card-body {
@@ -596,30 +616,40 @@
 }
 
 .branch-card-action-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm, 8px);
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  color: #475569;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 12.5px;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  padding: 0 !important;
+  border-radius: var(--radius-sm, 8px) !important;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  font-size: 13px !important;
+  box-shadow: none !important;
 }
 
 .branch-card-action-btn:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-  border-color: #cbd5e1;
+  background: #f1f5f9 !important;
+  color: var(--color-brand, #C49A55) !important;
+  border-color: var(--color-brand, #C49A55) !important;
+  transform: translateY(-1px) !important;
 }
 
 .branch-card-action-btn.danger:hover {
-  background: #fef2f2;
-  border-color: #fca5a5;
-  color: #dc2626;
+  background: #fef2f2 !important;
+  border-color: #fca5a5 !important;
+  color: #dc2626 !important;
+}
+
+.branch-card-action-btn svg {
+  width: 14px !important;
+  height: 14px !important;
+  fill: currentColor !important;
 }
 
 /* ── Modern Table View ── */
@@ -713,9 +743,15 @@
 
 /* ── Branch Detail Hub Workspace ── */
 .branch-detail-workspace {
-  padding: 24px 28px 48px;
+  padding: 24px 32px 48px;
   background: #f8fafc;
-  min-height: 100vh;
+  min-height: calc(100vh - 60px);
+  width: 100%;
+}
+
+.branch-detail-content-full {
+  width: 100%;
+  min-width: 0;
 }
 
 .branch-detail-hero-card {
@@ -730,13 +766,7 @@
 }
 
 .branch-detail-hero-glow {
-  position: absolute;
-  top: -80px;
-  right: -80px;
-  width: 240px;
-  height: 240px;
-  background: radial-gradient(circle, rgba(196, 154, 85, 0.12) 0%, rgba(255, 255, 255, 0) 70%);
-  pointer-events: none;
+  display: none !important;
 }
 
 .branch-detail-hero-header {
@@ -863,7 +893,7 @@
 }
 
 .branch-category-segment-btn.active {
-  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  background: #111827;
   color: #f3deac;
   border-color: rgba(196, 154, 85, 0.4);
   box-shadow: 0 4px 14px rgba(17, 24, 39, 0.25);
@@ -1036,6 +1066,35 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .branch-info-card-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px 16px;
+    gap: 12px;
+  }
+  .branch-info-card-header > div:last-child {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+  .branch-info-card-header .branches-btn-add,
+  .branch-info-card-header .branches-btn-secondary {
+    width: 100%;
+    justify-content: center;
+    padding: 8px 14px;
+    font-size: 13px;
+    white-space: normal;
+    text-align: center;
+  }
+  .branch-info-card-body {
+    padding: 14px 16px;
+  }
 }
 
 .branch-info-card-title {
@@ -1551,9 +1610,9 @@
   width: 76px;
   height: 76px;
   border-radius: 24px;
-  background: linear-gradient(135deg, rgba(226, 194, 120, 0.25) 0%, rgba(196, 154, 85, 0.12) 100%);
-  border: 1.5px solid rgba(196, 154, 85, 0.35);
-  box-shadow: 0 8px 24px rgba(196, 154, 85, 0.2);
+  background: #F8FAFC;
+  border: 1.5px solid #E2E8F0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1798,5 +1857,3 @@
   accent-color: #C49A55;
   cursor: pointer;
 }
-
-

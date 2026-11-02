@@ -1,0 +1,317 @@
+/* ==========================================================================
+   No Network & Offline Error Page Stylesheet
+   Friendly, reassuring aesthetic with hardcore real-time diagnostics.
+   ========================================================================== */
+
+.th-error-page-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  background-color: var(--color-background, #F8FAFC);
+  background-image: 
+    radial-gradient(circle at 50% 10%, rgba(199, 136, 44, 0.08) 0%, transparent 60%),
+    radial-gradient(circle at 10% 90%, rgba(15, 31, 24, 0.04) 0%, transparent 50%);
+  font-family: var(--font-sans, system-ui, sans-serif);
+  color: var(--color-text, #1C1D1D);
+}
+
+.th-error-card {
+  width: 100%;
+  max-width: 580px;
+  background: var(--color-surface, #FFFFFF);
+  border: 1px solid var(--ink-border, #E2E8F0);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+  padding: 40px 36px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Top Subtle Brand Accent Line ── */
+.th-error-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-brand, #C7882C) 0%, #E2A855 100%);
+}
+
+/* ── Animated Icon Container with Pulse Waves ── */
+.th-error-icon-container {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.th-error-icon-circle {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--brand-tint, #FDF4E6);
+  border: 2px solid rgba(199, 136, 44, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  box-shadow: 0 4px 14px rgba(199, 136, 44, 0.2);
+}
+
+.th-error-svg {
+  font-size: 36px;
+  color: var(--color-brand, #C7882C);
+}
+
+.th-error-icon-ring {
+  position: absolute;
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(199, 136, 44, 0.35);
+  animation: thRotateRing 12s linear infinite;
+  z-index: 1;
+}
+
+.th-error-icon-ring-outer {
+  position: absolute;
+  width: 106px;
+  height: 106px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(199, 136, 44, 0.12) 0%, transparent 70%);
+  animation: thPulseWave 2.8s ease-in-out infinite;
+  z-index: 0;
+}
+
+@keyframes thRotateRing {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes thPulseWave {
+  0%, 100% { transform: scale(0.9); opacity: 0.6; }
+  50% { transform: scale(1.15); opacity: 0.9; }
+}
+
+/* ── Status Pill ── */
+.th-error-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: var(--ink-surface-subtle, #F1F5F9);
+  border: 1px solid var(--ink-border, #E2E8F0);
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-secondary, #475569);
+  margin-bottom: 14px;
+}
+
+.th-status-dot-offline {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #EF4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+/* ── Typography ── */
+.th-error-title {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--ink-primary, #0F172A);
+  margin: 0 0 10px;
+  line-height: 1.25;
+}
+
+.th-error-subtitle {
+  font-size: 14px;
+  color: var(--ink-secondary, #64748B);
+  line-height: 1.55;
+  margin: 0 0 24px;
+  max-width: 440px;
+}
+
+/* ── Alerts ── */
+.th-error-alert {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.th-alert-warning {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  color: #B45309;
+}
+
+.th-alert-success {
+  background: #ECFDF5;
+  border: 1px solid #A7F3D0;
+  color: #047857;
+}
+
+/* ── Troubleshooting Checklist ── */
+.th-troubleshoot-box {
+  width: 100%;
+  background: var(--ink-surface-subtle, #F8FAFC);
+  border: 1px solid var(--ink-border, #E2E8F0);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.th-troubleshoot-header {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-primary, #1E293B);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 10px;
+}
+
+.th-troubleshoot-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.th-troubleshoot-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--ink-secondary, #475569);
+  line-height: 1.4;
+}
+
+.th-tb-icon {
+  font-size: 16px;
+  color: var(--color-brand, #C7882C);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── Actions Row ── */
+.th-error-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.th-spin {
+  animation: thSpinAnim 1s linear infinite;
+}
+
+@keyframes thSpinAnim {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Auto Retry Note ── */
+.th-auto-retry-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-tertiary, #94A3B8);
+  margin-bottom: 18px;
+}
+
+.th-pulse-icon {
+  font-size: 12px;
+  color: var(--color-brand, #C7882C);
+  animation: thHeartbeat 1.6s ease-in-out infinite;
+}
+
+@keyframes thHeartbeat {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+}
+
+/* ── Hardcore Diagnostics Accordion ── */
+.th-diagnostics-toggle-wrap {
+  width: 100%;
+  border-top: 1px solid var(--ink-border, #E2E8F0);
+  padding-top: 16px;
+}
+
+.th-diagnostics-toggle-btn {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--ink-muted, #64748B) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  padding: 4px 8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  cursor: pointer !important;
+}
+
+.th-diagnostics-toggle-btn:hover {
+  color: var(--ink-primary, #0F172A) !important;
+  transform: none !important;
+}
+
+.th-diagnostics-panel {
+  width: 100%;
+  background: #0F1F18;
+  color: #E2E8F0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+  margin-top: 12px;
+  text-align: left;
+}
+
+.th-diag-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.th-diag-row:last-child {
+  border-bottom: none;
+}
+
+.th-diag-label {
+  color: #94A3B8;
+}
+
+.th-diag-val {
+  color: #FCD34D;
+  font-weight: 600;
+}
+

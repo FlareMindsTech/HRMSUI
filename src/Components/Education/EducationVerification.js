@@ -52,7 +52,7 @@ function EducationVerification({
             className="rounded-pill px-3 py-1 extra-small fw-semibold shadow-xs"
             onClick={onToggleVerification}
             disabled={savingVerification}
-            style={!isVerified ? { background: "linear-gradient(135deg, var(--color-primary, #C49A55) 0%, var(--color-primary-dark, #B8860B) 100%)", borderColor: "var(--color-primary, #C49A55)", color: "var(--color-sidebar, #1C1D1D)" } : {}}
+            style={!isVerified ? { background: "var(--color-brand, #C7882C)", borderColor: "var(--color-brand, #C7882C)", color: "#FFFFFF" } : {}}
           >
             {isVerified ? (
               <>

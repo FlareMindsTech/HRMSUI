@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
-  Container, Row, Col, Card, Form, Button, Badge, Table, Modal, InputGroup, Nav
+  Container, Row, Col, Card, Form, Button, Badge, Table, Modal, InputGroup
 } from 'react-bootstrap';
 import {
   FaClock, FaCalendarAlt, FaCheckCircle, FaExclamationTriangle,
@@ -88,9 +89,9 @@ const getStatusDotClass = (status) => {
   }
 };
 
-// Helper to resolve display info for employee
+// Helper to resolve display info for employee - honest data mapping without fabricated defaults
 function getEmployeeDisplayInfo(r) {
-  if (!r) return { name: 'Employee', sub: '', initials: 'E', code: 'N/A', dept: 'General', branch: 'Main Branch' };
+  if (!r) return { name: 'Unknown Employee', sub: '', initials: '?', code: 'N/A', dept: 'Unassigned', branch: 'Unassigned' };
 
   const u = (r.userId && typeof r.userId === 'object') ? r.userId
           : (r.user && typeof r.user === 'object') ? r.user
@@ -106,10 +107,10 @@ function getEmployeeDisplayInfo(r) {
     fullName = u?.name || u?.employeeName || u?.userName || r.employeeName || r.name || r.userName || '';
   }
 
-  const subText = u?.email || r.email || r.userEmail || u?.department || r.department || r.designation || '';
-  const empCode = u?.employeeCode || u?.employeeId || r.employeeCode || r.employeeId || 'EMP';
-  const deptName = u?.departmentId?.departmentName || u?.department || r.department || 'General';
-  const branchName = u?.branchId?.branchName || r.branchId?.branchName || r.branchName || 'Main Branch';
+  const subText = u?.email || r.email || r.userEmail || u?.designation || r.designation || '';
+  const empCode = u?.employeeCode || u?.employeeId || r.employeeCode || r.employeeId || 'N/A';
+  const deptName = u?.departmentId?.departmentName || u?.department || r.department || 'Unassigned';
+  const branchName = u?.branchId?.branchName || r.branchId?.branchName || r.branchName || 'Unassigned';
 
   if (!fullName && subText) fullName = subText;
 
@@ -124,10 +125,10 @@ function getEmployeeDisplayInfo(r) {
       initials = parts[0][0].toUpperCase();
     }
   }
-  if (!initials) initials = 'E';
+  if (!initials) initials = '?';
 
   return {
-    name: fullName || 'Employee',
+    name: fullName || 'Unknown Employee',
     sub: subText,
     initials,
     code: empCode,
@@ -244,7 +245,7 @@ function LocationModal({ show, onHide, record }) {
 
   return (
     <Modal show={show} onHide={onHide} centered size="sm">
-      <Modal.Header closeButton className="border-0 pb-0">
+      <Modal.Header className="border-0 pb-0">
         <Modal.Title className="h6 fw-bold d-flex align-items-center gap-2">
           <FaMapMarkerAlt className="text-primary" /> Location Verification Details
         </Modal.Title>
@@ -323,19 +324,40 @@ function Attendance() {
   const canManualEntry = isOwner || isAdmin || Boolean(hasPermission && hasPermission('attendance.modify')) || (user?.permissions && (user.permissions.includes('*') || user.permissions.includes('attendance.modify')));
 
   // Determine initial default tab per role
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
   const defaultTab = isPM ? 'my-team' : isEmployeeOrIntern ? 'my-today' : 'overview';
-  const [activeTab, setActiveTab] = useState(defaultTab);
+  const activeTab = tabParam || defaultTab;
+  const setActiveTab = useCallback((nextTab) => {
+    setSearchParams((prev) => {
+      const sp = new URLSearchParams(prev);
+      sp.set('tab', nextTab);
+      return sp;
+    });
+  }, [setSearchParams]);
 
-  // ── Organizational Dropdowns & Filters ──
+  // ── Organizational Dropdowns & Filters (URL-persistent) ──
   const [branchesList, setBranchesList] = useState([]);
   const [departmentsList, setDepartmentsList] = useState([]);
-  const [branchFilter, setBranchFilter] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [branchFilter, setBranchFilter] = useState(() => searchParams.get('branch') || '');
+  const [departmentFilter, setDepartmentFilter] = useState(() => searchParams.get('dept') || '');
   const [locationFilter, setLocationFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [dateFilter, setDateFilter] = useState(getTodayString());
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '');
+  const [dateFilter, setDateFilter] = useState(() => searchParams.get('date') || getTodayString());
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '');
+  const [debouncedSearch, setDebouncedSearch] = useState(() => searchParams.get('q') || '');
+
+  const updateFilterParam = useCallback((key, value) => {
+    setSearchParams((prev) => {
+      const sp = new URLSearchParams(prev);
+      if (value) {
+        sp.set(key, value);
+      } else {
+        sp.delete(key);
+      }
+      return sp;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   // ── Own Attendance / Employee Punch State ──
   const [todayRecord, setTodayRecord] = useState(null);
@@ -679,6 +701,10 @@ function Attendance() {
   // Regularization submit
   const handleRegSubmit = async (e) => {
     e.preventDefault();
+    if (!regForm.reason || regForm.reason.trim().length < 5) {
+      setFeedbackMessage({ type: 'danger', text: 'Regularization reason must be at least 5 characters long.' });
+      return;
+    }
     setRegSubmitting(true);
     try {
       await submitRegularizationRequest(regForm);
@@ -709,32 +735,33 @@ function Attendance() {
       {/* ── Top Page Header & Context (Role Tailored) ── */}
       <div className="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom">
         <div>
-          <h4 className="fw-bold mb-1 d-flex align-items-center gap-2 text-dark">
-            <FaClock className="text-success" />
-            {isOwner ? '👑 Organization Attendance Command Center' :
-             isAdmin ? `🛡️ Branch Attendance (${branchesList.find(b => b._id === user?.branchId)?.branchName || 'Assigned Branch'})` :
-             isHR ? '👩💼 HR Operations & Attendance Management' :
-             isPM ? '👥 My Team Attendance' : `👤 My Attendance — ${user?.firstName || 'Employee'} 👋`}
-          </h4>
-          <span className="small text-muted d-flex align-items-center gap-2">
-            Today: {getTodayString()} | Active Role: <Badge bg="dark" className="rounded-pill px-2.5 py-0.5">{rawRole || 'USER'}</Badge>
-          </span>
+          <h3 className="th-page-title mb-1 text-dark">
+            {isOwner ? 'Organization Attendance Command Center' :
+             isAdmin ? `Branch Attendance (${branchesList.find(b => b._id === user?.branchId)?.branchName || 'Assigned Branch'})` :
+             isHR ? 'HR Operations & Attendance Management' :
+             isPM ? 'Team Attendance' : `My Attendance — ${user?.firstName || 'Employee'}`}
+          </h3>
+          <div className="small text-muted d-flex align-items-center gap-2">
+            <span>{getTodayString()}</span>
+            <span>·</span>
+            <span>Role: <strong className="text-dark">{rawRole || 'USER'}</strong></span>
+          </div>
         </div>
         <div className="d-flex align-items-center gap-2 flex-wrap">
           {canManualEntry && (
             <Button
               variant="outline-primary"
               size="sm"
-              className="rounded-pill px-3 fw-semibold d-flex align-items-center gap-1.5"
+              className="px-3 fw-semibold d-flex align-items-center gap-1.5"
               onClick={() => setShowManualModal(true)}
             >
               <FaUserCheck size={12} /> Manual Attendance
             </Button>
           )}
           <Button
-            variant="outline-success"
+            variant="primary"
             size="sm"
-            className="rounded-pill px-3 fw-semibold d-flex align-items-center gap-1.5"
+            className="px-3 fw-semibold d-flex align-items-center gap-1.5"
             onClick={() => setShowRegFormModal(true)}
           >
             <FaPlus size={12} /> Regularization Request
@@ -753,190 +780,7 @@ function Attendance() {
         />
       )}
 
-      {/* ── 1. OWNER NAVIGATION TABS ── */}
-      {isOwner && (
-        <Nav variant="pills" className="attendance-nav-pills gap-2 mb-3 bg-white p-2 rounded-4 shadow-sm border">
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaChartLine className="me-1.5" /> Overview
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'daily'} onClick={() => setActiveTab('daily')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaUsers className="me-1.5" /> Daily Attendance
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'exceptions'} onClick={() => setActiveTab('exceptions')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaExclamationTriangle className="me-1.5 text-warning" /> Exceptions
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'regularization'} onClick={() => setActiveTab('regularization')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaFileContract className="me-1.5" /> Regularization
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'overtime'} onClick={() => setActiveTab('overtime')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaClock className="me-1.5" /> Overtime
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaShieldAlt className="me-1.5 text-info" /> Audit Log
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'optional-holidays'} onClick={() => setActiveTab('optional-holidays')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaUmbrellaBeach className="me-1.5 text-warning" /> Optional Holidays
-            </Nav.Link>
-          </Nav.Item>
-        </Nav>
-      )}
 
-      {/* ── 2. ADMIN NAVIGATION TABS (Assigned Branch Scope) ── */}
-      {isAdmin && (
-        <Nav variant="pills" className="attendance-nav-pills gap-2 mb-3 bg-white p-2 rounded-4 shadow-sm border">
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaChartLine className="me-1.5" /> Overview
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'daily'} onClick={() => setActiveTab('daily')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaUsers className="me-1.5" /> Daily Attendance
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'exceptions'} onClick={() => setActiveTab('exceptions')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaExclamationTriangle className="me-1.5 text-warning" /> Exceptions
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'regularization'} onClick={() => setActiveTab('regularization')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaFileContract className="me-1.5" /> Regularization
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'overtime'} onClick={() => setActiveTab('overtime')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaClock className="me-1.5" /> Overtime
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaShieldAlt className="me-1.5 text-info" /> Audit Log
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'optional-holidays'} onClick={() => setActiveTab('optional-holidays')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaUmbrellaBeach className="me-1.5 text-warning" /> Optional Holidays
-            </Nav.Link>
-          </Nav.Item>
-        </Nav>
-      )}
-
-      {/* ── 3. HR NAVIGATION TABS (HR Operational Scope) ── */}
-      {isHR && (
-        <Nav variant="pills" className="attendance-nav-pills gap-2 mb-3 bg-white p-2 rounded-4 shadow-sm border">
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaChartLine className="me-1.5" /> Overview
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'daily'} onClick={() => setActiveTab('daily')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaUsers className="me-1.5" /> Daily Attendance
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'exceptions'} onClick={() => setActiveTab('exceptions')} className="rounded-3 px-3 py-2 small fw-bold text-warning">
-              <FaExclamationTriangle className="me-1.5" /> Exceptions ⭐
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'regularization'} onClick={() => setActiveTab('regularization')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaFileContract className="me-1.5" /> Regularization ⭐
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'overtime'} onClick={() => setActiveTab('overtime')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaClock className="me-1.5" /> Overtime ⭐
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaShieldAlt className="me-1.5 text-info" /> Audit Log
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'optional-holidays'} onClick={() => setActiveTab('optional-holidays')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaUmbrellaBeach className="me-1.5 text-warning" /> Optional Holidays
-            </Nav.Link>
-          </Nav.Item>
-        </Nav>
-      )}
-
-      {/* ── 4. PROJECT MANAGER NAVIGATION TABS (My Team Scope) ── */}
-      {isPM && (
-        <Nav variant="pills" className="attendance-nav-pills gap-2 mb-3 bg-white p-2 rounded-4 shadow-sm border">
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'my-team'} onClick={() => setActiveTab('my-team')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaUsers className="me-1.5" /> Today's Team Status
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'daily'} onClick={() => setActiveTab('daily')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaUsers className="me-1.5" /> Team Roster
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'my-calendar'} onClick={() => setActiveTab('my-calendar')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaCalendarAlt className="me-1.5" /> Team Calendar
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'regularization'} onClick={() => setActiveTab('regularization')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaFileContract className="me-1.5" /> Requests
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'optional-holidays'} onClick={() => setActiveTab('optional-holidays')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaUmbrellaBeach className="me-1.5 text-warning" /> Optional Holidays
-            </Nav.Link>
-          </Nav.Item>
-        </Nav>
-      )}
-
-      {/* ── 5. EMPLOYEE / INTERN NAVIGATION TABS (Self Scope) ── */}
-      {isEmployeeOrIntern && (
-        <Nav variant="pills" className="attendance-nav-pills gap-2 mb-3 bg-white p-2 rounded-4 shadow-sm border">
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'my-today'} onClick={() => setActiveTab('my-today')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaClock className="me-1.5 text-success" /> Today
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'my-calendar'} onClick={() => setActiveTab('my-calendar')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaCalendarAlt className="me-1.5" /> Calendar
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'my-history'} onClick={() => setActiveTab('my-history')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaHistory className="me-1.5" /> History
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'regularization'} onClick={() => setActiveTab('regularization')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaFileContract className="me-1.5" /> Regularization
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'optional-holidays'} onClick={() => setActiveTab('optional-holidays')} className="rounded-3 px-3 py-2 small fw-bold">
-              <FaUmbrellaBeach className="me-1.5 text-warning" /> Optional Holidays
-            </Nav.Link>
-          </Nav.Item>
-        </Nav>
-      )}
 
       {/* ── Organizational Scope Filter Bar (For Owner, Admin, HR) ── */}
       {(isOwner || isAdmin || isHR) && (activeTab === 'overview' || activeTab === 'daily' || activeTab === 'exceptions' || activeTab === 'overtime' || activeTab === 'audit') && (
@@ -944,13 +788,19 @@ function Attendance() {
           <Row className="g-2 align-items-center">
             {isOwner && (
               <Col md={3} sm={6}>
-                <Form.Label className="extra-small fw-bold text-muted mb-1 d-flex align-items-center gap-1">
+                <Form.Label htmlFor="att-filter-branch" className="extra-small fw-bold text-muted mb-1 d-flex align-items-center gap-1">
                   <FaBuilding /> Organization Branch
                 </Form.Label>
                 <Form.Select
+                  id="att-filter-branch"
                   size="sm"
                   value={branchFilter}
-                  onChange={(e) => { setBranchFilter(e.target.value); setCurrentPage(1); }}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setBranchFilter(val);
+                    updateFilterParam('branch', val);
+                    setCurrentPage(1);
+                  }}
                   className="rounded-3 border-secondary-subtle"
                 >
                   <option value="">All Branches (Entire Organization)</option>
@@ -962,13 +812,19 @@ function Attendance() {
             )}
 
             <Col md={3} sm={6}>
-              <Form.Label className="extra-small fw-bold text-muted mb-1 d-flex align-items-center gap-1">
+              <Form.Label htmlFor="att-filter-dept" className="extra-small fw-bold text-muted mb-1 d-flex align-items-center gap-1">
                 <FaSitemap /> Department
               </Form.Label>
               <Form.Select
+                id="att-filter-dept"
                 size="sm"
                 value={departmentFilter}
-                onChange={(e) => { setDepartmentFilter(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setDepartmentFilter(val);
+                  updateFilterParam('dept', val);
+                  setCurrentPage(1);
+                }}
                 className="rounded-3 border-secondary-subtle"
               >
                 <option value="">All Departments</option>
@@ -979,26 +835,37 @@ function Attendance() {
             </Col>
 
             <Col md={2} sm={6}>
-              <Form.Label className="extra-small fw-bold text-muted mb-1 d-flex align-items-center gap-1">
+              <Form.Label htmlFor="att-filter-date" className="extra-small fw-bold text-muted mb-1 d-flex align-items-center gap-1">
                 <FaCalendarAlt /> Date
               </Form.Label>
               <Form.Control
+                id="att-filter-date"
                 type="date"
                 size="sm"
                 value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setDateFilter(val);
+                  updateFilterParam('date', val);
+                }}
                 className="rounded-3 border-secondary-subtle"
               />
             </Col>
 
             <Col md={2} sm={6}>
-              <Form.Label className="extra-small fw-bold text-muted mb-1 d-flex align-items-center gap-1">
+              <Form.Label htmlFor="att-filter-status" className="extra-small fw-bold text-muted mb-1 d-flex align-items-center gap-1">
                 <FaFilter /> Status
               </Form.Label>
               <Form.Select
+                id="att-filter-status"
                 size="sm"
                 value={statusFilter}
-                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setStatusFilter(val);
+                  updateFilterParam('status', val);
+                  setCurrentPage(1);
+                }}
                 className="rounded-3 border-secondary-subtle"
               >
                 <option value="">All Statuses</option>
@@ -1012,15 +879,20 @@ function Attendance() {
             </Col>
 
             <Col md={2} sm={12}>
-              <Form.Label className="extra-small fw-bold text-muted mb-1">Search Employee</Form.Label>
+              <Form.Label htmlFor="att-filter-search" className="extra-small fw-bold text-muted mb-1">Search Employee</Form.Label>
               <InputGroup size="sm">
                 <Form.Control
+                  id="att-filter-search"
                   placeholder="Name / Code..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSearchQuery(val);
+                    updateFilterParam('q', val);
+                  }}
                   className="rounded-start-3"
                 />
-                <Button variant="outline-secondary" className="rounded-end-3">
+                <Button variant="outline-secondary" className="rounded-end-3" aria-label="Search filter">
                   <FaSearch size={12} />
                 </Button>
               </InputGroup>
@@ -1032,64 +904,46 @@ function Attendance() {
       {/* ── TAB CONTENT 1: OVERVIEW & COMMAND CENTER ── */}
       {activeTab === 'overview' && (
         <>
-          {/* Top KPI Cards (7 Cards Grid as specified by prompt) */}
-          <Row className="g-3 mb-3">
-            <Col xs={6} sm={4} md={3} lg>
-              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center h-100">
-                <div className="text-muted extra-small fw-bold text-uppercase">Employees</div>
-                <div className="h3 fw-bold text-dark my-1">{analyticsData?.totalEmployees || 0}</div>
-                <div className="extra-small text-muted">In Scope</div>
-              </Card>
-            </Col>
-
-            <Col xs={6} sm={4} md={3} lg>
-              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-success border-4 h-100">
-                <div className="text-success extra-small fw-bold text-uppercase">Present</div>
-                <div className="h3 fw-bold text-success my-1">{analyticsData?.presentToday || 0}</div>
-                <div className="extra-small text-muted">Checked In</div>
-              </Card>
-            </Col>
-
-            <Col xs={6} sm={4} md={3} lg>
-              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-info border-4 h-100">
-                <div className="text-info extra-small fw-bold text-uppercase">Working</div>
-                <div className="h3 fw-bold text-info my-1">{analyticsData?.currentlyWorking || 0}</div>
-                <div className="extra-small text-muted">Currently Active</div>
-              </Card>
-            </Col>
-
-            <Col xs={6} sm={4} md={3} lg>
-              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-danger border-4 h-100">
-                <div className="text-danger extra-small fw-bold text-uppercase">Absent</div>
-                <div className="h3 fw-bold text-danger my-1">{analyticsData?.absentToday || 0}</div>
-                <div className="extra-small text-muted">Not Checked In</div>
-              </Card>
-            </Col>
-
-            <Col xs={6} sm={4} md={3} lg>
-              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-warning border-4 h-100">
-                <div className="text-warning extra-small fw-bold text-uppercase">Late</div>
-                <div className="h3 fw-bold text-warning my-1">{analyticsData?.lateToday || 0}</div>
-                <div className="extra-small text-muted">After Cutoff</div>
-              </Card>
-            </Col>
-
-            <Col xs={6} sm={4} md={3} lg>
-              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-purple border-4 h-100">
-                <div className="text-purple extra-small fw-bold text-uppercase">Half Day</div>
-                <div className="h3 fw-bold text-purple my-1">{analyticsData?.halfDayToday || 0}</div>
-                <div className="extra-small text-muted">Below Threshold</div>
-              </Card>
-            </Col>
-
-            <Col xs={6} sm={4} md={3} lg>
-              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white text-center border-start border-primary border-4 h-100">
-                <div className="text-primary extra-small fw-bold text-uppercase">Attendance %</div>
-                <div className="h3 fw-bold text-primary my-1">{analyticsData?.attendancePercentage ?? 0}%</div>
-                <div className="extra-small text-muted">Effective Rate</div>
-              </Card>
-            </Col>
-          </Row>
+          {/* Unified Executive KPI Metrics Strip - CSS Grid */}
+          <Card className="th-attendance-metrics-strip mb-3 border bg-white shadow-xs p-0 overflow-hidden">
+            <div className="th-kpi-grid">
+              <div className="th-kpi-col">
+                <span className="th-kpi-label">EMPLOYEES</span>
+                <span className="th-kpi-num">{analyticsData?.totalEmployees || 0}</span>
+                <span className="th-kpi-sub">In Scope</span>
+              </div>
+              <div className="th-kpi-col">
+                <span className="th-kpi-label text-success">PRESENT</span>
+                <span className="th-kpi-num text-success">{analyticsData?.presentToday || 0}</span>
+                <span className="th-kpi-sub">Checked In</span>
+              </div>
+              <div className="th-kpi-col">
+                <span className="th-kpi-label">ACTIVE</span>
+                <span className="th-kpi-num">{analyticsData?.currentlyWorking || 0}</span>
+                <span className="th-kpi-sub">Working Now</span>
+              </div>
+              <div className="th-kpi-col">
+                <span className="th-kpi-label text-danger">ABSENT</span>
+                <span className="th-kpi-num text-danger">{analyticsData?.absentToday || 0}</span>
+                <span className="th-kpi-sub">Not Checked In</span>
+              </div>
+              <div className="th-kpi-col">
+                <span className="th-kpi-label text-warning">LATE</span>
+                <span className="th-kpi-num text-warning">{analyticsData?.lateToday || 0}</span>
+                <span className="th-kpi-sub">After Cutoff</span>
+              </div>
+              <div className="th-kpi-col">
+                <span className="th-kpi-label">HALF DAY</span>
+                <span className="th-kpi-num">{analyticsData?.halfDayToday || 0}</span>
+                <span className="th-kpi-sub">Below Threshold</span>
+              </div>
+              <div className="th-kpi-col">
+                <span className="th-kpi-label">ATTENDANCE %</span>
+                <span className="th-kpi-num">{analyticsData?.attendancePercentage ?? 0}%</span>
+                <span className="th-kpi-sub">Effective Rate</span>
+              </div>
+            </div>
+          </Card>
 
           {/* Daily Table Summary */}
           <Card className="border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
@@ -1099,9 +953,48 @@ function Attendance() {
             </h6>
 
             {teamLoading ? (
-              <div className="text-center py-4">
-                <LoadingSpinner color="success" size="sm" />
-                <div className="extra-small text-muted mt-2">Loading attendance roster...</div>
+              <div className="table-responsive" aria-busy="true" aria-label="Loading attendance roster">
+                <div className="visually-hidden" role="status">Loading attendance roster, please wait...</div>
+                <Table hover responsive className="align-middle small mb-0 table-skeleton">
+                  <thead className="bg-light">
+                    <tr>
+                      <th>Employee</th>
+                      <th>ID</th>
+                      <th>Branch</th>
+                      <th>Department</th>
+                      <th>Location</th>
+                      <th>Punch In</th>
+                      <th>Punch Out</th>
+                      <th>Working Hrs</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[0, 1, 2, 3, 4].map((r) => (
+                      <tr key={r}>
+                        <td>
+                          <div className="d-flex align-items-center gap-2">
+                            <div className="skeleton-line rounded-circle" style={{ width: '28px', height: '28px', flexShrink: 0 }} />
+                            <div>
+                              <div className="skeleton-line rounded-1 mb-1" style={{ width: '100px', height: '14px' }} />
+                              <div className="skeleton-line rounded-1" style={{ width: '60px', height: '11px' }} />
+                            </div>
+                          </div>
+                        </td>
+                        <td><div className="skeleton-line rounded-1" style={{ width: '50px', height: '14px' }} /></td>
+                        <td><div className="skeleton-line rounded-1" style={{ width: '70px', height: '14px' }} /></td>
+                        <td><div className="skeleton-line rounded-1" style={{ width: '80px', height: '14px' }} /></td>
+                        <td><div className="skeleton-line rounded-1" style={{ width: '60px', height: '14px' }} /></td>
+                        <td><div className="skeleton-line rounded-1" style={{ width: '55px', height: '14px' }} /></td>
+                        <td><div className="skeleton-line rounded-1" style={{ width: '55px', height: '14px' }} /></td>
+                        <td><div className="skeleton-line rounded-1" style={{ width: '45px', height: '14px' }} /></td>
+                        <td><div className="skeleton-line rounded-pill" style={{ width: '65px', height: '18px' }} /></td>
+                        <td><div className="skeleton-line rounded-1" style={{ width: '35px', height: '14px' }} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
               </div>
             ) : (
               <Table hover responsive className="align-middle small mb-0">
@@ -1752,7 +1645,7 @@ function Attendance() {
       {/* ── Attendance Correction Modal ── */}
       <Modal show={showCorrectionModal} onHide={() => setShowCorrectionModal(false)} centered>
         <Form onSubmit={handleCorrectionSubmit}>
-          <Modal.Header closeButton className="border-0">
+          <Modal.Header className="border-0">
             <Modal.Title className="h6 fw-bold">Edit / Correct Attendance Record</Modal.Title>
           </Modal.Header>
           <Modal.Body className="small">
@@ -1771,20 +1664,40 @@ function Attendance() {
               </Form.Select>
             </Form.Group>
             <Form.Group className="mb-3">
-              <Form.Label className="fw-bold text-danger">Mandatory Audit Reason (min 5 chars) *</Form.Label>
+              <div className="d-flex justify-content-between align-items-center mb-1">
+                <Form.Label htmlFor="correction-reason" className="fw-bold text-danger mb-0">Mandatory Audit Reason (min 5 chars) *</Form.Label>
+                <span className={`extra-small ${correctionForm.reason.trim().length >= 5 ? 'text-success fw-bold' : 'text-muted'}`}>
+                  {correctionForm.reason.trim().length}/5 characters minimum {correctionForm.reason.trim().length >= 5 ? '✓' : ''}
+                </span>
+              </div>
               <Form.Control
+                id="correction-reason"
                 as="textarea"
                 rows={3}
-                placeholder="Reason for correction..."
+                placeholder="Reason for correction (at least 5 characters)..."
                 value={correctionForm.reason}
                 onChange={(e) => setCorrectionForm({ ...correctionForm, reason: e.target.value })}
+                aria-invalid={correctionForm.reason.length > 0 && correctionForm.reason.trim().length < 5}
+                aria-describedby="correction-reason-helper"
                 required
               />
+              {correctionForm.reason.length > 0 && correctionForm.reason.trim().length < 5 && (
+                <div id="correction-reason-helper" className="text-danger extra-small mt-1" role="alert">
+                  Please enter at least 5 meaningful characters explaining the correction.
+                </div>
+              )}
             </Form.Group>
           </Modal.Body>
           <Modal.Footer className="border-0">
             <Button variant="light" size="sm" onClick={() => setShowCorrectionModal(false)}>Cancel</Button>
-            <Button variant="success" size="sm" type="submit" disabled={correctionSubmitting}>Save Correction</Button>
+            <Button
+              variant="success"
+              size="sm"
+              type="submit"
+              disabled={correctionSubmitting || correctionForm.reason.trim().length < 5}
+            >
+              {correctionSubmitting ? 'Saving...' : 'Save Correction'}
+            </Button>
           </Modal.Footer>
         </Form>
       </Modal>
@@ -1792,7 +1705,7 @@ function Attendance() {
       {/* ── Regularization Form Modal ── */}
       <Modal show={showRegFormModal} onHide={() => setShowRegFormModal(false)} centered>
         <Form onSubmit={handleRegSubmit}>
-          <Modal.Header closeButton className="border-0">
+          <Modal.Header className="border-0">
             <Modal.Title className="h6 fw-bold">Submit Attendance Regularization</Modal.Title>
           </Modal.Header>
           <Modal.Body className="small">
@@ -1803,8 +1716,9 @@ function Attendance() {
               </div>
             )}
             <Form.Group className="mb-3">
-              <Form.Label className="fw-bold">Date *</Form.Label>
+              <Form.Label htmlFor="reg-date" className="fw-bold">Date *</Form.Label>
               <Form.Control
+                id="reg-date"
                 type="date"
                 value={regForm.date}
                 onChange={(e) => setRegForm({ ...regForm, date: e.target.value })}
@@ -1812,8 +1726,9 @@ function Attendance() {
               />
             </Form.Group>
             <Form.Group className="mb-3">
-              <Form.Label className="fw-bold">Request Type *</Form.Label>
+              <Form.Label htmlFor="reg-request-type" className="fw-bold">Request Type *</Form.Label>
               <Form.Select
+                id="reg-request-type"
                 value={regForm.requestType}
                 onChange={(e) => setRegForm({ ...regForm, requestType: e.target.value })}
               >
@@ -1825,27 +1740,47 @@ function Attendance() {
               </Form.Select>
             </Form.Group>
             <Form.Group className="mb-3">
-              <Form.Label className="fw-bold text-danger">Reason (min 5 chars) *</Form.Label>
+              <div className="d-flex justify-content-between align-items-center mb-1">
+                <Form.Label htmlFor="reg-reason" className="fw-bold text-danger mb-0">Reason (min 5 chars) *</Form.Label>
+                <span className={`extra-small ${regForm.reason.trim().length >= 5 ? 'text-success fw-bold' : 'text-muted'}`}>
+                  {regForm.reason.trim().length}/5 characters minimum {regForm.reason.trim().length >= 5 ? '✓' : ''}
+                </span>
+              </div>
               <Form.Control
+                id="reg-reason"
                 as="textarea"
                 rows={3}
-                placeholder="Reason for regularization..."
+                placeholder="Reason for regularization (at least 5 characters)..."
                 value={regForm.reason}
                 onChange={(e) => setRegForm({ ...regForm, reason: e.target.value })}
+                aria-invalid={regForm.reason.length > 0 && regForm.reason.trim().length < 5}
+                aria-describedby="reg-reason-helper"
                 required
               />
+              {regForm.reason.length > 0 && regForm.reason.trim().length < 5 && (
+                <div id="reg-reason-helper" className="text-danger extra-small mt-1" role="alert">
+                  Please enter at least 5 meaningful characters explaining the regularization request.
+                </div>
+              )}
             </Form.Group>
           </Modal.Body>
           <Modal.Footer className="border-0">
             <Button variant="light" size="sm" onClick={() => setShowRegFormModal(false)}>Cancel</Button>
-            <Button variant="success" size="sm" type="submit" disabled={regSubmitting}>Submit Request</Button>
+            <Button
+              variant="success"
+              size="sm"
+              type="submit"
+              disabled={regSubmitting || regForm.reason.trim().length < 5}
+            >
+              {regSubmitting ? 'Submitting...' : 'Submit Request'}
+            </Button>
           </Modal.Footer>
         </Form>
       </Modal>
 
       {/* ── Regularization Review Modal ── */}
       <Modal show={showRegReviewModal} onHide={() => setShowRegReviewModal(false)} centered>
-        <Modal.Header closeButton className="border-0">
+        <Modal.Header className="border-0">
           <Modal.Title className="h6 fw-bold">Review Regularization Request</Modal.Title>
         </Modal.Header>
         <Modal.Body className="small">

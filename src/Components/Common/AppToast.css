@@ -1,44 +1,57 @@
-/* ── Floating popup toast (page-level transient feedback) ── */
+/* ==========================================================================
+   AppToast (AppToast.css)
+   Floating popup notification for transient page-level feedback.
+   ========================================================================== */
+
 .app-toast {
   position: fixed;
   top: 76px;
-  right: 20px;
-  z-index: 1400;
+  right: 24px;
+  z-index: 10050;
   display: flex;
-  align-items: flex-start;
-  gap: var(--s-2);
-  max-width: min(420px, calc(100vw - 40px));
-  padding: var(--s-3) var(--s-4);
-  border-radius: var(--r-md);
-  border: 1px solid var(--c-border);
-  background: var(--c-card);
-  box-shadow: var(--sh-2);
-  font-size: var(--fs-body);
+  align-items: center;
+  gap: 12px;
+  min-width: 320px;
+  max-width: min(460px, calc(100vw - 32px));
+  padding: 12px 18px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+  font-size: 13.5px;
   line-height: 1.45;
-  animation: app-toast-in 0.28s cubic-bezier(0.21, 1.02, 0.73, 1);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(10px);
+  animation: appToastSlideIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  box-sizing: border-box;
 }
 
-@keyframes app-toast-in {
+@keyframes appToastSlideIn {
   from {
     opacity: 0;
-    transform: translateX(24px);
+    transform: translateX(24px) scale(0.97);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
   }
 }
 
 .app-toast-icon {
   flex-shrink: 0;
-  font-size: 1.05rem;
-  line-height: 1.4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 14px;
 }
 
 .app-toast-body {
   flex: 1;
   min-width: 0;
-  color: var(--c-text);
+  font-weight: 500;
+  font-size: 13.5px;
   overflow-wrap: anywhere;
 }
 
@@ -46,51 +59,77 @@
   flex-shrink: 0;
   border: none;
   background: transparent;
-  color: var(--c-text-2);
-  font-size: 0.9rem;
-  line-height: 1;
-  padding: 3px 5px;
-  border-radius: var(--r-sm);
+  color: inherit;
+  opacity: 0.6;
+  font-size: 13px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+  margin-left: 6px;
 }
 
 .app-toast-close:hover {
-  background: rgba(0, 0, 0, 0.06);
-  color: var(--c-text);
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.08);
 }
 
+/* Variants */
 .app-toast-success {
-  border-color: rgba(46, 125, 50, 0.35);
-  background: rgba(46, 125, 50, 0.08);
+  background-color: var(--status-success-tint, #ECFDF5);
+  border-color: var(--status-success-border, #A7F3D0);
+  color: #064E3B;
 }
 
 .app-toast-success .app-toast-icon {
-  color: var(--c-success);
+  background-color: rgba(16, 185, 129, 0.2);
+  color: var(--status-success, #059669);
 }
 
 .app-toast-danger {
-  border-color: rgba(214, 69, 69, 0.35);
-  background: rgba(214, 69, 69, 0.08);
+  background-color: var(--status-danger-tint, #FEF2F2);
+  border-color: var(--status-danger-border, #FECACA);
+  color: #7F1D1D;
 }
 
 .app-toast-danger .app-toast-icon {
-  color: var(--c-danger);
+  background-color: rgba(239, 68, 68, 0.18);
+  color: var(--status-danger, #DC2626);
 }
 
 .app-toast-warning {
-  border-color: rgba(237, 159, 36, 0.4);
-  background: rgba(237, 159, 36, 0.1);
+  background-color: var(--status-warning-tint, #FFFBEB);
+  border-color: var(--status-warning-border, #FDE68A);
+  color: #78350F;
 }
 
 .app-toast-warning .app-toast-icon {
-  color: var(--c-warning);
+  background-color: rgba(245, 158, 11, 0.2);
+  color: var(--status-warning, #D97706);
 }
 
 .app-toast-info {
-  border-color: rgba(199, 157, 88, 0.35);
-  background: var(--c-gold-tint);
+  background-color: var(--status-info-tint, #F0F9FF);
+  border-color: var(--status-info-border, #BAE6FD);
+  color: #0C4A6E;
 }
 
 .app-toast-info .app-toast-icon {
-  color: var(--c-gold-dark);
+  background-color: rgba(14, 165, 233, 0.18);
+  color: var(--status-info, #0284C7);
+}
+
+@media (max-width: 576px) {
+  .app-toast {
+    top: 68px;
+    right: 12px;
+    left: 12px;
+    min-width: 0;
+    max-width: none;
+  }
 }

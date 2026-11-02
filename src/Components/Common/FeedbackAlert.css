@@ -1,84 +1,221 @@
-/* ── App-wide notification banner (themed, token-driven) ── */
+/* ==========================================================================
+   FeedbackAlert & Enterprise Notification System (FeedbackAlert.css)
+   Unified, accessible, modern alert callouts and floating toasts.
+   ========================================================================== */
+
 .app-notify {
   display: flex;
-  align-items: flex-start;
-  gap: var(--s-2);
+  align-items: center;
+  gap: 12px;
   width: 100%;
-  padding: var(--s-3) var(--s-4);
-  border-radius: var(--r-sm);
+  padding: 12px 18px;
+  border-radius: 10px;
   border: 1px solid transparent;
-  font-size: var(--fs-body);
+  font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+  font-size: 13.5px;
   line-height: 1.45;
-  box-shadow: var(--sh-1);
+  box-shadow: 0 1px 3px rgba(15, 31, 24, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  margin-bottom: 16px;
+  animation: appNotifySlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
 }
 
+@keyframes appNotifySlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Floating Toast Mode (for action confirmations like "Task created") ── */
+.app-notify.app-notify-floating {
+  position: fixed;
+  top: 76px;
+  right: 24px;
+  width: auto;
+  min-width: 320px;
+  max-width: min(460px, calc(100vw - 32px));
+  z-index: 10050;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.06);
+  margin-bottom: 0;
+  animation: appToastSlideIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  backdrop-filter: blur(10px);
+}
+
+@keyframes appToastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* ── Icon Badge ── */
 .app-notify-icon {
   flex-shrink: 0;
-  font-size: 1rem;
-  line-height: 1.4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 14px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 
+/* ── Content Body ── */
 .app-notify-body {
   flex: 1;
   min-width: 0;
-  color: var(--c-text);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* If message contains duplicate inline icons, suppress them */
+.app-notify-message > svg:first-child {
+  display: none;
+}
+
+.app-notify-title {
+  font-weight: 600;
+  font-size: 13.5px;
+  letter-spacing: -0.01em;
+}
+
+.app-notify-message {
+  font-weight: 500;
+  font-size: 13.5px;
   overflow-wrap: anywhere;
 }
 
+/* ── Close Button ── */
 .app-notify-close {
   flex-shrink: 0;
   border: none;
   background: transparent;
   color: inherit;
   opacity: 0.6;
-  font-size: 1rem;
-  line-height: 1;
-  padding: 2px 4px;
-  border-radius: var(--r-sm);
+  font-size: 13px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+  margin-left: 6px;
 }
 
 .app-notify-close:hover {
   opacity: 1;
-  background: rgba(0, 0, 0, 0.06);
+  background: rgba(0, 0, 0, 0.08);
 }
 
+/* ── Variants ── */
+
+/* 1. Success (Emerald / Forest) */
 .app-notify-success {
-  background: rgba(46, 125, 50, 0.1);
-  border-color: rgba(46, 125, 50, 0.25);
-  color: var(--c-success);
+  background-color: var(--status-success-tint, #ECFDF5);
+  border-color: var(--status-success-border, #A7F3D0);
+  color: #064E3B;
 }
 
-.app-notify-success .app-notify-body {
-  color: var(--c-text);
+.app-notify-success .app-notify-icon {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: var(--status-success, #059669);
 }
 
-.app-notify-danger {
-  background: rgba(214, 69, 69, 0.1);
-  border-color: rgba(214, 69, 69, 0.25);
-  color: var(--c-danger);
+.app-notify-success .app-notify-title {
+  color: #064E3B;
 }
 
-.app-notify-danger .app-notify-body {
-  color: var(--c-text);
+.app-notify-success .app-notify-message {
+  color: #065F46;
 }
 
+/* 2. Danger / Error (Rose / Crimson) */
+.app-notify-danger,
+.app-notify-error {
+  background-color: var(--status-danger-tint, #FEF2F2);
+  border-color: var(--status-danger-border, #FECACA);
+  color: #7F1D1D;
+}
+
+.app-notify-danger .app-notify-icon,
+.app-notify-error .app-notify-icon {
+  background-color: rgba(239, 68, 68, 0.18);
+  color: var(--status-danger, #DC2626);
+}
+
+.app-notify-danger .app-notify-title,
+.app-notify-error .app-notify-title {
+  color: #7F1D1D;
+}
+
+.app-notify-danger .app-notify-message,
+.app-notify-error .app-notify-message {
+  color: #991B1B;
+}
+
+/* 3. Warning (Amber / Gold) */
 .app-notify-warning {
-  background: rgba(237, 159, 36, 0.12);
-  border-color: rgba(237, 159, 36, 0.3);
-  color: var(--c-warning);
+  background-color: var(--status-warning-tint, #FFFBEB);
+  border-color: var(--status-warning-border, #FDE68A);
+  color: #78350F;
 }
 
-.app-notify-warning .app-notify-body {
-  color: var(--c-text);
+.app-notify-warning .app-notify-icon {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: var(--status-warning, #D97706);
 }
 
+.app-notify-warning .app-notify-title {
+  color: #78350F;
+}
+
+.app-notify-warning .app-notify-message {
+  color: #92400E;
+}
+
+/* 4. Info (Sky / Navy) */
 .app-notify-info {
-  background: var(--c-gold-tint);
-  border-color: rgba(199, 157, 88, 0.3);
-  color: var(--c-gold-dark);
+  background-color: var(--status-info-tint, #F0F9FF);
+  border-color: var(--status-info-border, #BAE6FD);
+  color: #0C4A6E;
 }
 
-.app-notify-info .app-notify-body {
-  color: var(--c-text);
+.app-notify-info .app-notify-icon {
+  background-color: rgba(14, 165, 233, 0.18);
+  color: var(--status-info, #0284C7);
+}
+
+.app-notify-info .app-notify-title {
+  color: #0C4A6E;
+}
+
+.app-notify-info .app-notify-message {
+  color: #0369A1;
+}
+
+/* Mobile responsive */
+@media (max-width: 576px) {
+  .app-notify.app-notify-floating {
+    top: 68px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+  }
 }

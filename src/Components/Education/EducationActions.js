@@ -42,7 +42,7 @@ function EducationActions({
           variant="dark"
           size="sm"
           className="rounded-pill px-4 py-2 small fw-semibold text-white shadow-sm"
-          style={{ background: "linear-gradient(135deg, var(--color-primary, #C49A55) 0%, var(--color-primary-dark, #B8860B) 100%)", border: "none", color: "var(--color-sidebar, #1C1D1D)" }}
+          style={{ background: "var(--color-brand, #C7882C)", border: "none", color: "#FFFFFF" }}
           onClick={onSave}
           disabled={saving}
         >

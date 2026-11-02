@@ -77,7 +77,6 @@ import { useBranch } from "../../context/BranchContext";
 import "../../Pages/Dashboard/HrOnboarding.css";
 import "./BranchesSection.css";
 import "./navigation/OrgWorkspaceNav.css";
-import OrgWorkspaceNav from "./navigation/OrgWorkspaceNav";
 
 // Import child sub-modules for Branch Detail page tabs
 import DepartmentsSection from "./DepartmentsSection";
@@ -115,7 +114,7 @@ export default function BranchesSection({
 }) {
   const hasPermission = useHasPermission();
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
-  const { organization, refreshBranches, setSelectedBranchId } = useBranch();
+  const { organization, refreshBranches, setSelectedBranchId, selectedBranchId } = useBranch();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -229,10 +228,6 @@ export default function BranchesSection({
     (code) => Boolean(isSystemAdmin || hasPermission(code)),
     [isSystemAdmin, hasPermission]
   );
-  const branchNavGroups = useMemo(() => {
-    const visible = filterNavGroups(BRANCH_NAV_GROUPS, canViewCode);
-    return visible.length > 0 ? visible : BRANCH_NAV_GROUPS.slice(0, 1);
-  }, [canViewCode]);
 
   const canCreate = isSystemAdmin || hasPermission("branch.create") || hasPermission("organization.branch.create");
   const canUpdate = isSystemAdmin || hasPermission("branch.update") || hasPermission("organization.branch.update");
@@ -344,17 +339,10 @@ export default function BranchesSection({
 
   const handleBackToAllBranches = useCallback(() => {
     setSelectedBranchDetail(null);
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete("branchId");
-        next.delete("tab");
-        next.delete("action");
-        return next;
-      },
-      { replace: true }
-    );
-  }, [setSearchParams]);
+    if (setSelectedBranchId) setSelectedBranchId("");
+    if (onSelectBranch) onSelectBranch(null);
+    navigate("/organisation/branches");
+  }, [setSelectedBranchId, onSelectBranch, navigate]);
 
   const handleOpenBranchDepartments = useCallback((branch) => {
     handleSelectBranch(branch, "departments");
@@ -402,17 +390,30 @@ export default function BranchesSection({
     }
 
     const pool = allOrgBranches.length > 0 ? allOrgBranches : branches;
+    let match = null;
     if (bIdParam && pool.length > 0) {
-      const match = pool.find((b) => String(b._id || b.id) === String(bIdParam));
-      if (match) {
-        if (!selectedBranchDetail || String(selectedBranchDetail._id || selectedBranchDetail.id) !== String(bIdParam)) {
-          setSelectedBranchDetail(match);
-          if (setSelectedBranchId) setSelectedBranchId(bIdParam);
-        }
-        const safeTab = sanitizeBranchTab(tabParam, canViewCode);
-        if (tabParam && safeTab !== detailActiveTab) {
-          setDetailActiveTab(safeTab);
-        }
+      match = pool.find((b) => String(b._id || b.id) === String(bIdParam));
+    } else if (tabParam && pool.length > 0) {
+      match = (selectedBranchId && pool.find((b) => String(b._id || b.id) === String(selectedBranchId))) || pool[0];
+    }
+
+    if (match) {
+      const matchId = String(match._id || match.id);
+      if (!selectedBranchDetail || String(selectedBranchDetail._id || selectedBranchDetail.id) !== matchId) {
+        setSelectedBranchDetail(match);
+        if (setSelectedBranchId) setSelectedBranchId(matchId);
+      }
+      const safeTab = sanitizeBranchTab(tabParam, canViewCode);
+      if (safeTab !== detailActiveTab) {
+        setDetailActiveTab(safeTab);
+      }
+    } else if (!bIdParam && !tabParam) {
+      // Clear branch detail when navigating back to All Branches directory
+      if (selectedBranchDetail !== null) {
+        setSelectedBranchDetail(null);
+      }
+      if (setSelectedBranchId) {
+        setSelectedBranchId("");
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1831,19 +1832,8 @@ export default function BranchesSection({
           </div>
         </div>
 
-        {/* ── Workspace: ONE navigation + content. No duplicate step bar / jump menu. ── */}
-        <div className="ows-layout">
-          <OrgWorkspaceNav
-            heading="Branch"
-            groups={branchNavGroups}
-            activeKey={detailActiveTab}
-            onSelect={handleDetailTabChange}
-            badges={{
-              members: branchMembers.length,
-              departments: getBranchDepartments(lockedBId).length,
-            }}
-          />
-          <div className="ows-content">
+        {/* ── Workspace: ONE navigation via main sidebar + full-width content ── */}
+        <div className="branch-detail-content-full">
             {/* Summary cards belong to the overview only; on other tabs they just push the work down. */}
             {detailActiveTab === "overview" && (
               <div className="mb-4">
@@ -2650,8 +2640,7 @@ export default function BranchesSection({
           {detailActiveTab === "financial-years" && <FinancialYearsSection lockedBranchId={lockedBId} />}
           {detailActiveTab === "settings" && <BranchSettingsSection lockedBranchId={lockedBId} />}
         </div>
-          </div>
-        </div>
+      </div>
 
         {/* ── Professional Remove Member Confirmation Modal ── */}
         <Modal
@@ -2741,7 +2730,7 @@ export default function BranchesSection({
                 variant="danger"
                 className="px-4 py-2 small fw-bold d-inline-flex align-items-center gap-2"
                 style={{
-                  background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                  background: "#dc2626",
                   border: "none",
                   boxShadow: "0 4px 14px rgba(220, 38, 38, 0.3)",
                 }}
@@ -3500,7 +3489,7 @@ export default function BranchesSection({
               <div key={bId} className="branch-card">
                 {/* Header */}
                 <div className="branch-card-header">
-                  <div className="d-flex align-items-center gap-3">
+                  <div className="branch-card-header-left d-flex align-items-center gap-3">
                     <div className="branch-card-avatar">
                       <FaBuilding />
                     </div>

@@ -42,6 +42,7 @@ import {
 import FeedbackAlert from "../Common/FeedbackAlert";
 import ThemeCustomizationSection from "./ThemeCustomizationSection";
 import AttendanceVerificationMethodConfig from "../Attendance/AttendanceVerificationMethodConfig";
+import "./OrganizationSettingsSection.css";
 
 export const VERIFICATION_OPTIONS = [
   {

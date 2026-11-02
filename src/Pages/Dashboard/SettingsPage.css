@@ -107,41 +107,44 @@
 }
 
 .settings-tab-btn {
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  padding: 0.52rem 1.15rem;
-  font-size: 0.83rem;
-  font-weight: 700;
-  color: #4B5563;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  letter-spacing: 0.02em;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  user-select: none;
-  white-space: nowrap;
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 10px !important;
+  padding: 0.52rem 1.15rem !important;
+  font-size: 0.83rem !important;
+  font-weight: 600 !important;
+  color: #4B5563 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.55rem !important;
+  letter-spacing: 0.02em !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  white-space: nowrap !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
 }
 
 .settings-tab-btn:hover {
-  color: #8C6729;
-  background: rgba(196, 154, 85, 0.09);
-  border-color: rgba(196, 154, 85, 0.2);
+  color: var(--color-brand, #C7882C) !important;
+  background: rgba(199, 136, 44, 0.08) !important;
+  border-color: var(--color-brand, #C7882C) !important;
 }
 
 .settings-tab-btn.active {
-  background: #111827;
-  color: var(--color-surface, #FFFFFF);
-  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.25);
+  background: var(--color-brand, #C7882C) !important;
+  color: var(--brand-contrast-text, #111827) !important;
+  border-color: var(--color-brand, #C7882C) !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(199, 136, 44, 0.25) !important;
 }
 
 .settings-tab-icon {
-  font-size: 0.95rem;
+  font-size: 0.95rem !important;
 }
 
 .settings-tab-btn.active .settings-tab-icon {
-  color: var(--color-primary-light, #E2C278);
+  color: inherit !important;
 }
 
 /* ── Content Viewport ── */

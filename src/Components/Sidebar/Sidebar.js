@@ -1,87 +1,301 @@
-import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   MdDashboard,
+  MdAccessTime,
+  MdWork,
+  MdAssignment,
   MdBusiness,
   MdDomain,
+  MdGroups,
   MdEventNote,
-  MdAccessTime,
+  MdPayments,
   MdPersonAdd,
+  MdHistoryEdu,
+  MdAdminPanelSettings,
+  MdAccountTree,
+  MdDevices,
+  MdSecurity,
   MdReceipt,
   MdAccountBalance,
   MdAssessment,
-  MdLogout,
-  MdWork,
-  MdAdminPanelSettings,
-  MdDevices,
-  MdChevronRight,
-  MdPayments,
-  MdAccountTree,
-  MdSecurity,
-  MdHistoryEdu,
-  MdDns,
-  MdAssignment,
   MdSettings,
+  MdDns,
+  MdChevronRight,
+  MdChevronLeft,
+  MdLogout,
+  MdBadge,
+  MdPeople,
+  MdAttachMoney,
+  MdRule,
+  MdCheckCircle,
 } from 'react-icons/md';
 import { useSelector, useDispatch } from 'react-redux';
-import { selectAuthUser, selectIsSystemAdmin, useHasMenu, useHasPermission, logout } from '../../redux/slices/authSlice';
+import { selectAuthUser, selectIsSystemAdmin, useHasMenu, logout } from '../../redux/slices/authSlice';
+import { useBranch } from '../../context/BranchContext';
 import './Sidebar.css';
 
-// Menu codes frozen to backend seed registry. ROLE_MANAGEMENT is granted to
-// Owner/Admin only (HR intentionally excluded); REIMBURSEMENT stands alone
-// (never LEAVE_MGMT). ORGANISATION uses British S; everything else American Z.
-const menuItems = [
-  { name: 'Dashboard', path: '/dashboard', menuCode: 'DASHBOARD', icon: MdDashboard, section: 'main' },
-  { name: 'Attendance', path: '/attendance', menuCode: 'ATTENDANCE', icon: MdAccessTime, section: 'main' },
-  {
-    name: 'Projects',
-    path: '/projects',
-    menuCode: 'PROJECTS',
-    icon: MdWork,
-    section: 'main',
-    children: [
-      { name: 'Tasks', path: '/projects/tasks', icon: MdAssignment },
-    ],
-  },
-  {
-    name: 'Organisation',
-    path: '/organisation',
-    menuCode: 'ORGANISATION',
-    icon: MdBusiness,
-    section: 'main',
-    children: [
-      { name: 'Branches', path: '/organisation/branches', icon: MdDomain, perm: 'branch.view' },
-    ],
-  },
-  { name: 'Leave Request', path: '/leave', menuCode: 'LEAVE_MGMT', icon: MdEventNote, section: 'main' },
-  { name: 'Reimbursements', path: '/reimbursement', menuCode: 'REIMBURSEMENT', icon: MdPayments, section: 'main' },
-  { name: 'HR Onboarding', path: '/onboarding', menuCode: 'USER_MANAGEMENT', icon: MdPersonAdd, section: 'manage' },
-  { name: 'Lifecycle & Separation', path: '/lifecycle', menuCode: 'USER_MANAGEMENT', icon: MdHistoryEdu, section: 'manage' },
-  { name: 'Role Management', path: '/roles', menuCode: 'ROLE_MANAGEMENT', icon: MdAdminPanelSettings, section: 'manage' },
-  { name: 'Approval Workflows', path: '/approval-workflows', menuCode: 'ROLE_MANAGEMENT', icon: MdAccountTree, section: 'manage' },
-  { name: 'Assets', path: '/assets', menuCode: 'ASSETS', icon: MdDevices, section: 'manage' },
-  { name: 'Audit Logs', path: '/audit-logs', menuCode: 'ROLE_MANAGEMENT', icon: MdSecurity, section: 'manage' },
-  { name: 'Payslip', path: '/payslip', menuCode: 'PAYSLIP', icon: MdReceipt, section: 'manage' },
-  { name: 'EPFO', path: '/epfo', menuCode: 'EPFO', icon: MdAccountBalance, section: 'manage' },
-  { name: 'MIS', path: '/mis', menuCode: 'MIS', icon: MdAssessment, section: 'manage' },
-  { name: 'Settings', path: '/settings', menuCode: 'ORGANISATION', icon: MdSettings, section: 'manage' },
-  { name: 'Platform Admin', path: '/platform', menuCode: 'PLATFORM_DASHBOARD', icon: MdDns, section: 'manage', isPlatformOnly: true },
-];
+/* ==========================================================================
+   NAVIGATION SCHEMA — High Fidelity, Clean Enterprise
+   ========================================================================== */
 
-function Sidebar({ isExpanded = false }) {
+const NAV_SECTIONS = {
+  home: {
+    tag: 'DASHBOARD',
+    title: 'Dashboard',
+    subtitle: 'Workspace metrics & activity',
+    icon: MdDashboard,
+    theme: 'amber',
+    groups: [
+      {
+        header: 'WORKSPACES',
+        items: [
+          { name: 'Dashboard Overview', path: '/dashboard', icon: MdDashboard, exact: true },
+          { name: 'Daily Attendance', path: '/attendance', icon: MdAccessTime },
+          { name: 'Leave Requests', path: '/leave', icon: MdEventNote, badge: 5 },
+          { name: 'Projects & Tasks', path: '/projects', icon: MdWork },
+        ],
+      },
+    ],
+  },
+  people: {
+    tag: 'PEOPLE > ORGANISATION',
+    title: 'Organisation',
+    subtitle: 'Branches, policies and setup',
+    icon: MdBusiness,
+    backLink: { label: 'Back to People', path: '/organisation' },
+    theme: 'amber',
+    groups: [
+      {
+        header: 'OVERVIEW',
+        items: [
+          { name: 'Overview', path: '/organisation', exact: true, icon: MdBusiness },
+          { name: 'Locations & Branches', path: '/organisation/branches', icon: MdDomain },
+          { name: 'Members & Staff', path: '/onboarding', icon: MdGroups },
+        ],
+      },
+      {
+        header: 'STRUCTURE',
+        items: [
+          { name: 'Departments', path: '/organisation/departments', icon: MdAccountTree },
+          { name: 'Designations', path: '/organisation/designations', icon: MdBadge },
+          { name: 'Teams', path: '/organisation/teams', icon: MdPeople },
+          { name: 'Reporting Hierarchy', path: '/organisation/hierarchy', icon: MdAccountTree },
+        ],
+      },
+      {
+        header: 'WORKPLACE & POLICIES',
+        items: [
+          { name: 'Work Calendars', path: '/organisation/work-calendars', icon: MdEventNote },
+          { name: 'Shifts', path: '/organisation/shifts', icon: MdAccessTime },
+          { name: 'Holiday Calendars', path: '/organisation/holidays', icon: MdEventNote },
+          { name: 'Leave Settings', path: '/organisation/leave-settings', icon: MdEventNote },
+        ],
+      },
+      {
+        header: 'HR MASTERS & FINANCE',
+        items: [
+          { name: 'Job Grades', path: '/organisation/job-grades', icon: MdBadge },
+          { name: 'Cost Centers', path: '/organisation/cost-centers', icon: MdAttachMoney },
+          { name: 'Financial Years', path: '/organisation/financial-years', icon: MdAccountBalance },
+        ],
+      },
+      {
+        header: 'SUBSCRIPTION & SETTINGS',
+        items: [
+          { name: 'Subscription', path: '/organisation/subscription', icon: MdReceipt },
+          { name: 'Settings', path: '/settings', icon: MdSettings },
+        ],
+      },
+    ],
+  },
+  time: {
+    tag: 'TIME & ATTENDANCE',
+    title: 'Attendance',
+    subtitle: 'Hours, roster and leave requests',
+    icon: MdAccessTime,
+    theme: 'amber',
+    groups: [
+      {
+        header: 'TIME & ATTENDANCE',
+        items: [
+          {
+            name: 'Attendance',
+            path: '/attendance',
+            icon: MdAccessTime,
+            children: [
+              { name: 'Overview', path: '/attendance?tab=overview', tabKey: 'overview', icon: MdDashboard },
+              { name: 'Daily Attendance', path: '/attendance?tab=daily', tabKey: 'daily', icon: MdAccessTime },
+              { name: 'Exceptions', path: '/attendance?tab=exceptions', tabKey: 'exceptions', icon: MdRule },
+              { name: 'Regularization', path: '/attendance?tab=regularization', tabKey: 'regularization', icon: MdCheckCircle },
+              { name: 'Overtime', path: '/attendance?tab=overtime', tabKey: 'overtime', icon: MdHistoryEdu },
+              { name: 'Audit Log', path: '/attendance?tab=audit', tabKey: 'audit', icon: MdSecurity },
+              { name: 'Optional Holidays', path: '/attendance?tab=optional-holidays', tabKey: 'optional-holidays', icon: MdEventNote },
+            ],
+          },
+          { name: 'Leave Requests', path: '/leave', icon: MdEventNote, badge: 5 },
+        ],
+      },
+    ],
+  },
+  project: {
+    tag: 'PROJECTS & DELIVERY',
+    title: 'Project',
+    subtitle: 'Sprints, tasks and delivery',
+    icon: MdWork,
+    theme: 'amber',
+    groups: [
+      {
+        header: 'PROJECT MANAGEMENT',
+        items: [
+          { name: 'Projects Overview', path: '/projects', icon: MdWork, exact: true },
+          { name: 'Tasks & Sprints', path: '/tasks', icon: MdAssignment },
+        ],
+      },
+    ],
+  },
+  finance: {
+    tag: 'FINANCE',
+    title: 'Finance',
+    subtitle: 'Payroll, claims and statutory',
+    icon: MdReceipt,
+    theme: 'amber',
+    groups: [
+      {
+        header: 'PAYROLL & STATUTORY',
+        items: [
+          { name: 'Payslip', path: '/payslip', icon: MdReceipt },
+          { name: 'EPFO', path: '/epfo', icon: MdAccountBalance },
+          { name: 'Tax Declarations', path: '/payslip?tab=tax', icon: MdEventNote },
+        ],
+      },
+      {
+        header: 'CLAIMS & EXPENSES',
+        items: [
+          { name: 'Reimbursements', path: '/reimbursement', icon: MdPayments },
+          { name: 'Advance Requests', path: '/reimbursement?tab=advances', icon: MdAttachMoney },
+        ],
+      },
+      {
+        header: 'REPORTS',
+        items: [
+          { name: 'MIS Reporting', path: '/mis', icon: MdAssessment },
+        ],
+      },
+    ],
+  },
+  control: {
+    tag: 'CONTROL',
+    title: 'Control',
+    subtitle: 'Approvals, audits and security',
+    icon: MdAccountTree,
+    theme: 'amber',
+    groups: [
+      {
+        header: 'GOVERNANCE',
+        items: [
+          { name: 'Approval Workflows', path: '/approval-workflows', icon: MdAccountTree, badge: 14, badgeBrand: true },
+          { name: 'Audit Logs', path: '/audit-logs', icon: MdSecurity },
+          { name: 'Role Management', path: '/roles', icon: MdAdminPanelSettings },
+          { name: 'Lifecycle & Separation', path: '/lifecycle', icon: MdHistoryEdu },
+        ],
+      },
+      {
+        header: 'SYSTEM & ASSETS',
+        items: [
+          { name: 'Asset Management', path: '/assets', icon: MdDevices },
+          { name: 'Settings', path: '/settings', icon: MdSettings },
+          { name: 'Platform Admin', path: '/platform', icon: MdDns, isPlatformOnly: true },
+        ],
+      },
+    ],
+  },
+};
+
+// Helper: map path to top nav section
+const getSectionFromPath = (pathname) => {
+  if (pathname === '/dashboard' || pathname === '/') return 'home';
+  if (['/organisation', '/branches', '/onboarding'].some((p) => pathname.startsWith(p))) return 'people';
+  if (['/attendance', '/leave'].some((p) => pathname.startsWith(p))) return 'time';
+  if (['/projects', '/tasks'].some((p) => pathname.startsWith(p))) return 'project';
+  if (['/payslip', '/epfo', '/mis', '/reimbursement'].some((p) => pathname.startsWith(p))) return 'finance';
+  if (['/approval-workflows', '/audit-logs', '/assets', '/roles', '/users', '/lifecycle', '/platform', '/settings', '/subscription-renewal'].some((p) => pathname.startsWith(p))) return 'control';
+  return 'home';
+};
+
+export default function Sidebar({
+  isHovered = false,
+  isPinned = false,
+  isMobileOpen = false,
+  onClose,
+  onTogglePin,
+}) {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
   const user = useSelector(selectAuthUser);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
-  const hasMenu = useHasMenu();
-  const hasPermission = useHasPermission();
-  const dispatch = useDispatch();
-  const [showModal, setShowModal] = useState(false);
-  const [openSubMenus, setOpenSubMenus] = useState({});
 
-  const toggleSubMenu = (path, e) => {
-    if (e) e.stopPropagation();
-    setOpenSubMenus((prev) => ({ ...prev, [path]: !prev[path] }));
+  // Active top-nav section
+  const [activeSection, setActiveSection] = useState(() => getSectionFromPath(location.pathname));
+
+  const isExpanded = isHovered || isPinned || isMobileOpen;
+
+  // Submenu toggle state
+  const [openSubMenus, setOpenSubMenus] = useState({
+    '/attendance': true,
+    '/projects': location.pathname.startsWith('/projects'),
+  });
+
+  // Track route changes
+  useEffect(() => {
+    const sec = getSectionFromPath(location.pathname);
+    setActiveSection(sec);
+    if (location.pathname.startsWith('/attendance')) {
+      setOpenSubMenus((prev) => ({ ...prev, '/attendance': true }));
+    }
+  }, [location.pathname]);
+
+  // Listen for top nav explicit section click events
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail?.section) setActiveSection(e.detail.section);
+    };
+    window.addEventListener('teamhub:nav-section', handler);
+    return () => window.removeEventListener('teamhub:nav-section', handler);
+  }, []);
+
+  const [showSignoutModal, setShowSignoutModal] = useState(false);
+  const confirmBtnRef = useRef(null);
+
+  // Focus trap for sign-out dialog
+  useEffect(() => {
+    if (showSignoutModal && confirmBtnRef.current) {
+      confirmBtnRef.current.focus();
+    }
+  }, [showSignoutModal]);
+
+  // Keyboard accessibility for modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (showSignoutModal) {
+        if (e.key === 'Escape') setShowSignoutModal(false);
+        if (e.key === 'Enter') handleConfirmLogout();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showSignoutModal]);
+
+  const toggleSubMenu = (path, currentComputedOpen, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setOpenSubMenus((prev) => ({
+      ...prev,
+      [path]: prev[path] !== undefined ? !prev[path] : !currentComputedOpen,
+    }));
   };
 
   const isVisible = (item) => {
@@ -89,215 +303,455 @@ function Sidebar({ isExpanded = false }) {
       const roleCode = (user?.roleCode || user?.role?.roleCode || '').toUpperCase();
       return roleCode === 'SAAS_SUPER_ADMIN' || (user?.scope === 'PLATFORM' && !user?.organizationId);
     }
-    if (item.menuCode === 'DASHBOARD') return true;
-    if (isSystemAdmin) return true;
-    return hasMenu(item.menuCode);
+    return true;
   };
 
-  const visibleMainItems = menuItems.filter((i) => i.section === 'main' && isVisible(i));
-  const visibleManageItems = menuItems.filter((i) => i.section === 'manage' && isVisible(i));
-
-  const activePath = menuItems.find(
-    (item) => location.pathname.startsWith(item.path)
-  )?.path || '/dashboard';
-
-  const handleLogout = () => {
-    // Instant SPA logout: the logout thunk clears local session synchronously
-    // and logout.pending clears Redux state the same tick, so the App route
-    // gate redirects to /login. No window.location reload (full bundle
-    // re-parse) and no scattered localStorage removes here — the thunk owns
-    // the full key set. navigate() is a fallback for the transition tick.
-    setShowModal(false);
+  const handleConfirmLogout = () => {
+    setShowSignoutModal(false);
     dispatch(logout());
     navigate('/login', { replace: true });
   };
 
-  const renderItem = (item) => {
-    const hasChildren = item.children && item.children.length > 0;
-    const isChildActive = hasChildren && item.children.some((c) => location.pathname.startsWith(c.path));
-    const isExactParentActive = location.pathname === item.path || (!isChildActive && location.pathname.startsWith(item.path));
-    const isParentActive = activePath === item.path || location.pathname.startsWith(item.path);
-    const isOpen = Boolean(openSubMenus[item.path]) || isChildActive;
-    const Icon = item.icon;
+  const { branches } = useBranch();
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const branchId = searchParams.get('branchId');
+  const currentTab = searchParams.get('tab') || 'overview';
+  const isBranchActive = location.pathname.startsWith('/organisation/branches') && Boolean(branchId);
+  const currentBranch = useMemo(() => {
+    if (!branchId || !Array.isArray(branches)) return null;
+    return branches.find((b) => String(b._id || b.id) === String(branchId)) || null;
+  }, [branches, branchId]);
+  const branchName = currentBranch?.branchName || 'Branch Hub';
 
-    return (
-      <div
-        key={item.path}
-        className={`sidebar-item-group${hasChildren ? ' has-children' : ''}${isOpen ? ' is-open' : ''}`}
-      >
-        <li
-          className={`sidebar-menu-item${isExactParentActive ? ' active' : (isChildActive ? ' parent-active' : '')}${hasChildren ? ' has-children' : ''}`}
-          onClick={() => {
-            if (hasChildren) {
-              setOpenSubMenus((prev) => ({ ...prev, [item.path]: !prev[item.path] }));
-              navigate(item.path);
-            } else {
-              navigate(item.path);
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              if (hasChildren) {
-                setOpenSubMenus((prev) => ({ ...prev, [item.path]: !prev[item.path] }));
-              }
-              navigate(item.path);
-            }
-          }}
-          role="button"
-          tabIndex={0}
-          aria-expanded={hasChildren ? isOpen : undefined}
-          title={!isExpanded ? item.name : undefined}
-        >
-          <span className="sidebar-icon-wrap">
-            <Icon className="sidebar-icon" />
-          </span>
-          <span className="sidebar-label">{item.name}</span>
-          {hasChildren ? (
-            <span
-              className={`sidebar-chevron-btn ${isOpen ? 'open' : ''}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleSubMenu(item.path, e);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  toggleSubMenu(item.path, e);
-                }
-              }}
-              role="button"
-              tabIndex={0}
-              aria-expanded={isOpen}
-              aria-label={isOpen ? `Collapse ${item.name} submenu` : `Expand ${item.name} submenu`}
-              title={isOpen ? 'Collapse' : 'Expand'}
-            >
-              <MdChevronRight className={`sidebar-chevron ${isOpen ? 'open' : ''}`} />
-            </span>
-          ) : (
-            isParentActive && <MdChevronRight className="sidebar-chevron active-indicator" />
-          )}
-        </li>
+  const branchSection = useMemo(() => {
+    if (!branchId) return null;
+    return {
+      tag: 'BRANCH WORKSPACE',
+      title: branchName,
+      subtitle: currentBranch?.branchCode ? `Branch Code: ${currentBranch.branchCode}` : 'Facility & local operations',
+      icon: MdDomain,
+      theme: 'amber',
+      backLink: { label: 'Back to All Branches', path: '/organisation/branches' },
+      groups: [
+        {
+          header: 'BRANCH OVERVIEW',
+          items: [
+            {
+              name: 'Branch Overview',
+              path: `/organisation/branches?branchId=${branchId}`,
+              tabKey: 'overview',
+              icon: MdDomain,
+              children: [
+                {
+                  name: 'Branch Overview',
+                  path: `/organisation/branches?branchId=${branchId}&tab=overview`,
+                  tabKey: 'overview',
+                  icon: MdDomain,
+                },
+                {
+                  name: 'Branch Members & Staff',
+                  path: `/organisation/branches?branchId=${branchId}&tab=members`,
+                  tabKey: 'members',
+                  icon: MdGroups,
+                },
+                {
+                  name: 'Departments',
+                  path: `/organisation/branches?branchId=${branchId}&tab=departments`,
+                  tabKey: 'departments',
+                  icon: MdAccountTree,
+                },
+                {
+                  name: 'Designations',
+                  path: `/organisation/branches?branchId=${branchId}&tab=designations`,
+                  tabKey: 'designations',
+                  icon: MdBadge,
+                },
+                {
+                  name: 'Teams',
+                  path: `/organisation/branches?branchId=${branchId}&tab=teams`,
+                  tabKey: 'teams',
+                  icon: MdPeople,
+                },
+                {
+                  name: 'Reporting Hierarchy',
+                  path: `/organisation/branches?branchId=${branchId}&tab=reporting`,
+                  tabKey: 'reporting',
+                  icon: MdAccountTree,
+                },
+                {
+                  name: 'Locations',
+                  path: `/organisation/branches?branchId=${branchId}&tab=locations`,
+                  tabKey: 'locations',
+                  icon: MdDomain,
+                },
+                {
+                  name: 'Work Calendar',
+                  path: `/organisation/branches?branchId=${branchId}&tab=work-calendars`,
+                  tabKey: 'work-calendars',
+                  icon: MdEventNote,
+                },
+                {
+                  name: 'Shifts',
+                  path: `/organisation/branches?branchId=${branchId}&tab=shifts`,
+                  tabKey: 'shifts',
+                  icon: MdAccessTime,
+                },
+                {
+                  name: 'Holiday Calendars',
+                  path: `/organisation/branches?branchId=${branchId}&tab=holidays`,
+                  tabKey: 'holidays',
+                  icon: MdEventNote,
+                },
+                {
+                  name: 'Leave Settings',
+                  path: `/organisation/branches?branchId=${branchId}&tab=leave-settings`,
+                  tabKey: 'leave-settings',
+                  icon: MdEventNote,
+                },
+                {
+                  name: 'Job Grades',
+                  path: `/organisation/branches?branchId=${branchId}&tab=job-grades`,
+                  tabKey: 'job-grades',
+                  icon: MdBadge,
+                },
+                {
+                  name: 'Cost Centers',
+                  path: `/organisation/branches?branchId=${branchId}&tab=cost-centers`,
+                  tabKey: 'cost-centers',
+                  icon: MdAttachMoney,
+                },
+                {
+                  name: 'Financial Years',
+                  path: `/organisation/branches?branchId=${branchId}&tab=financial-years`,
+                  tabKey: 'financial-years',
+                  icon: MdAccountBalance,
+                },
+                {
+                  name: 'Branch Settings',
+                  path: `/organisation/branches?branchId=${branchId}&tab=settings`,
+                  tabKey: 'settings',
+                  icon: MdSettings,
+                },
+              ],
+            },
+          ],
+        },
+        ...(Array.isArray(branches) && branches.length > 1
+          ? [
+              {
+                header: 'BRANCHES',
+                items: [
+                  {
+                    name: 'Switch Branch',
+                    path: '/organisation/branches',
+                    icon: MdDomain,
+                    badge: `${branches.length}`,
+                    children: [
+                      {
+                        name: 'All Branches Directory',
+                        path: '/organisation/branches',
+                        exact: true,
+                        icon: MdDomain,
+                      },
+                      ...branches.map((b) => ({
+                        name: b.branchName,
+                        path: `/organisation/branches?branchId=${b._id || b.id}&tab=overview`,
+                        icon: MdDomain,
+                        badge: b.branchCode,
+                        branchId: String(b._id || b.id),
+                      })),
+                    ],
+                  },
+                ],
+              },
+            ]
+          : []),
+      ],
+    };
+  }, [branchId, branchName, currentBranch, branches]);
 
-        {/* ── Sub-menu Tree (shows on hover or when open/active) ── */}
-        {hasChildren && (
-          <div className={`sidebar-submenu-wrap${isOpen ? ' is-open' : ''}`}>
-            <ul className="sidebar-submenu">
-              {item.children.filter((sub) => !sub.perm || isSystemAdmin || hasPermission(sub.perm)).map((sub) => {
-                const isSubActive =
-                  location.pathname.startsWith(sub.path) ||
-                  (sub.path === '/settings/organization' && (location.pathname === '/settings' || location.pathname === '/settings/'));
-                const SubIcon = sub.icon;
+  const peopleSection = useMemo(() => {
+    const base = NAV_SECTIONS.people;
+    if (!base) return base;
 
-                return (
-                  <li
-                    key={sub.path}
-                    className={`sidebar-submenu-item${isSubActive ? ' active' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(sub.path);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        navigate(sub.path);
-                      }
-                    }}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <span className="sidebar-submenu-icon-wrap">
-                      <SubIcon className="sidebar-submenu-icon" />
-                    </span>
-                    <span className="sidebar-submenu-label">{sub.name}</span>
-                    {isSubActive && <span className="sidebar-submenu-dot" />}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
-      </div>
-    );
-  };
+    const branchItems = Array.isArray(branches) && branches.length > 0
+      ? branches.map((b) => ({
+          name: b.branchName,
+          path: `/organisation/branches?branchId=${b._id || b.id}&tab=overview`,
+          icon: MdDomain,
+          badge: b.branchCode,
+          branchId: String(b._id || b.id),
+        }))
+      : [];
+
+    return {
+      ...base,
+      groups: [
+        {
+          header: 'OVERVIEW',
+          items: [
+            { name: 'Overview', path: '/organisation', exact: true, icon: MdBusiness },
+            {
+              name: 'Locations & Branches',
+              path: '/organisation/branches',
+              icon: MdDomain,
+              exact: true,
+              badge: branchItems.length > 0 ? `${branchItems.length}` : undefined,
+              children: [
+                {
+                  name: 'All Branches Directory',
+                  path: '/organisation/branches',
+                  exact: true,
+                  icon: MdDomain,
+                },
+                ...branchItems,
+              ],
+            },
+            { name: 'Members & Staff', path: '/onboarding', icon: MdGroups },
+          ],
+        },
+        ...base.groups.slice(1),
+      ],
+    };
+  }, [branches]);
+
+  const currentSection =
+    isBranchActive && branchSection
+      ? branchSection
+      : activeSection === 'people'
+      ? peopleSection
+      : NAV_SECTIONS[activeSection] || NAV_SECTIONS.home;
+  const SectionIcon = currentSection.icon || MdBusiness;
+  const displayName = user?.name || user?.fullName || 'FM Sagadhevan';
+  const displayRole = user?.roleName || user?.roleCode || 'Owner · Head Office';
+
+  const avatarBg = '#FFFFFF';
 
   return (
-    <div className={`sidebar${isExpanded ? ' is-expanded' : ''}`}>
-      {/* ── Brand Header ── */}
-      <div className="sidebar-header">
-        <div className="sidebar-logo">
-          <span className="sidebar-logo-mark">T</span>
-        </div>
-        <div className="sidebar-brand-info">
-          <div className="sidebar-brand-name">TeamHub</div>
-          <div className="sidebar-brand-sub">Enterprise HRMS</div>
-        </div>
-      </div>
+    <>
+      <aside
+        className={`th-sidebar ${isExpanded ? 'is-expanded' : 'is-rail'} th-sidebar-theme-${currentSection.theme}`}
+        aria-label="Application Section Navigation"
+      >
+        {/* ── Scrollable Navigation Tree ── */}
+        <nav className="th-sb-nav-scroll">
+          {currentSection.groups.map((group, gIdx) => (
+            <div key={gIdx} className="th-sb-group">
+              {group.header && (
+                <div className="th-sb-group-header">{group.header}</div>
+              )}
 
-      {/* ── Navigation List ── */}
-      <div className="sidebar-nav-container">
-        {visibleMainItems.length > 0 && (
-          <div className="sidebar-nav-section">
-            <p className="sidebar-section-label">WORKSPACE</p>
-            <ul className="sidebar-menu">{visibleMainItems.map(renderItem)}</ul>
-          </div>
-        )}
+              <div className="th-sb-items-list">
+                {group.items.filter(isVisible).map((item) => {
+                  const Icon = item.icon || MdBusiness;
+                  const hasChildren = item.children && item.children.length > 0;
+                  const itemBase = item.path.split('?')[0];
+                  const isOpen = openSubMenus[item.path] !== undefined
+                    ? Boolean(openSubMenus[item.path])
+                    : Boolean(
+                        openSubMenus[itemBase] ||
+                        (itemBase === '/attendance' && location.pathname.startsWith('/attendance')) ||
+                        (isBranchActive && (item.tabKey === 'overview' || item.path.includes('branchId')))
+                      );
 
-        {visibleManageItems.length > 0 && (
-          <div className="sidebar-nav-section">
-            <p className="sidebar-section-label">MANAGEMENT</p>
-            <ul className="sidebar-menu">{visibleManageItems.map(renderItem)}</ul>
-          </div>
-        )}
-      </div>
+                  // Determine active status
+                  let isActive = false;
+                  if (item.branchId) {
+                    isActive = searchParams.get('branchId') === item.branchId;
+                  } else if (isBranchActive && item.tabKey) {
+                    isActive = currentTab === item.tabKey;
+                  } else if (item.exact) {
+                    isActive = location.pathname === item.path && !searchParams.get('branchId');
+                  } else if (item.children) {
+                    isActive = location.pathname.startsWith(itemBase) && !searchParams.get('branchId');
+                  } else {
+                    isActive = location.pathname === item.path ||
+                      (item.path !== '/organisation' && location.pathname.startsWith(item.path));
+                  }
 
-      {/* ── User Footer & Logout ── */}
-      <div className="sidebar-footer">
-        <div className="sidebar-user-avatar">
-          {(user?.firstName?.charAt(0) || user?.name?.charAt(0) || user?.email?.charAt(0) || 'U').toUpperCase()}
-        </div>
-        <div className="sidebar-user-info">
-          <div className="sidebar-user-name">
-            {user?.name || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : '') || user?.email?.split('@')[0] || 'User'}
-          </div>
-          <div className="sidebar-user-role">{user?.roleName || user?.roleCode || (user?.isOwner ? 'Owner' : 'Employee')}</div>
-        </div>
-        <button
-          className="sidebar-logout-button"
-          title="Sign Out"
-          onClick={() => setShowModal(true)}
-          aria-label="Sign Out"
-        >
-          <MdLogout className="sidebar-logout-icon" />
-        </button>
-      </div>
+                  const submenuId = hasChildren ? `th-sub-${item.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}` : undefined;
 
-      {/* ── Logout Confirmation Dialog ── */}
-      {showModal && (
-        <div className="sidebar-modal">
-          <div className="sidebar-modal-content">
-            <div className="sidebar-modal-icon-circle">
-              <MdLogout className="sidebar-modal-danger-icon" />
+                  return (
+                    <div key={item.path} className="th-sb-item-wrapper">
+                      <button
+                        type="button"
+                        className={`th-sb-item-btn ${isActive ? 'is-active' : ''}`}
+                        aria-expanded={hasChildren ? isOpen : undefined}
+                        aria-controls={hasChildren ? submenuId : undefined}
+                        onClick={() => {
+                          if (hasChildren) {
+                            setOpenSubMenus((prev) => ({
+                              ...prev,
+                              [item.path]: prev[item.path] !== undefined ? !prev[item.path] : !isOpen,
+                            }));
+                          }
+                          navigate(item.path);
+                        }}
+                        title={item.name}
+                      >
+                        {/* Always visible: Symbol/Icon */}
+                        <span className="th-sb-item-icon">
+                          <Icon size={18} />
+                        </span>
+
+                        {/* Hover only: Full Wording */}
+                        <div className="th-sb-item-wording">
+                          <span className="th-sb-item-label">{item.name}</span>
+
+                          {item.badge && (
+                            <span className={`th-sb-badge ${item.badgeBrand ? 'is-brand' : ''}`}>
+                              {item.badge}
+                            </span>
+                          )}
+
+                          {hasChildren && (
+                            <span
+                              className={`th-sb-chevron ${isOpen ? 'is-open' : ''}`}
+                              onClick={(e) => toggleSubMenu(item.path, isOpen, e)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  toggleSubMenu(item.path, isOpen, e);
+                                }
+                              }}
+                              aria-label={isOpen ? `Collapse ${item.name} sub-options` : `Expand ${item.name} sub-options`}
+                            >
+                              <MdChevronRight size={16} />
+                            </span>
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Sub-menu if expanded (shown on hover) */}
+                      {hasChildren && isOpen && (
+                        <div id={submenuId} className="th-sb-sub-menu" role="group" aria-label={`${item.name} sub-options`}>
+                          {item.children.map((child) => {
+                            const ChildIcon = child.icon;
+                            const childBase = child.path.split('?')[0];
+                            const childQuery = child.path.includes('?') ? new URLSearchParams(child.path.split('?')[1]) : null;
+                            const childTab = child.tabKey || (childQuery ? childQuery.get('tab') : null);
+                            const activeTabParam = searchParams.get('tab');
+
+                            let isChildActive = false;
+                            if (child.branchId) {
+                              isChildActive = searchParams.get('branchId') === child.branchId;
+                            } else if (childTab) {
+                              const isTabMatch = activeTabParam
+                                ? activeTabParam === childTab
+                                : childTab === 'overview';
+                              isChildActive = location.pathname === childBase && isTabMatch;
+                            } else if (child.exact) {
+                              isChildActive = location.pathname === child.path && !searchParams.get('branchId');
+                            } else {
+                              isChildActive = location.pathname.startsWith(child.path);
+                            }
+
+                            return (
+                              <button
+                                key={child.path}
+                                type="button"
+                                className={`th-sb-sub-btn ${isChildActive ? 'is-active' : ''}`}
+                                onClick={() => navigate(child.path)}
+                                title={child.name}
+                              >
+                                {ChildIcon ? (
+                                  <ChildIcon size={14} className="th-sb-sub-icon" />
+                                ) : (
+                                  <span className="th-sb-sub-dot">•</span>
+                                )}
+                                <span className="th-sb-sub-label">{child.name}</span>
+                                {child.badge && (
+                                  <span className="th-sb-badge ms-auto" style={{ fontSize: '10px', padding: '1px 6px' }}>
+                                    {child.badge}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <h3 className="sidebar-modal-title">Confirm Sign Out</h3>
-            <p className="sidebar-modal-text">
-              Are you sure you want to end your current session and sign out?
-            </p>
-            <div className="sidebar-modal-buttons">
-              <button type="button" className="sidebar-cancel-btn" onClick={() => setShowModal(false)}>
+          ))}
+        </nav>
+
+        {/* ── Bottom Section: User Card (Symbols only when unhovered) ── */}
+        <div className="th-sb-bottom-block">
+          <div className="th-sb-user-card">
+            <div
+              className="th-sb-avatar"
+              style={{ backgroundColor: avatarBg, color: '#0F1F18' }}
+              title={`${displayName} (${displayRole})`}
+            >
+              {displayName.charAt(0).toUpperCase()}
+            </div>
+
+            {/* Hover only: Full user info and signout */}
+            <div className="th-sb-user-wording">
+              <div className="th-sb-user-info">
+                <span className="th-sb-user-name">{displayName}</span>
+                <span className="th-sb-user-role">{displayRole}</span>
+              </div>
+              <button
+                type="button"
+                className="th-sb-logout-btn"
+                onClick={() => setShowSignoutModal(true)}
+                title="Sign out of TeamHub"
+                aria-label="Sign out"
+              >
+                <MdLogout size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* ── Sign-Out Confirmation Dialog ── */}
+      {showSignoutModal && (
+        <div
+          className="th-modal-backdrop"
+          onClick={() => setShowSignoutModal(false)}
+          role="presentation"
+        >
+          <div
+            className="th-modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="th-signout-title"
+            aria-describedby="th-signout-desc"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="th-modal-header">
+              <h2 id="th-signout-title" className="th-modal-title">Sign Out</h2>
+            </div>
+            <div id="th-signout-desc" className="th-modal-body">
+              Are you sure you want to end your current session? Any unsaved form drafts will be discarded.
+            </div>
+            <div className="th-modal-footer">
+              <button
+                type="button"
+                className="th-btn-secondary"
+                onClick={() => setShowSignoutModal(false)}
+              >
                 Cancel
               </button>
-              <button type="button" className="sidebar-confirm-btn" onClick={handleLogout}>
-                Yes, Sign Out
+              <button
+                type="button"
+                className="th-btn-danger"
+                ref={confirmBtnRef}
+                onClick={handleConfirmLogout}
+              >
+                Sign Out
               </button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
-
-export default Sidebar;

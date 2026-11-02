@@ -6,13 +6,13 @@ import {
 export const DEFAULT_THEME = Object.freeze({
   primaryColor: "#C79D58",
   primaryDarkColor: "#A98245",
-  primaryLightColor: "#F1E8D6",
+  primaryLightColor: "#F8FAFC",
   sidebarColor: "#1C1D1D",
-  backgroundColor: "#F7F5F0",
+  backgroundColor: "#FFFFFF",
   surfaceColor: "#FFFFFF",
   textColor: "#1C1D1D",
-  secondaryTextColor: "#77736B",
-  borderColor: "#E5E0D7",
+  secondaryTextColor: "#64748B",
+  borderColor: "#E2E8F0",
   successColor: "#2E7D32",
   warningColor: "#ED9F24",
   dangerColor: "#D64545",
@@ -48,6 +48,10 @@ export const applyThemeToCssVariables = () => {
   root.style.setProperty("--color-warning", DEFAULT_THEME.warningColor);
   root.style.setProperty("--color-danger", DEFAULT_THEME.dangerColor);
   root.style.setProperty("--color-info", DEFAULT_THEME.infoColor);
+  root.style.setProperty("--org-bg-main", "#FFFFFF");
+  root.style.setProperty("--ink-bg-canvas", "#FFFFFF");
+  root.style.setProperty("--page-bg", "#FFFFFF");
+  root.style.setProperty("--c-bg", "#FFFFFF");
 };
 
 // Persisted saved-theme cache locked to DEFAULT_THEME

@@ -1,91 +1,1043 @@
-/* ============================================================
-   Dashboard Modernization Styles
-   Dynamic Organization Theme Integration
-   Dedicated stylesheet for src/Pages/Dashboard/Dashboard.js
-   ============================================================ */
+/* ==========================================================================
+   EXECUTIVE DASHBOARD STYLESHEET (MATCHING EXACT USER REFERENCE DESIGN)
+   Clean, modern, crisp white surfaces, deep forest green hero, zero glow halo.
+   ========================================================================== */
 
-/* ── Hero Welcome Banner Elements ── */
-.dash-role-badge {
-  background: var(--color-primary-light, #F1E8D6) !important;
-  color: var(--color-primary, #C79D58) !important;
-  border: 1px solid var(--color-border, #E5E0D7) !important;
+.th-calm-dashboard {
+  min-height: 100%;
+  background-color: #F8FAFC;
+  color: #0F172A;
+  font-family: var(--font-sans);
+  font-feature-settings: "tnum";
+  padding-bottom: 40px;
+}
+
+/* ── 0. Top Bar: Breadcrumb + Search + Bell ── */
+.th-cd-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.th-cd-breadcrumb {
+  font-size: 13px;
+  color: #64748B;
+  font-weight: 500;
+}
+
+.th-cd-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.th-cd-search-wrap {
+  display: flex;
+  align-items: center;
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 999px;
+  padding: 6px 14px;
+  width: 280px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.th-cd-search-icon {
+  color: #94A3B8;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.th-cd-search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12.5px;
+  color: #0F172A;
+  width: 100%;
+  padding: 0;
+}
+
+.th-cd-search-input::placeholder {
+  color: #94A3B8;
+}
+
+.th-cd-search-kbd {
+  font-size: 10.5px;
   font-weight: 600;
+  color: #64748B;
+  background-color: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-left: 6px;
+  flex-shrink: 0;
 }
 
-.dash-date-text {
-  font-size: 0.8rem;
-  color: var(--color-secondary-text, #77736B);
+.th-cd-bell-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #475569;
+  position: relative;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: all 0.15s ease;
 }
 
-.dash-hero-desc {
-  color: rgba(255, 255, 255, 0.88);
-  max-width: 640px;
+.th-cd-bell-btn:hover {
+  background-color: #F8FAFC;
+  color: #0F172A;
 }
 
-/* ── Work Policy Card Header Icon ── */
-.dash-policy-icon {
+.th-cd-bell-dot {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #EF4444;
+}
+
+/* ── 1. Page Header & Actions ── */
+.th-cd-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.th-cd-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 500;
+  color: #0F172A;
+  letter-spacing: -0.015em;
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+
+.th-cd-subtitle {
+  font-size: 13px;
+  color: #64748B;
+  margin-bottom: 0;
+}
+
+.th-cd-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.th-cd-btn-outline {
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  color: #0F172A;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.th-cd-btn-outline:hover {
+  background-color: #F8FAFC;
+  border-color: #CBD5E1;
+}
+
+.th-cd-btn-primary {
+  background-color: #143728;
+  border: none;
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.15s ease;
+  box-shadow: 0 1px 3px rgba(20, 55, 40, 0.2);
+}
+
+.th-cd-btn-primary:hover {
+  background-color: #0F2A1E;
+}
+
+/* ── 2. Hero Card: "Your day" ── */
+.th-cd-hero {
+  background: linear-gradient(135deg, #133928 0%, #173E2D 100%);
+  border-radius: 20px;
+  padding: 24px 28px 20px 28px;
+  color: #FFFFFF;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(19, 57, 40, 0.15);
+}
+
+.th-cd-hero-bg-ring {
+  position: absolute;
+  top: -80px;
+  right: -80px;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.06) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.th-cd-hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.th-cd-hero-heading-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.th-cd-hero-heading {
+  font-size: 17px;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.th-cd-hero-badge {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #A7F3D0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 12px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+}
+
+.th-cd-hero-badge.is-inactive {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.th-cd-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.35);
+  transition: all 0.3s ease;
+}
+
+.th-cd-status-dot.is-active {
+  background-color: #34D399;
+  box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7);
+  animation: thRadarPulse 2s infinite;
+}
+
+@keyframes thRadarPulse {
+  0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); }
+  70% { box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+}
+
+/* ── Floating Punch Toast ── */
+.th-cd-punch-toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 500;
+  animation: thToastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.th-cd-punch-toast.is-in {
+  background: rgba(16, 185, 129, 0.22);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  color: #6EE7B7;
+}
+
+.th-cd-punch-toast.is-out {
+  background: rgba(217, 130, 43, 0.22);
+  border: 1px solid rgba(217, 130, 43, 0.45);
+  color: #FCD34D;
+}
+
+@keyframes thToastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.th-cd-hero-desc {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.72);
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+.th-cd-hero-action-box {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.th-cd-hero-time-stat {
+  text-align: right;
+}
+
+.th-cd-hero-hours {
+  display: block;
+  font-size: 32px;
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-feature-settings: "tnum";
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.th-cd-hero-hours.is-highlight {
+  animation: thHourHighlight 0.6s ease;
+}
+
+@keyframes thHourHighlight {
+  0% { color: #FCD34D; transform: scale(1.08); }
+  100% { color: #FFFFFF; transform: scale(1); }
+}
+
+.th-cd-hero-hours-label {
+  display: block;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 4px;
+}
+
+/* ── Punch Button (Animated Morphing & States) ── */
+.th-cd-punch-btn {
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 24px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+  transition: background-color 0.35s ease, transform 0.2s ease, box-shadow 0.35s ease, color 0.35s ease;
+  user-select: none;
+}
+
+.th-cd-punch-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: transform 0.2s ease;
+}
+
+/* Punched In (Clocked In): Warm Terracotta Amber */
+.th-cd-punch-btn.is-punched-in {
+  background-color: #D9822B;
+  color: #0F1F18;
+  box-shadow: 0 4px 14px rgba(217, 130, 43, 0.4);
+}
+
+.th-cd-punch-btn.is-punched-in:hover:not(:disabled) {
+  background-color: #C7721D;
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 6px 18px rgba(217, 130, 43, 0.5);
+}
+
+/* Punched Out (Not Clocked In): Crisp Emerald Green */
+.th-cd-punch-btn.is-punched-out {
+  background-color: #10B981;
+  color: #FFFFFF;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+}
+
+.th-cd-punch-btn.is-punched-out:hover:not(:disabled) {
+  background-color: #059669;
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.5);
+}
+
+.th-cd-punch-btn:active:not(:disabled) {
+  transform: scale(0.96) !important;
+}
+
+/* Morph Pop Animation */
+.th-cd-punch-btn.is-animating {
+  animation: thPunchPop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes thPunchPop {
+  0% { transform: scale(0.92); }
+  50% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+/* Spinner */
+.th-cd-punch-spinner-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.th-cd-punch-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: thPunchSpin 0.75s linear infinite;
+}
+
+@keyframes thPunchSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Timeline Track in Hero ── */
+.th-cd-timeline-wrap {
+  margin: 22px 0 18px 0;
+}
+
+.th-cd-timeline-track {
+  position: relative;
+  height: 14px;
+  background-color: rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  overflow: visible;
+}
+
+.th-cd-seg-worked-1 {
+  height: 100%;
+  background-color: #FFFFFF;
+  border-radius: 7px 0 0 7px;
+  transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease;
+}
+
+.th-cd-seg-remaining {
+  height: 100%;
+  border-radius: 0 7px 7px 0;
+  border: 1px dashed rgba(255, 255, 255, 0.28);
+  transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.th-cd-timeline-needle {
+  position: absolute;
+  top: -5px;
+  height: 24px;
+  width: 3px;
+  background-color: #D9822B;
+  border-radius: 2px;
+  z-index: 5;
+  transition: left 0.7s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease, transform 0.4s ease;
+}
+
+.th-cd-timeline-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 8px;
+  position: relative;
+  user-select: none;
+}
+
+.th-cd-label-now {
+  position: absolute;
+  transform: translateX(-50%);
+  color: #D9822B;
+  font-weight: 700;
+  font-size: 11px;
+  transition: left 0.7s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease, transform 0.4s ease;
+}
+
+/* ── Hero Bottom Stats ── */
+.th-cd-hero-bottom-stats {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 16px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.th-cd-h-stat-lbl {
+  display: block;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-bottom: 3px;
+}
+
+.th-cd-h-stat-val {
+  font-size: 15px;
+  font-weight: 600;
+  color: #FFFFFF;
+  font-feature-settings: "tnum";
+}
+
+/* ── 3. Four Metric / KPI Cards ── */
+.th-kpi-card {
+  border-radius: 14px;
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.th-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.th-kpi-mint {
+  background-color: #EDF6F1;
+  border: 1px solid #D5EBE0;
+}
+
+.th-kpi-amber {
+  background-color: #FDF3E7;
+  border: 1px solid #F8DFC2;
+}
+
+.th-kpi-sky {
+  background-color: #EEF4FC;
+  border: 1px solid #D7E6F8;
+}
+
+.th-kpi-rose {
+  background-color: #FAEAEB;
+  border: 1px solid #F5D3D6;
+}
+
+.th-kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.th-kpi-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1E293B;
+}
+
+.th-kpi-icon-box {
   width: 32px;
   height: 32px;
-  border-radius: var(--radius-sm, 8px);
-  background: var(--color-primary-light, #F1E8D6);
-  color: var(--color-primary-dark, #A98245);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+}
+
+.box-mint {
+  background-color: #143728;
+}
+
+.box-amber {
+  background-color: #D97706;
+}
+
+.box-sky {
+  background-color: #2563EB;
+}
+
+.box-rose {
+  background-color: #9F1239;
+}
+
+.th-kpi-big {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.th-kpi-num {
+  font-size: 28px;
+  font-weight: 700;
+  color: #0F172A;
+  line-height: 1;
+  font-feature-settings: "tnum";
+}
+
+.th-kpi-denom {
+  font-size: 13px;
+  color: #64748B;
+  font-weight: 500;
+}
+
+.th-kpi-sub {
+  font-size: 11.5px;
+  color: #64748B;
+}
+
+/* ── 4. Surface Cards (Clean Crisp Panels) ── */
+.th-surface-card {
+  background-color: #FFFFFF;
+  border: 1px solid #EAECE9;
+  border-radius: 16px;
+  padding: 20px 22px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.th-card-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.th-card-header-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.th-card-link-btn {
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748B;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s ease;
+}
+
+.th-card-link-btn:hover {
+  color: #0F172A;
+  text-decoration: underline;
+}
+
+.th-card-sub-label {
+  font-size: 11.5px;
+  color: #64748B;
+}
+
+/* ── Attention List Items ── */
+.th-attention-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.th-att-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.th-att-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.th-att-icon-box {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-/* ── Console Quick Card Icon Thematic Colors ── */
-.dash-icon-mint,
-.dash-icon-purple,
-.dash-icon-sky,
-.dash-icon-amber,
-.dash-icon-pink,
-.dash-icon-emerald {
-  background: var(--color-primary-light, #F1E8D6) !important;
-  color: var(--color-primary-dark, #A98245) !important;
+.icon-teal {
+  background-color: #E0F2FE;
+  color: #0284C7;
 }
 
-/* ── System Environment Information Card ── */
-.dash-admin-banner-icon {
+.icon-amber {
+  background-color: #FEF3C7;
+  color: #D97706;
+}
+
+.icon-coral {
+  background-color: #FEE2E2;
+  color: #DC2626;
+}
+
+.icon-rose {
+  background-color: #FCE7F3;
+  color: #DB2777;
+}
+
+.th-att-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.th-att-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0F172A;
+  line-height: 1.3;
+}
+
+.th-att-detail {
+  font-size: 11.5px;
+  color: #64748B;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.th-att-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.th-att-time {
+  font-size: 11px;
+  color: #94A3B8;
+  font-feature-settings: "tnum";
+}
+
+.th-btn-pill-action {
+  background-color: #E2EFE7;
+  color: #143728;
+  border: none;
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.th-btn-pill-action:hover {
+  background-color: #D0E5D7;
+}
+
+/* ── Attendance Trend Stacked Chart ── */
+.th-trend-chart-wrap {
+  width: 100%;
+}
+
+.th-trend-bars-container {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  height: 170px;
+  padding-top: 10px;
+}
+
+.th-trend-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+}
+
+.th-trend-stacked-bar {
+  width: 44px;
+  height: 140px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 6px;
+  overflow: hidden;
+  gap: 2px;
+}
+
+.th-bar-leave {
+  background-color: #3B82F6;
+  border-radius: 4px 4px 0 0;
+}
+
+.th-bar-late {
+  background-color: #E59837;
+}
+
+.th-bar-ontime {
+  background-color: #163A2B;
+  border-radius: 0 0 4px 4px;
+}
+
+.th-trend-day {
+  font-size: 11px;
+  color: #64748B;
+}
+
+.th-trend-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-top: 1px solid #F1F5F9;
+}
+
+.th-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #475569;
+}
+
+.th-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.dot-ontime {
+  background-color: #163A2B;
+}
+
+.dot-late {
+  background-color: #E59837;
+}
+
+.dot-leave {
+  background-color: #3B82F6;
+}
+
+/* ── Bottom Section: Headcount Donut ── */
+.th-headcount-layout {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.th-donut-wrap {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+}
+
+.th-donut-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.th-donut-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.th-donut-total {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0F172A;
+  line-height: 1;
+  font-feature-settings: "tnum";
+}
+
+.th-donut-lbl {
+  display: block;
+  font-size: 10.5px;
+  color: #64748B;
+  margin-top: 2px;
+}
+
+.th-headcount-legend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.th-hc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.th-hc-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #334155;
+}
+
+.th-hc-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.th-hc-count {
+  font-weight: 600;
+  color: #0F172A;
+  font-feature-settings: "tnum";
+}
+
+/* ── Leave Radial Gauges ── */
+.th-leave-gauges-row {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 10px 0;
+}
+
+.th-gauge-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.th-radial-box {
+  position: relative;
+  width: 68px;
+  height: 68px;
+}
+
+.th-radial-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.th-radial-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.th-radial-val {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0F172A;
+  line-height: 1;
+  font-feature-settings: "tnum";
+}
+
+.th-radial-denom {
+  display: block;
+  font-size: 9.5px;
+  color: #64748B;
+  margin-top: 2px;
+}
+
+.th-gauge-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #334155;
+}
+
+/* ── Coming Up List ── */
+.th-coming-up-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.th-event-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.th-event-date-box {
   width: 44px;
   height: 44px;
-  border-radius: var(--radius-md, 12px);
-  background: var(--color-primary-light, #F1E8D6);
-  color: var(--color-primary-dark, #A98245);
+  border-radius: 10px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
   flex-shrink: 0;
 }
 
-/* ── Quick Card Transitions & Hover ── */
-.app-quick-card {
-  background: var(--color-surface, #FFFFFF) !important;
-  border: 1px solid var(--color-border, #E5E0D7) !important;
-  border-radius: 14px !important;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03) !important;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-  cursor: pointer;
+.date-amber {
+  background-color: #FEF3C7;
+  border: 1px solid #FDE68A;
+  color: #92400E;
 }
 
-.app-quick-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08) !important;
-  border-color: var(--color-primary, #C79D58) !important;
+.date-rose {
+  background-color: #FCE7F3;
+  border: 1px solid #FBCFE8;
+  color: #9D174D;
 }
 
-/* ── Responsive Refinements ── */
-@media (max-width: 768px) {
-  .dash-hero-desc {
-    max-width: 100%;
-  }
+.th-event-month {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  line-height: 1;
+}
 
-  .dash-admin-banner-icon {
-    width: 38px;
-    height: 38px;
-    font-size: 1.1rem;
-    border-radius: 10px;
-  }
+.th-event-day {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  margin-top: 2px;
+  font-feature-settings: "tnum";
+}
+
+.th-event-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0F172A;
+}
+
+.th-event-sub {
+  font-size: 11.5px;
+  color: #64748B;
+}
+
+/* ── Empty Attention State ── */
+.th-empty-attention {
+  padding: 36px 16px;
+}
+
+.th-empty-check-wrap {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background-color: #E2EFE7;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }

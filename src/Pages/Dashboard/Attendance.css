@@ -897,4 +897,127 @@
   background-color: #4F83D9;
 }
 
+/* ==========================================================================
+   EXECUTIVE REFINED ATTENDANCE OVERVIEW STYLES
+   Eliminates clumsy rainbow cards in favor of a sleek, unified metrics strip
+   ========================================================================== */
 
+.th-attendance-metrics-strip {
+  border-radius: var(--radius-md, 10px) !important;
+  border: 1px solid var(--ink-border, #E2E8F0) !important;
+  background: #FFFFFF !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.th-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(130px, 100%), 1fr));
+  gap: 1px;
+  background-color: var(--ink-border-subtle, #F1F5F9);
+}
+
+.th-kpi-col {
+  background-color: #FFFFFF;
+  padding: 12px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: background-color var(--transition-speed-fast, 0.15s ease);
+}
+
+.th-kpi-col:hover {
+  background-color: var(--ink-surface-hover, #F8FAFC);
+}
+
+.th-kpi-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-tertiary, #64748B);
+  margin-bottom: 2px;
+}
+
+.th-kpi-num {
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  color: var(--ink-primary, #0F172A);
+  letter-spacing: -0.5px;
+}
+
+.th-kpi-sub {
+  font-size: 11px;
+  color: var(--ink-tertiary, #94A3B8);
+  margin-top: 2px;
+}
+
+/* Refined Attendance Navigation Pills (Dark sleek active, dark hover) */
+.attendance-nav-pills {
+  background: #F1F5F9 !important;
+  padding: 4px !important;
+  border-radius: 10px !important;
+  border: 1px solid #E2E8F0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.attendance-nav-pills .nav-item {
+  margin: 0 !important;
+}
+
+.attendance-nav-pills .nav-link {
+  color: #475569 !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  padding: 7px 16px !important;
+  border-radius: 7px !important;
+  transition: all 0.18s ease !important;
+  line-height: 1.4 !important;
+}
+
+.attendance-nav-pills .nav-link:hover {
+  color: #FFFFFF !important;
+  background: #1E293B !important;
+  background-color: #1E293B !important;
+  border-color: #1E293B !important;
+}
+
+.attendance-nav-pills .nav-link.active {
+  color: #FFFFFF !important;
+  background: #0F172A !important;
+  background-color: #0F172A !important;
+  border-color: #0F172A !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25) !important;
+}
+
+/* Neumorphic 3D Adaptations for Attendance */
+[data-surface="neumorphic"] .th-attendance-metrics-strip {
+  background: var(--ink-bg-canvas, #EAEFEA) !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  box-shadow: 4px 4px 12px var(--neu-shadow-dark, rgba(163, 177, 198, 0.35)),
+              -4px -4px 12px var(--neu-shadow-light, rgba(255, 255, 255, 0.8)) !important;
+}
+
+[data-surface="neumorphic"] .th-kpi-col {
+  border-right-color: rgba(0, 0, 0, 0.05);
+}
+
+[data-surface="neumorphic"] .th-kpi-col:hover {
+  background: transparent;
+}
+
+[data-surface="neumorphic"] .attendance-nav-pills {
+  background: var(--ink-bg-canvas, #EAEFEA);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: inset 2px 2px 5px var(--neu-shadow-dark, rgba(163, 177, 198, 0.35)),
+              inset -2px -2px 5px var(--neu-shadow-light, rgba(255, 255, 255, 0.7));
+}
+
+[data-surface="neumorphic"] .attendance-nav-pills .nav-link.active {
+  background-color: var(--color-ink, #0F1F18) !important;
+  border-color: var(--color-ink, #0F1F18) !important;
+}

@@ -1,164 +1,128 @@
 /* ==========================================================================
-   Layout Shell Stylesheet (Layout.css)
-   Responsive structural shell for TeamHub Enterprise HRMS.
+   TEAMHUB ENTERPRISE HRMS — APP LAYOUT SHELL
+   - Dashboard: 100% full-width workspace, NO sidebar.
+   - Other Pages: Compact 68px icon rail by default, expands to 250px on hover.
    ========================================================================== */
 
-.app-layout {
-  display: flex;
-  height: 100vh;
-  max-height: 100vh;
-  font-family: inherit;
-  position: relative;
-  overflow: hidden;
-  background: var(--c-charcoal);
-}
-
-/* ── Mobile Hamburger Toggle Button ── */
-.app-layout-menu-toggle {
-  position: fixed;
-  top: 12px;
-  left: 12px;
-  z-index: 1250;
-  background: var(--c-gold);
-  color: var(--c-charcoal);
-  border: none;
-  border-radius: var(--r-sm);
-  width: var(--control-h);
-  height: var(--control-h);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: var(--sh-1);
-  font-size: 18px;
-  font-weight: 700;
-  transition: all 0.2s ease;
-}
-
-.app-layout-menu-toggle:hover {
-  background: var(--c-gold-dark);
-  color: var(--c-charcoal);
-}
-
-.app-layout-menu-toggle:active {
-  transform: translateY(0);
-}
-
-/* ── Sidebar Container ── */
-.app-layout-sidebar {
-  width: 70px;
-  height: 100vh;
-  flex-shrink: 0;
-  background: var(--c-charcoal);
-  border-right: 1px solid rgba(255, 255, 255, 0.07);
-  transition: width 0.32s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.32s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  z-index: 1000;
-  overflow-x: hidden;
-  overflow-y: hidden;
-}
-
-.app-layout-sidebar:not(.is-mobile):hover,
-.app-layout-sidebar:not(.is-mobile).is-hovered {
-  width: 235px;
-  box-shadow: var(--sh-2);
-}
-
-/* Mobile Sidebar States */
-.app-layout-sidebar.is-mobile {
-  position: fixed;
-  z-index: 1200;
-  width: 0;
-  box-shadow: none;
-}
-
-.app-layout-sidebar.is-mobile.sidebar-open {
-  width: 235px;
-  box-shadow: var(--sh-2);
-}
-
-/* ── Mobile Backdrop ── */
-.app-layout-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(28, 29, 29, 0.65);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  z-index: 1150;
-  animation: appLayoutFadeIn 0.2s ease;
-}
-
-@keyframes appLayoutFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* ── Main Workspace ── */
-.app-layout-main {
-  flex: 1;
+.th-app-shell {
   display: flex;
   flex-direction: column;
-  min-width: 0;
   height: 100vh;
-  overflow: hidden;
-  background: var(--c-bg);
-}
-
-/* ── Content Container (One vertical scroll container with visible thin scrollbar) ── */
-.app-layout-content {
-  flex: 1;
-  padding: 20px 24px;
-  background: var(--c-bg);
-  overflow-y: auto;
-  overflow-x: hidden;
-  max-width: 100%;
-  width: 100%;
-  transition: padding 0.2s ease;
-}
-
-.app-layout-content.is-mobile {
-  padding: 12px;
-}
-
-/* ── Footer Wrapper ── */
-.app-layout-footer-wrapper {
-  height: 38px;
-  flex-shrink: 0;
-  background: var(--c-bg);
-  border-top: 1px solid var(--c-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: height 0.2s ease;
-}
-
-.app-layout-footer-wrapper.is-mobile {
-  height: 30px;
-}
-
-@media (max-width: 767.98px) {
-  .app-layout-content {
-    padding: 14px;
-  }
-
-  .app-layout-footer-wrapper {
-    height: 30px;
-  }
-}
-
-/* ── Fullscreen Enterprise Onboarding (When Organization Not Yet Created) ── */
-.app-layout-fullscreen-onboarding {
-  min-height: 100vh;
   width: 100vw;
-  background: var(--c-bg);
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
+  background-color: #FFFFFF;
   position: relative;
-  z-index: 100;
+}
+
+/* ── Main App Body: Sidebar + Workspace Flex ── */
+.th-body-container {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  height: calc(100vh - 60px);
+  overflow: hidden;
+  width: 100%;
+  position: relative;
+}
+
+/* ── Left Sidebar Container: 68px icon rail default, expands to 250px on hover ── */
+.th-sidebar-container {
+  width: 68px;
+  flex-shrink: 0;
+  height: 100%;
+  position: relative;
+  z-index: 20;
   display: flex;
   flex-direction: column;
+  background-color: var(--sidebar-bg, #0F1F18);
+  border-right: 1px solid var(--sidebar-border, rgba(255, 255, 255, 0.08));
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.06);
+  transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.22s ease;
+  overflow: hidden;
+}
+
+/* Expanded on hover or when explicitly pinned */
+.th-sidebar-container:hover,
+.th-sidebar-container.is-hovered,
+.th-sidebar-container.is-pinned,
+.th-sidebar-container.is-expanded {
+  width: 250px;
+  box-shadow: 6px 0 24px rgba(0, 0, 0, 0.25);
+}
+
+/* Legacy floating elements hidden */
+.th-sidebar-hover-trigger,
+.th-sidebar-edge-tab {
+  display: none !important;
+}
+
+/* ── Full-Width Scrollable Workspace Body: Always On Right Side ── */
+.th-workspace-content {
+  flex: 1;
+  min-width: 0; /* Prevents overflow pushing elements off screen */
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
+  position: relative;
+  background-color: #FFFFFF;
+}
+
+@media (min-width: 1920px) {
+  .th-workspace-content {
+    padding: var(--space-6, 24px) var(--space-8, 32px);
+    max-width: 1820px;
+    margin: 0 auto;
+    width: 100%;
+  }
+}
+
+.th-sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .th-sidebar-container {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    bottom: 0;
+    width: 280px !important;
+    max-width: 85vw !important;
+    z-index: 1100;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.28s ease;
+    background-color: var(--sidebar-bg, #0F1F18);
+    box-shadow: none;
+    display: flex !important;
+  }
+  .th-sidebar-container.is-mobile-open {
+    transform: translateX(0) !important;
+    box-shadow: 10px 0 32px rgba(0, 0, 0, 0.5) !important;
+  }
+  .th-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 1090;
+    animation: thFadeIn 0.2s ease;
+  }
+  .th-workspace-content {
+    padding: var(--space-3, 12px);
+    width: 100%;
+  }
+}
+
+/* Modal and dialog transitions */
+@keyframes thFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

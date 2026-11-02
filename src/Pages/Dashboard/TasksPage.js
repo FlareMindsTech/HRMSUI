@@ -9,7 +9,6 @@ import {
   FiMessageSquare,
   FiCheck,
   FiTrash2,
-  FiEdit,
   FiArrowRight,
 } from 'react-icons/fi';
 import {
@@ -24,9 +23,8 @@ import {
   selectTasksFilter,
   STAGES,
 } from '../../redux/slices/tasksSlice';
-import { selectAuthUser, selectIsSystemAdmin } from '../../redux/slices/authSlice';
-import { selectTheme } from '../../redux/slices/themeSlice';
-import { getAllProjectsApi, getCompanyUsersApi, updateTaskApi } from '../../Api/Project/project';
+import { selectAuthUser } from '../../redux/slices/authSlice';
+import { getAllProjectsApi, getCompanyUsersApi } from '../../Api/Project/project';
 import FeedbackAlert from '../../Components/Common/FeedbackAlert';
 import LoadingSpinner from '../../Components/Common/LoadingSpinner';
 import ConfirmModal from '../../Components/Common/ConfirmModal';
@@ -741,7 +739,10 @@ export default function TasksPage() {
               id: d.taskId,
               toStage: d.targetStage,
             })
-          );
+          )
+            .unwrap()
+            .then(() => showAlert('success', `Task moved to ${d.targetStage}`))
+            .catch(() => showAlert('warning', `Moved locally to ${d.targetStage}`));
         }
 
         // Clean up floating clone with short settle transition
@@ -779,14 +780,13 @@ export default function TasksPage() {
     <div className="tasks-page">
       {/* ── FEEDBACK ALERT (HRMS Component) ── */}
       {alert && (
-        <div className="mb-3">
-          <FeedbackAlert
-            variant={alert.variant}
-            message={alert.message}
-            dismissible
-            onClose={() => setAlert(null)}
-          />
-        </div>
+        <FeedbackAlert
+          floating
+          variant={alert.variant}
+          message={alert.message}
+          dismissible
+          onClose={() => setAlert(null)}
+        />
       )}
 
       {/* ── HEADER ROW ── */}
@@ -804,7 +804,7 @@ export default function TasksPage() {
           onClick={() => setShowNewModal(true)}
         >
           <FiPlus size={18} />
-          <span>+ New Task</span>
+          <span>New Task</span>
         </button>
       </div>
 

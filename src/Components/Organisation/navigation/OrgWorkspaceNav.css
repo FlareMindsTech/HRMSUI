@@ -162,12 +162,13 @@
 .ows-item:hover { background: var(--ows-soft); }
 .ows-item:focus-visible { outline: 2px solid var(--ows-primary); outline-offset: 1px; }
 .ows-item.active {
-  background: rgba(196, 154, 85, 0.14);
-  color: #7a5a1f;
-  font-weight: 600;
+  background: #FFFFFF !important;
+  color: #0F1F18 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
 }
 .ows-item-icon { flex: 0 0 16px; width: 16px; height: 16px; color: var(--ows-muted); }
-.ows-item.active .ows-item-icon { color: var(--ows-primary); }
+.ows-item.active .ows-item-icon { color: #0F1F18 !important; }
 .ows-item-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ows-item-ext { color: var(--ows-muted); font-size: 12px; }
 .ows-item-badge {

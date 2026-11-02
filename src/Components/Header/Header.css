@@ -8,7 +8,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  background: var(--color-background, #F7F5F0);
+  background: var(--color-background, #FFFFFF);
   user-select: none;
 }
 
@@ -391,7 +391,7 @@
 }
 
 .header-branch-item:hover {
-  background: var(--color-background, #F7F5F0);
+  background: var(--color-background, #F1F5F9);
 }
 
 .header-branch-item--active {

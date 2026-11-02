@@ -5,10 +5,10 @@
 
 :root {
   --pm-primary: var(--color-primary, #C79D58);
-  --pm-secondary: var(--color-background, #F7F5F0);
-  --pm-border: var(--color-border, #E5E0D7);
-  --pm-border-light: var(--color-border, #E5E0D7);
-  --pm-text-muted: var(--color-secondary-text, #77736B);
+  --pm-secondary: var(--color-background, #FFFFFF);
+  --pm-border: var(--color-border, #E2E8F0);
+  --pm-border-light: var(--color-border, #E2E8F0);
+  --pm-text-muted: var(--color-secondary-text, #64748B);
   --pm-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --pm-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
   --pm-transition: all 0.2s ease;
@@ -17,7 +17,7 @@
 .pm-wrapper {
   height: calc(100vh - var(--header-height, 60px));
   overflow-y: auto;
-  background-color: var(--color-background, #F7F5F0);
+  background-color: var(--color-background, #FFFFFF);
 }
 
 /* ============================================================
@@ -348,7 +348,26 @@
 }
 
 .badge.bg-primary {
-  background: linear-gradient(135deg, var(--pm-primary) 0%, #25b878 100%) !important;
+  background: var(--pm-primary, #C7882C) !important;
+}
+
+.pm-modal-category-badge {
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  color: var(--color-brand, #C7882C) !important;
+  border: 2px solid var(--color-brand, #C7882C) !important;
+  box-shadow: 0 0 0 3px rgba(199, 136, 44, 0.22), 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  font-weight: 800 !important;
+  font-size: 0.88rem !important;
+  min-width: 32px !important;
+  height: 28px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 10px !important;
+  border-radius: 9999px !important;
+  letter-spacing: 0.02em !important;
+  line-height: 1 !important;
 }
 
 .badge.bg-danger {
@@ -528,7 +547,7 @@
 }
 
 .pm-wrapper .nav-pills .nav-link.active {
-  background: linear-gradient(135deg, var(--pm-primary) 0%, #25b878 100%);
+  background: var(--pm-primary, #C7882C);
   color: var(--color-surface, #FFFFFF);
   box-shadow: 0 4px 12px rgba(45, 197, 138, 0.3);
 }
@@ -550,7 +569,7 @@
 }
 
 .gradient-bg {
-  background: linear-gradient(135deg, var(--pm-primary) 0%, #25b878 100%);
+  background: var(--pm-primary, #C7882C);
   border: none;
 }
 
@@ -744,10 +763,10 @@
 }
 
 .pm-nav-link.active {
-  background: linear-gradient(135deg, var(--pm-primary) 0%, #25b878 100%) !important;
+  background: var(--color-brand, #C7882C) !important;
   color: var(--color-surface, #FFFFFF) !important;
   border-color: transparent !important;
-  box-shadow: 0 2px 8px rgba(45, 197, 138, 0.3) !important;
+  box-shadow: 0 2px 8px rgba(199, 136, 44, 0.3) !important;
 }
 
 /* Compact Selected Project Header (Below Navigation) */
@@ -1484,4 +1503,4 @@
 .pm-tracker-stop-btn:hover {
   transform: scale(1.05);
   filter: brightness(1.15);
-}
+}

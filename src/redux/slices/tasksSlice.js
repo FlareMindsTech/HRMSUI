@@ -4,7 +4,6 @@ import {
   getTasksByProjectApi,
   getAllProjectsApi,
   createTaskApi,
-  updateTaskApi,
   updateTaskStatusApi,
   deleteTaskApi,
 } from '../../Api/Project/project';

@@ -53,7 +53,6 @@ export const ORG_NAV_GROUPS = [
     tabs: [
       { key: "locations", label: "Locations", icon: FaMapMarkerAlt, perm: "location.view" },
       { key: "work-calendars", label: "Work Calendars", icon: FaCalendarWeek, perm: "workCalendar.view" },
-      { key: "attendance", label: "Attendance", icon: FaCalendarCheck, perm: "organization.view" },
     ],
   },
   {
