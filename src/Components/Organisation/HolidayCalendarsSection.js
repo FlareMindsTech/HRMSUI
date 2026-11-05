@@ -36,6 +36,7 @@ import EmptyState from "../Common/EmptyState";
 import DataTable from "../Common/DataTable";
 import SearchInput from "../Common/SearchInput";
 import ConfirmModal from "../Common/ConfirmModal";
+import "./HolidayCalendarsSection.css";
 import CrudModal from "../Common/CrudModal";
 
 function HolidayCalendarsSection({ lockedBranchId }) {
@@ -306,7 +307,7 @@ function HolidayCalendarsSection({ lockedBranchId }) {
   };
 
   return (
-    <div className="org-section-container">
+    <div className="org-section-container holiday-calendars-section">
       {/* ── Section Header ── */}
       <div className="org-section-header">
         <div>
@@ -318,7 +319,7 @@ function HolidayCalendarsSection({ lockedBranchId }) {
           </p>
         </div>
         <div className="d-flex align-items-center gap-2">
-          <Nav variant="pills" activeKey={activeSubTab} onSelect={(k) => { setActiveSubTab(k); setPage(1); }}>
+          <Nav className="holiday-calendars-tabs" variant="pills" activeKey={activeSubTab} onSelect={(k) => { setActiveSubTab(k); setPage(1); }}>
             <Nav.Item>
               <Nav.Link eventKey="holidays" className="py-1 px-3">Declared Holidays</Nav.Link>
             </Nav.Item>
@@ -327,12 +328,12 @@ function HolidayCalendarsSection({ lockedBranchId }) {
             </Nav.Item>
           </Nav>
           {activeSubTab === "holidays" && canDeclareHoliday && (
-            <Button variant="success" className="org-action-btn ms-2" onClick={handleOpenHolidayCreate}>
+            <Button variant="success" className="org-action-btn holiday-calendar-action-btn ms-2" onClick={handleOpenHolidayCreate}>
               <FaPlus className="me-2" /> Declare Holiday
             </Button>
           )}
           {activeSubTab === "calendars" && canManageCalendars && (
-            <Button variant="success" className="org-action-btn ms-2" onClick={handleOpenCalendarCreate}>
+            <Button variant="success" className="org-action-btn holiday-calendar-action-btn ms-2" onClick={handleOpenCalendarCreate}>
               <FaPlus className="me-2" /> Add Calendar
             </Button>
           )}

@@ -36,6 +36,7 @@ import DataTable from "../Common/DataTable";
 import SearchInput from "../Common/SearchInput";
 import ConfirmModal from "../Common/ConfirmModal";
 import CrudModal from "../Common/CrudModal";
+import "./WorkCalendarsSection.css";
 
 const ALL_DAYS = [
   "Monday",
@@ -262,7 +263,7 @@ function WorkCalendarsSection({ lockedBranchId }) {
   };
 
   return (
-    <div className="org-section-container">
+    <div className="org-section-container work-calendars-section">
       {/* ── Section Header ── */}
       <div className="org-section-header">
         <div>
@@ -423,7 +424,7 @@ function WorkCalendarsSection({ lockedBranchId }) {
                         <Button
                           variant="link"
                           size="sm"
-                          className="text-primary p-1"
+                          className="work-calendar-action-btn work-calendar-action-edit p-1"
                           title="Edit Work Calendar"
                           onClick={() => handleOpenEdit(cal)}
                         >
@@ -434,7 +435,7 @@ function WorkCalendarsSection({ lockedBranchId }) {
                         <Button
                           variant="link"
                           size="sm"
-                          className="text-danger p-1"
+                          className="work-calendar-action-btn work-calendar-action-delete p-1"
                           title="Delete Work Calendar"
                           onClick={() => {
                             setDeletingId(cal._id);

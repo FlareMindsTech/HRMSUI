@@ -1,0 +1,49 @@
+.designations-section-header {
+  width: 100%;
+}
+
+.designations-section .designations-header-action {
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  background-image: none !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #475569 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+.designations-section .designations-header-action:hover,
+.designations-section .designations-header-action:focus,
+.designations-section .designations-header-action:active {
+  background: #F8FAFC !important;
+  background-color: #F8FAFC !important;
+  border-color: #94A3B8 !important;
+  color: #0F172A !important;
+}
+
+@media (max-width: 768px) {
+  .designations-section-header > :last-child {
+    width: 100%;
+  }
+}
+
+.designation-action-btn {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.org-sub-section button.btn.designation-action-edit {
+  color: #64748B !important;
+}
+
+.org-sub-section button.btn.designation-action-edit:hover {
+  color: #334155 !important;
+}
+
+.org-sub-section button.btn.designation-action-delete {
+  color: #DC2626 !important;
+}
+
+.org-sub-section button.btn.designation-action-delete:hover {
+  color: #B91C1C !important;
+}

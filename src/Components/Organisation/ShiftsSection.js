@@ -34,6 +34,7 @@ import DataTable from "../Common/DataTable";
 import SearchInput from "../Common/SearchInput";
 import ConfirmModal from "../Common/ConfirmModal";
 import CrudModal from "../Common/CrudModal";
+import "./ShiftsSection.css";
 
 function ShiftsSection({ lockedBranchId }) {
   const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin); const dispatch = useDispatch();
@@ -213,7 +214,7 @@ function ShiftsSection({ lockedBranchId }) {
   };
 
   return (
-    <div className="org-section-container">
+    <div className="org-section-container shifts-section">
       {/* ── Section Header ── */}
       <div className="org-section-header">
         <div>
@@ -382,7 +383,7 @@ function ShiftsSection({ lockedBranchId }) {
                       <Button
                         variant="link"
                         size="sm"
-                        className="text-primary p-1"
+                        className="shift-action-btn shift-action-edit p-1"
                         title="Edit Shift"
                         onClick={() => handleOpenEdit(s)}
                       >
@@ -393,7 +394,7 @@ function ShiftsSection({ lockedBranchId }) {
                       <Button
                         variant="link"
                         size="sm"
-                        className="text-danger p-1"
+                        className="shift-action-btn shift-action-delete p-1"
                         title="Delete Shift"
                         onClick={() => {
                           setDeletingId(s._id);

@@ -3,6 +3,46 @@
    Cohesive styling for segmented toggles, action buttons, table pills, and tree nodes.
    ========================================================================== */
 
+.departments-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.departments-section-actions {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+.departments-section-actions .departments-header-action {
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  background-image: none !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #475569 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+.departments-section-actions .departments-header-action:hover,
+.departments-section-actions .departments-header-action:focus,
+.departments-section-actions .departments-header-action:active {
+  background: #F8FAFC !important;
+  background-color: #F8FAFC !important;
+  border-color: #94A3B8 !important;
+  color: #0F172A !important;
+}
+
+@media (max-width: 768px) {
+  .departments-section-header {
+    flex-direction: column;
+  }
+
+  .departments-section-actions {
+    width: 100%;
+  }
+}
+
 /* ── View Toggle Segmented Control (Table View vs Hierarchy Tree) ── */
 .org-view-toggle {
   display: inline-flex;
@@ -204,14 +244,14 @@
 }
 
 .dept-branch-pill:hover {
-  border-color: var(--color-brand) !important;
-  color: var(--color-brand) !important;
+  border-color: #94A3B8 !important;
+  color: #334155 !important;
 }
 
 .dept-branch-pill.active {
-  background: var(--color-brand) !important;
-  border-color: var(--color-brand) !important;
-  color: var(--brand-contrast-text, #111827) !important;
+  background: #E2E8F0 !important;
+  border-color: #CBD5E1 !important;
+  color: #334155 !important;
   font-weight: 700 !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12) !important;
 }
@@ -224,7 +264,7 @@
 }
 
 .dept-branch-pill.active .dept-branch-pill-count {
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(15, 23, 42, 0.12);
   color: currentColor;
 }
 
@@ -353,4 +393,3 @@
   transform: translateY(-1px);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
 }
-

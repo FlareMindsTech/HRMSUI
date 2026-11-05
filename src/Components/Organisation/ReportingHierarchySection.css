@@ -3,6 +3,39 @@
    Theme Tokens: var(--color-brand) (Gold), var(--theme-nav-bg, #1E293B) (Charcoal), #FFFFFF, #F8FAFC
    ========================================================================== */
 
+.reporting-hierarchy-section .org-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.reporting-hierarchy-section .reporting-assign-manager-btn {
+  background: #C7882C !important;
+  background-color: #C7882C !important;
+  border-color: #C7882C !important;
+  color: #FFFFFF !important;
+}
+
+.reporting-hierarchy-section .reporting-assign-manager-btn:hover,
+.reporting-hierarchy-section .reporting-assign-manager-btn:focus,
+.reporting-hierarchy-section .reporting-assign-manager-btn:active {
+  background: #A96F1D !important;
+  background-color: #A96F1D !important;
+  border-color: #A96F1D !important;
+  color: #FFFFFF !important;
+}
+
+@media (max-width: 768px) {
+  .reporting-hierarchy-section .org-section-header {
+    flex-direction: column;
+  }
+
+  .reporting-hierarchy-section .org-section-header > :last-child {
+    width: 100%;
+  }
+}
+
 /* ── KPI Summary Grid ── */
 .rep-kpi-grid {
   display: grid;
@@ -241,8 +274,8 @@
 
 .rep-level-badge.exec {
   background: #fdf8ee;
-  color: var(--color-brand);
-  border: 1px solid var(--ink-border, #E2E8F0);
+  color: #64748B;
+  border: 1px solid #E2E8F0;
 }
 
 /* Recursive Branch Tree with Left Guide Rails */
@@ -300,17 +333,17 @@
 /* Executive Root Card (Level 0) — High Contrast Luxury Gold/White */
 .rep-node-card.executive {
   background: linear-gradient(135deg, #ffffff 0%, #fdfbf7 100%);
-  border: 1px solid var(--color-brand);
-  border-top: 4px solid var(--color-brand);
-  box-shadow: 0 4px 16px var(--brand-tint, rgba(167, 243, 208, 0.15));
+  border: 1px solid #CBD5E1;
+  border-top: 4px solid #94A3B8;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
   max-width: 100%;
 }
 
 .rep-node-card.executive:hover {
   transform: translateY(-2px);
-  border-color: var(--color-brand);
-  border-top-color: var(--color-brand);
-  box-shadow: 0 8px 24px var(--ink-border, #E2E8F0);
+  border-color: #94A3B8;
+  border-top-color: #64748B;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
 }
 
 /* Manager Card — Crisp White with Gold Accent */
@@ -376,14 +409,14 @@
 
 .rep-tag-crown {
   background: #fdf8ee;
-  color: var(--color-brand);
-  border: 1px solid var(--ink-border, #E2E8F0);
+  color: #64748B;
+  border: 1px solid #E2E8F0;
 }
 
 .rep-tag-manager {
   background: #fdf8ee;
-  color: var(--color-brand);
-  border: 1px solid var(--ink-border, #E2E8F0);
+  color: #64748B;
+  border: 1px solid #E2E8F0;
 }
 
 .rep-tag-direct {
@@ -424,9 +457,9 @@
 }
 
 .rep-avatar-light {
-  background: var(--color-brand);
+  background: #64748B;
   color: #ffffff;
-  border: 1.5px solid var(--ink-border, #E2E8F0);
+  border: 1.5px solid #CBD5E1;
 }
 
 .rep-avatar-status-dot {
@@ -539,9 +572,9 @@
   height: 26px;
   padding: 0 9px;
   border-radius: 7px;
-  border: 1px solid var(--ink-border, #E2E8F0);
+  border: 1px solid #E2E8F0;
   background: #fdf8ee;
-  color: var(--color-brand);
+  color: #64748B;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -552,9 +585,9 @@
 }
 
 .rep-card-action-btn:hover {
-  background: var(--color-brand);
+  background: #64748B;
   color: #ffffff;
-  border-color: var(--color-brand);
+  border-color: #64748B;
 }
 
 /* ==========================================================================

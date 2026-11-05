@@ -37,6 +37,7 @@ import EmptyState from "../Common/EmptyState";
 import DataTable from "../Common/DataTable";
 import SearchInput from "../Common/SearchInput";
 import ConfirmModal from "../Common/ConfirmModal";
+import "./LeaveSettingsSection.css";
 import CrudModal from "../Common/CrudModal";
 
 function LeaveSettingsSection({ lockedBranchId }) {
@@ -380,7 +381,7 @@ function LeaveSettingsSection({ lockedBranchId }) {
   });
 
   return (
-    <div className="leave-settings-container p-3">
+    <div className="leave-settings-container leave-settings-section p-3">
       {/* ── Sub Navigation Tabs ── */}
       <Card className="shadow-sm mb-4 border-0">
         <Card.Body className="p-3">
@@ -418,7 +419,7 @@ function LeaveSettingsSection({ lockedBranchId }) {
                   <Button
                     variant="primary"
                     onClick={() => handleOpenTypeModal()}
-                    className="d-flex align-items-center gap-2"
+                    className="d-flex align-items-center gap-2 leave-settings-header-action"
                   >
                     <FaPlus /> Add Leave Type
                   </Button>
@@ -426,7 +427,7 @@ function LeaveSettingsSection({ lockedBranchId }) {
                   <Button
                     variant="primary"
                     onClick={() => handleOpenPolicyModal()}
-                    className="d-flex align-items-center gap-2"
+                    className="d-flex align-items-center gap-2 leave-settings-header-action"
                   >
                     <FaPlus /> Configure Policy
                   </Button>
@@ -498,6 +499,7 @@ function LeaveSettingsSection({ lockedBranchId }) {
                 description="Create customized organization and branch leave types."
                 actionLabel={canManage ? "Create Leave Type" : null}
                 onAction={canManage ? () => handleOpenTypeModal() : null}
+                actionClassName="leave-settings-empty-action"
               />
             ) : (
               <DataTable

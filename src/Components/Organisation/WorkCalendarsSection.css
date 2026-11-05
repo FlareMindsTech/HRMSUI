@@ -1,0 +1,53 @@
+.work-calendars-section .org-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.work-calendars-section button.btn.work-calendar-action-btn {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  margin-left: 4px;
+}
+
+.work-calendars-section button.btn.work-calendar-action-edit {
+  color: #64748B !important;
+}
+
+.work-calendars-section button.btn.work-calendar-action-edit:hover {
+  color: #334155 !important;
+}
+
+.work-calendars-section button.btn.work-calendar-action-delete {
+  color: #DC2626 !important;
+}
+
+.work-calendars-section button.btn.work-calendar-action-delete:hover {
+  color: #B91C1C !important;
+}
+
+.work-calendars-section .org-action-btn {
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  background-image: none !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #475569 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+.work-calendars-section .org-action-btn:hover,
+.work-calendars-section .org-action-btn:focus,
+.work-calendars-section .org-action-btn:active {
+  background: #F8FAFC !important;
+  background-color: #F8FAFC !important;
+  border-color: #94A3B8 !important;
+  color: #0F172A !important;
+}
+
+@media (max-width: 768px) {
+  .work-calendars-section .org-section-header {
+    flex-direction: column;
+  }
+}

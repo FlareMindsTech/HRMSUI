@@ -504,6 +504,7 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
               canEdit ? (
                 <Button
                   variant="primary"
+                  className="org-overview-edit-profile-btn"
                   onClick={() => onNavigateTab("edit-profile")}
                 >
                   <FaEdit className="me-2" /> Edit Profile

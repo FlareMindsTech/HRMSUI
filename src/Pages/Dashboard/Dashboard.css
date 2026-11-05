@@ -728,6 +728,21 @@
   font-weight: 600;
 }
 
+.th-calm-dashboard button.btn.th-dashboard-neutral-action {
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #475569 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+.th-calm-dashboard button.btn.th-dashboard-neutral-action:hover {
+  background: #F8FAFC !important;
+  background-color: #F8FAFC !important;
+  border-color: #94A3B8 !important;
+  color: #0F172A !important;
+}
+
 /* ── Attendance Trend Stacked Chart ── */
 .th-trend-chart-wrap {
   width: 100%;
@@ -770,7 +785,7 @@
 }
 
 .th-bar-ontime {
-  background-color: var(--color-brand, #163A2B);
+  background-color: #163A2B;
   border-radius: 0 0 4px 4px;
 }
 
@@ -804,7 +819,7 @@
 }
 
 .dot-ontime {
-  background-color: var(--color-brand, #163A2B);
+  background-color: #163A2B;
 }
 
 .dot-late {

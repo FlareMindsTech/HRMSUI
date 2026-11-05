@@ -574,6 +574,89 @@
   line-height: 1.15;
 }
 
+/* Shared sign-out confirmation used by the top navbar and sidebar. */
+.th-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.62);
+}
+
+.th-modal-card {
+  width: min(420px, 100%);
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  background: #FFFFFF;
+  color: #0F172A;
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+}
+
+.th-modal-header {
+  padding: 20px 22px 10px;
+}
+
+.th-modal-title {
+  margin: 0;
+  color: #0F172A;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.th-modal-body {
+  padding: 0 22px 20px;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.th-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid #E2E8F0;
+  background: #F8FAFC;
+}
+
+.th-modal-footer button {
+  min-height: 36px;
+  padding: 8px 14px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.th-btn-secondary {
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  color: #334155;
+}
+
+.th-btn-secondary:hover {
+  background: #F1F5F9;
+}
+
+.th-btn-danger {
+  border: 1px solid #DC2626;
+  background: #DC2626;
+  color: #FFFFFF;
+}
+
+.th-btn-danger:hover {
+  background: #B91C1C;
+}
+
+.th-modal-footer button:focus-visible {
+  outline: 2px solid #64748B;
+  outline-offset: 2px;
+}
+
 /* ── The Exact Exit Button Squircle Style ── */
 .th-topnav-exit-btn {
   background: rgba(255, 255, 255, 0.06);
@@ -755,4 +838,3 @@
 [data-surface="neumorphic"] .th-topnav-user-name {
   color: var(--ink-primary, #0F172A);
 }
-

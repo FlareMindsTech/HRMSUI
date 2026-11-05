@@ -35,6 +35,7 @@ import EmptyState from "../Common/EmptyState";
 import SearchInput from "../Common/SearchInput";
 import ConfirmModal from "../Common/ConfirmModal";
 import CrudModal from "../Common/CrudModal";
+import "./DesignationsSection.css";
 
 function DesignationsSection({ lockedBranchId }) {
   const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
@@ -240,9 +241,9 @@ function DesignationsSection({ lockedBranchId }) {
   };
 
   return (
-    <div className="org-sub-section">
+    <div className="org-sub-section designations-section">
       {/* ── Section Header ── */}
-      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <div className="designations-section-header d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
           <h4 className="fw-bold mb-1 d-flex align-items-center gap-2">
             <FaUserTag className="text-success" />
@@ -253,7 +254,12 @@ function DesignationsSection({ lockedBranchId }) {
           </p>
         </div>
         {canCreate && (
-          <Button variant="success" size="sm" className="d-flex align-items-center gap-1 shadow-sm" onClick={handleOpenCreate}>
+          <Button
+            variant="success"
+            size="sm"
+            className="d-flex align-items-center gap-1 shadow-sm designations-header-action"
+            onClick={handleOpenCreate}
+          >
             <FaPlus size={11} /> Add Designation
           </Button>
         )}
@@ -435,7 +441,7 @@ function DesignationsSection({ lockedBranchId }) {
                     <Button
                       variant="link"
                       size="sm"
-                      className="text-primary p-1"
+                      className="designation-action-btn designation-action-edit p-1"
                       title="Edit Designation"
                       onClick={() => handleOpenEdit(desig)}
                     >
@@ -446,7 +452,7 @@ function DesignationsSection({ lockedBranchId }) {
                     <Button
                       variant="link"
                       size="sm"
-                      className="text-danger p-1"
+                      className="designation-action-btn designation-action-delete p-1"
                       title="Delete Designation"
                       onClick={() => {
                         setDeletingId(desig._id);

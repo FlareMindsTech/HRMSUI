@@ -22,19 +22,19 @@
   --auth-ease-decelerate: cubic-bezier(0.16, 1, 0.3, 1);
   --auth-stagger-duration: 300ms;
 
-  /* Theme-Connected Color Palette */
-  --auth-bg-page: var(--color-sidebar, #000906);
-  --auth-gold-primary: var(--color-primary, #C79D58);
-  --auth-gold-blade: var(--color-primary, #C79D58);
-  --auth-gold-blade-glow: var(--color-primary-light, rgba(199, 157, 88, 0.6));
-  --auth-dark-start: var(--color-sidebar, #1C1D1D);
+  /* Login palette remains independent from organization navigation themes. */
+  --auth-bg-page: #000906;
+  --auth-gold-primary: #C79D58;
+  --auth-gold-blade: #C79D58;
+  --auth-gold-blade-glow: rgba(199, 157, 88, 0.6);
+  --auth-dark-start: #1C1D1D;
   --auth-dark-end: #101413;
-  --auth-card-border: var(--color-border, #0D2E24);
-  --auth-cream-panel: var(--color-surface, #FEFDF2);
-  --auth-btn-start: var(--color-primary, #C79D58);
-  --auth-btn-end: var(--color-primary-dark, #A98245);
-  --auth-text-dark: var(--color-text, #1C1D1D);
-  --auth-text-muted: var(--color-secondary-text, #77736B);
+  --auth-card-border: #0D2E24;
+  --auth-cream-panel: #FEFDF2;
+  --auth-btn-start: #C79D58;
+  --auth-btn-end: #A98245;
+  --auth-text-dark: #1C1D1D;
+  --auth-text-muted: #77736B;
 }
 
 [data-surface="neumorphic"] .auth-card {
@@ -483,7 +483,6 @@
   position: relative;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid #D8D4C5;
   padding-bottom: 4px;
 }
 
@@ -518,6 +517,16 @@
   box-sizing: border-box;
 }
 
+.auth-page .auth-input,
+.auth-page .auth-input:focus,
+.auth-page .auth-input:focus-visible {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
 .auth-input-icon {
   position: absolute;
   right: 0;
@@ -549,13 +558,7 @@
 
 /* Animated Gold Focus Underline */
 .auth-focus-underline {
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  height: 2px;
-  background-color: var(--auth-gold-primary);
-  width: 0;
-  transition: width 0.25s ease-out;
+  display: none;
 }
 
 .auth-field.is-active .auth-focus-underline {
@@ -686,7 +689,7 @@
   width: 100%;
   padding: 12px 20px;
   border-radius: 9999px;
-  background: var(--auth-btn-start, var(--color-brand, #C7882C));
+  background: var(--auth-btn-start);
   color: #ffffff;
   font-size: 14px;
   font-weight: 700;
@@ -713,6 +716,27 @@
 .auth-submit-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Keep shared theme button and focus rules from changing the Login controls. */
+.auth-page .auth-submit-btn,
+.auth-page .auth-submit-btn:hover,
+.auth-page .auth-submit-btn:active {
+  background: var(--auth-btn-start) !important;
+  background-color: var(--auth-btn-start) !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(3, 26, 18, 0.4) !important;
+  transform: none !important;
+}
+
+.auth-page .auth-submit-btn:hover {
+  filter: brightness(1.15);
+}
+
+.auth-page .auth-input:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
 }
 
 /* ── Footer Link ── */

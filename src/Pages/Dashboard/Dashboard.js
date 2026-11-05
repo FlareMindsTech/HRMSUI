@@ -623,6 +623,7 @@ function Dashboard() {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="th-dashboard-neutral-action"
                     onClick={() => navigate('/approval-workflows')}
                   >
                     View all
@@ -838,6 +839,7 @@ function Dashboard() {
                     <Button
                       variant="outline"
                       size="sm"
+                      className="th-dashboard-neutral-action"
                       onClick={() => navigate('/users')}
                     >
                       View all

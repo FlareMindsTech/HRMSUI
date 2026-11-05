@@ -240,9 +240,9 @@ function TeamsSection({ lockedBranchId }) {
   };
 
   return (
-    <div className="org-sub-section">
+    <div className="org-sub-section teams-section">
       {/* ── Section Header ── */}
-      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <div className="teams-section-header d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
           <h4 className="fw-bold mb-1 d-flex align-items-center gap-2">
             <FaUsers className="text-success" />
@@ -255,7 +255,7 @@ function TeamsSection({ lockedBranchId }) {
         {canCreate && (
           <Button
             size="sm"
-            className="d-flex align-items-center gap-1 shadow-sm team-modal-btn-save"
+            className="d-flex align-items-center gap-1 shadow-sm teams-header-action"
             style={{ height: "36px", padding: "0 16px", fontSize: "13px" }}
             onClick={handleOpenCreate}
           >
@@ -427,7 +427,7 @@ function TeamsSection({ lockedBranchId }) {
                     <Button
                       variant="link"
                       size="sm"
-                      className="text-primary p-1"
+                      className="teams-action-btn teams-action-edit p-1"
                       title="Edit Team"
                       onClick={() => handleOpenEdit(t)}
                     >
@@ -438,7 +438,7 @@ function TeamsSection({ lockedBranchId }) {
                     <Button
                       variant="link"
                       size="sm"
-                      className="text-danger p-1"
+                      className="teams-action-btn teams-action-delete p-1"
                       title="Delete Team"
                       onClick={() => {
                         setDeletingId(t._id);
@@ -476,6 +476,7 @@ function TeamsSection({ lockedBranchId }) {
               actionLabel={canCreate ? "Add First Team" : undefined}
               onAction={handleOpenCreate}
               actionVariant="outline-success"
+              actionClassName="teams-empty-action"
               actionIcon={<FaPlus className="me-1" />}
             />
           }

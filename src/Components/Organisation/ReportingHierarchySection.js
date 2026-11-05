@@ -581,7 +581,7 @@ function ReportingHierarchySection({ lockedBranchId }) {
   const selectedManagerObj = employees.find((e) => String(e._id) === String(formData.managerId));
 
   return (
-    <div className="org-section-container">
+    <div className="org-section-container reporting-hierarchy-section">
       {/* ── Section Header ── */}
       <div className="org-section-header">
         <div className="d-flex align-items-center gap-3">
@@ -616,7 +616,15 @@ function ReportingHierarchySection({ lockedBranchId }) {
           </div>
 
           {canManage && (
-            <Button variant="primary" size="sm" icon={FaPlus} onClick={() => handleOpenAssign(null)}>Assign Manager</Button>
+            <Button
+              variant="primary"
+              size="sm"
+              className="reporting-assign-manager-btn"
+              icon={FaPlus}
+              onClick={() => handleOpenAssign(null)}
+            >
+              Assign Manager
+            </Button>
           )}
         </div>
       </div>

@@ -457,7 +457,7 @@ function DepartmentsSection({
   return (
     <div className="org-section-container">
       {/* ── Section Header ── */}
-      <div className="org-section-header">
+      <div className="org-section-header departments-section-header">
         <div className="d-flex align-items-center gap-3">
           <div className="branch-card-icon-badge branch-card-icon-gold">
             <FaSitemap />
@@ -469,7 +469,7 @@ function DepartmentsSection({
             </p>
           </div>
         </div>
-        <div className="d-flex align-items-center gap-2 flex-wrap">
+        <div className="departments-section-actions d-flex align-items-center gap-2 flex-wrap">
           <div className="org-view-toggle">
             <button
               type="button"
@@ -488,7 +488,15 @@ function DepartmentsSection({
           </div>
 
           {canCreate && (
-            <Button variant="primary" size="sm" icon={FaPlus} onClick={handleOpenCreate}>Add Department</Button>
+            <Button
+              variant="primary"
+              size="sm"
+              className="departments-header-action"
+              icon={FaPlus}
+              onClick={handleOpenCreate}
+            >
+              Add Department
+            </Button>
           )}
         </div>
       </div>
