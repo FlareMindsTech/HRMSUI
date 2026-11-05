@@ -1,13 +1,13 @@
 /* ==========================================================================
    TeamHub Luxury Teams Module Styles
-   Theme Tokens: #C49A55 (Gold), #1C1D1D (Charcoal), #FFFFFF, #F8FAFC
+   Theme Tokens: var(--color-brand) (Gold), var(--theme-nav-bg, #1E293B) (Charcoal), #FFFFFF, #F8FAFC
    ========================================================================== */
 
 /* ── Luxury Team Modal ── */
 .team-luxury-modal .modal-content {
   border-radius: 18px !important;
-  border: 1px solid rgba(196, 154, 85, 0.3) !important;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(196, 154, 85, 0.15) !important;
+  border: 1px solid var(--ink-border, #E2E8F0) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px var(--brand-tint, rgba(167, 243, 208, 0.15)) !important;
   overflow: hidden;
   background: #ffffff;
 }
@@ -27,15 +27,15 @@
   justify-content: center;
   font-size: 17px;
   background: #fdf8ee;
-  color: #c49a55;
-  border: 1px solid rgba(196, 154, 85, 0.3);
+  color: var(--color-brand);
+  border: 1px solid var(--ink-border, #E2E8F0);
   flex-shrink: 0;
 }
 
 .team-luxury-modal .modal-title {
   font-size: 16.5px;
   font-weight: 800;
-  color: #1c1d1d;
+  color: var(--theme-nav-bg, #1E293B);
   line-height: 1.25;
 }
 
@@ -76,8 +76,8 @@
 /* Notice / Context Box */
 .team-modal-notice {
   background: #fdfbf7;
-  border: 1px solid rgba(196, 154, 85, 0.35);
-  border-left: 4px solid #c49a55;
+  border: 1px solid var(--ink-border, #E2E8F0);
+  border-left: 4px solid var(--color-brand);
   border-radius: 12px;
   padding: 12px 16px;
   margin-bottom: 20px;
@@ -109,7 +109,7 @@
   border: 1px solid #cbd5e1;
   background: #ffffff;
   font-size: 13.5px;
-  color: #1c1d1d;
+  color: var(--theme-nav-bg, #1E293B);
   transition: all 0.2s ease;
 }
 
@@ -120,7 +120,7 @@
   border: 1px solid #cbd5e1;
   background: #ffffff;
   font-size: 13.5px;
-  color: #1c1d1d;
+  color: var(--theme-nav-bg, #1E293B);
   transition: all 0.2s ease;
   resize: vertical;
 }
@@ -128,9 +128,9 @@
 .team-modal-input:focus,
 .team-modal-select:focus,
 .team-modal-textarea:focus {
-  border-color: #c49a55;
+  border-color: var(--color-brand);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(196, 154, 85, 0.15);
+  box-shadow: 0 0 0 3px var(--focus-ring, rgba(167, 243, 208, 0.3));
 }
 
 .team-modal-input:disabled,
@@ -165,22 +165,22 @@
   padding: 0 24px;
   border-radius: 10px;
   border: none;
-  background: linear-gradient(135deg, #c49a55 0%, #b38845 100%);
-  color: #1c1d1d;
+  background: var(--color-brand);
+  color: var(--theme-nav-bg, #1E293B);
   font-size: 13.5px;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(196, 154, 85, 0.28);
+  box-shadow: 0 4px 14px var(--ink-border, #E2E8F0);
   transition: all 0.2s ease;
 }
 
 .team-modal-btn-save:hover {
-  background: linear-gradient(135deg, #b38845 0%, #9b7229 100%);
+  background: linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand) 100%);
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(196, 154, 85, 0.38);
+  box-shadow: 0 6px 18px var(--ink-border, #E2E8F0);
 }
 
 .team-modal-btn-save:active {

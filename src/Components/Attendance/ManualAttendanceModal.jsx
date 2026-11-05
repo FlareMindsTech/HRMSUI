@@ -1,5 +1,6 @@
   import React, { useState, useEffect } from 'react';
-import { Modal, Form, Button, Row, Col, Alert, Spinner, Badge } from 'react-bootstrap';
+import Button from "../Common/Button";
+import { Modal, Form, Row, Col, Alert, Spinner, Badge } from "react-bootstrap";
 import { FaUserCheck, FaExclamationTriangle, FaInfoCircle, FaCalendarAlt, FaBuilding, FaUser } from 'react-icons/fa';
 import {
   fetchManualAttendanceOptions,
@@ -269,7 +270,7 @@ export default function ManualAttendanceModal({ show, onHide, onSuccess }) {
                 </div>
                 <div className="extra-small text-secondary mb-2">{conflictData.message}</div>
                 <div className="d-flex justify-content-end gap-2">
-                  <Button variant="outline-secondary" size="sm" onClick={() => setConflictData(null)}>
+                  <Button variant="secondary" size="sm" onClick={() => setConflictData(null)}>
                     Cancel
                   </Button>
                   <Button
@@ -300,7 +301,7 @@ export default function ManualAttendanceModal({ show, onHide, onSuccess }) {
                   <div><strong>Reason:</strong> {reason}</div>
                 </div>
                 <div className="d-flex justify-content-end gap-2">
-                  <Button variant="light" size="sm" onClick={() => setShowConfirmation(false)}>
+                  <Button variant="secondary" size="sm" onClick={() => setShowConfirmation(false)}>
                     Back to Edit
                   </Button>
                   <Button
@@ -452,7 +453,7 @@ export default function ManualAttendanceModal({ show, onHide, onSuccess }) {
 
             {!showConfirmation && !conflictData && (
               <div className="d-flex justify-content-end gap-2 mt-4 pt-2 border-top">
-                <Button variant="light" size="sm" onClick={onHide} disabled={submitting}>
+                <Button variant="secondary" size="sm" onClick={onHide} disabled={submitting}>
                   Cancel
                 </Button>
                 <Button

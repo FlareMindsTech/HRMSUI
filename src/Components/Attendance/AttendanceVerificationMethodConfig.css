@@ -29,15 +29,15 @@
 }
 
 .verification-card:hover:not(.verification-card--disabled) {
-  border-color: var(--color-primary, #C79D58);
-  box-shadow: 0 4px 12px rgba(199, 157, 88, 0.12);
+  border-color: var(--color-primary);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 18%, transparent);
   transform: translateY(-2px);
 }
 
 .verification-card--selected {
-  border-color: var(--color-primary, #C79D58);
-  background: #fbf9f5;
-  box-shadow: 0 0 0 1px #c79d58, 0 4px 14px rgba(199, 157, 88, 0.16);
+  border-color: var(--color-primary);
+  background: var(--brand-tint, rgba(167, 243, 208, 0.15));
+  box-shadow: 0 0 0 1px var(--color-primary), 0 4px 14px color-mix(in srgb, var(--color-primary) 22%, transparent);
 }
 
 .verification-card--disabled {
@@ -97,15 +97,15 @@
 }
 
 .verification-card--selected .verification-radio-indicator {
-  border-color: var(--color-primary, #C79D58);
-  background: var(--color-primary, #C79D58);
+  border-color: var(--color-primary);
+  background: var(--color-primary);
 }
 
 .verification-radio-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--color-surface, #FFFFFF);
+  background: var(--brand-contrast-text, #0F172A);
 }
 
 .verification-card-title {
@@ -124,7 +124,7 @@
 
 /* Detail Panels */
 .verification-detail-panel {
-  background: var(--color-surface, #FFFFFF);
+  background: var(--brand-contrast-text, #0F172A);
   border: 1px solid #e2e8f0;
   border-radius: var(--radius-md, 12px);
   padding: 1.25rem;
@@ -170,7 +170,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  background: var(--color-surface, #FFFFFF);
+  background: var(--brand-contrast-text, #0F172A);
   border: 1px solid #cbd5e1;
   border-radius: var(--radius-xl, 20px);
   padding: 0.28rem 0.75rem;

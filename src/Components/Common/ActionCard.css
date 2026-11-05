@@ -1,0 +1,57 @@
+/* ==========================================================================
+   ACTION CARD & NAVIGATION CARD STYLES
+   Ensures card-type interactive elements maintain card identity without button leakage.
+   ========================================================================== */
+.action-card-ui {
+  background: var(--card-surface-bg, #FFFFFF);
+  background-color: var(--card-surface-bg, #FFFFFF) !important;
+  border: 1px solid var(--card-surface-border, var(--ink-border, #E2E8F0)) !important;
+  border-radius: var(--radius-lg, 12px) !important;
+  box-shadow: var(--card-surface-shadow, 0 1px 3px rgba(15, 31, 24, 0.04)) !important;
+  padding: 18px 20px;
+  color: var(--ink-primary, #0F1F18);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease;
+  position: relative;
+  text-decoration: none !important;
+  display: block;
+}
+
+.action-card-ui.is-clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.action-card-ui.is-clickable:hover {
+  background: var(--nav-card-surface-hover-bg, var(--ink-surface-hover, #F8FAFC)) !important;
+  border-color: var(--nav-card-surface-hover-border, var(--color-brand)) !important;
+  box-shadow: var(--card-surface-hover-shadow, 0 4px 14px rgba(15, 31, 24, 0.08)) !important;
+  transform: translateY(-2px);
+}
+
+.action-card-ui.is-clickable:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(15, 31, 24, 0.06) !important;
+}
+
+.action-card-ui .action-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-primary, #0F1F18);
+  margin-bottom: 4px;
+}
+
+.action-card-ui .action-card-desc {
+  font-size: 13px;
+  color: var(--ink-secondary, #64748B);
+  margin: 0;
+  line-height: 1.45;
+}
+
+.action-card-ui .action-card-icon {
+  font-size: 24px;
+  color: var(--color-brand);
+  margin-bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

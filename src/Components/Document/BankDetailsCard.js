@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Card, Form, Row, Col, Button, Badge } from "react-bootstrap";
+import Button from "../Common/Button";
+import { Card, Form, Row, Col, Badge } from "react-bootstrap";
 import { FaUniversity, FaCheck, FaEye, FaEyeSlash, FaSave, FaFileAlt } from "react-icons/fa";
 import DocumentUploadBox from "../Education/DocumentUploadBox";
 
@@ -119,10 +120,10 @@ const BankDetailsCard = ({
               height: 38,
               minWidth: 38,
               marginRight: "14px",
-              background: "linear-gradient(135deg, rgba(226, 194, 120, 0.25) 0%, rgba(196, 154, 85, 0.18) 100%)",
-              color: "var(--color-primary, #C49A55)",
+              background: "var(--brand-tint, rgba(167, 243, 208, 0.15))",
+              color: "var(--color-brand)",
               fontSize: 18,
-              border: "1px solid rgba(196, 154, 85, 0.3)",
+              border: "1px solid var(--ink-border, #E2E8F0)",
             }}
           >
             <FaUniversity />
@@ -134,11 +135,11 @@ const BankDetailsCard = ({
         </div>
         <div>
           {isUnpaid ? (
-            <Badge style={{ backgroundColor: "rgba(196, 154, 85, 0.15)", color: "#8E651F", border: "1px solid rgba(196, 154, 85, 0.3)" }} className="rounded-pill extra-small px-2.5 py-1">
+            <Badge style={{ backgroundColor: "var(--brand-tint, rgba(167, 243, 208, 0.15))", color: "var(--ink-primary, #0F172A)", border: "1px solid var(--ink-border, #E2E8F0)" }} className="rounded-pill extra-small px-2.5 py-1">
               <FaCheck className="me-1" /> Exempted (Unpaid)
             </Badge>
           ) : data?.accountNo && data?.ifsc ? (
-            <Badge style={{ backgroundColor: "rgba(196, 154, 85, 0.15)", color: "#8E651F", border: "1px solid rgba(196, 154, 85, 0.3)" }} className="rounded-pill extra-small px-2.5 py-1">
+            <Badge style={{ backgroundColor: "var(--brand-tint, rgba(167, 243, 208, 0.15))", color: "var(--ink-primary, #0F172A)", border: "1px solid var(--ink-border, #E2E8F0)" }} className="rounded-pill extra-small px-2.5 py-1">
               <FaCheck className="me-1" /> Added
             </Badge>
           ) : (
@@ -151,8 +152,8 @@ const BankDetailsCard = ({
 
       <Card.Body className="p-4">
         {isUnpaid && (
-          <div className="p-2.5 mb-3 rounded-3 border extra-small d-flex align-items-center gap-2" style={{ background: "rgba(196, 154, 85, 0.08)", borderColor: "rgba(196, 154, 85, 0.25)", color: "#8E651F" }}>
-            <span className="badge text-white" style={{ background: "linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%)" }}>UNPAID</span>
+          <div className="p-2.5 mb-3 rounded-3 border extra-small d-flex align-items-center gap-2" style={{ background: "var(--brand-tint, rgba(167, 243, 208, 0.15))", borderColor: "var(--ink-border, #E2E8F0)", color: "var(--ink-primary, #0F172A)" }}>
+            <span className="badge text-white" style={{ background: "var(--color-brand)" }}>UNPAID</span>
             <span>Bank details are exempted for Unpaid engagements. (Optional: you may still enter bank details below if needed).</span>
           </div>
         )}
@@ -275,7 +276,7 @@ const BankDetailsCard = ({
                 <Button
                   size="sm"
                   className="rounded-pill px-4 extra-small d-flex align-items-center gap-1.5 shadow-xs text-white"
-                  style={{ background: "linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%)", border: "none" }}
+                  style={{ background: "var(--color-brand)", border: "none" }}
                   onClick={handleSaveClick}
                   disabled={saving}
                 >
@@ -317,7 +318,7 @@ const BankDetailsCard = ({
               <Col xs={12} className="pt-2 border-top">
                 <div className="d-flex align-items-center justify-content-between p-2 rounded-2 bg-light border border-light-subtle flex-wrap gap-2">
                   <div className="d-flex align-items-center gap-2">
-                    <FaFileAlt style={{ color: "var(--color-primary, #C49A55)" }} />
+                    <FaFileAlt style={{ color: "var(--color-brand)" }} />
                     <span className="extra-small fw-semibold text-dark">
                       Bank Passbook / Cheque: {data?.passbookFileName || "Attached Document"}
                     </span>

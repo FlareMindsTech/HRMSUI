@@ -56,9 +56,9 @@ function DocumentUploadBox({
       };
     }
     return {
-      icon: <FaFileAlt size={22} color="#9B7229" />,
-      bg: "rgba(196, 154, 85, 0.14)",
-      border: "rgba(196, 154, 85, 0.35)",
+      icon: <FaFileAlt size={22} color="var(--color-brand)" />,
+      bg: "var(--brand-tint, rgba(167, 243, 208, 0.15))",
+      border: "var(--ink-border, #E2E8F0)",
       typeLabel: "DOC",
     };
   };
@@ -131,8 +131,8 @@ function DocumentUploadBox({
               className="rounded-3 d-flex align-items-center justify-content-between flex-wrap transition-all"
               style={{
                 background: "linear-gradient(135deg, #FFFFFF 0%, #FAF7F0 100%)",
-                border: "1px solid rgba(196, 154, 85, 0.38)",
-                boxShadow: "0 2px 10px rgba(196, 154, 85, 0.08)",
+                border: "1px solid var(--ink-border, #E2E8F0)",
+                boxShadow: "var(--shadow-sm)",
                 padding: "14px 18px",
                 gap: "16px",
               }}
@@ -160,7 +160,7 @@ function DocumentUploadBox({
                   <div
                     className="small fw-bold text-truncate"
                     style={{
-                      color: "#1C1D1D",
+                      color: "var(--ink-primary, #0F172A)",
                       letterSpacing: "-0.01em",
                       fontSize: "13.5px",
                       lineHeight: "1.3",
@@ -192,9 +192,9 @@ function DocumentUploadBox({
                       style={{
                         fontSize: "11px",
                         fontWeight: 700,
-                        color: "#9B7229",
-                        background: "rgba(196, 154, 85, 0.15)",
-                        border: "1px solid rgba(196, 154, 85, 0.35)",
+                        color: "var(--color-brand)",
+                        background: "var(--brand-tint, rgba(167, 243, 208, 0.15))",
+                        border: "1px solid var(--ink-border, #E2E8F0)",
                         padding: "2px 9px",
                         borderRadius: "12px",
                         display: "inline-flex",
@@ -202,7 +202,7 @@ function DocumentUploadBox({
                         gap: "5px",
                       }}
                     >
-                      <FaCheckCircle size={11} color="#9B7229" /> Ready to upload
+                      <FaCheckCircle size={11} color="var(--color-brand)" /> Ready to upload
                     </span>
                   </div>
                 </div>
@@ -221,7 +221,7 @@ function DocumentUploadBox({
                     fontWeight: 600,
                     color: "#8C621E",
                     background: "#FFFFFF",
-                    border: "1px solid rgba(196, 154, 85, 0.4)",
+                    border: "1px solid var(--color-brand)",
                     borderRadius: "9999px",
                     padding: "5px 14px",
                     gap: "6px",
@@ -229,12 +229,12 @@ function DocumentUploadBox({
                   }}
                   onClick={() => fileInputRef.current?.click()}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "rgba(196, 154, 85, 0.12)";
-                    e.currentTarget.style.borderColor = "#C49A55";
+                    e.currentTarget.style.background = "var(--brand-tint, rgba(167, 243, 208, 0.15))";
+                    e.currentTarget.style.borderColor = "var(--color-brand)";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = "#FFFFFF";
-                    e.currentTarget.style.borderColor = "rgba(196, 154, 85, 0.4)";
+                    e.currentTarget.style.borderColor = "var(--color-brand)";
                   }}
                 >
                   <FaSyncAlt size={11} /> Replace
@@ -277,8 +277,8 @@ function DocumentUploadBox({
               className="rounded-3 d-flex align-items-center justify-content-between flex-wrap transition-all"
               style={{
                 background: "linear-gradient(135deg, #FFFFFF 0%, #FAF7F0 100%)",
-                border: "1px solid rgba(196, 154, 85, 0.32)",
-                boxShadow: "0 2px 8px rgba(196, 154, 85, 0.06)",
+                border: "1px solid var(--ink-border, #E2E8F0)",
+                boxShadow: "var(--shadow-sm)",
                 padding: "14px 18px",
                 gap: "16px",
               }}
@@ -304,7 +304,7 @@ function DocumentUploadBox({
                 >
                   <div
                     className="small fw-bold text-truncate"
-                    style={{ color: "#1C1D1D", fontSize: "13.5px" }}
+                    style={{ color: "var(--ink-primary, #0F172A)", fontSize: "13.5px" }}
                     title={getFileName(docUrl)}
                   >
                     {getFileName(docUrl)}
@@ -340,9 +340,9 @@ function DocumentUploadBox({
                   style={{
                     fontSize: "12px",
                     fontWeight: 600,
-                    color: "#1C1D1D",
-                    background: "linear-gradient(135deg, #E2C278 0%, #C49A55 100%)",
-                    border: "1px solid #C49A55",
+                    color: "var(--ink-primary, #0F172A)",
+                    background: "var(--color-brand)",
+                    border: "1px solid var(--color-brand)",
                     borderRadius: "9999px",
                     padding: "5px 14px",
                     gap: "5px",
@@ -379,19 +379,19 @@ function DocumentUploadBox({
                     fontWeight: 600,
                     color: "#8C621E",
                     background: "#FFFFFF",
-                    border: "1px solid rgba(196, 154, 85, 0.4)",
+                    border: "1px solid var(--color-brand)",
                     borderRadius: "9999px",
                     padding: "5px 14px",
                     gap: "5px",
                   }}
                   onClick={() => fileInputRef.current?.click()}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "rgba(196, 154, 85, 0.12)";
-                    e.currentTarget.style.borderColor = "#C49A55";
+                    e.currentTarget.style.background = "var(--brand-tint, rgba(167, 243, 208, 0.15))";
+                    e.currentTarget.style.borderColor = "var(--color-brand)";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = "#FFFFFF";
-                    e.currentTarget.style.borderColor = "rgba(196, 154, 85, 0.4)";
+                    e.currentTarget.style.borderColor = "var(--color-brand)";
                   }}
                 >
                   <FaSyncAlt size={11} /> Replace
@@ -420,19 +420,19 @@ function DocumentUploadBox({
           }`}
           style={{
             background: "linear-gradient(180deg, #FFFFFF 0%, #FAF7F0 100%)",
-            border: error ? "1.5px dashed #DC2626" : "1.5px dashed rgba(196, 154, 85, 0.5)",
+            border: error ? "1.5px dashed #DC2626" : "1.5px dashed var(--color-brand)",
             boxShadow: "0 2px 6px rgba(0, 0, 0, 0.02)",
             padding: "20px 16px",
             transition: "all 0.22s ease",
             cursor: "pointer",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "#C49A55";
-            e.currentTarget.style.boxShadow = "0 4px 14px rgba(196, 154, 85, 0.15)";
+            e.currentTarget.style.borderColor = "var(--color-brand)";
+            e.currentTarget.style.boxShadow = "0 4px 14px var(--brand-tint, rgba(167, 243, 208, 0.15))";
             e.currentTarget.style.background = "#FFFDF9";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = error ? "#DC2626" : "rgba(196, 154, 85, 0.5)";
+            e.currentTarget.style.borderColor = error ? "#DC2626" : "var(--color-brand)";
             e.currentTarget.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.02)";
             e.currentTarget.style.background = "linear-gradient(180deg, #FFFFFF 0%, #FAF7F0 100%)";
           }}
@@ -443,9 +443,9 @@ function DocumentUploadBox({
               style={{
                 width: "44px",
                 height: "44px",
-                background: "linear-gradient(135deg, rgba(226, 194, 120, 0.25) 0%, rgba(196, 154, 85, 0.25) 100%)",
-                border: "1px solid rgba(196, 154, 85, 0.35)",
-                color: "#9B7229",
+                background: "var(--brand-tint, rgba(167, 243, 208, 0.15))",
+                border: "1px solid var(--ink-border, #E2E8F0)",
+                color: "var(--color-brand)",
               }}
             >
               <FaFileUpload size={20} />

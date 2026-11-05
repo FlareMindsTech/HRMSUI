@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import Button from "../../Components/Common/Button";
+import PageShell from "../../Components/Common/PageShell";
+import PageHeader from "../../Components/Common/PageHeader";
 import {
-  Container,
   Row,
   Col,
   Card,
   Table,
-  Button,
   Badge,
   Modal,
   Form,
@@ -1096,28 +1097,23 @@ function UserManagement({ initialTab = "users" }) {
   };
 
   return (
-    <Container fluid className="px-0 user-mgmt-container">
+    <PageShell className="user-mgmt-page-shell">
       {/* ── Page Header ── */}
-      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-        <div>
-          <h4 className="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
-            <FaUserShield className="text-success" /> User & Role Management
-          </h4>
-          <p className="text-muted small mb-0">
-            Provision employee credentials, manage assigned roles, and configure organizational RBAC permissions.
-          </p>
-        </div>
-
-        {isSystemAdmin && activeTab === "roles" && (
-          <Button
-            variant="success"
-            className="user-mgmt-create-btn d-inline-flex align-items-center gap-2 px-3 py-2 rounded-pill shadow-sm fw-semibold text-nowrap"
-            onClick={handleOpenCreateRoleModal}
-          >
-            <FaPlus size={11} /> Create Custom Role
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="User & Role Management"
+        subtitle="Provision employee credentials, manage assigned roles, and configure organizational RBAC permissions."
+        actions={
+          isSystemAdmin && activeTab === "roles" ? (
+            <Button
+              variant="primary"
+              className="user-mgmt-create-btn d-inline-flex align-items-center gap-2 px-3 py-2 rounded-pill shadow-sm fw-semibold text-nowrap"
+              onClick={handleOpenCreateRoleModal}
+            >
+              <FaPlus size={11} /> Create Custom Role
+            </Button>
+          ) : null
+        }
+      />
 
       {/* ── Real Data KPI Summary Row (click a card to filter) ── */}
       <Row className="g-3 mb-4">
@@ -1359,7 +1355,7 @@ function UserManagement({ initialTab = "users" }) {
               {/* Reset Filter Button */}
               {(userSearch || accountStatusFilter !== "active" || roleFilter !== "all") && (
                 <Button
-                  variant="outline-secondary"
+                  variant="outline"
                   size="sm"
                   className="user-mgmt-ctrl d-inline-flex align-items-center gap-1"
                   onClick={() => {
@@ -1492,18 +1488,14 @@ function UserManagement({ initialTab = "users" }) {
                         {showActionColumn && (
                         <td className="text-end pe-3 pe-md-4 text-nowrap user-mgmt-cell-action">
                           {action === "create" && (
-                              <Button
-                                size="sm"
-                                className="user-mgmt-action-btn user-mgmt-action-create"
+                              <Button size="sm" variant="primary" className="user-mgmt-action-btn user-mgmt-action-create"
                                 onClick={() => handleOpenProvisionModal(u)}
                               >
                                 <FaUserPlus size={11} /> Create Account
                               </Button>
                           )}
                           {action === "manage" && (
-                              <Button
-                                size="sm"
-                                className="user-mgmt-action-btn user-mgmt-action-manage"
+                              <Button size="sm" variant="outline" className="user-mgmt-action-btn user-mgmt-action-manage"
                                 onClick={() => handleOpenManageModal(u)}
                               >
                                 <FaCog size={11} /> Manage
@@ -1570,7 +1562,7 @@ function UserManagement({ initialTab = "users" }) {
               {/* Reset Filter Button */}
               {(roleSearch || roleTypeFilter !== "all") && (
                 <Button
-                  variant="outline-secondary"
+                  variant="outline"
                   size="sm"
                   className="user-mgmt-ctrl d-inline-flex align-items-center gap-1"
                   onClick={() => {
@@ -1672,7 +1664,7 @@ function UserManagement({ initialTab = "users" }) {
                           <div className="d-inline-flex align-items-center justify-content-end gap-1.5">
                             {canEdit && (
                               <Button
-                                variant="outline-primary"
+                                variant="outline"
                                 size="sm"
                                 className="rounded-pill px-2.5 py-1 micro-text text-nowrap d-inline-flex align-items-center gap-1"
                                 onClick={() => handleOpenEditRoleModal(role)}
@@ -1682,7 +1674,7 @@ function UserManagement({ initialTab = "users" }) {
                             )}
                             {canDelete && (
                               <Button
-                                variant="outline-danger"
+                                variant="danger"
                                 size="sm"
                                 className="rounded-pill p-1.5 d-inline-flex align-items-center justify-content-center role-delete-btn"
                                 onClick={() => handleDeleteRole(role)}
@@ -1721,7 +1713,7 @@ function UserManagement({ initialTab = "users" }) {
                 </span>
               </div>
               <Button
-                variant="outline-secondary"
+                variant="outline"
                 size="sm"
                 className="rounded-pill d-flex align-items-center gap-1.5"
                 onClick={loadPasswordResetData}
@@ -1783,7 +1775,7 @@ function UserManagement({ initialTab = "users" }) {
                           <div className="d-inline-flex gap-2">
                             <Button
                               size="sm"
-                              variant="success"
+                              variant="primary"
                               className="rounded-pill px-2.5 py-1 micro-text"
                               onClick={() => handleApproveReset(req._id)}
                             >
@@ -1791,7 +1783,7 @@ function UserManagement({ initialTab = "users" }) {
                             </Button>
                             <Button
                               size="sm"
-                              variant="outline-danger"
+                              variant="danger"
                               className="rounded-pill px-2.5 py-1 micro-text"
                               onClick={() => handleRejectReset(req._id)}
                             >
@@ -1888,7 +1880,7 @@ function UserManagement({ initialTab = "users" }) {
                           <div className="d-inline-flex gap-2">
                             <Button
                               size="sm"
-                              variant="outline-primary"
+                              variant="outline"
                               className="rounded-pill px-2.5 py-1 micro-text"
                               onClick={() => {
                                 setEditingRule(rule);
@@ -1905,7 +1897,7 @@ function UserManagement({ initialTab = "users" }) {
                             </Button>
                             <Button
                               size="sm"
-                              variant="outline-danger"
+                              variant="danger"
                               className="rounded-pill p-1.5"
                               onClick={() => handleDeleteRule(rule._id)}
                               title="Delete Rule"
@@ -1994,7 +1986,7 @@ function UserManagement({ initialTab = "users" }) {
                   className="shadow-none rw-control"
                 />
                 <Button
-                  variant="outline-secondary"
+                  variant="outline"
                   className="rw-eye-btn"
                   onClick={() => setProvisionForm((p) => ({ ...p, showPass: !p.showPass }))}
                 >
@@ -2021,10 +2013,10 @@ function UserManagement({ initialTab = "users" }) {
 
           <Modal.Footer className="user-mgmt-role-modal-foot rw-foot border-0">
             <div className="rw-foot-actions">
-              <Button className="user-mgmt-role-modal-cancel" size="sm" onClick={() => setShowProvisionModal(false)}>
+              <Button variant="secondary" className="user-mgmt-role-modal-cancel" size="sm" onClick={() => setShowProvisionModal(false)}>
                 Cancel
               </Button>
-              <Button className="user-mgmt-role-modal-submit" size="sm" type="submit" disabled={modalLoading}>
+              <Button variant="primary" className="user-mgmt-role-modal-submit" size="sm" type="submit" disabled={modalLoading}>
                 {modalLoading ? "Provisioning..." : "Create Login Account"}
               </Button>
             </div>
@@ -2163,7 +2155,7 @@ function UserManagement({ initialTab = "users" }) {
                       className="shadow-none rw-control rw-field"
                     />
                     <Button
-                      variant="outline-secondary"
+                      variant="outline"
                       className="rw-eye-btn"
                       onClick={() => setManageForm((p) => ({ ...p, showPass: !p.showPass }))}
                     >
@@ -2194,11 +2186,10 @@ function UserManagement({ initialTab = "users" }) {
           </Modal.Body>
 
           <Modal.Footer className="user-mgmt-role-modal-foot rw-foot rw-foot-split border-0">
-            <Button className="user-mgmt-role-modal-cancel" size="sm" onClick={() => setShowManageModal(false)}>
+            <Button variant="secondary" className="user-mgmt-role-modal-cancel" size="sm" onClick={() => setShowManageModal(false)}>
               Cancel
             </Button>
-            <Button
-              className="user-mgmt-role-modal-submit"
+            <Button variant="primary" className="user-mgmt-role-modal-submit"
               size="sm"
               type="submit"
               disabled={modalLoading || (manageModalTab === "access" && !manageAccessValidation.isValid)}
@@ -2498,13 +2489,12 @@ function UserManagement({ initialTab = "users" }) {
                   </span>
                 </div>
                 <div className="rw-foot-actions">
-                  <Button
-                    className="user-mgmt-role-modal-cancel"
+                  <Button variant="secondary" className="user-mgmt-role-modal-cancel"
                     onClick={() => setShowRoleModal(false)}
                   >
                     Cancel
                   </Button>
-                  <Button className="user-mgmt-role-modal-submit" type="submit" disabled={modalLoading}>
+                  <Button variant="primary" className="user-mgmt-role-modal-submit" type="submit" disabled={modalLoading}>
                     {modalLoading ? "Saving..." : editingRoleId ? "Update Role Access" : "Create Role"}
                   </Button>
                 </div>
@@ -2606,10 +2596,10 @@ function UserManagement({ initialTab = "users" }) {
           </Modal.Body>
           <Modal.Footer className="user-mgmt-role-modal-foot rw-foot border-0">
             <div className="rw-foot-actions">
-              <Button className="user-mgmt-role-modal-cancel" onClick={() => setShowRuleModal(false)}>
+              <Button variant="secondary" className="user-mgmt-role-modal-cancel" onClick={() => setShowRuleModal(false)}>
                 Cancel
               </Button>
-              <Button className="user-mgmt-role-modal-submit" type="submit" disabled={ruleSubmitting}>
+              <Button variant="primary" className="user-mgmt-role-modal-submit" type="submit" disabled={ruleSubmitting}>
                 {ruleSubmitting ? "Saving..." : "Save Rule"}
               </Button>
             </div>
@@ -2644,7 +2634,7 @@ function UserManagement({ initialTab = "users" }) {
         </Modal.Body>
         <Modal.Footer>
           <Button
-            variant="outline-primary"
+            variant="outline"
             size="sm"
             onClick={() => {
               if (approvedTokenInfo?.token) {
@@ -2655,7 +2645,7 @@ function UserManagement({ initialTab = "users" }) {
           >
             Copy Token
           </Button>
-          <Button variant="success" size="sm" onClick={() => setShowTokenModal(false)}>
+          <Button variant="primary" size="sm" onClick={() => setShowTokenModal(false)}>
             Done
           </Button>
         </Modal.Footer>
@@ -2671,7 +2661,7 @@ function UserManagement({ initialTab = "users" }) {
         message={deletingRole ? (<>Are you sure you want to delete role <strong>{deletingRole.roleName}</strong>?</>) : null}
         confirmLabel="Yes, Delete"
       />
-    </Container>
+    </PageShell>
   );
 }
 

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Modal, Form, Button, Row, Col } from "react-bootstrap";
+import Button from "../Common/Button";
+import { Modal, Form, Row, Col } from "react-bootstrap";
 import { FaFileUpload, FaCloudUploadAlt, FaFilePdf, FaFileImage } from "react-icons/fa";
 import FeedbackAlert from "../Common/FeedbackAlert";
 

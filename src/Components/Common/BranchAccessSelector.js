@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
-import { Row, Col, Form, Badge, Button, InputGroup, Spinner } from "react-bootstrap";
+import Button from "./Button";
+import { Row, Col, Form, Badge, InputGroup, Spinner } from "react-bootstrap";
 import {
   FaBuilding,
   FaCodeBranch,

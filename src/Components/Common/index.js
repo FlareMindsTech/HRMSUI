@@ -5,6 +5,8 @@ export { default as Toolbar } from "./Toolbar";
 export { default as Card } from "./Card";
 export { default as FormField } from "./FormField";
 export { default as Button } from "./Button";
+export { default as IconButton } from "./IconButton";
+export { default as ActionCard } from "./ActionCard";
 export { default as StatCard } from "./StatCard";
 export { default as Tabs } from "./Tabs";
 

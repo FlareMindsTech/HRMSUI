@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Row, Col, Card, Form, Button } from "react-bootstrap";
+import Button from "../../Components/Common/Button";
+import { Row, Col, Card, Form } from "react-bootstrap";
 import {
   FaBuilding,
   FaCodeBranch,
@@ -417,7 +418,7 @@ function LeaveViewCustomizer({ currentUser, isOwner, onConfigSaved }) {
           </div>
           {isOverrideActive && (
             <Button
-              variant="outline-danger"
+              variant="danger"
               size="sm"
               className="py-1 px-2 extra-small rounded-pill"
               onClick={() => setShowRevertModal(true)}
@@ -659,7 +660,7 @@ function LeaveViewCustomizer({ currentUser, isOwner, onConfigSaved }) {
           {/* Save Bar */}
           <div className="mt-4 pt-3 border-top d-flex justify-content-end gap-2">
             <Button
-              variant="dark"
+              variant="primary"
               size="sm"
               className="leave-workflow-save-btn px-4 py-2 rounded-pill shadow-xs"
               onClick={handleSave}

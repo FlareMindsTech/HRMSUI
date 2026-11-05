@@ -1,4 +1,6 @@
 import React from 'react';
+import PageShell from '../../Components/Common/PageShell';
+import PageHeader from '../../Components/Common/PageHeader';
 import { useNavigate } from 'react-router-dom';
 import {
   MdAccountBalance,
@@ -63,34 +65,37 @@ function Epfo() {
   ];
 
   return (
-    <div className="placeholder-page">
-      {/* ── Page Header ── */}
-      <div className="placeholder-header">
-        <div>
-          <div className="placeholder-breadcrumb">
-            <span className="clickable" onClick={() => navigate('/dashboard')} role="link" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate('/dashboard'); } }}>
-              Dashboard
-            </span>
-            <MdChevronRight />
-            <span>EPFO</span>
-          </div>
-          <h1 className="placeholder-title">
-            <MdAccountBalance style={{ color: '#7c3aed' }} />
-            EPFO & Statutory Details
-          </h1>
-          <p className="placeholder-desc">
-            Employee provident fund and statutory information workspace.
-          </p>
-        </div>
+    <PageShell className="placeholder-page-shell">
+      {/* ── Breadcrumb & Page Header ── */}
+      <div className="placeholder-breadcrumb">
+        <span
+          className="clickable"
+          onClick={() => navigate('/dashboard')}
+          role="link"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              navigate('/dashboard');
+            }
+          }}
+        >
+          Dashboard
+        </span>
+        <MdChevronRight />
+        <span>EPFO</span>
+      </div>
 
-        {/* Status Badge */}
-        <div>
+      <PageHeader
+        title="EPFO & Statutory Details"
+        subtitle="Employee provident fund and statutory information workspace."
+        actions={
           <div className="placeholder-status-badge">
             <span className="placeholder-status-dot"></span>
             Statutory Integration Pending
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* ── Main Workspace Card ── */}
       <div className="placeholder-workspace-card">
@@ -120,13 +125,13 @@ function Epfo() {
         {/* Planned Capabilities Section */}
         <div className="placeholder-scope-section">
           <div className="placeholder-section-heading">
-            <MdSavings style={{ color: '#7c3aed' }} />
+            <MdSavings />
             Planned Statutory Capabilities
           </div>
           <div className="placeholder-scope-grid">
             {plannedScopes.map((scope, idx) => (
               <div key={idx} className="placeholder-scope-item">
-                <div className="placeholder-scope-item-icon" style={{ background: 'rgba(139, 92, 246, 0.12)', color: '#7c3aed' }}>
+                <div className="placeholder-scope-item-icon">
                   {scope.icon}
                 </div>
                 <div className="placeholder-scope-item-title">{scope.title}</div>
@@ -157,7 +162,7 @@ function Epfo() {
               type="button"
             >
               <div className="placeholder-shortcut-left">
-                <div className="placeholder-shortcut-icon" style={{ background: 'rgba(139, 92, 246, 0.12)', color: '#7c3aed' }}>
+                <div className="placeholder-shortcut-icon">
                   {sc.icon}
                 </div>
                 <div>
@@ -170,7 +175,7 @@ function Epfo() {
           ))}
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }
 

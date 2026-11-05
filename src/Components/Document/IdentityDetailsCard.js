@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Card, Form, Row, Col, Button, Badge } from "react-bootstrap";
+import Button from "../Common/Button";
+import { Card, Form, Row, Col, Badge } from "react-bootstrap";
 import { FaIdCard, FaCheck, FaEye, FaEyeSlash, FaSave, FaLock } from "react-icons/fa";
 
 const IdentityDetailsCard = ({
@@ -82,10 +83,10 @@ const IdentityDetailsCard = ({
               height: 38,
               minWidth: 38,
               marginRight: "14px",
-              background: "linear-gradient(135deg, rgba(226, 194, 120, 0.25) 0%, rgba(196, 154, 85, 0.18) 100%)",
-              color: "var(--color-primary, #C49A55)",
+              background: "var(--brand-tint, rgba(167, 243, 208, 0.15))",
+              color: "var(--color-brand)",
               fontSize: 18,
-              border: "1px solid rgba(196, 154, 85, 0.3)",
+              border: "1px solid var(--ink-border, #E2E8F0)",
             }}
           >
             <FaIdCard />
@@ -100,7 +101,7 @@ const IdentityDetailsCard = ({
             <FaLock className="me-1 text-secondary" /> Masked in View
           </Badge>
           {data?.aadhaarNo && data?.panNo ? (
-            <Badge style={{ backgroundColor: "rgba(196, 154, 85, 0.15)", color: "#8E651F", border: "1px solid rgba(196, 154, 85, 0.3)" }} className="rounded-pill extra-small px-2.5 py-1">
+            <Badge style={{ backgroundColor: "var(--brand-tint, rgba(167, 243, 208, 0.15))", color: "var(--ink-primary, #0F172A)", border: "1px solid var(--ink-border, #E2E8F0)" }} className="rounded-pill extra-small px-2.5 py-1">
               <FaCheck className="me-1" /> Added
             </Badge>
           ) : (
@@ -199,7 +200,7 @@ const IdentityDetailsCard = ({
                 <Button
                   size="sm"
                   className="rounded-pill px-4 extra-small d-flex align-items-center gap-1.5 shadow-xs text-white"
-                  style={{ background: "linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 55%, var(--color-primary-dark, #9B7229) 100%)", border: "none" }}
+                  style={{ background: "var(--color-brand)", border: "none" }}
                   onClick={handleSaveClick}
                   disabled={saving}
                 >

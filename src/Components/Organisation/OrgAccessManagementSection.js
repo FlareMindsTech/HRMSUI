@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Row, Col, Card, Table, Button, Badge, Form, Spinner, Modal } from "react-bootstrap";
+import Button from "../Common/Button";
+import { Row, Col, Card, Table, Badge, Form, Spinner, Modal } from "react-bootstrap";
 import {
   FaShieldAlt,
   FaBuilding,

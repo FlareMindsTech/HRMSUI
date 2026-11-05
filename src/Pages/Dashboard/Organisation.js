@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import PageShell from "../../Components/Common/PageShell";
 import { useParams, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { Dropdown } from "react-bootstrap";
 import {
@@ -427,16 +428,16 @@ function Organisation() {
 
   if (loadingOrg && !currentOrg) {
     return (
-      <div className="org-dashboard-container">
+      <PageShell className="org-dashboard-container">
         <div className="org-loader-container-full">
-          <div className="spinner-border" style={{ color: "var(--color-primary, #C49A55)", width: "3rem", height: "3rem" }} role="status">
+          <div className="spinner-border" style={{ color: "var(--color-brand)", width: "3rem", height: "3rem" }} role="status">
             <span className="visually-hidden">Loading...</span>
           </div>
           <div className="mt-3 fw-bold" style={{ color: "#77736B", fontSize: "0.95rem" }}>
             Loading Enterprise Organization Hub...
           </div>
         </div>
-      </div>
+      </PageShell>
     );
   }
 
@@ -444,13 +445,13 @@ function Organisation() {
   if (hasNoOrg) {
     if (isOwner) {
       return (
-        <div className="org-dashboard-container">
+        <PageShell className="org-dashboard-container">
           <OrgSetupWizard onOrgCreated={handleOrgCreated} />
-        </div>
+        </PageShell>
       );
     }
     return (
-      <div className="org-dashboard-container p-4 text-center">
+      <PageShell className="org-dashboard-container p-4 text-center">
         <div className="onboarding-dash-card p-5 bg-white mx-auto shadow-sm" style={{ maxWidth: 640 }}>
           <FaBuilding className="text-warning fs-1 mb-3" />
           <h4 className="fw-bold text-dark">No Organization Setup Found</h4>
@@ -458,20 +459,20 @@ function Organisation() {
             Your organization has not been configured yet. Please contact your organization administrator or owner to complete the initial setup.
           </p>
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   // Dedicated Edit Profile Full Page
   if (activeTab === "edit-profile") {
     return (
-      <div className="org-dashboard-container">
+      <PageShell className="org-dashboard-container">
         <EditOrgProfilePage
           orgData={currentOrg}
           onBack={() => handleTabSelect("overview")}
           onOrgUpdated={handleOrgUpdated}
         />
-      </div>
+      </PageShell>
     );
   }
 
@@ -479,7 +480,7 @@ function Organisation() {
   const currentCategoryGroup = ORG_NAV_GROUPS.find((g) => g.groupTitle === activeCategory) || ORG_NAV_GROUPS[0];
 
   return (
-    <div className="org-dashboard-container">
+    <PageShell className="org-dashboard-container">
       {/* ── 1. TOP EXECUTIVE HEADER BAR ── */}
       <div className="org-greeting-header-bar">
         <div className="org-greeting-left">
@@ -567,7 +568,7 @@ function Organisation() {
         <div className="org-hero-card-exact mb-4">
           <div className="org-hero-bg-glow" />
           <svg className="org-hero-bg-waves" viewBox="0 0 1000 200" preserveAspectRatio="none">
-            <path d="M 400 0 C 650 180, 750 20, 1000 80 L 1000 0 Z" fill="var(--color-primary, #C49A55)" opacity="0.04" />
+            <path d="M 400 0 C 650 180, 750 20, 1000 80 L 1000 0 Z" fill="var(--color-brand)" opacity="0.04" />
           </svg>
 
           <div className="org-hero-content-wrapper">
@@ -681,7 +682,7 @@ function Organisation() {
       <div className="org-tab-content-area">
         {renderActiveSection()}
       </div>
-    </div>
+    </PageShell>
   );
 }
 

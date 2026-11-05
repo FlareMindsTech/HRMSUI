@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import Button from "../Common/Button";
+import PageHeader from "../Common/PageHeader";
 import {
   Row,
   Col,
-  Button,
   Modal,
   Form,
   Spinner,
@@ -495,43 +496,31 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
         /* ── CASE 2: ORGANISATION DATA EXISTS (KPI & DETAILED SECTIONS) ── */
         <>
           {/* ── 1. PAGE HEADER: ORGANIZATION OVERVIEW & PROFILE WITH EDIT ACTION ── */}
-          <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
-            <div>
-              <h3 className="fw-bold mb-1 d-flex align-items-center gap-2 text-dark">
-                <FaBuilding className="text-success" /> Organization Overview & Profile
-              </h3>
-              <p className="text-muted small mb-0">
-                Manage your organization's basic information, statutory registrations, contact details and HQ location.
-              </p>
-            </div>
-
-            <div>
-              {canEdit && (
+          <PageHeader
+            title="Organization Overview & Profile"
+            subtitle="Manage your organization's basic information, statutory registrations, contact details and HQ location."
+            className="mb-4"
+            actions={
+              canEdit ? (
                 <Button
-                  variant="success"
-                  className="d-flex align-items-center gap-2 fw-semibold shadow-sm"
-                  style={{
-                    backgroundColor: "var(--color-primary, #C49A55)",
-                    borderColor: "var(--color-primary, #C49A55)",
-                    color: "#ffffff",
-                  }}
+                  variant="primary"
                   onClick={() => onNavigateTab("edit-profile")}
                 >
-                  <FaEdit /> Edit Profile
+                  <FaEdit className="me-2" /> Edit Profile
                 </Button>
-              )}
-            </div>
-          </div>
+              ) : null
+            }
+          />
 
           {/* ── 2. EXECUTIVE KPI METRIC CARDS ── */}
           <div className="org-kpi-row mb-4">
             {/* Branches */}
             <div className="org-kpi-card" onClick={() => onNavigateTab("branches")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigateTab("branches"); } }} title="View all branches">
               <div className="org-kpi-top">
-                <div className="org-kpi-icon-wrap gold">
+                <div className="org-kpi-icon-wrap navy">
                   <FaRegBuilding />
                 </div>
-                <div className="org-kpi-badge gold">Active Offices</div>
+                <div className="org-kpi-badge navy">Active Offices</div>
               </div>
               <div className="org-kpi-info">
                 <div className="org-kpi-val">{stats.branches}</div>
@@ -869,7 +858,7 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                   {getStr(activeOrg.contactPersonName) && (
                     <div className="org-data-tile col-span-2">
                       <span className="org-tile-label d-flex align-items-center gap-1">
-                        <FaUserTie className="text-primary" size={12} /> Authorized Signatory
+                        <FaUserTie className="text-secondary" size={12} /> Authorized Signatory
                       </span>
                       <span className="org-tile-val fw-semibold">
                         {getStr(activeOrg.contactPersonName)}
@@ -884,7 +873,7 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                     </span>
                     <span className="org-tile-val text-truncate" style={{ maxWidth: "220px" }}>
                       {getStr(activeOrg.email || activeOrg.officialEmail || activeOrg.contactEmail) ? (
-                        <a href={`mailto:${getStr(activeOrg.email || activeOrg.officialEmail || activeOrg.contactEmail)}`} className="text-primary text-decoration-none">
+                        <a href={`mailto:${getStr(activeOrg.email || activeOrg.officialEmail || activeOrg.contactEmail)}`} className="org-contact-link text-decoration-none">
                           {getStr(activeOrg.email || activeOrg.officialEmail || activeOrg.contactEmail)}
                         </a>
                       ) : (
@@ -912,7 +901,7 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                           href={getStr(activeOrg.website || activeOrg.websiteUrl || activeOrg.url).startsWith("http") ? getStr(activeOrg.website || activeOrg.websiteUrl || activeOrg.url) : `https://${getStr(activeOrg.website || activeOrg.websiteUrl || activeOrg.url)}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-primary text-decoration-none d-inline-flex align-items-center gap-1"
+                          className="org-contact-link text-decoration-none d-inline-flex align-items-center gap-1"
                         >
                           {getStr(activeOrg.website || activeOrg.websiteUrl || activeOrg.url)}
                           <FaExternalLinkAlt size={10} />
@@ -995,7 +984,7 @@ function OrgOverview({ orgData: initialOrgData, onNavigateTab, triggerEditModal,
                       onClick={() => onNavigateTab("branches")}
                       role="button"
                     >
-                      <div className="org-mini-child-icon text-primary"><FaBuilding /></div>
+                      <div className="org-mini-child-icon text-secondary"><FaBuilding /></div>
                       <div className="org-mini-child-title">Branches</div>
                       <div className="org-mini-child-count">{stats.branches} offices</div>
                     </div>

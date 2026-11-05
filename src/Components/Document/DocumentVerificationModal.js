@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Form, Button, Row, Col, Badge } from "react-bootstrap";
+import Button from "../Common/Button";
+import { Modal, Form, Row, Col, Badge } from "react-bootstrap";
 import { FaShieldAlt, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import FeedbackAlert from "../Common/FeedbackAlert";
 

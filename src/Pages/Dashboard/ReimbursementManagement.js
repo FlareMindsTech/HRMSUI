@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Row, Col, Card, Nav, Tab, Button, Modal, Form } from 'react-bootstrap';
+import Button from "../../Components/Common/Button";
+import PageShell from "../../Components/Common/PageShell";
+import PageHeader from "../../Components/Common/PageHeader";
+import { Row, Col, Card, Nav, Tab, Modal, Form } from "react-bootstrap";
 import {
   MdReceiptLong,
   MdAddCircle,
@@ -205,7 +208,7 @@ function ReimbursementManagement() {
           {canPay && row.status === 'APPROVED' && (
             <Button
               size="sm"
-              variant="outline-success"
+              variant="outline"
               onClick={() => {
                 setSelectedClaim(row);
                 setPayForm({
@@ -235,24 +238,21 @@ function ReimbursementManagement() {
   ];
 
   return (
-    <div className="reimbursement-page">
-      <Container fluid>
-        <div className="reimbursement-header">
-          <div>
-            <h1 className="reimbursement-title">Expense Reimbursements</h1>
-            <p className="reimbursement-subtitle">
-              Submit employee expense claims, review submissions, and manage payout disbursements.
-            </p>
-          </div>
+    <PageShell className="reimbursement-page-shell">
+        <PageHeader
+        title="Expense Reimbursements"
+        subtitle="Submit employee expense claims, review submissions, and manage payout disbursements."
+        actions={
           <div className="d-flex gap-2">
-            <Button variant="outline-secondary" onClick={loadClaims} className="d-flex align-items-center gap-1">
+            <Button variant="outline" onClick={loadClaims} className="d-flex align-items-center gap-1">
               <MdRefresh /> Refresh
             </Button>
             <Button variant="primary" onClick={() => setShowSubmitModal(true)} className="d-flex align-items-center gap-1">
               <MdAddCircle /> Submit Claim
             </Button>
           </div>
-        </div>
+        }
+      />
 
         {alert && (
           <FeedbackAlert variant={alert.type} message={alert.message} onClose={() => setAlert(null)} />
@@ -404,7 +404,7 @@ function ReimbursementManagement() {
               </Form.Group>
             </Modal.Body>
             <Modal.Footer>
-              <Button variant="outline-secondary" onClick={() => setShowSubmitModal(false)}>
+              <Button variant="outline" onClick={() => setShowSubmitModal(false)}>
                 Cancel
               </Button>
               <Button variant="primary" type="submit" disabled={submitting}>
@@ -454,17 +454,16 @@ function ReimbursementManagement() {
               </Form.Group>
             </Modal.Body>
             <Modal.Footer>
-              <Button variant="outline-secondary" onClick={() => setShowPayModal(false)}>
+              <Button variant="outline" onClick={() => setShowPayModal(false)}>
                 Cancel
               </Button>
-              <Button variant="success" type="submit">
+              <Button variant="primary" type="submit">
                 Record Payout
               </Button>
             </Modal.Footer>
           </Form>
         </Modal>
-      </Container>
-    </div>
+    </PageShell>
   );
 }
 

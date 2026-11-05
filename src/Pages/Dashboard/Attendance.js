@@ -1,8 +1,19 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import Button from "../../Components/Common/Button";
+import PageShell from "../../Components/Common/PageShell";
+import PageHeader from "../../Components/Common/PageHeader";
 import {
-  Container, Row, Col, Card, Form, Button, Badge, Table, Modal, InputGroup
-} from 'react-bootstrap';
+  Container,
+  Row,
+  Col,
+  Card,
+  Form,
+  Badge,
+  Table,
+  Modal,
+  InputGroup,
+} from "react-bootstrap";
 import {
   FaClock, FaCalendarAlt, FaCheckCircle, FaExclamationTriangle,
   FaSearch, FaEdit, FaHistory, FaUser, FaChevronLeft, FaChevronRight,
@@ -731,43 +742,50 @@ function Attendance() {
   };
 
   return (
-    <Container fluid className="attendance-page py-3 px-4 bg-light min-vh-100">
+    <PageShell className="attendance-page-shell">
       {/* ── Top Page Header & Context (Role Tailored) ── */}
-      <div className="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom">
-        <div>
-          <h3 className="th-page-title mb-1 text-dark">
-            {isOwner ? 'Organization Attendance Command Center' :
-             isAdmin ? `Branch Attendance (${branchesList.find(b => b._id === user?.branchId)?.branchName || 'Assigned Branch'})` :
-             isHR ? 'HR Operations & Attendance Management' :
-             isPM ? 'Team Attendance' : `My Attendance — ${user?.firstName || 'Employee'}`}
-          </h3>
-          <div className="small text-muted d-flex align-items-center gap-2">
+      <PageHeader
+        title={
+          isOwner
+            ? 'Organization Attendance Command Center'
+            : isAdmin
+            ? `Branch Attendance (${branchesList.find((b) => b._id === user?.branchId)?.branchName || 'Assigned Branch'})`
+            : isHR
+            ? 'HR Operations & Attendance Management'
+            : isPM
+            ? 'Team Attendance'
+            : `My Attendance — ${user?.firstName || 'Employee'}`
+        }
+        subtitle={
+          <span className="small text-muted d-flex align-items-center gap-2 flex-wrap">
             <span>{getTodayString()}</span>
             <span>·</span>
-            <span>Role: <strong className="text-dark">{rawRole || 'USER'}</strong></span>
-          </div>
-        </div>
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          {canManualEntry && (
+            <span>Role: <strong className="att-role-pill">{rawRole || 'USER'}</strong></span>
+          </span>
+        }
+        actions={
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            {canManualEntry && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="px-3 fw-semibold d-flex align-items-center gap-1.5"
+                onClick={() => setShowManualModal(true)}
+              >
+                <FaUserCheck size={12} /> Manual Attendance
+              </Button>
+            )}
             <Button
-              variant="outline-primary"
+              variant="primary"
               size="sm"
               className="px-3 fw-semibold d-flex align-items-center gap-1.5"
-              onClick={() => setShowManualModal(true)}
+              onClick={() => setShowRegFormModal(true)}
             >
-              <FaUserCheck size={12} /> Manual Attendance
+              <FaPlus size={11} /> Request Regularization
             </Button>
-          )}
-          <Button
-            variant="primary"
-            size="sm"
-            className="px-3 fw-semibold d-flex align-items-center gap-1.5"
-            onClick={() => setShowRegFormModal(true)}
-          >
-            <FaPlus size={12} /> Regularization Request
-          </Button>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       {/* Feedback Toast Alert */}
       {feedbackMessage.text && (
@@ -892,7 +910,7 @@ function Attendance() {
                   }}
                   className="rounded-start-3"
                 />
-                <Button variant="outline-secondary" className="rounded-end-3" aria-label="Search filter">
+                <Button variant="secondary" className="rounded-end-3" aria-label="Search filter">
                   <FaSearch size={12} />
                 </Button>
               </InputGroup>
@@ -1128,7 +1146,7 @@ function Attendance() {
                       </Badge>
                     </td>
                     <td>
-                      <Button variant="light" size="sm" onClick={() => handleOpenCorrection(r)} className="border btn-icon p-1">
+                      <Button variant="ghost" size="sm" onClick={() => handleOpenCorrection(r)} className="border btn-icon p-1">
                         <FaEdit size={12} className="text-muted" />
                       </Button>
                     </td>
@@ -1223,7 +1241,7 @@ function Attendance() {
                     <td>{ex.date}</td>
                     <td>
                       <Button
-                        variant="outline-primary"
+                        variant="outline"
                         size="sm"
                         onClick={() => {
                           setRegForm({
@@ -1256,7 +1274,7 @@ function Attendance() {
         <Card className="border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h6 className="fw-bold mb-0">Regularization & Missed Punch Requests</h6>
-            <Button variant="success" size="sm" onClick={() => setShowRegFormModal(true)}>
+            <Button variant="primary" size="sm" onClick={() => setShowRegFormModal(true)}>
               + Submit Request
             </Button>
           </div>
@@ -1367,7 +1385,7 @@ function Attendance() {
                   </span>
                   <div className="d-flex gap-2">
                     <Button
-                      variant="outline-secondary"
+                      variant="outline"
                       size="sm"
                       disabled={overtimePage <= 1}
                       onClick={() => setOvertimePage((p) => Math.max(1, p - 1))}
@@ -1375,7 +1393,7 @@ function Attendance() {
                       Previous
                     </Button>
                     <Button
-                      variant="outline-secondary"
+                      variant="outline"
                       size="sm"
                       disabled={overtimePage >= overtimeTotalPages}
                       onClick={() => setOvertimePage((p) => p + 1)}
@@ -1447,7 +1465,7 @@ function Attendance() {
                   </span>
                   <div className="d-flex gap-2">
                     <Button
-                      variant="outline-secondary"
+                      variant="outline"
                       size="sm"
                       disabled={auditLogPage <= 1}
                       onClick={() => setAuditLogPage((p) => Math.max(1, p - 1))}
@@ -1455,7 +1473,7 @@ function Attendance() {
                       Previous
                     </Button>
                     <Button
-                      variant="outline-secondary"
+                      variant="outline"
                       size="sm"
                       disabled={auditLogPage >= auditLogTotalPages}
                       onClick={() => setAuditLogPage((p) => p + 1)}
@@ -1506,7 +1524,7 @@ function Attendance() {
                       Direct attendance punch is disabled for this organization/branch. Attendance records are recorded and managed manually by HR/Admin.
                     </p>
                     <Button
-                      variant="outline-primary"
+                      variant="outline"
                       size="sm"
                       className="rounded-pill px-3 py-1 fw-semibold extra-small"
                       onClick={() => setActiveTab('regularization')}
@@ -1516,7 +1534,7 @@ function Attendance() {
                   </div>
                 ) : (
                   <Button
-                    variant={todayRecord?.loginTime && !todayRecord?.logoutTime ? 'danger' : 'success'}
+                    variant={todayRecord?.loginTime && !todayRecord?.logoutTime ? 'danger' : 'primary'}
                     size="lg"
                     className="rounded-circle shadow p-4 fw-bold mb-3"
                     style={{ width: 140, height: 140 }}
@@ -1689,7 +1707,7 @@ function Attendance() {
             </Form.Group>
           </Modal.Body>
           <Modal.Footer className="border-0">
-            <Button variant="light" size="sm" onClick={() => setShowCorrectionModal(false)}>Cancel</Button>
+            <Button variant="secondary" size="sm" onClick={() => setShowCorrectionModal(false)}>Cancel</Button>
             <Button
               variant="success"
               size="sm"
@@ -1765,7 +1783,7 @@ function Attendance() {
             </Form.Group>
           </Modal.Body>
           <Modal.Footer className="border-0">
-            <Button variant="light" size="sm" onClick={() => setShowRegFormModal(false)}>Cancel</Button>
+            <Button variant="secondary" size="sm" onClick={() => setShowRegFormModal(false)}>Cancel</Button>
             <Button
               variant="success"
               size="sm"
@@ -1805,7 +1823,7 @@ function Attendance() {
           <Button variant="danger" size="sm" onClick={() => handleReviewReg('REJECTED')} disabled={reviewSubmitting}>
             Reject Request
           </Button>
-          <Button variant="success" size="sm" onClick={() => handleReviewReg('APPROVED')} disabled={reviewSubmitting}>
+          <Button variant="primary" size="sm" onClick={() => handleReviewReg('APPROVED')} disabled={reviewSubmitting}>
             Approve Request
           </Button>
         </Modal.Footer>
@@ -1822,7 +1840,7 @@ function Attendance() {
           loadTodayData();
         }}
       />
-    </Container>
+    </PageShell>
   );
 }
 

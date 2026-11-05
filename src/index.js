@@ -4,11 +4,13 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.css';
 import './styles/ui-system.css';
 import App from './App';
-import reportWebVitals from './reportWebVitals';
-
-
 import { Provider } from 'react-redux';
 import { store } from './redux/store';
+import { initSavedTheme } from './utils/themeEngine';
+import reportWebVitals from './reportWebVitals';
+
+// Initialize and apply saved enterprise theme prior to DOM mount
+initSavedTheme();
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

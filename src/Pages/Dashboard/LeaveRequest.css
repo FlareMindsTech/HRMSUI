@@ -1,3 +1,11 @@
+/* ── Phase 3: 1536px Page Shell Standard ── */
+.leave-page-shell {
+  max-width: 1536px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
 /* ============================================================
    Leave Request Styles — TeamHub Mint Design System
    Dedicated stylesheet for src/Pages/Dashboard/LeaveRequest.js
@@ -26,7 +34,7 @@
 }
 
 .leave-page-title {
-  color: var(--text-primary, #1a2e2a);
+  color: var(--ink-primary, #0f172a);
   letter-spacing: -0.3px;
   font-weight: 800;
   font-size: 1.25rem;
@@ -35,7 +43,7 @@
 
 /* ── Balance Summary Cards (Compact & Low-Profile) ── */
 .leave-balance-card {
-  background: var(--color-surface, #FFFFFF);
+  background: var(--card-surface-bg, #FFFFFF);
   border: 1px solid rgba(220, 235, 228, 0.8);
   border-radius: var(--radius-md, 12px);
   padding: 0.75rem 1rem;
@@ -90,7 +98,7 @@
 .leave-balance-label {
   font-size: 0.68rem;
   font-weight: 700;
-  color: var(--text-muted, #8ba49d);
+  color: var(--ink-muted, #64748b);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   display: block;
@@ -99,7 +107,7 @@
 .leave-balance-value {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #1a2e2a;
+  color: var(--ink-primary, #0f172a);
   letter-spacing: -0.3px;
   margin-top: 2px;
   margin-bottom: 2px;
@@ -160,13 +168,13 @@
 }
 
 .leave-nav-btn:hover:not(.active) {
-  color: #1a2e2a;
+  color: var(--ink-primary, #0f172a);
   background: rgba(255, 255, 255, 0.7);
 }
 
 .leave-nav-btn.active {
-  background: var(--color-surface, #FFFFFF);
-  color: #1a2e2a;
+  background: var(--card-surface-bg, #FFFFFF);
+  color: var(--ink-primary, #0f172a);
   font-weight: 700;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
@@ -185,7 +193,7 @@
 .leave-main-card {
   border: 1px solid rgba(220, 235, 228, 0.8);
   border-radius: 14px;
-  background: var(--color-surface, #FFFFFF);
+  background: var(--card-surface-bg, #FFFFFF);
   box-shadow: 0 2px 10px rgba(0, 40, 20, 0.02);
   margin-bottom: 1.5rem;
 }
@@ -245,7 +253,7 @@
 
 .leave-halfday-box {
   padding: 0.65rem 0.85rem;
-  background: var(--color-surface, #FFFFFF);
+  background: var(--card-surface-bg, #FFFFFF);
   border-radius: var(--radius-sm, 8px);
   border: 1px solid #e8f0ec;
 }
@@ -331,7 +339,7 @@
 .leave-emp-name {
   font-size: 0.82rem;
   font-weight: 700;
-  color: #1a2e2a;
+  color: var(--ink-primary, #0f172a);
 }
 
 .leave-emp-code {
@@ -470,7 +478,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  background: var(--color-surface, #FFFFFF);
+  background: var(--card-surface-bg, #FFFFFF);
   border-top: 1px solid #eef2f0;
   flex-wrap: wrap;
   gap: 8px;
@@ -517,7 +525,7 @@
   border: 1px solid #e8f0ec;
   border-radius: 10px;
   padding: 0.75rem 0.9rem;
-  background: var(--color-surface, #FFFFFF);
+  background: var(--card-surface-bg, #FFFFFF);
   box-shadow: 0 1px 3px rgba(0, 40, 20, 0.03);
 }
 
@@ -538,7 +546,7 @@
 
 /* ── Workflow & Approval Flow Builder ── */
 .leave-workflow-card {
-  background: var(--color-surface, #FFFFFF);
+  background: var(--card-surface-bg, #FFFFFF);
   border: 1px solid rgba(220, 235, 228, 0.9);
   border-radius: var(--radius-md, 12px);
   padding: 1.25rem;
@@ -556,7 +564,7 @@
 .leave-workflow-scope-select {
   border-color: #cbd5e1;
   font-weight: 600;
-  color: #1a2e2a;
+  color: var(--ink-primary, #0f172a);
 }
 
 .leave-workflow-override-badge {
@@ -579,7 +587,7 @@
 }
 
 .leave-workflow-stage-card {
-  background: var(--color-surface, #FFFFFF);
+  background: var(--card-surface-bg, #FFFFFF);
   border: 1px solid #e2e8e5;
   border-radius: 10px;
   padding: 1rem;
@@ -634,7 +642,7 @@
 .leave-workflow-add-btn {
   border: 1.5px dashed #cbd5e1;
   background: #f8faf9;
-  color: #1a2e2a;
+  color: var(--ink-primary, #0f172a);
   font-weight: 700;
   font-size: 0.82rem;
   padding: 0.65rem 1rem;

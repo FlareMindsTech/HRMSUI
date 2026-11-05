@@ -1,3 +1,8 @@
+.branches-page-wrapper,
+.branches-section-container {
+  max-width: 1536px;
+  margin: 0 auto;
+}
 /* ==========================================================================
    Branches Section Stylesheet (BranchesSection.css)
    Ultra-modern, luxury TeamHub Enterprise HRMS Branch Management System.
@@ -41,11 +46,12 @@
 }
 
 .branches-breadcrumb-link:hover {
-  color: var(--color-primary, #C49A55);
+  color: var(--color-ink, #0f172a);
 }
 
 .branches-breadcrumb-current {
-  color: var(--color-primary, #C49A55);
+  color: var(--text-primary, #0f172a);
+  font-weight: 700;
 }
 
 .branches-header-title-wrap {
@@ -64,16 +70,16 @@
 }
 
 .branches-count-pill {
-  font-size: 11px;
-  font-weight: 700;
-  background: linear-gradient(135deg, rgba(196, 154, 85, 0.15) 0%, rgba(196, 154, 85, 0.05) 100%);
-  color: var(--color-primary-dark, #9B7229);
-  border: 1px solid rgba(196, 154, 85, 0.35);
+  font-size: 11.5px;
+  font-weight: 600;
+  background: var(--ink-surface-subtle, #f1f5f9);
+  color: var(--text-secondary, #475569);
+  border: 1px solid var(--ink-border, #e2e8f0);
   padding: 3px 10px;
   border-radius: var(--radius-xl, 20px);
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 
 .branches-header-subtitle {
@@ -116,27 +122,27 @@
 }
 
 .branches-btn-secondary {
-  background: var(--color-brand) !important;
-  color: var(--brand-contrast-text, #111827) !important;
+  background: #ffffff !important;
+  color: #334155 !important;
+  border: 1px solid #e2e8f0 !important;
   font-weight: 600;
   font-size: 13.5px;
-  border: 1px solid var(--color-brand);
   border-radius: 8px;
   padding: 9px 18px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
 }
 
 .branches-btn-secondary:hover {
-  background: var(--brand-hover) !important;
-  border-color: var(--brand-hover);
-  color: var(--brand-contrast-text, #111827) !important;
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08) !important;
 }
 
 /* ── KPI Metric Stats Cards ── */
@@ -149,16 +155,17 @@
 
 .branches-kpi-card {
   background: var(--color-surface, #FFFFFF);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-primary, #e2e8f0);
   border-radius: var(--radius-lg, 16px);
   padding: 18px 20px;
   display: flex;
   align-items: center;
   gap: 16px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  min-height: 96px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   position: relative;
   overflow: hidden;
-  transition: all 0.25s ease;
+  transition: all 0.22s ease;
 }
 
 .branches-kpi-card:hover {
@@ -178,10 +185,16 @@
   flex-shrink: 0;
 }
 
+.branches-kpi-icon-box.navy {
+  background: rgba(30, 41, 59, 0.08);
+  color: var(--color-ink, #1e293b);
+  border: 1px solid rgba(30, 41, 59, 0.15);
+}
+
 .branches-kpi-icon-box.gold {
-  background: linear-gradient(135deg, rgba(196, 154, 85, 0.18) 0%, rgba(196, 154, 85, 0.06) 100%);
-  color: var(--color-primary-dark, #9B7229);
-  border: 1px solid rgba(196, 154, 85, 0.25);
+  background: rgba(30, 41, 59, 0.08);
+  color: var(--color-ink, #1e293b);
+  border: 1px solid rgba(30, 41, 59, 0.15);
 }
 
 .branches-kpi-icon-box.blue {
@@ -267,20 +280,21 @@
 
 .branches-search-input {
   width: 100%;
-  padding: 9px 14px 9px 38px;
+  height: 38px;
+  padding: 0 14px 0 38px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: var(--radius-md, 12px);
+  border-radius: 10px;
   font-size: 13.5px;
   color: #0f172a;
   outline: none;
-  transition: all 0.2s ease;
+  transition: all 0.18s ease;
 }
 
 .branches-search-input:focus {
   background: var(--color-surface, #FFFFFF);
-  border-color: var(--color-primary, #C49A55);
-  box-shadow: 0 0 0 3px rgba(196, 154, 85, 0.15);
+  border-color: var(--color-primary, var(--color-primary-dark, #059669));
+  box-shadow: 0 0 0 3px rgba(30, 41, 59, 0.15);
 }
 
 .branches-filter-group {
@@ -291,25 +305,28 @@
 }
 
 .branches-filter-select {
-  padding: 8px 12px;
+  height: 38px;
+  padding: 0 28px 0 12px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 11px;
+  border-radius: 10px;
   font-size: 13px;
   font-weight: 500;
   color: #334155;
   outline: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.18s ease;
 }
 
 .branches-filter-select:focus {
-  border-color: var(--color-primary, #C49A55);
+  border-color: var(--color-primary, var(--color-primary-dark, #059669));
   background: var(--color-surface, #FFFFFF);
 }
 
 .branches-view-toggle {
   display: inline-flex;
+  align-items: center;
+  height: 38px;
   background: #f1f5f9;
   padding: 3px;
   border-radius: 10px;
@@ -389,8 +406,8 @@
   height: 44px;
   border-radius: var(--radius-md, 12px);
   background: linear-gradient(135deg, var(--color-sidebar, #1C1D1D) 0%, #2A2B2C 100%);
-  color: var(--color-primary-light, #E2C278);
-  border: 1px solid rgba(196, 154, 85, 0.35);
+  color: var(--color-primary-light, #A7F3D0);
+  border: 1px solid rgba(30, 41, 59, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -421,7 +438,7 @@
 }
 
 .branch-card-name:hover {
-  color: var(--color-brand, #C49A55);
+  color: var(--color-brand, var(--color-primary-dark, #059669));
 }
 
 .branch-card-meta {
@@ -444,11 +461,14 @@
 
 .branch-type-pill {
   font-size: 10.5px;
-  font-weight: 600;
-  color: var(--color-primary-dark, #9B7229);
-  background: rgba(196, 154, 85, 0.12);
-  padding: 2px 8px;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 2px 7px;
   border-radius: var(--radius-xs, 6px);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .branch-status-indicator {
@@ -509,7 +529,7 @@
 }
 
 .branch-info-icon.gold {
-  color: var(--color-primary, #C49A55);
+  color: var(--color-primary, var(--color-primary-dark, #059669));
 }
 
 /* Branch Manager Chip */
@@ -591,22 +611,22 @@
 }
 
 .branch-btn-hub {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 700;
-  color: var(--color-primary, #C49A55);
+  color: var(--color-ink, #1e293b);
   background: transparent;
   border: none;
   padding: 4px 0;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .branch-btn-hub:hover {
-  color: var(--color-primary-dark, #9B7229);
-  transform: translateX(2px);
+  color: #2563eb;
+  transform: translateX(3px);
 }
 
 .branch-card-action-group {
@@ -635,8 +655,8 @@
 
 .branch-card-action-btn:hover {
   background: #f1f5f9 !important;
-  color: var(--color-brand, #C49A55) !important;
-  border-color: var(--color-brand, #C49A55) !important;
+  color: var(--color-brand, var(--color-primary-dark, #059669)) !important;
+  border-color: var(--color-brand, var(--color-primary-dark, #059669)) !important;
   transform: translateY(-1px) !important;
 }
 
@@ -716,9 +736,9 @@
   width: 72px;
   height: 72px;
   border-radius: var(--radius-xl, 20px);
-  background: linear-gradient(135deg, rgba(196, 154, 85, 0.15) 0%, rgba(196, 154, 85, 0.04) 100%);
-  color: var(--color-primary, #C49A55);
-  border: 1px solid rgba(196, 154, 85, 0.25);
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.15) 0%, rgba(30, 41, 59, 0.15) 100%);
+  color: var(--color-primary, var(--color-primary-dark, #059669));
+  border: 1px solid rgba(30, 41, 59, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -782,8 +802,8 @@
   height: 60px;
   border-radius: var(--radius-lg, 16px);
   background: linear-gradient(135deg, var(--color-sidebar, #1C1D1D) 0%, #2A2B2C 100%);
-  color: var(--color-primary-light, #E2C278);
-  border: 1px solid rgba(196, 154, 85, 0.35);
+  color: var(--color-primary-light, #A7F3D0);
+  border: 1px solid rgba(30, 41, 59, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -843,7 +863,7 @@
 /* ── Categorized Navigation System ── */
 .branch-nav-system-wrapper {
   background: #ffffff;
-  border: 1px solid rgba(196, 154, 85, 0.28);
+  border: 1px solid rgba(30, 41, 59, 0.15);
   border-radius: 16px;
   padding: 10px 14px;
   margin-bottom: 24px;
@@ -887,20 +907,20 @@
 }
 
 .branch-category-segment-btn:hover {
-  color: #8c6729;
-  background: rgba(196, 154, 85, 0.09);
-  border-color: rgba(196, 154, 85, 0.2);
+  color: var(--color-primary-dark, #059669);
+  background: rgba(30, 41, 59, 0.15);
+  border-color: rgba(30, 41, 59, 0.15);
 }
 
 .branch-category-segment-btn.active {
   background: #111827;
   color: #f3deac;
-  border-color: rgba(196, 154, 85, 0.4);
+  border-color: rgba(30, 41, 59, 0.15);
   box-shadow: 0 4px 14px rgba(17, 24, 39, 0.25);
 }
 
 .branch-category-segment-btn.active .branch-category-icon {
-  color: var(--color-primary, #c49a55);
+  color: var(--color-primary, var(--color-brand, #A7F3D0));
   opacity: 1;
 }
 
@@ -914,9 +934,9 @@
 }
 
 .branch-category-segment-btn.active .branch-category-count-pill {
-  background: rgba(196, 154, 85, 0.25);
+  background: rgba(30, 41, 59, 0.15);
   color: var(--color-background, #fdfbf7);
-  border: 1px solid rgba(196, 154, 85, 0.4);
+  border: 1px solid rgba(30, 41, 59, 0.15);
 }
 
 .branch-quick-jump-box {
@@ -938,14 +958,14 @@
   font-size: 12.5px;
   font-weight: 600;
   color: #1f2937;
-  border: 1px solid rgba(196, 154, 85, 0.35);
+  border: 1px solid rgba(30, 41, 59, 0.15);
   background-color: var(--color-background, #fdfbf7);
   min-width: 170px;
 }
 
 .branch-quick-jump-select:focus {
-  border-color: var(--color-primary, #c49a55);
-  box-shadow: 0 0 0 3px rgba(196, 154, 85, 0.15);
+  border-color: var(--color-primary, var(--color-brand, #A7F3D0));
+  box-shadow: 0 0 0 3px rgba(30, 41, 59, 0.15);
 }
 
 /* Tier 2: Sub-tabs Tray */
@@ -976,17 +996,17 @@
 }
 
 .branch-subtab-pill:hover {
-  background: rgba(196, 154, 85, 0.08);
-  color: #8c6729;
-  border-color: rgba(196, 154, 85, 0.2);
+  background: rgba(30, 41, 59, 0.15);
+  color: var(--color-primary-dark, #059669);
+  border-color: rgba(30, 41, 59, 0.15);
 }
 
 .branch-subtab-pill.active {
   background: #ffffff;
-  color: #8c6729;
+  color: var(--color-primary-dark, #059669);
   font-weight: 700;
-  border-color: rgba(196, 154, 85, 0.45);
-  box-shadow: 0 2px 8px rgba(196, 154, 85, 0.15);
+  border-color: rgba(30, 41, 59, 0.15);
+  box-shadow: 0 2px 8px rgba(30, 41, 59, 0.15);
 }
 
 .branch-subtab-icon {
@@ -1085,13 +1105,20 @@
   }
   .branch-info-card-header .branches-btn-add,
   .branch-info-card-header .branches-btn-secondary {
-    width: 100%;
-    justify-content: center;
-    padding: 8px 14px;
-    font-size: 13px;
-    white-space: normal;
-    text-align: center;
-  }
+  background: #ffffff !important;
+  color: #334155 !important;
+  border: 1px solid #e2e8f0 !important;
+  font-weight: 600;
+  font-size: 13.5px;
+  border-radius: 8px;
+  padding: 9px 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
   .branch-info-card-body {
     padding: 14px 16px;
   }
@@ -1226,13 +1253,13 @@
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  border: 1.5px dashed rgba(196, 154, 85, 0.45);
+  border: 1.5px dashed rgba(30, 41, 59, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   flex-shrink: 0;
-  background: rgba(196, 154, 85, 0.08);
+  background: rgba(30, 41, 59, 0.15);
 }
 
 .branch-radar-inner-ring {
@@ -1243,13 +1270,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(196, 154, 85, 0.15);
-  box-shadow: 0 0 14px rgba(196, 154, 85, 0.4);
+  background: rgba(30, 41, 59, 0.15);
+  box-shadow: 0 0 14px rgba(30, 41, 59, 0.15);
 }
 
 .branch-radar-center-beacon {
   font-size: 16px;
-  color: var(--color-primary-light, #E2C278);
+  color: var(--color-primary-light, #A7F3D0);
 }
 
 .branch-radar-info {
@@ -1357,8 +1384,8 @@
 }
 
 .branch-contact-chip:hover {
-  border-color: var(--color-primary, #C49A55);
-  color: var(--color-primary-dark, #9B7229);
+  border-color: var(--color-primary, var(--color-primary-dark, #059669));
+  color: var(--color-primary-dark, #059669);
   background: var(--color-background, #fdfbf7);
   transform: translateY(-1px);
 }
@@ -1507,11 +1534,11 @@
 }
 
 .branch-flow-step-btn.active {
-  background: linear-gradient(135deg, rgba(196, 154, 85, 0.16) 0%, rgba(196, 154, 85, 0.06) 100%);
-  border-color: var(--color-primary, #C49A55);
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.15) 0%, rgba(30, 41, 59, 0.15) 100%);
+  border-color: var(--color-primary, var(--color-primary-dark, #059669));
   color: #1e293b;
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(196, 154, 85, 0.18);
+  box-shadow: 0 2px 8px rgba(30, 41, 59, 0.15);
 }
 
 .branch-flow-step-num {
@@ -1529,7 +1556,7 @@
 }
 
 .branch-flow-step-btn.active .branch-flow-step-num {
-  background: var(--color-primary, #C49A55);
+  background: var(--color-primary, var(--color-primary-dark, #059669));
   color: #ffffff;
 }
 
@@ -1556,10 +1583,10 @@
 }
 
 .branch-card-icon-gold {
-  background: linear-gradient(135deg, rgba(226, 194, 120, 0.22) 0%, rgba(196, 154, 85, 0.1) 100%);
-  border: 1px solid rgba(196, 154, 85, 0.35);
-  color: var(--color-primary-dark, #9B7229);
-  box-shadow: 0 2px 8px rgba(196, 154, 85, 0.12);
+  background: linear-gradient(135deg, rgba(226, 194, 120, 0.22) 0%, rgba(30, 41, 59, 0.15) 100%);
+  border: 1px solid rgba(30, 41, 59, 0.15);
+  color: var(--color-primary-dark, #059669);
+  box-shadow: 0 2px 8px rgba(30, 41, 59, 0.15);
 }
 
 .branch-dept-count-pill {
@@ -1588,7 +1615,7 @@
 /* ── Modern Illustrated Empty State ── */
 .branch-empty-departments-wrap {
   background: linear-gradient(180deg, #FAFAF9 0%, #FFFFFF 100%);
-  border: 1.5px dashed rgba(196, 154, 85, 0.35);
+  border: 1.5px dashed rgba(30, 41, 59, 0.15);
   border-radius: 18px;
   padding: 42px 28px;
   text-align: center;
@@ -1602,7 +1629,7 @@
 }
 
 .branch-empty-departments-wrap:hover {
-  border-color: rgba(196, 154, 85, 0.55);
+  border-color: rgba(30, 41, 59, 0.15);
   background: linear-gradient(180deg, #FDFBF7 0%, #FFFFFF 100%);
 }
 
@@ -1616,7 +1643,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-primary-dark, #9B7229);
+  color: var(--color-primary-dark, #059669);
   font-size: 32px;
   margin-bottom: 16px;
   transition: transform 0.25s ease;
@@ -1672,7 +1699,7 @@
 }
 
 .branch-empty-feature-chip-icon {
-  color: var(--color-primary, #C49A55);
+  color: var(--color-primary, var(--color-primary-dark, #059669));
 }
 
 .branch-empty-actions-row {
@@ -1698,7 +1725,7 @@
 }
 
 .branch-dept-card:hover {
-  border-color: rgba(196, 154, 85, 0.4);
+  border-color: rgba(30, 41, 59, 0.15);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
   transform: translateY(-2px);
 }
@@ -1749,16 +1776,16 @@
 }
 
 .dept-branch-pill:hover {
-  border-color: #C49A55;
+  border-color: var(--color-primary-dark, #059669);
   color: #1C1D1D;
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(196, 154, 85, 0.15);
+  box-shadow: 0 2px 8px rgba(30, 41, 59, 0.15);
 }
 
 .dept-branch-pill.active {
   background: #1C1D1D;
-  border-color: #C49A55;
-  color: #E2C278;
+  border-color: var(--color-primary-dark, #059669);
+  color: #A7F3D0;
   font-weight: 700;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16);
 }
@@ -1767,14 +1794,14 @@
   font-size: 10.5px;
   padding: 1px 7px;
   border-radius: 9999px;
-  background: rgba(196, 154, 85, 0.2);
+  background: rgba(30, 41, 59, 0.15);
   color: inherit;
   font-weight: 700;
 }
 
 /* ── Luxury Staff Management Modal ── */
 .luxury-staff-modal .modal-content {
-  border: 1px solid rgba(196, 154, 85, 0.25) !important;
+  border: 1px solid rgba(30, 41, 59, 0.15) !important;
   border-radius: 20px !important;
   overflow: hidden !important;
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.18) !important;
@@ -1799,7 +1826,7 @@
 
 .staff-modal-notice {
   background: #fdfbf7;
-  border: 1px solid rgba(196, 154, 85, 0.25);
+  border: 1px solid rgba(30, 41, 59, 0.15);
   border-radius: 12px;
   padding: 12px 16px;
 }
@@ -1848,12 +1875,54 @@
 }
 
 .staff-table-wrap tbody tr.selected-row {
-  background: rgba(196, 154, 85, 0.06) !important;
+  background: rgba(30, 41, 59, 0.15) !important;
 }
 
 .staff-custom-checkbox {
   width: 17px;
   height: 17px;
-  accent-color: #C49A55;
+  accent-color: var(--color-primary-dark, #059669);
   cursor: pointer;
+}
+
+
+/* ==========================================================================
+   Mobile & Small Screen Optimizations
+   ========================================================================== */
+@media (max-width: 576px) {
+  .branches-workspace {
+    padding: 16px 12px 32px;
+  }
+  .branches-kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .branches-header-actions {
+    width: 100%;
+  }
+  .branches-header-actions .btn-ui,
+  .branches-header-actions button {
+    flex: 1;
+    justify-content: center;
+  }
+  .branches-toolbar-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .branches-search-wrap {
+    max-width: 100%;
+  }
+  .branches-filter-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .branches-filter-select {
+    width: 100%;
+  }
+  .branches-view-toggle {
+    align-self: flex-start;
+  }
+  .branch-card-stats-strip {
+    grid-template-columns: 1fr;
+  }
 }

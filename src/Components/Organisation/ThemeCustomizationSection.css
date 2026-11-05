@@ -1,6 +1,6 @@
 /* ==========================================================================
-   THEME CUSTOMIZATION STUDIO — SETTINGS APPEARANCE TAB
-   Sleek palette presets cards, surface selector, and hex inputs.
+   THEME CUSTOMIZATION STUDIO — FOUR ENTERPRISE THEMES REDESIGN
+   Sleek 2x2 preset cards, comprehensive live HRMS preview, and hex inputs.
    ========================================================================== */
 
 .th-settings-appearance-studio {
@@ -14,88 +14,301 @@
   letter-spacing: 0.08em;
   margin-bottom: 12px;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-/* ── Palette Preset Cards ── */
+/* ── 4 Enterprise Theme Preset Cards ── */
 .th-palette-preset-card {
-  background: #FFFFFF;
+  background: var(--card-surface-bg, #FFFFFF);
   border: 1.5px solid var(--ink-border, #E2E8F0);
-  border-radius: var(--radius-md, 10px);
-  padding: 12px;
+  border-radius: var(--radius-lg, 12px);
+  padding: 16px;
   cursor: pointer;
-  transition: all var(--transition-speed-fast, 0.15s ease);
+  transition: all var(--transition-speed-fast, 0.18s ease);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
 }
 
 .th-palette-preset-card:hover {
   transform: translateY(-2px);
-  border-color: var(--ink-tertiary, #94A3B8);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  border-color: var(--ink-secondary, #94A3B8);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07);
 }
 
 .th-palette-preset-card.is-active {
-  border-color: var(--color-brand, #FF6F61);
-  box-shadow: 0 0 0 1px var(--color-brand, #FF6F61), 0 4px 14px rgba(0, 0, 0, 0.08);
+  border-color: var(--color-brand, #A7F3D0);
+  box-shadow: 0 0 0 2px var(--color-brand, #A7F3D0), 0 8px 24px rgba(0, 0, 0, 0.10);
+  background: color-mix(in srgb, var(--card-surface-bg, #FFFFFF) 96%, var(--color-brand, #A7F3D0));
 }
 
-.th-preset-swatch-bar {
+.th-preset-card-top {
   display: flex;
-  height: 28px;
-  border-radius: var(--radius-sm, 6px);
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-}
-
-.th-preset-swatch-half {
-  flex: 1;
-  height: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
 .th-preset-name {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--ink-primary, #0F172A);
-  line-height: 1.2;
+  line-height: 1.3;
 }
 
-.th-preset-hexes {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  font-family: var(--font-mono, monospace);
+.th-preset-desc {
+  font-size: 12px;
+  color: var(--ink-secondary, #64748B);
   margin-top: 2px;
-}
-
-.th-hex-tag {
-  font-weight: 600;
+  line-height: 1.35;
 }
 
 .th-palette-check {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: var(--color-brand, #FF6F61);
-  color: #FFFFFF;
+  background: var(--color-brand, #A7F3D0);
+  color: var(--brand-contrast-text, #0F172A);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: bold;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.th-palette-radio-unselected {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--ink-border, #CBD5E1);
   flex-shrink: 0;
 }
 
-/* Neumorphic adaptations for settings studio */
-[data-surface="neumorphic"] .th-surface-card,
-[data-surface="neumorphic"] .th-palette-preset-card {
-  background: var(--ink-bg-canvas, #EAEFEA);
-  border-color: rgba(255, 255, 255, 0.7);
-  box-shadow: 3px 3px 8px var(--neu-shadow-dark, rgba(163, 177, 198, 0.35)),
-              -3px -3px 8px var(--neu-shadow-light, rgba(255, 255, 255, 0.8));
+/* Color Swatches Grid inside Card */
+.th-preset-swatches-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
 }
 
-[data-surface="neumorphic"] .th-surface-card.is-selected,
-[data-surface="neumorphic"] .th-palette-preset-card.is-active {
-  box-shadow: inset 2px 2px 5px var(--neu-shadow-dark, rgba(163, 177, 198, 0.45)),
-              inset -2px -2px 5px var(--neu-shadow-light, rgba(255, 255, 255, 0.8));
-  border-color: var(--color-brand, #FF6F61);
+.th-swatch-box {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.th-swatch-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+.th-swatch-hex {
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ── Live HRMS Preview Container ── */
+.th-live-hrms-preview-box {
+  background: var(--ink-surface-subtle, #F8FAFC);
+  border: 1px solid var(--ink-border, #E2E8F0);
+  border-radius: var(--radius-lg, 14px);
+  padding: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.th-preview-screen {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--ink-border, #E2E8F0);
+  background: #FFFFFF;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+/* Mini Topbar in Preview */
+.th-mini-topbar {
+  height: 40px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #FFFFFF;
+}
+
+.th-mini-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.th-mini-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.th-mini-nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.th-mini-nav-tab {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 5px;
+}
+
+.th-mini-nav-tab.is-active {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Mini Body Layout in Preview */
+.th-mini-body-layout {
+  display: flex;
+  min-height: 200px;
+}
+
+.th-mini-sidebar {
+  width: 140px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.85);
+  flex-shrink: 0;
+}
+
+.th-mini-side-item {
+  font-size: 11px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.th-mini-side-item.is-active {
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.th-mini-workspace {
+  flex: 1;
+  padding: 14px;
+  background: #F8FAFC;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.th-mini-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.th-mini-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0F172A;
+  margin-bottom: 8px;
+}
+
+.th-mini-tabs-bar {
+  display: flex;
+  gap: 12px;
+  border-bottom: 1px solid #E2E8F0;
+  padding-bottom: 4px;
+  font-size: 11.5px;
+}
+
+.th-mini-tab {
+  color: #64748B;
+  font-weight: 500;
+  padding-bottom: 4px;
+}
+
+.th-mini-tab.is-active {
+  font-weight: 700;
+}
+
+.th-mini-form-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.th-mini-input {
+  flex: 1;
+  height: 28px;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  padding: 0 8px;
+  font-size: 11px;
+  background: #FFFFFF;
+}
+
+.th-mini-btn-primary {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+}
+
+.th-mini-btn-secondary {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  color: #0F172A;
+}
+
+/* WCAG Contrast Verification Pill */
+.th-contrast-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
 }

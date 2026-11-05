@@ -1,3 +1,23 @@
+/* ── Phase 3: 1536px Page Shell Standard ── */
+.attendance-page-shell {
+  max-width: 1536px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+.att-role-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm, 6px);
+  background: var(--brand-tint, rgba(167, 243, 208, 0.2));
+  color: var(--color-primary-dark, var(--color-ink, #1e293b));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
 /* ============================================================
    Attendance Page Styles — TeamHub Mint Design System
    Calendar-first, role-aware attendance dashboard
@@ -37,9 +57,9 @@
 }
 
 .calendar-nav-btn:hover {
-  background: rgba(196, 154, 85, 0.12);
-  border-color: var(--color-primary, #C49A55);
-  color: var(--color-primary, #C49A55);
+  background: var(--brand-tint, rgba(167, 243, 208, 0.2));
+  border-color: var(--color-primary);
+  color: var(--color-primary);
   transform: translateY(-1px);
 }
 
@@ -93,8 +113,8 @@
 }
 
 .calendar-day:hover:not(.calendar-day--empty):not(.calendar-day--weekend) {
-  background: rgba(196, 154, 85, 0.1);
-  border-color: rgba(196, 154, 85, 0.35);
+  background: var(--brand-tint, rgba(167, 243, 208, 0.14));
+  border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
   transform: scale(1.04);
   z-index: 2;
 }
@@ -104,10 +124,10 @@
 }
 
 .calendar-day--today {
-  border: 2px solid var(--color-primary, #C49A55) !important;
-  background: rgba(196, 154, 85, 0.12);
+  border: 2px solid var(--color-primary) !important;
+  background: var(--brand-tint, rgba(167, 243, 208, 0.2));
   font-weight: 800;
-  color: var(--color-primary, #C49A55);
+  color: var(--color-primary);
 }
 
 .calendar-day--weekend {
@@ -333,7 +353,7 @@
 
 .attendance-tab--active {
   background: var(--color-surface, #FFFFFF);
-  color: var(--color-primary, #C49A55);
+  color: var(--color-primary);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
   font-weight: 700;
 }
@@ -542,7 +562,7 @@
 .att-avatar-md {
   width: 42px;
   height: 42px;
-  background: rgba(45, 197, 138, 0.15);
+  background: color-mix(in srgb, var(--color-primary) 20%, transparent);
   font-size: 1.1rem;
 }
 
@@ -702,8 +722,8 @@
 }
 
 .att-filter-input:focus {
-  border-color: var(--color-primary, #C49A55) !important;
-  box-shadow: 0 0 0 2px rgba(45, 197, 138, 0.15) !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent) !important;
 }
 
 .att-btn-reset {
@@ -872,8 +892,8 @@
 }
 
 .analytics-icon-chart {
-  background: var(--color-background, #F5EFE3);
-  color: var(--color-primary, #C49A55);
+  background: var(--color-background, var(--ink-bg-canvas, #F8FAFC));
+  color: var(--color-primary);
 }
 
 /* ── Monthly Stats Progress Bar Segments (Brand Chart Palette) ── */

@@ -201,7 +201,19 @@ export default function TopNavbar() {
           </button>
 
           {/* User Profile displaying Name */}
-          <div className="th-topnav-user-profile" title={`${displayName} (${displayRole})`}>
+          <div
+            className="th-topnav-user-profile"
+            title={`${displayName} (${displayRole}) — Click to sign out`}
+            role="button"
+            tabIndex={0}
+            onClick={() => setShowSignoutModal(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setShowSignoutModal(true);
+              }
+            }}
+          >
             <div className="th-topnav-avatar">
               {initials}
               <span className="th-topnav-avatar-status" />

@@ -1,6 +1,17 @@
 import React, { useState, useEffect, useCallback } from "react";
+import Button from "../../Components/Common/Button";
+import PageShell from "../../Components/Common/PageShell";
+import PageHeader from "../../Components/Common/PageHeader";
 import {
-  Container, Row, Col, Card, Form, Button, Table, Modal, Tab, Badge
+  Container,
+  Row,
+  Col,
+  Card,
+  Form,
+  Table,
+  Modal,
+  Tab,
+  Badge,
 } from "react-bootstrap";
 import {
   FaCalendarAlt, FaClock, FaCheckCircle,
@@ -832,30 +843,23 @@ function LeaveRequest() {
   const paginatedMyLeaves = filteredMyLeaves.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
-    <Container fluid className="leave-container no-scrollbar">
+    <PageShell className="leave-page-shell">
       {/* Header Section */}
-      <Row className="mb-2 align-items-center g-2">
-        <Col>
-          <div className="d-flex align-items-center gap-2">
-            <div className="leave-header-icon">
-              <FaCalendarAlt />
-            </div>
-            <h4 className="leave-page-title">
-              Leave Management
-            </h4>
-          </div>
-          <p className="text-muted extra-small mb-0 mt-1">
-            {isOwner ? "View company leave requests, monitor approvals, and inspect workflow history." : "Apply for leaves, view balances, and manage team requests."}
-          </p>
-        </Col>
-      </Row>
+      <PageHeader
+        title="Leave Management"
+        subtitle={
+          isOwner
+            ? "View company leave requests, monitor approvals, and inspect workflow history."
+            : "Apply for leaves, view balances, and manage team requests."
+        }
+      />
 
       {/* Top Banner Alerts */}
       {errorMsg && (
         <FeedbackAlert variant="danger" dismissible onClose={() => setErrorMsg("")} className="py-2 px-3 small mb-2 rounded-3 shadow-xs" message={<><FaExclamationTriangle className="me-2" />{errorMsg}</>} />
       )}
       {successMsg && (
-        <FeedbackAlert variant="success" dismissible onClose={() => setSuccessMsg("")} className="py-2 px-3 small mb-2 rounded-3 shadow-xs" message={<><FaCheckCircle className="me-2 text-success" />{successMsg}</>} />
+        <FeedbackAlert variant="primary" dismissible onClose={() => setSuccessMsg("")} className="py-2 px-3 small mb-2 rounded-3 shadow-xs" message={<><FaCheckCircle className="me-2 text-success" />{successMsg}</>} />
       )}
 
       {/* Balance Summary Header Cards (Hidden for Owner or if my-leave hidden) */}
@@ -1230,13 +1234,7 @@ function LeaveRequest() {
                               />
                             </Form.Group>
 
-                            <button
-                              type="submit"
-                              disabled={submitting || Boolean(formValidationErr)}
-                              className="leave-submit-btn"
-                            >
-                              {submitting ? <LoadingSpinner variant="button" size="sm" /> : <><FaPlus /> Submit Application</>}
-                            </button>
+                            <Button variant="primary" type="submit" disabled={submitting || Boolean(formValidationErr)} loading={submitting} icon={FaPlus}>Submit Application</Button>
                           </Form>
                         </div>
                       </Col>
@@ -1307,7 +1305,7 @@ function LeaveRequest() {
                                 <div className="d-flex justify-content-end align-items-center gap-1">
                                   {isActionPermitted("cancel_leave") && item.status === "Pending" && (
                                     <Button
-                                      variant="outline-danger"
+                                      variant="danger"
                                       size="sm"
                                       className="p-1 px-2 extra-small rounded-pill"
                                       disabled={actionLoading}
@@ -1318,7 +1316,7 @@ function LeaveRequest() {
                                   )}
                                   {isActionPermitted("view_audit") && (
                                     <Button
-                                      variant="light"
+                                      variant="secondary"
                                       size="sm"
                                       className="leave-audit-btn p-1 text-muted border-0 shadow-none"
                                       title="View Audit Trail"
@@ -1392,7 +1390,7 @@ function LeaveRequest() {
 
                         {(searchQuery || typeFilter !== "ALL") && (
                           <Button
-                            variant="outline-secondary"
+                            variant="outline"
                             size="sm"
                             onClick={handleResetFilters}
                             className="leave-reset-btn d-flex align-items-center gap-1"
@@ -1462,18 +1460,11 @@ function LeaveRequest() {
                                       ) : (
                                         <div className="d-flex justify-content-end align-items-center gap-1">
                                           {isActionPermitted("approve_leave") && (
-                                            <button
-                                              type="button"
-                                              disabled={actionLoading}
-                                              onClick={() => handleApproveRequest(item._id)}
-                                              className="leave-btn-approve"
-                                            >
-                                              Approve
-                                            </button>
+                                            <Button variant="primary" size="sm" disabled={actionLoading} onClick={() => handleApproveRequest(item._id)}>Approve</Button>
                                           )}
                                           {isActionPermitted("reject_leave") && (
                                             <Button
-                                              variant="outline-danger"
+                                              variant="danger"
                                               size="sm"
                                               disabled={actionLoading}
                                               onClick={() => openRejectModal(item._id)}
@@ -1484,7 +1475,7 @@ function LeaveRequest() {
                                           )}
                                           {isActionPermitted("view_audit") && (
                                             <Button
-                                              variant="light"
+                                              variant="secondary"
                                               size="sm"
                                               className="leave-audit-btn p-1 text-muted border-0 shadow-none"
                                               onClick={() => handleViewAudit(item._id)}
@@ -1565,7 +1556,7 @@ function LeaveRequest() {
 
                       {(searchQuery || statusFilter !== "ALL" || typeFilter !== "ALL") && (
                         <Button
-                          variant="outline-secondary"
+                          variant="outline"
                           size="sm"
                           onClick={handleResetFilters}
                           className="leave-reset-btn d-flex align-items-center gap-1"
@@ -1620,7 +1611,7 @@ function LeaveRequest() {
                               <td className="py-2 px-3 text-end">
                                 {isActionPermitted("view_audit") && (
                                   <Button
-                                    variant="light"
+                                    variant="secondary"
                                     size="sm"
                                     className="leave-audit-btn p-1 text-muted border-0 shadow-none"
                                     onClick={() => handleViewAudit(item._id)}
@@ -1696,7 +1687,7 @@ function LeaveRequest() {
 
                       {(searchQuery || statusFilter !== "ALL" || typeFilter !== "ALL") && (
                         <Button
-                          variant="outline-secondary"
+                          variant="outline"
                           size="sm"
                           onClick={handleResetFilters}
                           className="leave-reset-btn d-flex align-items-center gap-1"
@@ -1757,7 +1748,7 @@ function LeaveRequest() {
                               <td className="py-2 px-3 text-end">
                                 {isActionPermitted("view_audit") && (
                                   <Button
-                                    variant="light"
+                                    variant="secondary"
                                     size="sm"
                                     className="leave-audit-btn p-1 text-muted border-0 shadow-none"
                                     onClick={() => handleViewAudit(item._id)}
@@ -1834,7 +1825,7 @@ function LeaveRequest() {
           </Form.Group>
         </Modal.Body>
         <Modal.Footer className="border-0 pt-0">
-          <Button variant="light" size="sm" onClick={() => setShowRejectModal(false)}>Cancel</Button>
+          <Button variant="secondary" size="sm" onClick={() => setShowRejectModal(false)}>Cancel</Button>
           <Button variant="danger" size="sm" disabled={actionLoading} onClick={handleConfirmReject} className="fw-bold px-3">
             {actionLoading ? <LoadingSpinner variant="button" size="sm" /> : "Confirm Reject"}
           </Button>
@@ -1889,7 +1880,7 @@ function LeaveRequest() {
         message="Are you sure you want to cancel this pending leave request?"
         confirmLabel="Yes, Cancel"
       />
-    </Container>
+    </PageShell>
   );
 }
 

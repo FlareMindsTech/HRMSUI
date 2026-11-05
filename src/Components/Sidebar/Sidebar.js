@@ -686,7 +686,10 @@ export default function Sidebar({
             <div
               className="th-sb-avatar"
               style={{ backgroundColor: avatarBg, color: '#0F1F18' }}
-              title={`${displayName} (${displayRole})`}
+              title={`${displayName} (${displayRole}) — Click to sign out`}
+              role="button"
+              tabIndex={0}
+              onClick={() => setShowSignoutModal(true)}
             >
               {displayName.charAt(0).toUpperCase()}
             </div>

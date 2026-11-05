@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Spinner, Button } from 'react-bootstrap';
+import Button from "../Common/Button";
+import { Card, Spinner } from "react-bootstrap";
 import LoadingSpinner from '../Common/LoadingSpinner';
 import FeedbackAlert from '../Common/FeedbackAlert';
 import {
@@ -369,7 +370,7 @@ function AttendanceCard() {
                 </p>
                 <div className="d-flex align-items-center justify-content-center gap-2">
                   <Button
-                    variant="outline-primary"
+                    variant="outline"
                     size="sm"
                     className="rounded-pill px-3 py-1 fw-semibold"
                     onClick={() => navigate('/attendance')}

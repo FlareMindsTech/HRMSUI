@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { Card, Row, Col, Form, Button, Badge, InputGroup } from "react-bootstrap";
+import Button from "../Common/Button";
+import { Card, Row, Col, Form, Badge, InputGroup } from "react-bootstrap";
 import {
   FaMoneyBillWave,
   FaInfoCircle,

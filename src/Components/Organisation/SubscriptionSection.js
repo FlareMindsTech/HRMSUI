@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Row, Col, Card, Button, Badge, ProgressBar, Spinner } from "react-bootstrap";
+import Button from "../Common/Button";
+import { Row, Col, Card, Badge, ProgressBar, Spinner } from "react-bootstrap";
 import {
   FaCrown,
   FaCheckCircle,
@@ -106,7 +107,7 @@ export default function SubscriptionSection() {
                         width: 60,
                         height: 60,
                         borderRadius: 14,
-                        background: "linear-gradient(135deg, var(--color-primary, #C79D58) 0%, var(--color-primary, #C49A55) 100%)",
+                        background: "var(--color-brand)",
                         color: "#fff",
                         display: "flex",
                         alignItems: "center",

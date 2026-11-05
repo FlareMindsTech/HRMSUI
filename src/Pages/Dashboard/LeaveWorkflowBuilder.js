@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Row, Col, Card, Form, Button } from "react-bootstrap";
+import Button from "../../Components/Common/Button";
+import { Row, Col, Card, Form } from "react-bootstrap";
 import {
   FaCodeBranch,
   FaBuilding,
@@ -609,7 +610,7 @@ function LeaveWorkflowBuilder({ currentUser, isOwner }) {
                   <FaCheckCircle /> Custom Branch Override Active
                 </span>
                 <Button
-                  variant="outline-secondary"
+                  variant="outline"
                   size="sm"
                   className="p-1 px-2 extra-small rounded-pill"
                   onClick={() => setShowRevertModal(true)}
@@ -847,7 +848,7 @@ function LeaveWorkflowBuilder({ currentUser, isOwner }) {
                         {/* Delete Stage */}
                         <Col xs="auto" className="d-flex align-items-end">
                           <Button
-                            variant="outline-danger"
+                            variant="danger"
                             size="sm"
                             className="p-1 px-2 border-0"
                             title="Remove Stage"

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Form, Button, Row, Col } from "react-bootstrap";
+import Button from "../Common/Button";
+import { Form, Row, Col } from "react-bootstrap";
 import {
   FaMapMarkerAlt,
   FaWifi,

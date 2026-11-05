@@ -1,5 +1,5 @@
 import React from "react";
-import { Button } from "react-bootstrap";
+import Button from "../Common/Button";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { FaSave, FaTimes, FaTrashAlt } from "react-icons/fa";
 
@@ -42,7 +42,7 @@ function EducationActions({
           variant="dark"
           size="sm"
           className="rounded-pill px-4 py-2 small fw-semibold text-white shadow-sm"
-          style={{ background: "var(--color-brand, #C7882C)", border: "none", color: "#FFFFFF" }}
+          style={{ background: "var(--color-brand)", border: "none", color: "#FFFFFF" }}
           onClick={onSave}
           disabled={saving}
         >

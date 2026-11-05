@@ -932,7 +932,7 @@ body:has(.org-setup-hero-page) {
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(196, 154, 85, 0.28);
+  border: 1px solid var(--ink-border, #E2E8F0);
   border-radius: 18px;
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.04);
 }
@@ -1027,12 +1027,12 @@ body:has(.org-setup-hero-page) {
 }
 
 .org-setup-form-page .input-group:focus-within {
-  border-color: #C49A55 !important;
+  border-color: var(--color-brand) !important;
   background: #FAF8F3 !important;
   box-shadow: 
     inset 1.5px 1.5px 4px rgba(150, 130, 105, 0.1),
     inset -1px -1px 3px rgba(255, 255, 255, 0.95),
-    0 0 0 3px rgba(196, 154, 85, 0.18) !important;
+    0 0 0 3px var(--brand-tint, rgba(167, 243, 208, 0.15)) !important;
 }
 
 .org-setup-form-page .input-group-text:first-child {
@@ -1103,7 +1103,7 @@ body:has(.org-setup-hero-page) {
 .org-setup-form-page div[style*="border-style: dashed"],
 .org-setup-form-page div[style*="borderStyle: dashed"] {
   background: linear-gradient(180deg, #FFFFFF 0%, #FCFAF7 100%) !important;
-  border: 1.5px dashed rgba(196, 154, 85, 0.5) !important;
+  border: 1.5px dashed var(--color-brand) !important;
   border-radius: 18px !important;
   box-shadow: 
     0 1px 3px rgba(0, 0, 0, 0.03),
@@ -1118,7 +1118,7 @@ body:has(.org-setup-hero-page) {
 .org-setup-form-page div[style*="border-style: dashed"]:hover,
 .org-setup-form-page div[style*="borderStyle: dashed"]:hover {
   background: #FFFFFF !important;
-  border-color: #C49A55 !important;
+  border-color: var(--color-brand) !important;
   transform: translateY(-2px);
   box-shadow: 
     0 3px 6px rgba(0, 0, 0, 0.04),
@@ -1140,7 +1140,7 @@ body:has(.org-setup-hero-page) {
 .org-setup-form-page .org-setup-logo-dropzone svg,
 .org-setup-form-page div[style*="border-style: dashed"] svg,
 .org-setup-form-page div[style*="borderStyle: dashed"] svg {
-  color: #C49A55 !important;
+  color: var(--color-brand) !important;
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease !important;
 }
 
@@ -1148,7 +1148,7 @@ body:has(.org-setup-hero-page) {
 .org-setup-form-page div[style*="border-style: dashed"]:hover svg,
 .org-setup-form-page div[style*="borderStyle: dashed"]:hover svg {
   transform: translateY(-2px) scale(1.08);
-  color: #9B7229 !important;
+  color: var(--color-brand) !important;
 }
 
 .org-setup-form-page .org-setup-logo-preview {

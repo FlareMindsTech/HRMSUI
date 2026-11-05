@@ -1,3 +1,4 @@
+import Button from '../../Components/Common/Button';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -184,24 +185,9 @@ export default function ServerDownPage() {
 
         {/* Action Buttons */}
         <div className="th-error-actions">
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={testServer}
-            disabled={checking || autoRedirecting}
-          >
-            <MdRefresh className={checking ? 'th-spin' : ''} size={18} />
-            {checking ? 'Checking Server Health...' : 'Check Server Connection'}
-          </button>
+          <Button variant="primary" icon={MdRefresh} loading={checking} onClick={testServer} disabled={checking || autoRedirecting}>{checking ? "Checking Server Health..." : "Check Server Connection"}</Button>
 
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={handleGoBack}
-          >
-            <MdArrowBack size={16} />
-            Back to Dashboard
-          </button>
+          <Button variant="secondary" icon={MdArrowBack} onClick={handleGoBack}>Back to Dashboard</Button>
         </div>
 
         {/* Auto Polling Timer Footer */}

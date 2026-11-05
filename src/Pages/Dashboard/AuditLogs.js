@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Row, Col, Card, Button, Modal, Form } from 'react-bootstrap';
+import Button from "../../Components/Common/Button";
+import PageShell from "../../Components/Common/PageShell";
+import PageHeader from "../../Components/Common/PageHeader";
+import { Container, Row, Col, Card, Modal, Form } from "react-bootstrap";
 import {
   MdSecurity,
   MdRefresh,
@@ -119,7 +122,7 @@ function AuditLogs() {
       render: (row) => (
         <Button
           size="sm"
-          variant="outline-secondary"
+          variant="outline"
           onClick={() => setSelectedLog(row)}
           className="d-flex align-items-center gap-1"
         >
@@ -130,21 +133,16 @@ function AuditLogs() {
   ];
 
   return (
-    <div className="audit-logs-page">
-      <Container fluid>
-        <div className="audit-logs-header">
-          <div>
-            <h1 className="audit-logs-title">System & Security Audit Logs</h1>
-            <p className="audit-logs-subtitle">
-              Inspect immutable audit trails of sensitive modifications, user activities, and organizational events.
-            </p>
-          </div>
-          <div>
-            <Button variant="outline-secondary" onClick={loadLogs} className="d-flex align-items-center gap-1">
-              <MdRefresh /> Refresh Logs
-            </Button>
-          </div>
-        </div>
+    <PageShell className="audit-logs-page-shell">
+        <PageHeader
+        title="System & Security Audit Logs"
+        subtitle="Inspect immutable audit trails of sensitive modifications, user activities, and organizational events."
+        actions={
+          <Button variant="outline" onClick={loadLogs} className="d-flex align-items-center gap-1">
+            <MdRefresh /> Refresh Logs
+          </Button>
+        }
+      />
 
         {alert && <FeedbackAlert variant={alert.type} message={alert.message} onClose={() => setAlert(null)} />}
 
@@ -187,7 +185,7 @@ function AuditLogs() {
               {(startDate || endDate || search || moduleFilter !== 'ALL') && (
                 <Button
                   size="sm"
-                  variant="outline-danger"
+                  variant="danger"
                   onClick={() => {
                     setSearch('');
                     setModuleFilter('ALL');
@@ -270,13 +268,12 @@ function AuditLogs() {
             )}
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="outline-secondary" onClick={() => setSelectedLog(null)}>
+            <Button variant="outline" onClick={() => setSelectedLog(null)}>
               Close
             </Button>
           </Modal.Footer>
         </Modal>
-      </Container>
-    </div>
+    </PageShell>
   );
 }
 

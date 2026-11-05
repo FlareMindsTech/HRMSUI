@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import Button from "../Common/Button";
 import {
   Card,
   Table,
-  Button,
   Badge,
   Modal,
   Form,
@@ -1607,7 +1607,7 @@ export default function BranchesSection({
                               width: 32,
                               height: 32,
                               borderRadius: "8px",
-                              background: isActive ? "#1C1D1D" : isCompleted ? "rgba(16, 185, 129, 0.12)" : "#F4EFE6",
+                              background: isActive ? "var(--theme-nav-bg, #1E293B)" : isCompleted ? "rgba(16, 185, 129, 0.12)" : "var(--ink-surface-subtle, #F1F5F9)",
                               color: isActive ? "var(--color-primary-light, #E2C278)" : isCompleted ? "#059669" : "#8E8A82",
                               display: "flex",
                               alignItems: "center",
@@ -1652,7 +1652,7 @@ export default function BranchesSection({
                   </div>
                   <div className="extra-small text-muted mt-2 pt-2 border-top d-flex align-items-center gap-1">
                     <FaMapMarkerAlt className="text-danger flex-shrink-0" />
-                    <span className="text-truncate">{[formData.city, formData.state].filter(Boolean).join(", ") || "Location pending"}</span>
+                    <span className="branch-address text-truncate" title={[formData.address, formData.city, formData.state].filter(Boolean).join(", ") || "Location pending"}>{[formData.city, formData.state].filter(Boolean).join(", ") || "Location pending"}</span>
                   </div>
                 </div>
               </Card>
@@ -1712,13 +1712,13 @@ export default function BranchesSection({
         {/* ── 1. Top Action Bar & Navigation ── */}
         <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
           <div className="d-flex align-items-center gap-3 flex-wrap">
-            <button
+            <Button variant="secondary"
               type="button"
               className="branches-btn-secondary"
               onClick={handleBackToAllBranches}
             >
               <FaArrowLeft /> Back to All Branches
-            </button>
+            </Button>
 
             {masterBranchList.length > 1 && (
               <div className="d-flex align-items-center gap-2">
@@ -1730,7 +1730,7 @@ export default function BranchesSection({
                     const targetB = masterBranchList.find((br) => String(br._id || br.id) === e.target.value);
                     if (targetB) handleSelectBranch(targetB, detailActiveTab);
                   }}
-                  style={{ width: "auto", minWidth: 200, fontWeight: 600, borderColor: "rgba(196, 154, 85, 0.4)" }}
+                  style={{ width: "auto", minWidth: 200, fontWeight: 600, borderColor: "var(--ink-border, #E2E8F0)" }}
                 >
                   {masterBranchList.map((br) => (
                     <option key={br._id || br.id} value={br._id || br.id}>
@@ -1744,25 +1744,25 @@ export default function BranchesSection({
 
           <div className="d-flex align-items-center gap-2 flex-wrap">
             {canUpdate && (
-              <button
+              <Button variant="primary"
                 type="button"
                 className="branches-btn-add"
                 onClick={() => handleOpenAssignModal(b)}
               >
                 <FaUserPlus /> Manage Staff ({branchMembers.length})
-              </button>
+              </Button>
             )}
             {canUpdate && (
-              <button
+              <Button variant="secondary"
                 type="button"
                 className="branches-btn-secondary"
                 onClick={() => handleOpenEditBranch(b)}
               >
                 <FaEdit /> Edit Branch
-              </button>
+              </Button>
             )}
             {canDelete && (
-              <button
+              <Button variant="secondary"
                 type="button"
                 className="branches-btn-secondary"
                 style={{ color: "#dc2626", borderColor: "#fecaca" }}
@@ -1772,7 +1772,7 @@ export default function BranchesSection({
                 }}
               >
                 <FaTrash /> Deactivate
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -1872,7 +1872,7 @@ export default function BranchesSection({
           </div>
 
           <div className="branches-kpi-card">
-            <div className="branches-kpi-icon-box gold">
+            <div className="branches-kpi-icon-box navy">
               <FaBuilding />
             </div>
             <div className="branches-kpi-info">
@@ -2055,13 +2055,13 @@ export default function BranchesSection({
                         </div>
 
                         {!managerName && canUpdate && (
-                          <button
+                          <Button variant="secondary"
                             type="button"
                             className="branches-btn-secondary"
                             onClick={() => handleOpenEditBranch(b)}
                           >
                             <FaEdit /> Assign Head
-                          </button>
+                          </Button>
                         )}
                       </div>
 
@@ -2174,7 +2174,7 @@ export default function BranchesSection({
                       </div>
                       <div className="d-flex align-items-center gap-2 flex-wrap">
                         {canUpdate && (
-                          <button
+                          <Button variant="primary"
                             type="button"
                             className="branches-btn-add btn-sm"
                             onClick={() => {
@@ -2189,15 +2189,15 @@ export default function BranchesSection({
                             }}
                           >
                             <FaPlus size={11} className="me-1" /> Add Branch Department
-                          </button>
+                          </Button>
                         )}
-                        <button
+                        <Button variant="secondary"
                           type="button"
                           className="branches-btn-secondary btn-sm"
                           onClick={() => handleDetailTabChange("departments")}
                         >
                           Manage Departments ({getBranchDepartments(lockedBId).length}) <FaArrowRight size={10} className="ms-1" />
-                        </button>
+                        </Button>
                       </div>
                     </div>
 
@@ -2226,7 +2226,7 @@ export default function BranchesSection({
 
                           <div className="branch-empty-actions-row">
                             {canUpdate && (
-                              <button
+                              <Button variant="primary"
                                 type="button"
                                 className="branches-btn-add"
                                 onClick={() => {
@@ -2241,15 +2241,15 @@ export default function BranchesSection({
                                 }}
                               >
                                 <FaPlus size={12} className="me-1" /> Create First Department for this Branch
-                              </button>
+                              </Button>
                             )}
-                            <button
+                            <Button variant="secondary"
                               type="button"
                               className="branches-btn-secondary"
                               onClick={() => handleDetailTabChange("departments")}
                             >
                               <FaBuilding size={12} className="me-1" /> View Master Organization Directory
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       ) : (
@@ -2279,7 +2279,7 @@ export default function BranchesSection({
                                   <button
                                     type="button"
                                     className="btn btn-link p-0 text-decoration-none small fw-semibold"
-                                    style={{ color: "var(--color-primary-dark, #9B7229)" }}
+                                    style={{ color: "var(--color-brand)" }}
                                     onClick={() => setDetailActiveTab("departments")}
                                   >
                                     Manage in Branch Hub &rarr;
@@ -2319,13 +2319,13 @@ export default function BranchesSection({
                 </div>
 
                 {canUpdate && (
-                  <button
+                  <Button variant="primary"
                     type="button"
                     className="branches-btn-add btn-sm"
                     onClick={() => handleOpenAssignModal(b)}
                   >
                     <FaUserPlus size={12} className="me-1" /> Add / Transfer Members
-                  </button>
+                  </Button>
                 )}
               </div>
 
@@ -2463,13 +2463,13 @@ export default function BranchesSection({
                         </div>
                         {canUpdate && (
                           <div className="branch-empty-actions-row">
-                            <button
+                            <Button variant="primary"
                               type="button"
                               className="branches-btn-add"
                               onClick={() => handleOpenAssignModal(b)}
                             >
                               <FaUserPlus size={12} className="me-1" /> Add / Transfer Members
-                            </button>
+                            </Button>
                           </div>
                         )}
                       </div>
@@ -2525,15 +2525,15 @@ export default function BranchesSection({
                                             width: 38,
                                             height: 38,
                                             borderRadius: "10px",
-                                            background: "linear-gradient(135deg, #1C1D1D 0%, #2A2B2C 100%)",
-                                            color: "var(--color-primary-light, #E2C278)",
+                                            background: "var(--theme-nav-bg, #1E293B)",
+                                            color: "var(--color-brand, #A7F3D0)",
                                             fontSize: "12px",
                                             fontWeight: 700,
                                             display: "flex",
                                             alignItems: "center",
                                             justifyContent: "center",
                                             flexShrink: 0,
-                                            border: "1px solid rgba(196, 154, 85, 0.35)",
+                                            border: "1px solid var(--ink-border, #E2E8F0)",
                                             boxShadow: "0 2px 5px rgba(0, 0, 0, 0.1)",
                                           }}
                                         >
@@ -2684,7 +2684,7 @@ export default function BranchesSection({
                     width: 40,
                     height: 40,
                     borderRadius: "50%",
-                    background: "linear-gradient(135deg, #1C1D1D 0%, #2A2B2C 100%)",
+                    background: "var(--theme-nav-bg, #1E293B)",
                     color: "var(--color-primary-light, #E2C278)",
                     fontSize: 13,
                     fontWeight: 700,
@@ -2692,7 +2692,7 @@ export default function BranchesSection({
                     alignItems: "center",
                     justifyContent: "center",
                     flexShrink: 0,
-                    border: "1px solid rgba(196, 154, 85, 0.35)",
+                    border: "1px solid var(--ink-border, #E2E8F0)",
                   }}
                 >
                   {memberToRemove?.fullName
@@ -2788,7 +2788,7 @@ export default function BranchesSection({
 
             <div className="staff-modal-notice mb-3">
               <div className="d-flex align-items-start gap-2.5">
-                <div style={{ color: "#C49A55", fontSize: 16, marginTop: 1 }}>
+                <div style={{ color: "var(--color-brand)", fontSize: 16, marginTop: 1 }}>
                   <FaBuilding />
                 </div>
                 <div>
@@ -2961,7 +2961,7 @@ export default function BranchesSection({
                                         width: 34,
                                         height: 34,
                                         borderRadius: "9px",
-                                        background: isChecked ? "#1C1D1D" : "#f1f5f9",
+                                        background: isChecked ? "var(--theme-nav-bg, #1E293B)" : "var(--ink-surface-subtle, #f1f5f9)",
                                         color: isChecked ? "#E2C278" : "#475569",
                                         fontSize: "11px",
                                         fontWeight: 700,
@@ -2969,7 +2969,7 @@ export default function BranchesSection({
                                         alignItems: "center",
                                         justifyContent: "center",
                                         flexShrink: 0,
-                                        border: isChecked ? "1px solid rgba(196, 154, 85, 0.4)" : "1px solid #e2e8f0",
+                                        border: isChecked ? "1px solid var(--color-brand)" : "1px solid var(--ink-border, #e2e8f0)",
                                         transition: "all 0.15s ease",
                                       }}
                                     >
@@ -3023,9 +3023,9 @@ export default function BranchesSection({
                                       style={{
                                         fontSize: "11px",
                                         padding: "4px 9px",
-                                        backgroundColor: isChecked ? "rgba(196, 154, 85, 0.12)" : "#f1f5f9",
-                                        color: isChecked ? "#9B7229" : "#64748b",
-                                        border: isChecked ? "1px solid rgba(196, 154, 85, 0.3)" : "1px solid #e2e8f0",
+                                        backgroundColor: isChecked ? "var(--brand-tint, rgba(167, 243, 208, 0.15))" : "var(--ink-surface-subtle, #f1f5f9)",
+                                        color: isChecked ? "var(--color-brand)" : "var(--ink-secondary, #64748b)",
+                                        border: isChecked ? "1px solid var(--color-brand)" : "1px solid var(--ink-border, #e2e8f0)",
                                         borderRadius: "9999px",
                                       }}
                                     >
@@ -3067,7 +3067,7 @@ export default function BranchesSection({
               >
                 Cancel
               </Button>
-              <button
+              <Button variant="primary"
                 type="button"
                 className="branches-btn-add btn-sm"
                 style={{ padding: "7px 18px" }}
@@ -3081,7 +3081,7 @@ export default function BranchesSection({
                     <FaCheckCircle size={11} className="me-1" /> Save Staff Assignments
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </Modal.Footer>
         </Modal>
@@ -3153,7 +3153,7 @@ export default function BranchesSection({
         </div>
 
         <div className="branches-header-actions">
-          <button
+          <Button variant="secondary"
             type="button"
             className="branches-btn-secondary"
             onClick={() => {
@@ -3162,18 +3162,20 @@ export default function BranchesSection({
               loadAuxData();
             }}
             title="Refresh Branch Records"
+            aria-label="Refresh Branch Records"
           >
             <FaSyncAlt className={loading ? "fa-spin" : ""} /> Refresh
-          </button>
+          </Button>
 
           {canCreate && (
-            <button
+            <Button variant="primary"
               type="button"
               className="branches-btn-add"
               onClick={handleOpenAddBranch}
+              aria-label="Add New Branch"
             >
               <FaPlus /> Add New Branch
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -3181,7 +3183,7 @@ export default function BranchesSection({
       {/* ── 2. KPI Summary Metric Cards ── */}
       <div className="branches-kpi-grid">
         <div className="branches-kpi-card">
-          <div className="branches-kpi-icon-box gold">
+          <div className="branches-kpi-icon-box navy">
             <FaBuilding />
           </div>
           <div className="branches-kpi-info">
@@ -3431,7 +3433,7 @@ export default function BranchesSection({
       {/* ── 4. Main Branches List / Cards ── */}
       {loading ? (
         <div className="text-center py-5 bg-white rounded-4 border shadow-sm my-3">
-          <Spinner animation="border" style={{ color: "var(--color-primary, #C49A55)" }} />
+          <Spinner animation="border" style={{ color: "var(--color-brand)" }} />
           <p className="mt-3 text-muted fw-semibold">Loading enterprise branch directory...</p>
         </div>
       ) : displayedBranches.length === 0 ? (
@@ -3461,13 +3463,14 @@ export default function BranchesSection({
             </button>
           ) : (
             canCreate && (
-              <button
+              <Button variant="primary"
                 type="button"
                 className="branches-btn-add"
                 onClick={handleOpenAddBranch}
+              aria-label="Add New Branch"
               >
                 <FaPlus /> Add Your First Branch
-              </button>
+              </Button>
             )
           )}
         </div>
@@ -3477,6 +3480,9 @@ export default function BranchesSection({
           {displayedBranches.map((b) => {
             const bId = b._id || b.id;
             const membersCount = getBranchMembers(bId).length;
+            const deptsCount = getBranchDepartments(bId).length;
+            const fullAddress = [b.address, b.city, b.state, b.pincode, b.country].filter(Boolean).join(", ") || "Address not provided";
+
             const headObj = employees.find(
               (e) => String(e._id || e.id) === String(b.branchHeadId?._id || b.branchHeadId)
             );
@@ -3497,6 +3503,7 @@ export default function BranchesSection({
                       <h4
                         className="branch-card-name"
                         onClick={() => handleSelectBranch(b)}
+                    aria-label={`Open Branch Hub for ${b.branchName}`}
                         title="Click to open full branch workspace"
                       >
                         {b.branchName}
@@ -3534,8 +3541,8 @@ export default function BranchesSection({
                   {/* Location & Address */}
                   <div className="branch-info-row">
                     <FaMapMarkerAlt className="branch-info-icon red" />
-                    <span className="text-truncate">
-                      {[b.address, b.city, b.state].filter(Boolean).join(", ") || "Address not provided"}
+                    <span className="branch-address text-truncate" title={fullAddress}>
+                      {fullAddress}
                     </span>
                   </div>
 
@@ -3560,7 +3567,7 @@ export default function BranchesSection({
                     <div className="branch-stat-mini-item">
                       <span className="branch-stat-mini-label">Staff Assigned</span>
                       <span className="branch-stat-mini-value">
-                        <FaUsers className="me-1 text-muted" size={12} /> {membersCount} Team Members
+                        <FaUsers className="me-1 text-muted" size={12} /> {membersCount === 1 ? '1 Team Member' : `${membersCount} Team Members`}
                       </span>
                     </div>
                     <div
@@ -3571,7 +3578,7 @@ export default function BranchesSection({
                     >
                       <span className="branch-stat-mini-label">Departments</span>
                       <span className="branch-stat-mini-value text-success fw-semibold">
-                        <FaSitemap className="me-1 text-success" size={12} /> {getBranchDepartments(bId).length} Departments
+                        <FaSitemap className="me-1 text-success" size={12} /> {deptsCount === 1 ? '1 Department' : `${deptsCount} Departments`}
                       </span>
                     </div>
                     <div className="branch-stat-mini-item">
@@ -3590,54 +3597,59 @@ export default function BranchesSection({
                     type="button"
                     className="branch-btn-hub"
                     onClick={() => handleSelectBranch(b)}
+                    aria-label={`Open Branch Hub for ${b.branchName}`}
                   >
-                    Open Branch Hub <FaArrowRight size={11} />
+                    <span>Open Branch Hub</span> <FaArrowRight size={11} className="branch-hub-arrow" />
                   </button>
 
                   <div className="branch-card-action-group">
-                    <button
+                    <Button variant="icon"
                       type="button"
                       className="branch-card-action-btn"
                       onClick={() => handleOpenBranchDepartments(b)}
-                      title="Manage Branch Departments"
+                      title={`Manage Departments for ${b.branchName}`}
+                      aria-label={`Manage Departments for ${b.branchName}`}
                     >
                       <FaSitemap />
-                    </button>
+                    </Button>
 
                     {canUpdate && (
-                      <button
+                      <Button variant="icon"
                         type="button"
                         className="branch-card-action-btn"
                         onClick={() => handleOpenAssignModal(b)}
-                        title="Manage Staff Assignments"
+                        title={`Manage Staff Assignments for ${b.branchName}`}
+                        aria-label={`Manage Staff Assignments for ${b.branchName}`}
                       >
                         <FaUserPlus />
-                      </button>
+                      </Button>
                     )}
 
                     {canUpdate && (
-                      <button
+                      <Button variant="icon"
                         type="button"
                         className="branch-card-action-btn"
                         onClick={() => handleOpenEditBranch(b)}
-                        title="Edit Branch Settings"
+                        title={`Edit Branch Settings for ${b.branchName}`}
+                        aria-label={`Edit Branch Settings for ${b.branchName}`}
                       >
                         <FaEdit />
-                      </button>
+                      </Button>
                     )}
 
                     {canDelete && (
-                      <button
+                      <Button variant="icon"
                         type="button"
                         className="branch-card-action-btn danger"
                         onClick={() => {
                           setDeactivatingBranch(b);
                           setShowDeactivateModal(true);
                         }}
-                        title="Deactivate Branch"
+                        title={`Deactivate ${b.branchName}`}
+                        aria-label={`Deactivate ${b.branchName}`}
                       >
                         <FaTrash />
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -3666,7 +3678,10 @@ export default function BranchesSection({
               {displayedBranches.map((b) => {
                 const bId = b._id || b.id;
                 const membersCount = getBranchMembers(bId).length;
-                const deptsCount = getBranchDepartments(bId).length;
+            const deptsCount = getBranchDepartments(bId).length;
+            const fullAddress = [b.address, b.city, b.state, b.pincode, b.country].filter(Boolean).join(", ") || "Address not provided";
+
+
                 const headObj = employees.find(
                   (e) => String(e._id || e.id) === String(b.branchHeadId?._id || b.branchHeadId)
                 );
@@ -3679,14 +3694,15 @@ export default function BranchesSection({
                         className="d-flex align-items-center gap-2 text-decoration-none fw-bold"
                         style={{ cursor: "pointer" }}
                         onClick={() => handleSelectBranch(b)}
+                    aria-label={`Open Branch Hub for ${b.branchName}`}
                       >
                         <div
                           style={{
                             width: 32,
                             height: 32,
                             borderRadius: 8,
-                            background: "linear-gradient(135deg, var(--color-sidebar, #1C1D1D) 0%, #2A2B2C 100%)",
-                            color: "var(--color-primary-light, #E2C278)",
+                            background: "var(--theme-nav-bg, #1E293B)",
+                            color: "var(--color-brand, #A7F3D0)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -3696,7 +3712,7 @@ export default function BranchesSection({
                         >
                           <FaBuilding />
                         </div>
-                        <span className="text-dark hover-gold">{b.branchName}</span>
+                        <span className="text-dark hover-primary">{b.branchName}</span>
                       </div>
                     </td>
 
@@ -3711,7 +3727,7 @@ export default function BranchesSection({
                     </td>
 
                     <td>
-                      <span className="d-flex align-items-center gap-1">
+                      <span className="d-flex align-items-center gap-1" title={fullAddress}>
                         <FaMapMarkerAlt className="text-danger small" />
                         {[b.city, b.state].filter(Boolean).join(", ") || "—"}
                       </span>
@@ -3758,54 +3774,57 @@ export default function BranchesSection({
 
                     <td className="text-end">
                       <div className="d-flex align-items-center justify-content-end gap-1">
-                        <button
+                        <Button variant="icon"
                           type="button"
                           className="branch-card-action-btn"
                           onClick={() => handleOpenBranchDepartments(b)}
-                          title="Manage Branch Departments"
+                          title={`Manage Departments for ${b.branchName}`}
+                      aria-label={`Manage Departments for ${b.branchName}`}
                         >
                           <FaSitemap />
-                        </button>
-                        <button
+                        </Button>
+                        <Button variant="icon"
                           type="button"
                           className="branch-card-action-btn"
                           onClick={() => handleSelectBranch(b)}
+                    aria-label={`Open Branch Hub for ${b.branchName}`}
                           title="Open Branch Workspace"
                         >
                           <FaEye />
-                        </button>
+                        </Button>
                         {canUpdate && (
-                          <button
+                          <Button variant="icon"
                             type="button"
                             className="branch-card-action-btn"
                             onClick={() => handleOpenAssignModal(b)}
                             title="Manage Staff"
                           >
                             <FaUserPlus />
-                          </button>
+                          </Button>
                         )}
                         {canUpdate && (
-                          <button
+                          <Button variant="icon"
                             type="button"
                             className="branch-card-action-btn"
                             onClick={() => handleOpenEditBranch(b)}
                             title="Edit Branch"
                           >
                             <FaEdit />
-                          </button>
+                          </Button>
                         )}
                         {canDelete && (
-                          <button
+                          <Button variant="icon"
                             type="button"
                             className="branch-card-action-btn danger"
                             onClick={() => {
                               setDeactivatingBranch(b);
                               setShowDeactivateModal(true);
                             }}
-                            title="Deactivate Branch"
+                            title={`Deactivate ${b.branchName}`}
+                        aria-label={`Deactivate ${b.branchName}`}
                           >
                             <FaTrash />
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </td>
@@ -3876,7 +3895,7 @@ export default function BranchesSection({
 
           <div className="staff-modal-notice mb-3">
             <div className="d-flex align-items-start gap-2.5">
-              <div style={{ color: "#C49A55", fontSize: 16, marginTop: 1 }}>
+              <div style={{ color: "var(--color-brand)", fontSize: 16, marginTop: 1 }}>
                 <FaBuilding />
               </div>
               <div>
@@ -4049,7 +4068,7 @@ export default function BranchesSection({
                                       width: 34,
                                       height: 34,
                                       borderRadius: "9px",
-                                      background: isChecked ? "#1C1D1D" : "#f1f5f9",
+                                      background: isChecked ? "var(--theme-nav-bg, #1E293B)" : "var(--ink-surface-subtle, #f1f5f9)",
                                       color: isChecked ? "#E2C278" : "#475569",
                                       fontSize: "11px",
                                       fontWeight: 700,
@@ -4057,7 +4076,7 @@ export default function BranchesSection({
                                       alignItems: "center",
                                       justifyContent: "center",
                                       flexShrink: 0,
-                                      border: isChecked ? "1px solid rgba(196, 154, 85, 0.4)" : "1px solid #e2e8f0",
+                                      border: isChecked ? "1px solid var(--color-brand)" : "1px solid var(--ink-border, #e2e8f0)",
                                       transition: "all 0.15s ease",
                                     }}
                                   >
@@ -4111,9 +4130,9 @@ export default function BranchesSection({
                                     style={{
                                       fontSize: "11px",
                                       padding: "4px 9px",
-                                      backgroundColor: isChecked ? "rgba(196, 154, 85, 0.12)" : "#f1f5f9",
-                                      color: isChecked ? "#9B7229" : "#64748b",
-                                      border: isChecked ? "1px solid rgba(196, 154, 85, 0.3)" : "1px solid #e2e8f0",
+                                      backgroundColor: isChecked ? "var(--brand-tint, rgba(167, 243, 208, 0.15))" : "var(--ink-surface-subtle, #f1f5f9)",
+                                      color: isChecked ? "var(--color-brand)" : "var(--ink-secondary, #64748b)",
+                                      border: isChecked ? "1px solid var(--color-brand)" : "1px solid var(--ink-border, #e2e8f0)",
                                       borderRadius: "9999px",
                                     }}
                                   >
@@ -4155,7 +4174,7 @@ export default function BranchesSection({
             >
               Cancel
             </Button>
-            <button
+            <Button variant="primary"
               type="button"
               className="branches-btn-add btn-sm"
               style={{ padding: "7px 18px" }}
@@ -4169,7 +4188,7 @@ export default function BranchesSection({
                   <FaCheckCircle size={11} className="me-1" /> Save Staff Assignments
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </Modal.Footer>
       </Modal>
@@ -4298,7 +4317,7 @@ export default function BranchesSection({
               }}
             >
               <div className="d-flex align-items-center gap-3">
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(196, 154, 85, 0.15)", color: "var(--color-primary-dark, #9B7229)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--brand-tint, rgba(167, 243, 208, 0.15))", color: "var(--color-brand)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <FaBuilding />
                 </div>
                 <div>

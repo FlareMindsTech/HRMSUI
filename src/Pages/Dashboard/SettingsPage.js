@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { FaCog, FaCodeBranch, FaBuilding } from "react-icons/fa";
+import { FaCodeBranch, FaBuilding } from "react-icons/fa";
 import {
   selectAuthUser,
   selectIsSystemAdmin,
@@ -9,6 +9,8 @@ import {
 } from "../../redux/slices/authSlice";
 import OrganizationSettingsSection from "../../Components/Organisation/OrganizationSettingsSection";
 import BranchSettingsSection from "../../Components/Organisation/BranchSettingsSection";
+import PageShell from "../../Components/Common/PageShell";
+import PageHeader from "../../Components/Common/PageHeader";
 import "./SettingsPage.css";
 
 /**
@@ -94,40 +96,29 @@ export default function SettingsPage() {
   );
 
   return (
-    <div className="settings-page-container">
+    <PageShell className="settings-page-shell">
       {/* ── 1. Top Executive Header Bar ── */}
-      <div className="settings-header-bar">
-        <div>
-          <div className="settings-breadcrumb">
-            <span
-              className="settings-breadcrumb-root"
-              onClick={() => navigate("/dashboard")}
-              role="button"
-              tabIndex={0}
-            >
-              Dashboard
-            </span>
-            <span>/</span>
-            <span className="settings-breadcrumb-current">Settings</span>
-            <span>/</span>
-            <span className="settings-breadcrumb-current">
-              {activeTab === "branches" ? "Branch Settings" : "Organization Settings"}
-            </span>
-          </div>
-
-          <div className="settings-title-row">
-            <div className="settings-icon-badge">
-              <FaCog />
-            </div>
-            <div>
-              <h2 className="settings-title">Enterprise Settings</h2>
-              <p className="settings-subtitle">
-                Configure organizational rules, appearance theme, attendance enforcement, and branch-level settings.
-              </p>
-            </div>
-          </div>
-        </div>
+      <div className="settings-breadcrumb mb-2">
+        <span
+          className="settings-breadcrumb-root clickable"
+          onClick={() => navigate("/dashboard")}
+          role="button"
+          tabIndex={0}
+        >
+          Dashboard
+        </span>
+        <span className="mx-1">/</span>
+        <span className="settings-breadcrumb-current">Settings</span>
+        <span className="mx-1">/</span>
+        <span className="settings-breadcrumb-current">
+          {activeTab === "branches" ? "Branch Settings" : "Organization Settings"}
+        </span>
       </div>
+
+      <PageHeader
+        title="Enterprise Settings"
+        subtitle="Configure organizational rules, appearance theme, attendance enforcement, and branch-level settings."
+      />
 
       {/* ── 2. Segment Navigation Tabs Bar ── */}
       <div className="settings-tabs-bar" role="tablist">
@@ -176,6 +167,6 @@ export default function SettingsPage() {
           <OrganizationSettingsSection onNavigateTab={handleNavigateOrgTab} />
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }

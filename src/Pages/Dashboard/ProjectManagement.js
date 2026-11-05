@@ -1,9 +1,21 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import Button from "../../Components/Common/Button";
+import PageShell from "../../Components/Common/PageShell";
+import PageHeader from "../../Components/Common/PageHeader";
 import {
-  Container, Row, Col, Card, Form, Button, Badge, Table, Modal,
-  Dropdown, Nav, Tab, InputGroup
-} from 'react-bootstrap';
+  Row,
+  Col,
+  Card,
+  Form,
+  Badge,
+  Table,
+  Modal,
+  Dropdown,
+  Nav,
+  Tab,
+  InputGroup,
+} from "react-bootstrap";
 import {
   FaPlus,
   FaEllipsisV, FaEdit, FaTrash, FaArrowLeft, FaTimes, FaExclamationTriangle,
@@ -1312,7 +1324,7 @@ function ProjectManagement() {
   const showDetail = !isMobile || mobileView === 'detail';
 
   return (
-    <Container fluid className="p-3 no-scrollbar pm-wrapper">
+    <PageShell className="pm-page-shell">
 
       {feedback && (
         <FeedbackAlert
@@ -1331,40 +1343,41 @@ function ProjectManagement() {
             <line x1="0" y1="0" x2="0" y2="8" stroke="var(--color-secondary-text, #C7BFB5)" strokeWidth="2.5" />
           </pattern>
           <pattern id="diagonalHatchDark" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
-            <line x1="0" y1="0" x2="0" y2="8" stroke="var(--color-primary-dark, #A98245)" strokeWidth="2.5" />
+            <line x1="0" y1="0" x2="0" y2="8" stroke="var(--color-primary-dark)" strokeWidth="2.5" />
           </pattern>
         </defs>
       </svg>
 
       {/* ── TOP HEADER ── */}
-      <div className="pm-calm-header-row d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
-        <div>
-          <nav aria-label="breadcrumb">
-            <ol className="breadcrumb mb-1 small text-muted">
-              <li className="breadcrumb-item"><a href="/dashboard" className="text-decoration-none text-muted">Dashboard</a></li>
-              <li className="breadcrumb-item active text-dark fw-semibold" aria-current="page">Projects & Delivery</li>
-            </ol>
-          </nav>
-          <h1 className="pm-calm-title h2 mb-1">Projects & Delivery</h1>
-          <p className="pm-calm-subtitle">Everything your team is shipping, in one calm place.</p>
-        </div>
-
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          <Button
-            className="pm-btn-dark-pill"
-            onClick={openCreateProject}
-          >
-            <FaPlus size={11} /> Add Project
-          </Button>
-
-          <Button
-            className="pm-btn-white-pill"
-            onClick={() => setShowImportModal(true)}
-          >
-            <FaUpload size={11} /> Import Data
-          </Button>
-        </div>
+      <div className="placeholder-breadcrumb mb-2">
+        <a href="/dashboard" className="text-decoration-none text-muted">Dashboard</a>
+        <span className="mx-1 text-muted">/</span>
+        <span className="text-dark fw-semibold">Projects & Delivery</span>
       </div>
+
+      <PageHeader
+        title="Projects & Delivery"
+        subtitle="Everything your team is shipping, in one calm place."
+        actions={
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            <Button
+              variant="primary"
+              className="pm-btn-dark-pill"
+              onClick={openCreateProject}
+            >
+              <FaPlus size={11} /> Add Project
+            </Button>
+
+            <Button
+              variant="outline"
+              className="pm-btn-white-pill"
+              onClick={() => setShowImportModal(true)}
+            >
+              <FaUpload size={11} /> Import Data
+            </Button>
+          </div>
+        }
+      />
 
       {currentView === 'projects' && projectsError && (
         <FeedbackAlert
@@ -1375,7 +1388,7 @@ function ProjectManagement() {
               <span className="small d-flex align-items-center gap-2">
                 <FaExclamationTriangle /> {projectsError}
               </span>
-              <Button size="sm" variant="outline-danger" onClick={() => fetchProjects()}>
+              <Button size="sm" variant="danger" onClick={() => fetchProjects()}>
                 Retry
               </Button>
             </>
@@ -1524,9 +1537,9 @@ function ProjectManagement() {
                             rx="17"
                             fill={
                               item.isToday
-                                ? 'var(--color-primary, #C79D58)'
+                                ? 'var(--color-primary)'
                                 : item.count > 0
-                                  ? 'var(--color-primary-dark, #A98245)'
+                                  ? 'var(--color-primary-dark)'
                                   : 'url(#diagonalHatch)'
                             }
                           />
@@ -1551,9 +1564,10 @@ function ProjectManagement() {
                           </Badge>
                         )}
                       </div>
-                      <button
-                        type="button"
-                        className="pm-pill-badge-btn"
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        icon={FaPlus}
                         onClick={() => {
                           if (projects.length > 0) {
                             selectProject(projects[0]);
@@ -1563,8 +1577,8 @@ function ProjectManagement() {
                           }
                         }}
                       >
-                        <FaPlus size={9} /> New Sprint
-                      </button>
+                        New Sprint
+                      </Button>
                     </div>
 
                     {allDashboardSprints.length > 0 ? (
@@ -1636,10 +1650,10 @@ function ProjectManagement() {
                       </h4>
                       {dashboardCategoryFilter !== 'all' && (
                         <Button
-                          variant="link"
+                          variant="ghost"
                           size="sm"
                           className="p-0 text-decoration-none small"
-                          style={{ fontSize: '0.72rem', color: 'var(--color-primary, #C79D58)' }}
+                          style={{ fontSize: '0.72rem', color: 'var(--color-primary)' }}
                           onClick={() => setDashboardCategoryFilter('all')}
                         >
                           Show All
@@ -1680,7 +1694,7 @@ function ProjectManagement() {
                   ) : (
                     <div className="d-flex flex-column align-items-center justify-content-center py-4 text-center">
                       <p className="text-muted small mb-2">No projects created yet.</p>
-                      <Button size="sm" variant="outline-success" className="rounded-pill" onClick={openCreateProject}>
+                      <Button size="sm" variant="outline" className="rounded-pill" onClick={openCreateProject}>
                         <FaPlus size={10} /> Create First Project
                       </Button>
                     </div>
@@ -1696,13 +1710,14 @@ function ProjectManagement() {
                 <div className="pm-card-box">
                   <div className="pm-card-box-header">
                     <h4 className="pm-card-box-title">Team Collaboration</h4>
-                    <button
-                      type="button"
-                      className="pm-pill-badge-btn"
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={FaPlus}
                       onClick={openAddMember}
                     >
-                      <FaPlus size={9} /> Add Member
-                    </button>
+                      Add Member
+                    </Button>
                   </div>
 
                   {companyUsers.length > 0 ? (
@@ -1767,7 +1782,7 @@ function ProjectManagement() {
                       <path
                         d="M 25 115 A 85 85 0 0 1 155 45"
                         fill="none"
-                        stroke="var(--color-primary-dark, #A98245)"
+                        stroke="var(--color-primary-dark)"
                         strokeWidth="26"
                         strokeLinecap="round"
                       />
@@ -1775,7 +1790,7 @@ function ProjectManagement() {
                       <path
                         d="M 25 115 A 85 85 0 0 1 90 35"
                         fill="none"
-                        stroke="var(--color-primary, #C79D58)"
+                        stroke="var(--color-primary)"
                         strokeWidth="26"
                         strokeLinecap="round"
                       />
@@ -1796,11 +1811,11 @@ function ProjectManagement() {
 
                     <div className="pm-gauge-legend">
                       <div className="pm-legend-item">
-                        <span className="pm-legend-dot" style={{ background: 'var(--color-primary-dark, #A98245)' }} />
+                        <span className="pm-legend-dot" style={{ background: 'var(--color-primary-dark)' }} />
                         <span>{endedProjectsCount} Completed</span>
                       </div>
                       <div className="pm-legend-item">
-                        <span className="pm-legend-dot" style={{ background: 'var(--color-primary, #C79D58)' }} />
+                        <span className="pm-legend-dot" style={{ background: 'var(--color-primary)' }} />
                         <span>{runningProjectsCount} In Progress</span>
                       </div>
                       <div className="pm-legend-item">
@@ -1821,7 +1836,7 @@ function ProjectManagement() {
             {/* Top Navigation Back to Calm Dashboard */}
             <div className="d-flex justify-content-between align-items-center bg-white p-3 rounded-4 border shadow-sm flex-wrap gap-2">
               <Button
-                variant="light"
+                variant="secondary"
                 className="d-flex align-items-center gap-2 rounded-pill border px-3 py-1 fw-bold text-dark"
                 onClick={() => setSelectedProjectId(null)}
               >
@@ -1891,7 +1906,7 @@ function ProjectManagement() {
                         <div className="d-flex align-items-center gap-2">
                           {canEditProject && projectDetails.status !== 'Completed' && (
                             <Button
-                              variant="outline-success"
+                              variant="outline"
                               size="sm"
                               className="rounded-pill py-0 px-2 micro-text fw-bold d-flex align-items-center gap-1"
                               onClick={() => openProjectCompletion(projectDetails)}
@@ -1903,7 +1918,7 @@ function ProjectManagement() {
 
                           {(canEditProject || canDeleteProject) && (
                             <Dropdown align="end">
-                              <Dropdown.Toggle as={Button} variant="light" size="sm" className="pm-icon-btn p-1 text-muted border-0 shadow-none" title="Project Actions">
+                              <Dropdown.Toggle as={Button} variant="secondary" size="sm" className="pm-icon-btn p-1 text-muted border-0 shadow-none" title="Project Actions">
                                 <FaEllipsisV size={14} />
                               </Dropdown.Toggle>
                               <Dropdown.Menu>
@@ -1996,7 +2011,7 @@ function ProjectManagement() {
                               <h6 className="fw-bold mb-0 text-uppercase small text-muted">Tasks</h6>
                               {canManageTasks && (
                                 <Button
-                                  size="sm" variant="outline-primary" className="pm-outline-btn d-flex align-items-center gap-1 rounded-pill"
+                                  size="sm" variant="outline" className="pm-outline-btn d-flex align-items-center gap-1 rounded-pill"
                                   onClick={openCreateTask}
                                 >
                                   <FaPlus size={12} /> New Task
@@ -2101,15 +2116,15 @@ function ProjectManagement() {
                                       header: "Actions",
                                       render: (task) => (
                                         <div className="d-flex gap-1">
-                                          <Button size="sm" variant="light" className="pm-icon-btn p-1 text-primary" onClick={() => openLogTimeModal(task)} title="Log Time on Task">
+                                          <Button size="sm" variant="secondary" className="pm-icon-btn p-1 text-primary" onClick={() => openLogTimeModal(task)} title="Log Time on Task">
                                             <FaClock size={11} />
                                           </Button>
                                           {canManageTasks && (
                                             <>
-                                              <Button size="sm" variant="light" className="pm-icon-btn p-1" onClick={() => openEditTask(task)} title="Edit task">
+                                              <Button size="sm" variant="secondary" className="pm-icon-btn p-1" onClick={() => openEditTask(task)} title="Edit task">
                                                 <FaEdit size={12} />
                                               </Button>
-                                              <Button size="sm" variant="light" className="pm-icon-btn pm-danger p-1 text-danger" onClick={() => deleteTask(task)} title="Delete task">
+                                              <Button size="sm" variant="secondary" className="pm-icon-btn pm-danger p-1 text-danger" onClick={() => deleteTask(task)} title="Delete task">
                                                 <FaTrash size={12} />
                                               </Button>
                                             </>
@@ -2133,7 +2148,7 @@ function ProjectManagement() {
                               <h6 className="fw-bold mb-0 text-uppercase small text-muted">Team Members</h6>
                               {canAddMember && (
                                 <Button
-                                  size="sm" variant="outline-primary" className="pm-outline-btn d-flex align-items-center gap-1 rounded-pill"
+                                  size="sm" variant="outline" className="pm-outline-btn d-flex align-items-center gap-1 rounded-pill"
                                   onClick={openAddMember}
                                 >
                                   <FaUserPlus size={12} /> Add Member
@@ -2157,7 +2172,7 @@ function ProjectManagement() {
                                   </div>
                                   {canRemoveMember && (
                                     <Button
-                                      size="sm" variant="link" className="p-0 text-muted ms-1"
+                                      size="sm" variant="ghost" className="p-0 text-muted ms-1"
                                       onClick={() => removeMember(member)}
                                       title="Remove member"
                                     >
@@ -2179,7 +2194,7 @@ function ProjectManagement() {
                               <h6 className="fw-bold mb-0 text-uppercase small text-muted">Sprints</h6>
                               {canManageSprints && (
                                 <Button
-                                  size="sm" variant="outline-primary" className="pm-outline-btn d-flex align-items-center gap-1 rounded-pill"
+                                  size="sm" variant="outline" className="pm-outline-btn d-flex align-items-center gap-1 rounded-pill"
                                   onClick={openCreateSprint}
                                 >
                                   <FaPlus size={12} /> New Sprint
@@ -2207,7 +2222,7 @@ function ProjectManagement() {
                                         {canManageSprints && sprint.status === 'Planned' && (
                                           <Button
                                             size="sm"
-                                            variant="outline-success"
+                                            variant="outline"
                                             className="rounded-pill py-0 px-2 micro-text fw-bold"
                                             onClick={() => handleUpdateSprintStatus(sprint._id, 'Active')}
                                             title="Start this sprint"
@@ -2218,7 +2233,7 @@ function ProjectManagement() {
                                         {canManageSprints && (sprint.status === 'Active' || sprint.status === 'In Progress') && (
                                           <Button
                                             size="sm"
-                                            variant="outline-primary"
+                                            variant="outline"
                                             className="rounded-pill py-0 px-2 micro-text fw-bold"
                                             onClick={() => handleUpdateSprintStatus(sprint._id, 'Completed')}
                                             title="Complete this sprint"
@@ -2228,7 +2243,7 @@ function ProjectManagement() {
                                         )}
                                         <Button
                                           size="sm"
-                                          variant="outline-secondary"
+                                          variant="outline"
                                           className="rounded-pill py-0 px-2 micro-text"
                                           onClick={() => handleSelectSprintTasks(sprint._id)}
                                           title="View tasks in this sprint"
@@ -2237,10 +2252,10 @@ function ProjectManagement() {
                                         </Button>
                                         {canManageSprints && (
                                           <>
-                                            <Button size="sm" variant="light" className="pm-icon-btn p-1" onClick={() => openEditSprint(sprint)} title="Edit sprint">
+                                            <Button size="sm" variant="secondary" className="pm-icon-btn p-1" onClick={() => openEditSprint(sprint)} title="Edit sprint">
                                               <FaEdit size={11} />
                                             </Button>
-                                            <Button size="sm" variant="light" className="pm-icon-btn pm-danger p-1 text-danger" onClick={() => deleteSprint(sprint)} title="Delete sprint">
+                                            <Button size="sm" variant="secondary" className="pm-icon-btn pm-danger p-1 text-danger" onClick={() => deleteSprint(sprint)} title="Delete sprint">
                                               <FaTrash size={11} />
                                             </Button>
                                           </>
@@ -2287,7 +2302,7 @@ function ProjectManagement() {
                               )}
                               <Button
                                 size="sm"
-                                variant="outline-success"
+                                variant="outline"
                                 className="d-flex align-items-center gap-1 rounded-pill px-3 py-1 micro-text fw-bold"
                                 onClick={() => fetchProjectReports(selectedProjectId)}
                                 title="Click to manually refresh daily reports"
@@ -2386,7 +2401,7 @@ function ProjectManagement() {
                                       />
                                       <Button
                                         size="sm"
-                                        variant="outline-primary"
+                                        variant="outline"
                                         className="px-2 py-0 d-flex align-items-center micro-text fw-bold"
                                         onClick={() => handleAddComment(reportId)}
                                         disabled={submittingCommentMap[reportId] || !(commentTextMap[reportId] || '').trim()}
@@ -2439,7 +2454,7 @@ function ProjectManagement() {
                               <h6 className="fw-bold mb-0 text-uppercase small text-muted">Task Timesheets & Time Tracking</h6>
                               <Button
                                 size="sm"
-                                variant="outline-primary"
+                                variant="outline"
                                 className="pm-outline-btn d-flex align-items-center gap-1 rounded-pill"
                                 onClick={() => openLogTimeModal()}
                               >
@@ -2510,7 +2525,7 @@ function ProjectManagement() {
                                       render: (log) => (
                                         <Button
                                           size="sm"
-                                          variant="light"
+                                          variant="secondary"
                                           className="pm-icon-btn p-1"
                                           onClick={() => openLogTimeModal(log.task || log.taskId, log)}
                                           title="Edit Time Log"
@@ -2549,7 +2564,7 @@ function ProjectManagement() {
                   </div>
                   <Button
                     size="sm"
-                    variant="outline-primary"
+                    variant="outline"
                     className="rounded-pill px-3 py-1 d-flex align-items-center gap-1 micro-text fw-bold"
                     onClick={fetchMyTasks}
                     disabled={myTasksLoading}
@@ -2717,7 +2732,7 @@ function ProjectManagement() {
                                 <div className="d-flex align-items-center gap-1">
                                   <Button
                                     size="sm"
-                                    variant="light"
+                                    variant="secondary"
                                     className="pm-icon-btn p-1 text-primary"
                                     onClick={() => openLogTimeModal(task)}
                                     title="Log Time on Task"
@@ -2727,7 +2742,7 @@ function ProjectManagement() {
                                   {task.status !== 'Completed' ? (
                                     <Button
                                       size="sm"
-                                      variant="outline-success"
+                                      variant="outline"
                                       className="rounded-pill py-0 px-2 micro-text fw-bold d-flex align-items-center gap-1"
                                       onClick={() => {
                                         setTaskToComplete(task);
@@ -2837,7 +2852,7 @@ function ProjectManagement() {
           </Form>
         </Modal.Body>
         <Modal.Footer className="border-0 pt-0">
-          <Button variant="light" onClick={() => setShowProjectModal(false)} disabled={savingProject}>Cancel</Button>
+          <Button variant="secondary" onClick={() => setShowProjectModal(false)} disabled={savingProject}>Cancel</Button>
           <Button variant="primary" onClick={saveProject} disabled={savingProject} className="pm-primary-btn">
             {savingProject ? <LoadingSpinner variant="button" size="sm" /> : (editingProjectId ? 'Save Changes' : 'Save Project')}
           </Button>
@@ -2878,7 +2893,7 @@ function ProjectManagement() {
           </Form>
         </Modal.Body>
         <Modal.Footer className="border-0 pt-0">
-          <Button variant="light" onClick={() => setShowSprintModal(false)} disabled={savingSprint}>Cancel</Button>
+          <Button variant="secondary" onClick={() => setShowSprintModal(false)} disabled={savingSprint}>Cancel</Button>
           <Button variant="primary" onClick={saveSprint} disabled={savingSprint} className="pm-primary-btn">
             {savingSprint ? <LoadingSpinner variant="button" size="sm" /> : (editingSprintId ? 'Save Changes' : 'Create Sprint')}
           </Button>
@@ -2949,7 +2964,7 @@ function ProjectManagement() {
           </Form>
         </Modal.Body>
         <Modal.Footer className="border-0 pt-0">
-          <Button variant="light" onClick={() => setShowTaskModal(false)} disabled={savingTask}>Cancel</Button>
+          <Button variant="secondary" onClick={() => setShowTaskModal(false)} disabled={savingTask}>Cancel</Button>
           <Button variant="primary" onClick={saveTask} disabled={savingTask} className="pm-primary-btn">
             {savingTask ? <LoadingSpinner variant="button" size="sm" /> : (editingTaskId ? 'Save Changes' : 'Create Task')}
           </Button>
@@ -2980,8 +2995,8 @@ function ProjectManagement() {
           </Form.Group>
         </Modal.Body>
         <Modal.Footer className="border-0 pt-0">
-          <Button variant="light" onClick={() => setShowCompletionModal(false)} disabled={savingCompletion}>Cancel</Button>
-          <Button variant="success" onClick={submitTaskCompletion} disabled={savingCompletion} className="rounded-pill px-4">
+          <Button variant="secondary" onClick={() => setShowCompletionModal(false)} disabled={savingCompletion}>Cancel</Button>
+          <Button variant="primary" onClick={submitTaskCompletion} disabled={savingCompletion} className="rounded-pill px-4">
             {savingCompletion ? <LoadingSpinner variant="button" size="sm" /> : 'Mark Completed'}
           </Button>
         </Modal.Footer>
@@ -3055,7 +3070,7 @@ function ProjectManagement() {
           </Form>
         </Modal.Body>
         <Modal.Footer className="border-0 pt-0">
-          <Button variant="light" onClick={() => setShowMemberModal(false)} disabled={savingMember}>Cancel</Button>
+          <Button variant="secondary" onClick={() => setShowMemberModal(false)} disabled={savingMember}>Cancel</Button>
           <Button variant="primary" onClick={addMember} disabled={savingMember || companyUsersLoading || !memberForm.newMemberId} className="pm-primary-btn">
             {savingMember ? <LoadingSpinner variant="button" size="sm" /> : 'Add Member'}
           </Button>
@@ -3103,7 +3118,7 @@ function ProjectManagement() {
                   </div></>} />
               ) : (
                 <>
-                  <FeedbackAlert variant="success" className="d-flex align-items-center gap-2 mb-3" message={<><FaCheckCircle /><span className="small">All deliverables and tasks are completed! You can now formally complete this project.</span></>} />
+                  <FeedbackAlert variant="primary" className="d-flex align-items-center gap-2 mb-3" message={<><FaCheckCircle /><span className="small">All deliverables and tasks are completed! You can now formally complete this project.</span></>} />
 
                   <Form.Group className="mb-2">
                     <Form.Label className="small fw-bold">Completion Notes / Sign-off Summary</Form.Label>
@@ -3123,7 +3138,7 @@ function ProjectManagement() {
           ) : null}
         </Modal.Body>
         <Modal.Footer className="border-0 pt-0">
-          <Button variant="light" onClick={() => setShowProjectCompletionModal(false)} disabled={completingProject}>
+          <Button variant="secondary" onClick={() => setShowProjectCompletionModal(false)} disabled={completingProject}>
             {completionStatus?.canClose ? 'Cancel' : 'Close'}
           </Button>
           {completionStatus && !completionStatus.canClose && (
@@ -3141,7 +3156,7 @@ function ProjectManagement() {
           )}
           {completionStatus && completionStatus.canClose && (
             <Button
-              variant="success"
+              variant="primary"
               onClick={handleConfirmCompleteProject}
               disabled={completingProject}
               className="d-flex align-items-center gap-2"
@@ -3234,7 +3249,7 @@ function ProjectManagement() {
             </Form.Group>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="outline-secondary" onClick={() => setShowTimeLogModal(false)}>
+            <Button variant="outline" onClick={() => setShowTimeLogModal(false)}>
               Cancel
             </Button>
             <Button variant="primary" type="submit" disabled={submittingTimeLog}>
@@ -3274,11 +3289,11 @@ function ProjectManagement() {
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="outline-secondary" onClick={() => setShowImportModal(false)}>
+          <Button variant="outline" onClick={() => setShowImportModal(false)}>
             Cancel
           </Button>
           <Button
-            variant="success"
+            variant="primary"
             className="d-flex align-items-center gap-2"
             onClick={handleImportData}
             disabled={importingData || !importDataText.trim()}
@@ -3349,7 +3364,7 @@ function ProjectManagement() {
                 >
                   <div className="min-w-0 flex-grow-1">
                     <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                      <h6 className="fw-bold mb-0" style={{ color: 'var(--color-text, #1C1D1D)' }}>
+                      <h6 className="fw-bold mb-0" style={{ color: 'var(--color-text, var(--ink-primary, #0F172A))' }}>
                         {proj.projectName}
                       </h6>
                       {getStatusBadge(proj.status)}
@@ -3379,11 +3394,11 @@ function ProjectManagement() {
                   </div>
                   <Button
                     size="sm"
-                    variant="outline-primary"
+                    variant="outline"
                     className="rounded-pill px-3 py-1 fw-bold flex-shrink-0"
                     style={{
-                      borderColor: 'var(--color-primary, #C79D58)',
-                      color: 'var(--color-primary-dark, #A98245)',
+                      borderColor: 'var(--color-primary)',
+                      color: 'var(--color-primary-dark)',
                     }}
                   >
                     Open Workspace →
@@ -3399,7 +3414,7 @@ function ProjectManagement() {
                   <p className="small text-muted mb-3">Try adjusting your search terms or clear the filter to see all records.</p>
                   <Button
                     size="sm"
-                    variant="outline-secondary"
+                    variant="outline"
                     className="rounded-3"
                     onClick={() => setCategoryModalSearch('')}
                   >
@@ -3413,7 +3428,7 @@ function ProjectManagement() {
                   <div className="d-flex justify-content-center gap-2">
                     <Button
                       size="sm"
-                      variant="outline-secondary"
+                      variant="outline"
                       className="rounded-3"
                       onClick={() => setShowCategoryModal({ show: true, title: 'Running / In Progress Projects', filter: 'running' })}
                     >
@@ -3466,7 +3481,7 @@ function ProjectManagement() {
         onConfirm={confirmModalState.onConfirm}
         onCancel={() => setConfirmModalState((prev) => ({ ...prev, show: false, loading: false }))}
       />
-    </Container>
+    </PageShell>
   );
 }
 

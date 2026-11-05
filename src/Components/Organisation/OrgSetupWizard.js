@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Row, Col, Form, Button, InputGroup, Card, Spinner } from "react-bootstrap";
+import Button from "../Common/Button";
+import { Row, Col, Form, InputGroup, Card, Spinner } from "react-bootstrap";
 import {
   FaBuilding,
   FaShieldAlt,
@@ -1048,13 +1049,13 @@ export default function OrgSetupWizard({ onOrgCreated, isStandalone = false }) {
                       onChange={(e) => updateField("organizationType", e.target.value)}
                       isInvalid={!!validationErrors.organizationType}
                       className="onboarding-dash-select ps-2"
-                      style={!formData.organizationType ? { color: "#6c757d" } : { color: "#1C1D1D" }}
+                      style={!formData.organizationType ? { color: "#6c757d" } : { color: "var(--ink-primary, #0F172A)" }}
                     >
                       <option value="" disabled style={{ color: "#6c757d" }}>
                         Select Organization Type
                       </option>
                       {ORG_TYPES.map((type) => (
-                        <option key={type.value} value={type.value} style={{ color: "#1C1D1D" }}>
+                        <option key={type.value} value={type.value} style={{ color: "var(--ink-primary, #0F172A)" }}>
                           {type.label}
                         </option>
                       ))}

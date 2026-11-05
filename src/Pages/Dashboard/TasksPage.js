@@ -28,6 +28,8 @@ import { getAllProjectsApi, getCompanyUsersApi } from '../../Api/Project/project
 import FeedbackAlert from '../../Components/Common/FeedbackAlert';
 import LoadingSpinner from '../../Components/Common/LoadingSpinner';
 import ConfirmModal from '../../Components/Common/ConfirmModal';
+import PageShell from '../../Components/Common/PageShell';
+import PageHeader from '../../Components/Common/PageHeader';
 import './tasks.css';
 
 // Avatar color map based on initial characters
@@ -472,7 +474,7 @@ function NewTaskModal({ show, onHide, projects, users, onCreate }) {
         </Modal.Body>
 
         <Modal.Footer className="p-3 border-top">
-          <Button variant="outline-secondary" onClick={onHide} className="rounded-pill px-3 py-1 fw-semibold">
+          <Button variant="outline" onClick={onHide} className="rounded-pill px-3 py-1 fw-semibold">
             Cancel
           </Button>
           <Button type="submit" className="tasks-new-btn py-1 px-4" style={{ height: '38px' }}>
@@ -777,7 +779,7 @@ export default function TasksPage() {
   };
 
   return (
-    <div className="tasks-page">
+    <PageShell className="tasks-page-shell">
       {/* ── FEEDBACK ALERT (HRMS Component) ── */}
       {alert && (
         <FeedbackAlert
@@ -790,23 +792,13 @@ export default function TasksPage() {
       )}
 
       {/* ── HEADER ROW ── */}
-      <div className="tasks-header-row">
-        <div className="tasks-title-wrap">
-          <h1 className="tasks-title">Tasks</h1>
-          <p className="tasks-subtitle">
-            Drag a card to another stage, or use its menu to move it.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          className="tasks-new-btn"
-          onClick={() => setShowNewModal(true)}
-        >
-          <FiPlus size={18} />
-          <span>New Task</span>
-        </button>
-      </div>
+      <PageHeader
+        title="Tasks"
+        subtitle="Drag a card to another stage, or use its menu to move it."
+        actions={
+          <Button variant="primary" icon={FiPlus} onClick={() => setShowNewModal(true)}>New Task</Button>
+        }
+      />
 
       {/* ── FILTER ROW ── */}
       <FilterBar
@@ -931,6 +923,6 @@ export default function TasksPage() {
         confirmLabel="Delete Task"
         confirmVariant="danger"
       />
-    </div>
+    </PageShell>
   );
 }

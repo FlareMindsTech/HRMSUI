@@ -1,5 +1,6 @@
 import React from "react";
-import { Card, Row, Col, Button, Form, Badge } from "react-bootstrap";
+import Button from "../Common/Button";
+import { Card, Row, Col, Form, Badge } from "react-bootstrap";
 import {
   FaFolderOpen,
   FaPlus,

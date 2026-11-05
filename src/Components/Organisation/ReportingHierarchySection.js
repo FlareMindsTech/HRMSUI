@@ -1,3 +1,4 @@
+import Button from "../Common/Button";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Card,
@@ -615,13 +616,7 @@ function ReportingHierarchySection({ lockedBranchId }) {
           </div>
 
           {canManage && (
-            <button
-              type="button"
-              className="branches-btn-add btn-sm"
-              onClick={() => handleOpenAssign(null)}
-            >
-              <FaPlus size={11} className="me-1" /> Assign Manager
-            </button>
+            <Button variant="primary" size="sm" icon={FaPlus} onClick={() => handleOpenAssign(null)}>Assign Manager</Button>
           )}
         </div>
       </div>
@@ -674,7 +669,7 @@ function ReportingHierarchySection({ lockedBranchId }) {
 
       {loading ? (
         <div className="org-loader-container py-5 text-center">
-          <Spinner animation="border" style={{ color: "#C49A55" }} />
+          <Spinner animation="border" style={{ color: "var(--color-brand)" }} />
           <p className="mt-3 text-muted fw-semibold">Rendering organizational reporting tree...</p>
         </div>
       ) : viewMode === "tree" ? (
@@ -827,7 +822,7 @@ function ReportingHierarchySection({ lockedBranchId }) {
                         height: 34,
                         fontSize: 12,
                         borderRadius: 10,
-                        background: "linear-gradient(135deg, #C49A55 0%, #926D2E 100%)",
+                        background: "var(--color-brand)",
                         color: "#FFFFFF",
                       }}
                     >
@@ -969,7 +964,7 @@ function ReportingHierarchySection({ lockedBranchId }) {
                   style={{
                     background: "#FDF8EE",
                     color: "#926D2E",
-                    border: "1px solid rgba(196, 154, 85, 0.35)",
+                    border: "1px solid var(--ink-border, #E2E8F0)",
                     fontSize: "11px",
                     fontWeight: 700,
                   }}
@@ -1007,7 +1002,7 @@ function ReportingHierarchySection({ lockedBranchId }) {
                       width: 34,
                       height: 34,
                       fontSize: 12,
-                      background: "linear-gradient(135deg, #C49A55 0%, #926D2E 100%)",
+                      background: "var(--color-brand)",
                       color: "#FFFFFF",
                     }}
                   >

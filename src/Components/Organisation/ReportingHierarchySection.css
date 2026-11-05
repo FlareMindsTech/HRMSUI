@@ -1,6 +1,6 @@
 /* ==========================================================================
    TeamHub Luxury Reporting Hierarchy & Line Management Styles
-   Theme Tokens: #C49A55 (Gold), #1C1D1D (Charcoal), #FFFFFF, #F8FAFC
+   Theme Tokens: var(--color-brand) (Gold), var(--theme-nav-bg, #1E293B) (Charcoal), #FFFFFF, #F8FAFC
    ========================================================================== */
 
 /* ── KPI Summary Grid ── */
@@ -37,14 +37,14 @@
 
 .rep-kpi-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(196, 154, 85, 0.5);
-  box-shadow: 0 6px 18px rgba(196, 154, 85, 0.12);
+  border-color: var(--color-brand);
+  box-shadow: 0 6px 18px var(--brand-tint, rgba(167, 243, 208, 0.15));
 }
 
 .rep-kpi-value {
   font-size: 24px;
   font-weight: 800;
-  color: #1c1d1d;
+  color: var(--theme-nav-bg, #1E293B);
   line-height: 1.2;
 }
 
@@ -70,13 +70,13 @@
 
 .rep-kpi-icon-gold {
   background: #fdf8ee;
-  color: #c49a55;
-  border: 1px solid rgba(196, 154, 85, 0.25);
+  color: var(--color-brand);
+  border: 1px solid var(--ink-border, #E2E8F0);
 }
 
 .rep-kpi-icon-charcoal {
   background: #f1f5f9;
-  color: #1c1d1d;
+  color: var(--theme-nav-bg, #1E293B);
   border: 1px solid #e2e8f0;
 }
 
@@ -122,15 +122,15 @@
   border: 1px solid #e2e8f0;
   background: #f8fafc;
   font-size: 13px;
-  color: #1c1d1d;
+  color: var(--theme-nav-bg, #1E293B);
   transition: all 0.2s ease;
 }
 
 .rep-search-input:focus {
   background: #ffffff;
-  border-color: #c49a55;
+  border-color: var(--color-brand);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(196, 154, 85, 0.15);
+  box-shadow: 0 0 0 3px var(--focus-ring, rgba(167, 243, 208, 0.3));
 }
 
 .rep-search-icon {
@@ -161,7 +161,7 @@
 }
 
 .rep-search-clear:hover {
-  color: #1c1d1d;
+  color: var(--theme-nav-bg, #1E293B);
   background: #e2e8f0;
 }
 
@@ -241,8 +241,8 @@
 
 .rep-level-badge.exec {
   background: #fdf8ee;
-  color: #926d2e;
-  border: 1px solid rgba(196, 154, 85, 0.35);
+  color: var(--color-brand);
+  border: 1px solid var(--ink-border, #E2E8F0);
 }
 
 /* Recursive Branch Tree with Left Guide Rails */
@@ -281,7 +281,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #c49a55;
+  background: var(--color-brand);
 }
 
 /* ── Node Cards (Production Luxury Theme) ── */
@@ -300,32 +300,32 @@
 /* Executive Root Card (Level 0) — High Contrast Luxury Gold/White */
 .rep-node-card.executive {
   background: linear-gradient(135deg, #ffffff 0%, #fdfbf7 100%);
-  border: 1px solid rgba(196, 154, 85, 0.4);
-  border-top: 4px solid #c49a55;
-  box-shadow: 0 4px 16px rgba(196, 154, 85, 0.12);
+  border: 1px solid var(--color-brand);
+  border-top: 4px solid var(--color-brand);
+  box-shadow: 0 4px 16px var(--brand-tint, rgba(167, 243, 208, 0.15));
   max-width: 100%;
 }
 
 .rep-node-card.executive:hover {
   transform: translateY(-2px);
-  border-color: rgba(196, 154, 85, 0.65);
-  border-top-color: #c49a55;
-  box-shadow: 0 8px 24px rgba(196, 154, 85, 0.2);
+  border-color: var(--color-brand);
+  border-top-color: var(--color-brand);
+  box-shadow: 0 8px 24px var(--ink-border, #E2E8F0);
 }
 
 /* Manager Card — Crisp White with Gold Accent */
 .rep-node-card.manager {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-left: 4px solid #c49a55;
+  border-left: 4px solid var(--color-brand);
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
 }
 
 .rep-node-card.manager:hover {
   transform: translateY(-2px);
   border-color: #cbd5e1;
-  border-left-color: #c49a55;
-  box-shadow: 0 6px 18px rgba(196, 154, 85, 0.15);
+  border-left-color: var(--color-brand);
+  box-shadow: 0 6px 18px var(--brand-tint, rgba(167, 243, 208, 0.15));
 }
 
 /* Direct Report Card — Clean White with Slate Accent */
@@ -339,21 +339,21 @@
 .rep-node-card.contributor:hover {
   transform: translateY(-2px);
   border-color: #cbd5e1;
-  border-left-color: #c49a55;
+  border-left-color: var(--color-brand);
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.07);
 }
 
 /* Highlighted by Search Filter */
 .rep-node-card.highlighted {
-  border-color: #c49a55 !important;
-  box-shadow: 0 0 0 4px rgba(196, 154, 85, 0.35), 0 8px 24px rgba(196, 154, 85, 0.2) !important;
+  border-color: var(--color-brand) !important;
+  box-shadow: 0 0 0 4px var(--ink-border, #E2E8F0), 0 8px 24px var(--ink-border, #E2E8F0) !important;
   animation: repPulseGlow 2s infinite;
 }
 
 @keyframes repPulseGlow {
-  0% { box-shadow: 0 0 0 3px rgba(196, 154, 85, 0.25); }
-  50% { box-shadow: 0 0 0 5px rgba(196, 154, 85, 0.45); }
-  100% { box-shadow: 0 0 0 3px rgba(196, 154, 85, 0.25); }
+  0% { box-shadow: 0 0 0 3px var(--focus-ring, rgba(167, 243, 208, 0.3)); }
+  50% { box-shadow: 0 0 0 5px var(--color-brand); }
+  100% { box-shadow: 0 0 0 3px var(--focus-ring, rgba(167, 243, 208, 0.3)); }
 }
 
 .rep-node-card.dimmed {
@@ -376,14 +376,14 @@
 
 .rep-tag-crown {
   background: #fdf8ee;
-  color: #926d2e;
-  border: 1px solid rgba(196, 154, 85, 0.35);
+  color: var(--color-brand);
+  border: 1px solid var(--ink-border, #E2E8F0);
 }
 
 .rep-tag-manager {
   background: #fdf8ee;
-  color: #926d2e;
-  border: 1px solid rgba(196, 154, 85, 0.25);
+  color: var(--color-brand);
+  border: 1px solid var(--ink-border, #E2E8F0);
 }
 
 .rep-tag-direct {
@@ -418,15 +418,15 @@
 }
 
 .rep-avatar-dark {
-  background: linear-gradient(135deg, #1c1d1d 0%, #2a2b2d 100%);
+  background: linear-gradient(135deg, var(--theme-nav-bg, #1E293B) 0%, #2a2b2d 100%);
   color: #e2c278;
-  border: 1.5px solid rgba(196, 154, 85, 0.5);
+  border: 1.5px solid var(--color-brand);
 }
 
 .rep-avatar-light {
-  background: linear-gradient(135deg, #c49a55 0%, #b38845 100%);
+  background: var(--color-brand);
   color: #ffffff;
-  border: 1.5px solid rgba(196, 154, 85, 0.3);
+  border: 1.5px solid var(--ink-border, #E2E8F0);
 }
 
 .rep-avatar-status-dot {
@@ -449,7 +449,7 @@
   font-size: 14.5px;
   font-weight: 800;
   line-height: 1.25;
-  color: #1c1d1d !important;
+  color: var(--theme-nav-bg, #1E293B) !important;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -503,12 +503,12 @@
 /* Direct Reports Expand Button in Card */
 .rep-reports-toggle-btn {
   background: #fdf8ee;
-  border: 1px solid rgba(196, 154, 85, 0.35);
+  border: 1px solid var(--ink-border, #E2E8F0);
   border-radius: 9999px;
   padding: 3px 10px;
   font-size: 11px;
   font-weight: 700;
-  color: #926d2e;
+  color: var(--color-brand);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -517,15 +517,15 @@
 }
 
 .rep-reports-toggle-btn:hover {
-  background: #c49a55;
+  background: var(--color-brand);
   color: #ffffff;
-  border-color: #c49a55;
+  border-color: var(--color-brand);
 }
 
 .rep-reports-toggle-btn.expanded {
-  background: #1c1d1d;
+  background: var(--theme-nav-bg, #1E293B);
   color: #ffffff;
-  border-color: #1c1d1d;
+  border-color: var(--theme-nav-bg, #1E293B);
 }
 
 /* Quick Action Hover Bar on Node Card */
@@ -539,9 +539,9 @@
   height: 26px;
   padding: 0 9px;
   border-radius: 7px;
-  border: 1px solid rgba(196, 154, 85, 0.35);
+  border: 1px solid var(--ink-border, #E2E8F0);
   background: #fdf8ee;
-  color: #926d2e;
+  color: var(--color-brand);
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -552,9 +552,9 @@
 }
 
 .rep-card-action-btn:hover {
-  background: #c49a55;
+  background: var(--color-brand);
   color: #ffffff;
-  border-color: #c49a55;
+  border-color: var(--color-brand);
 }
 
 /* ==========================================================================
@@ -562,8 +562,8 @@
    ========================================================================== */
 .rep-luxury-modal .modal-content {
   border-radius: 18px !important;
-  border: 1px solid rgba(196, 154, 85, 0.3) !important;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(196, 154, 85, 0.15) !important;
+  border: 1px solid var(--ink-border, #E2E8F0) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px var(--brand-tint, rgba(167, 243, 208, 0.15)) !important;
   overflow: hidden;
 }
 
@@ -576,7 +576,7 @@
 .rep-luxury-modal .modal-title {
   font-size: 16.5px;
   font-weight: 800;
-  color: #1c1d1d;
+  color: var(--theme-nav-bg, #1E293B);
 }
 
 .rep-luxury-modal .modal-subtitle {
@@ -603,8 +603,8 @@
 /* Relationship Mapping Preview Box */
 .rep-modal-preview-box {
   background: #fdfbf7;
-  border: 1px solid rgba(196, 154, 85, 0.35);
-  border-left: 4px solid #c49a55;
+  border: 1px solid var(--ink-border, #E2E8F0);
+  border-left: 4px solid var(--color-brand);
   border-radius: 12px;
   padding: 14px 16px;
   margin-bottom: 20px;
@@ -635,7 +635,7 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  color: #c49a55;
+  color: var(--color-brand);
   font-weight: 700;
   font-size: 10px;
   text-transform: uppercase;
@@ -666,15 +666,15 @@
   border: 1px solid #cbd5e1;
   background: #ffffff;
   font-size: 13.5px;
-  color: #1c1d1d;
+  color: var(--theme-nav-bg, #1E293B);
   transition: all 0.2s ease;
 }
 
 .rep-modal-select:focus,
 .rep-modal-input:focus {
-  border-color: #c49a55;
+  border-color: var(--color-brand);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(196, 154, 85, 0.15);
+  box-shadow: 0 0 0 3px var(--focus-ring, rgba(167, 243, 208, 0.3));
 }
 
 .rep-modal-checkbox-card {
@@ -691,11 +691,11 @@
 
 .rep-modal-checkbox-card:hover {
   background: #fdfbf7;
-  border-color: rgba(196, 154, 85, 0.4);
+  border-color: var(--color-brand);
 }
 
 .rep-modal-checkbox-input {
-  accent-color: #c49a55;
+  accent-color: var(--color-brand);
   width: 17px;
   height: 17px;
   margin-top: 2px;
@@ -727,22 +727,22 @@
   padding: 0 24px;
   border-radius: 10px;
   border: none;
-  background: linear-gradient(135deg, #c49a55 0%, #b38845 100%);
-  color: #1c1d1d;
+  background: var(--color-brand);
+  color: var(--theme-nav-bg, #1E293B);
   font-size: 13.5px;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(196, 154, 85, 0.28);
+  box-shadow: 0 4px 14px var(--ink-border, #E2E8F0);
   transition: all 0.2s ease;
 }
 
 .rep-modal-btn-save:hover {
-  background: linear-gradient(135deg, #b38845 0%, #9b7229 100%);
+  background: linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand) 100%);
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(196, 154, 85, 0.38);
+  box-shadow: 0 6px 18px var(--ink-border, #E2E8F0);
 }
 
 .rep-modal-btn-save:active {

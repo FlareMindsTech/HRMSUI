@@ -1,5 +1,6 @@
 import React from "react";
-import { Row, Col, Form, Button, Badge } from "react-bootstrap";
+import Button from "../Common/Button";
+import { Row, Col, Form, Badge } from "react-bootstrap";
 import {
   FaGraduationCap,
   FaSyncAlt,
@@ -27,10 +28,10 @@ function EducationHeader({
             <div
               className="rounded-3 p-3 d-flex align-items-center justify-content-center text-white flex-shrink-0 shadow-sm"
               style={{
-                background: "linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 50%, var(--color-primary-dark, #B8860B) 100%)",
+                background: "var(--color-brand)",
                 width: 52,
                 height: 52,
-                boxShadow: "0 4px 12px rgba(196, 154, 85, 0.25)",
+                boxShadow: "var(--shadow-md)",
               }}
             >
               <FaGraduationCap size={26} />
@@ -78,7 +79,7 @@ function EducationHeader({
                 className={`rounded-pill py-1 px-3 extra-small fw-semibold border-0 ${
                   viewMode === "form" ? "text-white shadow-xs" : "text-muted"
                 }`}
-                style={viewMode === "form" ? { background: "var(--color-brand, #C7882C)", color: "#FFFFFF" } : {}}
+                style={viewMode === "form" ? { background: "var(--color-brand)", color: "#FFFFFF" } : {}}
                 onClick={() => onToggleViewMode("form")}
               >
                 <FaEdit className="me-1" /> Edit Form
@@ -89,7 +90,7 @@ function EducationHeader({
                 className={`rounded-pill py-1 px-3 extra-small fw-semibold border-0 ${
                   viewMode === "profile" ? "text-white shadow-xs" : "text-muted"
                 }`}
-                style={viewMode === "profile" ? { background: "var(--color-brand, #C7882C)", color: "#FFFFFF" } : {}}
+                style={viewMode === "profile" ? { background: "var(--color-brand)", color: "#FFFFFF" } : {}}
                 onClick={() => onToggleViewMode("profile")}
               >
                 <FaEye className="me-1" /> View Profile

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
+import Button from "../Common/Button";
 import {
   Card,
-  Button,
   Badge,
   Form,
   Row,
@@ -527,7 +527,7 @@ function TeamsSection({ lockedBranchId }) {
             {lockedBranchId && (
               <div className="team-modal-notice">
                 <div className="d-flex align-items-center gap-2">
-                  <FaCodeBranch style={{ color: "#c49a55" }} />
+                  <FaCodeBranch style={{ color: "var(--color-brand)" }} />
                   <div>
                     <strong className="text-dark small">Branch-Scoped Team:</strong>{" "}
                     <span className="small text-muted">
@@ -538,7 +538,7 @@ function TeamsSection({ lockedBranchId }) {
                     </span>
                   </div>
                 </div>
-                <span className="badge" style={{ background: "#c49a55", color: "#1c1d1d", fontWeight: 700 }}>
+                <span className="badge" style={{ background: "var(--brand-tint, rgba(167, 243, 208, 0.2))", color: "var(--color-brand)", fontWeight: 700 }}>
                   LOCKED
                 </span>
               </div>

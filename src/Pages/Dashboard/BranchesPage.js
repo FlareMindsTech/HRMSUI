@@ -1,4 +1,5 @@
 import React, { useCallback } from "react";
+import PageShell from "../../Components/Common/PageShell";
 import { useNavigate } from "react-router-dom";
 import BranchesSection from "../../Components/Organisation/BranchesSection";
 import { ORG_BASE_PATH, orgTabPath } from "../../Components/Organisation/navigation/orgNavConfig";
@@ -16,8 +17,8 @@ export default function BranchesPage() {
   const goOrgTab = useCallback((tab) => navigate(orgTabPath(tab)), [navigate]);
 
   return (
-    <div className="branches-page-wrapper">
+    <PageShell className="branches-page-wrapper">
       <BranchesSection isStandaloneView={true} onBackToOrg={goOrg} onNavigateTab={goOrgTab} />
-    </div>
+    </PageShell>
   );
 }

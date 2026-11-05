@@ -4,7 +4,7 @@ import React from "react";
  * PageShell — Root layout container for every page view.
  *
  * Rules:
- * - Max-width 1440px, centered.
+ * - Max-width 1536px, centered.
  * - No extra padding (Layout shell already provides padding).
  * - Replaces custom page wrappers (*-page, *-container, min-vh-100, bg-light).
  */
@@ -12,7 +12,7 @@ function PageShell({
   children,
   className = "",
   style,
-  maxWidth = 1440,
+  maxWidth = 1536,
 }) {
   const customStyle = {
     maxWidth: typeof maxWidth === "number" ? `${maxWidth}px` : maxWidth,

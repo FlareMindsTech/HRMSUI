@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Row, Col, Card, Nav, Tab, Button, Modal, Form } from 'react-bootstrap';
+import Button from "../../Components/Common/Button";
+import { Container, Row, Col, Card, Nav, Tab, Modal, Form } from "react-bootstrap";
 import {
   MdExitToApp,
   MdCheckCircle,

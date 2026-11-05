@@ -1,4 +1,6 @@
 import React from 'react';
+import PageShell from '../../Components/Common/PageShell';
+import PageHeader from '../../Components/Common/PageHeader';
 import { useNavigate } from 'react-router-dom';
 import {
   MdReceipt,
@@ -63,34 +65,37 @@ function Payslip() {
   ];
 
   return (
-    <div className="placeholder-page">
-      {/* ── Page Header ── */}
-      <div className="placeholder-header">
-        <div>
-          <div className="placeholder-breadcrumb">
-            <span className="clickable" onClick={() => navigate('/dashboard')} role="link" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate('/dashboard'); } }}>
-              Dashboard
-            </span>
-            <MdChevronRight />
-            <span>Payslip</span>
-          </div>
-          <h1 className="placeholder-title">
-            <MdReceipt style={{ color: '#059669' }} />
-            Payslip Management
-          </h1>
-          <p className="placeholder-desc">
-            Employee salary and payslip information workspace.
-          </p>
-        </div>
+    <PageShell className="placeholder-page-shell">
+      {/* ── Breadcrumb & Page Header ── */}
+      <div className="placeholder-breadcrumb">
+        <span
+          className="clickable"
+          onClick={() => navigate('/dashboard')}
+          role="link"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              navigate('/dashboard');
+            }
+          }}
+        >
+          Dashboard
+        </span>
+        <MdChevronRight />
+        <span>Payslip</span>
+      </div>
 
-        {/* Status Badge */}
-        <div>
+      <PageHeader
+        title="Payslip Management"
+        subtitle="Employee salary and payslip information workspace."
+        actions={
           <div className="placeholder-status-badge">
             <span className="placeholder-status-dot"></span>
             Payroll Integration Pending
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* ── Main Workspace Card ── */}
       <div className="placeholder-workspace-card">
@@ -120,13 +125,13 @@ function Payslip() {
         {/* Planned Capabilities Section */}
         <div className="placeholder-scope-section">
           <div className="placeholder-section-heading">
-            <MdPayments style={{ color: '#059669' }} />
+            <MdPayments />
             Planned Payroll Features
           </div>
           <div className="placeholder-scope-grid">
             {plannedScopes.map((scope, idx) => (
               <div key={idx} className="placeholder-scope-item">
-                <div className="placeholder-scope-item-icon" style={{ background: 'rgba(16, 185, 129, 0.12)', color: '#059669' }}>
+                <div className="placeholder-scope-item-icon">
                   {scope.icon}
                 </div>
                 <div className="placeholder-scope-item-title">{scope.title}</div>
@@ -157,7 +162,7 @@ function Payslip() {
               type="button"
             >
               <div className="placeholder-shortcut-left">
-                <div className="placeholder-shortcut-icon" style={{ background: 'rgba(16, 185, 129, 0.12)', color: '#059669' }}>
+                <div className="placeholder-shortcut-icon">
                   {sc.icon}
                 </div>
                 <div>
@@ -170,7 +175,7 @@ function Payslip() {
           ))}
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }
 

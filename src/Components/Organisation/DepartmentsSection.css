@@ -74,8 +74,8 @@
 
 .org-icon-btn.edit:hover {
   color: #FFFFFF !important;
-  background: var(--color-brand, #C7882C) !important;
-  border-color: var(--color-brand, #C7882C) !important;
+  background: var(--color-brand) !important;
+  border-color: var(--color-brand) !important;
   box-shadow: 0 2px 8px rgba(199, 136, 44, 0.3) !important;
   transform: translateY(-1px);
 }

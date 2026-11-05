@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Navigate } from "react-router-dom";
+import Button from "../../Components/Common/Button";
+import PageShell from "../../Components/Common/PageShell";
+import PageHeader from "../../Components/Common/PageHeader";
 import {
-  Container,
   Row,
   Col,
-  Button,
   Modal,
   Form,
-  InputGroup,
 } from "react-bootstrap";
 import {
   FaPlus,
-  FaSearch,
   FaRedo,
   FaLaptop,
   FaDesktop,
@@ -412,10 +411,10 @@ function AssetManagement() {
   // ── Access Checks & Guard ──
   if (authLoading) {
     return (
-      <Container className="py-5 text-center">
+      <div className="py-5 text-center">
         <LoadingSpinner color="success" />
         <p className="mt-2 text-muted">Loading access context...</p>
-      </Container>
+      </div>
     );
   }
 
@@ -425,61 +424,43 @@ function AssetManagement() {
   }
 
   return (
-    <Container fluid className="p-3 p-md-4 no-scrollbar" style={{ minHeight: "calc(100vh - var(--header-height))" }}>
+    <PageShell className="asset-page-shell">
       {/* ── 1. Page Header ── */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
-        <div className="d-flex align-items-center gap-3">
-          <div
-            className="d-flex align-items-center justify-content-center rounded-3 shadow-xs"
-            style={{
-              width: 44,
-              height: 44,
-              background: "linear-gradient(135deg, rgba(45,197,138,0.18) 0%, rgba(32,166,115,0.25) 100%)",
-              color: "#2DC58A",
-              border: "1px solid rgba(45, 197, 138, 0.35)",
-            }}
-          >
-            <MdDevices style={{ fontSize: 24 }} />
-          </div>
-          <div>
-            <h4 className="mb-0 fw-bold" style={{ color: "var(--text-primary, #1a2e2a)", letterSpacing: "-0.3px" }}>
-              Asset Management
-            </h4>
-            <small className="text-muted">
-              Manage company asset inventory, hardware allocations, and lifecycle returns
-            </small>
-          </div>
-        </div>
-
-        <div className="d-flex align-items-center gap-2">
-          <Button
-            variant="light"
-            className="border d-flex align-items-center gap-2 shadow-xs rounded-pill px-3 py-2 small fw-semibold bg-white"
-            onClick={() => loadAssets(currentPage)}
-            disabled={loading}
-            title="Refresh Inventory"
-          >
-            <FaRedo className={loading ? "fa-spin" : ""} style={{ fontSize: 12 }} />
-            <span className="d-none d-sm-inline">Refresh</span>
-          </Button>
-
-          {/* Add Asset Action: Permission Guarded */}
-          {hasPermission("asset.create") && (
+      <PageHeader
+        title="Asset Management"
+        subtitle="Manage company asset inventory, hardware allocations, and lifecycle returns"
+        actions={
+          <div className="d-flex align-items-center gap-2">
             <Button
-              className="btn-add-asset d-flex align-items-center gap-2 rounded-pill px-4 py-2 small fw-semibold"
-              onClick={handleOpenCreateModal}
+              variant="outline"
+              size="sm"
+              className="d-flex align-items-center gap-2 rounded-pill px-3 py-2 fw-semibold"
+              onClick={() => loadAssets(currentPage)}
+              disabled={loading}
+              title="Refresh Inventory"
             >
-              <FaPlus style={{ fontSize: 12 }} />
-              <span>Add Asset</span>
+              <FaRedo className={loading ? "fa-spin" : ""} style={{ fontSize: 12 }} />
+              <span className="d-none d-sm-inline">Refresh</span>
             </Button>
-          )}
-        </div>
-      </div>
+            {hasPermission("asset.create") && (
+              <Button
+                variant="primary"
+                size="sm"
+                className="d-flex align-items-center gap-2 rounded-pill px-4 py-2 fw-semibold"
+                onClick={handleOpenCreateModal}
+              >
+                <FaPlus style={{ fontSize: 12 }} />
+                <span>Add Asset</span>
+              </Button>
+            )}
+          </div>
+        }
+      />
 
       {/* ── Alerts & Feedback ── */}
       {successMessage && (
         <FeedbackAlert
-          variant="success"
+          variant="primary"
           dismissible
           onClose={() => setSuccessMessage(null)}
           className="mb-3"
@@ -614,7 +595,7 @@ function AssetManagement() {
           <Col xs={12} md={1} className="text-md-end">
             {(searchQuery || statusFilter || categoryFilter) && (
               <Button
-                variant="outline-secondary"
+                variant="outline"
                 size="sm"
                 className="w-100 rounded-3 py-1 extra-small"
                 onClick={() => {
@@ -668,9 +649,7 @@ function AssetManagement() {
                 <h6 className="fw-bold text-dark mb-1">No Assets in Inventory</h6>
                 <p className="small mb-3">Get started by registering company hardware and equipment.</p>
                 {hasPermission("asset.create") && (
-                  <Button
-                    size="sm"
-                    className="btn-add-asset fw-semibold px-3 py-2 rounded-pill shadow-xs"
+                  <Button size="sm" variant="primary" className="btn-add-asset fw-semibold px-3 py-2 rounded-pill shadow-xs"
                     onClick={handleOpenCreateModal}
                   >
                     <FaPlus className="me-1" /> Add First Asset
@@ -788,7 +767,7 @@ function AssetManagement() {
                         {/* Assign Action */}
                         {hasPermission("asset.assign") && asset.status === "AVAILABLE" && (
                           <Button
-                            variant="outline-primary"
+                            variant="outline"
                             size="sm"
                             className="btn-asset-action"
                             onClick={() => handleOpenAssignModal(asset)}
@@ -802,7 +781,7 @@ function AssetManagement() {
                         {/* Return Action */}
                         {hasPermission("asset.return") && asset.status === "ASSIGNED" && (
                           <Button
-                            variant="outline-success"
+                            variant="outline"
                             size="sm"
                             className="btn-asset-action"
                             onClick={() => handleOpenReturnModal(asset)}
@@ -981,17 +960,14 @@ function AssetManagement() {
 
           <Modal.Footer className="border-0 pt-0">
             <Button
-              variant="light"
+              variant="secondary"
               onClick={() => setShowCreateModal(false)}
               disabled={createSubmitting}
               className="rounded-pill px-3"
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={createSubmitting}
-              className="btn-add-asset rounded-pill px-4"
+            <Button type="submit" variant="primary" disabled={createSubmitting} className="btn-add-asset rounded-pill px-4"
             >
               {createSubmitting ? (
                 <>
@@ -1094,7 +1070,7 @@ function AssetManagement() {
 
           <Modal.Footer className="border-0 pt-0">
             <Button
-              variant="light"
+              variant="secondary"
               onClick={() => setShowAssignModal(false)}
               disabled={assignSubmitting}
               className="rounded-pill px-3"
@@ -1189,7 +1165,7 @@ function AssetManagement() {
 
           <Modal.Footer className="border-0 pt-0">
             <Button
-              variant="light"
+              variant="secondary"
               onClick={() => setShowReturnModal(false)}
               disabled={returnSubmitting}
               className="rounded-pill px-3"
@@ -1198,10 +1174,7 @@ function AssetManagement() {
             </Button>
             <Button
               type="submit"
-              variant="success"
-              disabled={returnSubmitting}
-              className="rounded-pill px-4 fw-semibold"
-              style={{ background: "linear-gradient(135deg, #2DC58A 0%, #20a673 100%)", border: "none" }}
+              variant="primary" disabled={returnSubmitting} className="rounded-pill px-4 fw-semibold"
             >
               {returnSubmitting ? (
                 <>
@@ -1215,7 +1188,7 @@ function AssetManagement() {
           </Modal.Footer>
         </Form>
       </Modal>
-    </Container>
+    </PageShell>
   );
 }
 

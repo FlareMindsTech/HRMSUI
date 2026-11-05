@@ -26,11 +26,11 @@
 
 /* State 1: Punch In Action */
 .btn-punch-in {
-  background: var(--color-brand, #C7882C);
-  background-color: var(--color-brand, #C7882C);
+  background: var(--color-brand);
+  background-color: var(--color-brand);
   background-image: none;
-  border: 1px solid var(--color-brand, #C7882C);
-  color: var(--brand-contrast-text, #1C1D1D);
+  border: 1px solid var(--color-brand);
+  color: var(--brand-contrast-text, #0F172A);
   font-weight: 700;
   padding: 0.75rem 2rem;
   border-radius: 99px;
@@ -120,8 +120,8 @@
 .att-card-header-icon {
   width: 42px;
   height: 42px;
-  background: var(--color-primary-light, #F5EFE3);
-  color: var(--color-primary-dark, #C49A55);
+  background: var(--brand-tint, rgba(167, 243, 208, 0.2));
+  color: var(--color-primary-dark, var(--color-primary));
   font-size: 1.2rem;
 }
 
@@ -146,8 +146,8 @@
 }
 
 .att-card-working-box {
-  background: var(--color-background, #FAF7F0);
-  border: 1px solid var(--color-border, #E8E2D5);
+  background: var(--ink-surface-subtle, var(--color-background, #F8FAFC));
+  border: 1px solid var(--ink-border, var(--color-border, #E2E8F0));
 }
 
 .att-card-sublabel {

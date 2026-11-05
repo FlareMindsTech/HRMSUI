@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Row, Col, Card, Nav, Tab, Button, Modal, Form } from 'react-bootstrap';
+import Button from "../../Components/Common/Button";
+import PageShell from "../../Components/Common/PageShell";
+import PageHeader from "../../Components/Common/PageHeader";
+import { Container, Row, Col, Card, Nav, Tab, Modal, Form } from "react-bootstrap";
 import {
   MdAccountTree,
   MdPendingActions,
@@ -266,7 +269,7 @@ function ApprovalWorkflows() {
       render: (row) => (
         <Button
           size="sm"
-          variant="outline-primary"
+          variant="outline"
           onClick={() => {
             setConfigForm({
               module: row.module,
@@ -363,17 +366,13 @@ function ApprovalWorkflows() {
   ];
 
   return (
-    <div className="approval-workflows-page">
-      <Container fluid>
-        <div className="approval-workflows-header">
-          <div>
-            <h1 className="approval-workflows-title">Approval Workflows & Authorities</h1>
-            <p className="approval-workflows-subtitle">
-              Configure multi-level approval hierarchies and process pending authority requests.
-            </p>
-          </div>
+    <PageShell className="approval-workflows-page-shell">
+        <PageHeader
+        title="Approval Workflows & Authorities"
+        subtitle="Configure multi-level approval hierarchies and process pending authority requests."
+        actions={
           <div className="d-flex gap-2">
-            <Button variant="outline-secondary" onClick={loadData} className="d-flex align-items-center gap-1">
+            <Button variant="outline" onClick={loadData} className="d-flex align-items-center gap-1">
               <MdRefresh /> Refresh
             </Button>
             {isAdmin && (
@@ -396,7 +395,8 @@ function ApprovalWorkflows() {
               </Button>
             )}
           </div>
-        </div>
+        }
+      />
 
         {alert && <FeedbackAlert variant={alert.type} message={alert.message} onClose={() => setAlert(null)} />}
 
@@ -492,7 +492,7 @@ function ApprovalWorkflows() {
 
               <div className="d-flex justify-content-between align-items-center mb-2 mt-4">
                 <h6 className="mb-0 fw-bold"><MdLayers className="me-1" /> Sequential Approval Levels</h6>
-                <Button size="sm" variant="outline-primary" onClick={addLevel}>
+                <Button size="sm" variant="outline" onClick={addLevel}>
                   + Add Next Level
                 </Button>
               </div>
@@ -548,7 +548,7 @@ function ApprovalWorkflows() {
                     </Col>
                     <Col md={3} className="text-end">
                       {configForm.approvalLevels.length > 1 && (
-                        <Button size="sm" variant="outline-danger" onClick={() => removeLevel(index)}>
+                        <Button size="sm" variant="danger" onClick={() => removeLevel(index)}>
                           Remove
                         </Button>
                       )}
@@ -577,7 +577,7 @@ function ApprovalWorkflows() {
               </Row>
             </Modal.Body>
             <Modal.Footer>
-              <Button variant="outline-secondary" onClick={() => setShowConfigModal(false)}>
+              <Button variant="outline" onClick={() => setShowConfigModal(false)}>
                 Cancel
               </Button>
               <Button variant="primary" type="submit">
@@ -624,7 +624,7 @@ function ApprovalWorkflows() {
               </Form.Group>
             </Modal.Body>
             <Modal.Footer>
-              <Button variant="outline-secondary" onClick={() => setShowActionModal(false)}>
+              <Button variant="outline" onClick={() => setShowActionModal(false)}>
                 Cancel
               </Button>
               <Button
@@ -636,8 +636,7 @@ function ApprovalWorkflows() {
             </Modal.Footer>
           </Form>
         </Modal>
-      </Container>
-    </div>
+    </PageShell>
   );
 }
 

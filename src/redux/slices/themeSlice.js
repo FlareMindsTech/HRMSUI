@@ -4,26 +4,26 @@ import {
 } from "../../services/organizationService";
 
 export const DEFAULT_THEME = Object.freeze({
-  primaryColor: "#C79D58",
-  primaryDarkColor: "#A98245",
-  primaryLightColor: "#F8FAFC",
-  sidebarColor: "#1C1D1D",
-  backgroundColor: "#FFFFFF",
+  primaryColor: "#A7F3D0",
+  primaryDarkColor: "#059669",
+  primaryLightColor: "#ECFDF5",
+  sidebarColor: "#1E293B",
+  backgroundColor: "#FFFFFF", 
   surfaceColor: "#FFFFFF",
-  textColor: "#1C1D1D",
+  textColor: "#0F172A",
   secondaryTextColor: "#64748B",
   borderColor: "#E2E8F0",
   successColor: "#2E7D32",
   warningColor: "#ED9F24",
   dangerColor: "#D64545",
-  infoColor: "#A98245",
+  infoColor: "#3B82F6",
 });
 
 export const THEME_PRESETS = [
   {
-    name: "Gold & Charcoal (Default)",
-    key: "gold",
-    description: "Enterprise Gold & Dark Charcoal Theme",
+    name: "Deep Navy Blue & Mint Green (Default)",
+    key: "deep-navy-mint",
+    description: "Enterprise Deep Navy Blue & Mint Green Theme",
     colors: { ...DEFAULT_THEME },
   },
 ];

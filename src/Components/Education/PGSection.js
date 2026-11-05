@@ -1,5 +1,6 @@
 import React from "react";
-import { Card, Row, Col, Form, Button, Badge } from "react-bootstrap";
+import Button from "../Common/Button";
+import { Card, Row, Col, Form, Badge } from "react-bootstrap";
 import { FaUserGraduate, FaPlus, FaTrash, FaCheckCircle } from "react-icons/fa";
 import DocumentUploadBox from "./DocumentUploadBox";
 import "./Education.css";

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Row, Col, Card, Button, Badge, Spinner, Form } from "react-bootstrap";
+import Button from "../Common/Button";
+import { Row, Col, Card, Badge, Spinner, Form } from "react-bootstrap";
 import {
   FaBuilding,
   FaEdit,
@@ -332,8 +333,8 @@ export default function OrganizationProfileView({ onNavigateTab, onOrgUpdated = 
                 variant="success"
                 className="d-flex align-items-center gap-2 fw-semibold shadow-sm"
                 style={{
-                  backgroundColor: "var(--color-primary, #C49A55)",
-                  borderColor: "var(--color-primary, #C49A55)",
+                  backgroundColor: "var(--color-brand)",
+                  borderColor: "var(--color-brand)",
                   color: "#ffffff",
                 }}
                 onClick={() => {

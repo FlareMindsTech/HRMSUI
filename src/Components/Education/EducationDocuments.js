@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Card, Row, Col, Badge, Button, Modal } from "react-bootstrap";
+import Button from "../Common/Button";
+import { Card, Row, Col, Badge, Modal } from "react-bootstrap";
 import {
   FaFolderOpen,
   FaFilePdf,
@@ -121,7 +122,7 @@ function EducationDocuments({
         <div className="d-flex align-items-center gap-2">
           <div
             className="rounded-circle p-2 d-flex align-items-center justify-content-center text-white"
-            style={{ background: "linear-gradient(135deg, #E2C278 0%, #C49A55 50%, #B8860B 100%)", boxShadow: "0 2px 6px rgba(196, 154, 85, 0.28)" }}
+            style={{ background: "var(--color-brand)", boxShadow: "var(--shadow-sm)" }}
           >
             <FaFolderOpen size={15} />
           </div>
@@ -146,8 +147,8 @@ function EducationDocuments({
                     background: hasDoc
                       ? "linear-gradient(135deg, #FFFFFF 0%, #FAF7F0 100%)"
                       : "#FFFFFF",
-                    borderColor: hasDoc ? "rgba(196, 154, 85, 0.35)" : "rgba(0, 0, 0, 0.1)",
-                    boxShadow: hasDoc ? "0 2px 8px rgba(196, 154, 85, 0.08)" : "none",
+                    borderColor: hasDoc ? "var(--ink-border, #E2E8F0)" : "rgba(0, 0, 0, 0.1)",
+                    boxShadow: hasDoc ? "0 2px 8px var(--brand-tint, rgba(167, 243, 208, 0.15))" : "none",
                   }}
                 >
                   <div>
@@ -158,9 +159,9 @@ function EducationDocuments({
                           style={{
                             fontSize: "11px",
                             fontWeight: 700,
-                            color: item.file ? "#9B7229" : "#166534",
-                            background: item.file ? "rgba(196, 154, 85, 0.14)" : "rgba(22, 101, 52, 0.09)",
-                            border: `1px solid ${item.file ? "rgba(196, 154, 85, 0.35)" : "rgba(22, 101, 52, 0.25)"}`,
+                            color: item.file ? "var(--color-brand)" : "#166534",
+                            background: item.file ? "var(--brand-tint, rgba(167, 243, 208, 0.15))" : "rgba(22, 101, 52, 0.09)",
+                            border: `1px solid ${item.file ? "var(--ink-border, #E2E8F0)" : "rgba(22, 101, 52, 0.25)"}`,
                             padding: "2px 9px",
                             borderRadius: "9999px",
                             display: "inline-flex",
@@ -168,7 +169,7 @@ function EducationDocuments({
                             gap: "4px",
                           }}
                         >
-                          <FaCheckCircle size={10} color={item.file ? "#9B7229" : "#166534"} /> {item.file ? "Ready to Upload" : "Attached"}
+                          <FaCheckCircle size={10} color={item.file ? "var(--color-brand)" : "#166534"} /> {item.file ? "Ready to Upload" : "Attached"}
                         </span>
                       ) : item.mandatory ? (
                         <Badge bg="danger-subtle" className="text-danger border border-danger-subtle extra-small rounded-pill">
@@ -189,8 +190,8 @@ function EducationDocuments({
                           height: "36px",
                           minWidth: "36px",
                           marginRight: "12px",
-                          background: "rgba(196, 154, 85, 0.12)",
-                          border: "1px solid rgba(196, 154, 85, 0.25)",
+                          background: "var(--brand-tint, rgba(167, 243, 208, 0.15))",
+                          border: "1px solid var(--ink-border, #E2E8F0)",
                         }}
                       >
                         {getDocIcon(item.file?.name || item.docUrl || "")}
@@ -210,9 +211,9 @@ function EducationDocuments({
                         type="button"
                         className="btn btn-sm py-1 px-2 extra-small rounded-pill flex-grow-1 d-inline-flex align-items-center justify-content-center gap-1 fw-semibold"
                         style={{
-                          background: "linear-gradient(135deg, #E2C278 0%, #C49A55 100%)",
-                          color: "#1C1D1D",
-                          border: "1px solid #C49A55",
+                          background: "var(--color-brand)",
+                          color: "var(--ink-primary, #0F172A)",
+                          border: "1px solid var(--color-brand)",
                         }}
                         onClick={() => handlePreview(item)}
                       >

@@ -1,4 +1,6 @@
 import React from 'react';
+import PageShell from '../../Components/Common/PageShell';
+import PageHeader from '../../Components/Common/PageHeader';
 import { useNavigate } from 'react-router-dom';
 import {
   MdAssessment,
@@ -63,34 +65,37 @@ function Mis() {
   ];
 
   return (
-    <div className="placeholder-page">
-      {/* ── Page Header ── */}
-      <div className="placeholder-header">
-        <div>
-          <div className="placeholder-breadcrumb">
-            <span className="clickable" onClick={() => navigate('/dashboard')} role="link" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate('/dashboard'); } }}>
-              Dashboard
-            </span>
-            <MdChevronRight />
-            <span>MIS</span>
-          </div>
-          <h1 className="placeholder-title">
-            <MdAssessment style={{ color: '#2563eb' }} />
-            Management Information System
-          </h1>
-          <p className="placeholder-desc">
-            Centralized reporting and business insights workspace.
-          </p>
-        </div>
+    <PageShell className="placeholder-page-shell">
+      {/* ── Breadcrumb & Page Header ── */}
+      <div className="placeholder-breadcrumb">
+        <span
+          className="clickable"
+          onClick={() => navigate('/dashboard')}
+          role="link"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              navigate('/dashboard');
+            }
+          }}
+        >
+          Dashboard
+        </span>
+        <MdChevronRight />
+        <span>MIS</span>
+      </div>
 
-        {/* Status Badge */}
-        <div>
+      <PageHeader
+        title="Management Information System"
+        subtitle="Centralized reporting and business insights workspace."
+        actions={
           <div className="placeholder-status-badge">
             <span className="placeholder-status-dot"></span>
             Reporting Integration Pending
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* ── Main Workspace Card ── */}
       <div className="placeholder-workspace-card">
@@ -120,13 +125,13 @@ function Mis() {
         {/* Planned Capabilities Section */}
         <div className="placeholder-scope-section">
           <div className="placeholder-section-heading">
-            <MdTrendingUp style={{ color: '#2563eb' }} />
+            <MdTrendingUp />
             Planned Reporting Capabilities
           </div>
           <div className="placeholder-scope-grid">
             {plannedScopes.map((scope, idx) => (
               <div key={idx} className="placeholder-scope-item">
-                <div className="placeholder-scope-item-icon" style={{ background: 'rgba(59, 130, 246, 0.12)', color: '#2563eb' }}>
+                <div className="placeholder-scope-item-icon">
                   {scope.icon}
                 </div>
                 <div className="placeholder-scope-item-title">{scope.title}</div>
@@ -157,7 +162,7 @@ function Mis() {
               type="button"
             >
               <div className="placeholder-shortcut-left">
-                <div className="placeholder-shortcut-icon" style={{ background: 'rgba(59, 130, 246, 0.12)', color: '#2563eb' }}>
+                <div className="placeholder-shortcut-icon">
                   {sc.icon}
                 </div>
                 <div>
@@ -170,7 +175,7 @@ function Mis() {
           ))}
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }
 

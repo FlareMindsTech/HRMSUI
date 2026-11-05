@@ -1,6 +1,7 @@
 /**
  * TeamHub Dynamic 2-Color Theme Engine & Color Utilities
  * Calculates full enterprise color tokens derived from exactly TWO customizable colors (INK & BRAND).
+ * Enforces HRMS Light Mode Only Policy: all surfaces, cards, text and borders remain in crisp light mode.
  */
 
 export function hexToRgb(hex) {
@@ -56,161 +57,169 @@ export function getContrastRatio(hex1, hex2) {
   return (brightest + 0.05) / (darkest + 0.05);
 }
 
+/**
+ * EXACT FOUR ENTERPRISE PRESET THEMES (HRMS Theme Customization Standard)
+ */
 export const PRESET_THEMES = [
   {
-    id: 'coral-teal',
-    name: '1. Coral & Teal',
-    ink: '#0F766E',
-    brand: '#FF6F61',
-    description: 'Deep oceanic teal with vibrant sunlit coral',
-  },
-  {
-    id: 'midnight-navy-lime',
-    name: '2. Midnight Navy & Lime',
-    ink: '#0B2D5B',
-    brand: '#A3E635',
-    description: 'Deep nocturnal navy with electric lime',
-  },
-  {
-    id: 'plum-peach',
-    name: '3. Plum & Peach',
-    ink: '#4B0D3A',
-    brand: '#FFA07A',
-    description: 'Regal velvet plum with warm peach',
-  },
-  {
-    id: 'forest-green-butter',
-    name: '4. Forest Green & Butter',
-    ink: '#13361B',
-    brand: '#FCD34D',
-    description: 'Lush dark forest green with rich golden butter',
-  },
-  {
-    id: 'cherry-cola-vanilla',
-    name: '5. Cherry Cola & Vanilla',
-    ink: '#3B0A0A',
-    brand: '#F3E0C3',
-    description: 'Deep mahogany cherry cola with warm French vanilla',
-  },
-  {
-    id: 'bistre-aureolin',
-    name: '6. Bistre & Aureolin',
-    ink: '#2E1A0F',
-    brand: '#F1C40F',
-    description: 'Warm bistre soot with brilliant aureolin cobalt yellow',
-  },
-  {
-    id: 'forest-ink-amber-gold',
-    name: '7. Forest Ink & Amber Gold',
-    ink: '#0F2D1F',
-    brand: '#D4A017',
-    description: 'Executive dark forest ink with warm amber gold',
-  },
-  {
-    id: 'midnight-slate-terracotta',
-    name: '8. Midnight Slate & Terracotta',
+    id: 'deep-navy-mint',
+    name: 'Theme 1 – Deep Navy Blue & Mint Green',
     ink: '#1E293B',
-    brand: '#D75A3E',
-    description: 'Midnight slate blue with warm terracotta',
+    brand: '#A7F3D0',
+    btnText: '#0F172A',
+    description: 'Executive deep navy blue navigation with fresh mint green actions',
   },
   {
-    id: 'imperial-navy-mustard-gold',
-    name: '9. Imperial Navy & Mustard Gold',
-    ink: '#0B1F3B',
-    brand: '#E1B12C',
-    description: 'Deep imperial navy with rich mustard gold',
+    id: 'charcoal-peach',
+    name: 'Theme 2 – Charcoal Grey & Warm Peach',
+    ink: '#334155',
+    brand: '#FED7AA',
+    btnText: '#1E293B',
+    description: 'Refined charcoal grey navigation with warm peach actions',
   },
   {
-    id: 'obsidian-vivid-emerald',
-    name: '10. Obsidian & Vivid Emerald',
-    ink: '#111111',
-    brand: '#10B981',
-    description: 'Deep pitch obsidian with vivid electric emerald',
+    id: 'slate-yellow',
+    name: 'Theme 3 – Dark Slate Blue & Pastel Yellow',
+    ink: '#1E293B',
+    brand: '#FEF08A',
+    btnText: '#1E293B',
+    description: 'Dark slate blue navigation with luminous pastel yellow actions',
   },
   {
-    id: 'espresso-burnt-sienna',
-    name: '11. Espresso & Burnt Sienna',
-    ink: '#2B1B10',
-    brand: '#C2410C',
-    description: 'Rich dark espresso with radiant burnt sienna',
+    id: 'forest-lavender',
+    name: 'Theme 4 – Deep Forest Green & Pastel Lavender',
+    ink: '#064E3B',
+    brand: '#E9D5FF',
+    btnText: '#1E293B',
+    description: 'Deep forest green navigation with gentle pastel lavender actions',
   },
 ];
 
 /**
+ * Enforces the Light Mode Only Policy across the HRMS application.
+ * Strips any stale dark-mode attributes from document and body,
+ * and purges any legacy dark-mode storage keys.
+ */
+export function ensureLightModeOnly() {
+  if (typeof document !== 'undefined') {
+    document.documentElement.removeAttribute('data-theme');
+    document.documentElement.removeAttribute('data-bs-theme');
+    document.documentElement.classList.remove('theme-dark');
+    if (document.body) {
+      document.body.removeAttribute('data-theme');
+      document.body.removeAttribute('data-bs-theme');
+      document.body.classList.remove('theme-dark');
+    }
+  }
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.removeItem('teamhub_theme_mode');
+      localStorage.removeItem('themeMode');
+      localStorage.removeItem('darkMode');
+    } catch {
+      // ignore
+    }
+  }
+}
+
+// Automatically enforce light mode on script load
+if (typeof window !== 'undefined') {
+  ensureLightModeOnly();
+}
+
+/**
  * Applies a 2-color pair dynamically across the entire document
  */
-export function applyTwoColorTheme(inkHex, brandHex, saveToStorage = true) {
+export function applyTwoColorTheme(inkHex, brandHex, saveToStorage = true, btnTextColor = null) {
+  ensureLightModeOnly();
   const root = document.documentElement;
 
   // Primary base colors
   root.style.setProperty('--color-ink', inkHex);
   root.style.setProperty('--color-brand', brandHex);
 
-  // Derived from INK
-  root.style.setProperty('--ink-primary', inkHex);
-  root.style.setProperty('--ink-secondary', mixColors(inkHex, '#FFFFFF', 0.28));
-  root.style.setProperty('--ink-tertiary', mixColors(inkHex, '#FFFFFF', 0.55));
-  root.style.setProperty('--ink-muted', mixColors(inkHex, '#FFFFFF', 0.65));
-  root.style.setProperty('--ink-border', mixColors(inkHex, '#FFFFFF', 0.87));
-  root.style.setProperty('--ink-border-subtle', mixColors(inkHex, '#FFFFFF', 0.93));
-  root.style.setProperty('--ink-surface-subtle', mixColors(inkHex, '#FFFFFF', 0.975));
-  root.style.setProperty('--ink-surface-hover', mixColors(inkHex, '#FFFFFF', 0.955));
-  root.style.setProperty('--ink-surface-active', mixColors(inkHex, '#FFFFFF', 0.91));
-  root.style.setProperty('--ink-bg-canvas', '#FFFFFF');
+  // Dedicated Navigation & Sidebar Tokens
+  root.style.setProperty('--theme-nav-bg', inkHex);
+  root.style.setProperty('--theme-nav-text', '#FFFFFF');
+  root.style.setProperty('--theme-sidebar-bg', inkHex);
+  root.style.setProperty('--theme-sidebar-text', '#FFFFFF');
+  root.style.setProperty('--sidebar-bg', inkHex);
+
+  // Theme-independent semantic neutrals remain invariant across brand theme changes (Light Mode Only)
+  // (Main text #0F172A, borders #E2E8F0, card surfaces #FFFFFF stay stable in light mode)
 
   // Sidebar (derived from INK)
-  root.style.setProperty('--sidebar-bg', inkHex);
   root.style.setProperty('--sidebar-surface', mixColors(inkHex, '#FFFFFF', 0.12));
   root.style.setProperty('--sidebar-surface-hover', mixColors(inkHex, '#FFFFFF', 0.20));
   root.style.setProperty('--sidebar-surface-active', mixColors(inkHex, '#FFFFFF', 0.26));
-  root.style.setProperty('--sidebar-text', mixColors('#FFFFFF', inkHex, 0.18));
-  root.style.setProperty('--sidebar-text-muted', mixColors('#FFFFFF', inkHex, 0.54));
+  root.style.setProperty('--sidebar-border', 'rgba(255, 255, 255, 0.12)');
+  root.style.setProperty('--sidebar-border-subtle', 'rgba(255, 255, 255, 0.08)');
+  root.style.setProperty('--sidebar-text', 'rgba(255, 255, 255, 0.90)');
+  root.style.setProperty('--sidebar-text-muted', 'rgba(255, 255, 255, 0.65)');
+  root.style.setProperty('--sidebar-text-active', '#FFFFFF');
+
+  // Contrast text for brand buttons: prioritize preset explicit text color, or auto-calculate
+  let contrastText = btnTextColor;
+  if (!contrastText) {
+    const lum = getLuminance(brandHex);
+    contrastText = lum > 0.4 ? (lum > 0.6 ? '#0F172A' : '#1E293B') : '#FFFFFF';
+  }
+  root.style.setProperty('--brand-contrast-text', contrastText);
+
+  // Primary Button Tokens
+  root.style.setProperty('--btn-primary-bg', brandHex);
+  root.style.setProperty('--btn-primary-border', brandHex);
+  root.style.setProperty('--btn-primary-text', contrastText);
+
+  const brandHover = mixColors(brandHex, '#000000', 0.10);
+  const brandActive = mixColors(brandHex, '#000000', 0.18);
+
+  root.style.setProperty('--btn-primary-hover-bg', brandHover);
+  root.style.setProperty('--btn-primary-hover-border', brandHover);
+  root.style.setProperty('--btn-primary-hover-text', contrastText);
+  root.style.setProperty('--btn-primary-active-bg', brandActive);
+  root.style.setProperty('--btn-primary-active-border', brandActive);
+
+  // Outline Button Tokens
+  root.style.setProperty('--btn-outline-text', brandHex);
+  root.style.setProperty('--btn-outline-border', brandHex);
+  root.style.setProperty('--btn-outline-hover-border', brandHover);
+  root.style.setProperty('--btn-outline-hover-text', brandHover);
 
   // Derived from BRAND
   root.style.setProperty('--brand-fill', brandHex);
-  root.style.setProperty('--brand-hover', mixColors(brandHex, '#000000', 0.12));
-  root.style.setProperty('--brand-active', mixColors(brandHex, '#000000', 0.22));
+  root.style.setProperty('--brand-hover', brandHover);
+  root.style.setProperty('--brand-active', brandActive);
   root.style.setProperty('--brand-tint', mixColors(brandHex, '#FFFFFF', 0.88));
   root.style.setProperty('--brand-tint-strong', mixColors(brandHex, '#FFFFFF', 0.78));
   root.style.setProperty('--brand-border', mixColors(brandHex, '#FFFFFF', 0.68));
 
-  // Contrast text for brand buttons
-  const lum = getLuminance(brandHex);
-  const contrastText = lum > 0.4 ? inkHex : '#FFFFFF';
-  root.style.setProperty('--brand-contrast-text', contrastText);
-
-  // Focus ring
+  // Focus Ring
   root.style.setProperty('--focus-ring', `0 0 0 2px #FFFFFF, 0 0 0 4px ${brandHex}`);
+
+  // Tab Active Highlights
+  root.style.setProperty('--tab-control-active-text', brandHex);
+  root.style.setProperty('--tab-control-active-border', brandHex);
 
   // Legacy page CSS compatibility
   root.style.setProperty('--c-gold', brandHex);
-  root.style.setProperty('--c-gold-dark', mixColors(brandHex, '#000000', 0.15));
+  root.style.setProperty('--c-gold-dark', brandHover);
   root.style.setProperty('--c-gold-tint', mixColors(brandHex, '#FFFFFF', 0.85));
   root.style.setProperty('--c-charcoal', inkHex);
-  root.style.setProperty('--c-bg', '#FFFFFF');
-  root.style.setProperty('--c-text', inkHex);
   root.style.setProperty('--color-primary', brandHex);
-  root.style.setProperty('--color-primary-dark', mixColors(brandHex, '#000000', 0.15));
+  root.style.setProperty('--color-primary-dark', brandHover);
   root.style.setProperty('--color-primary-light', mixColors(brandHex, '#FFFFFF', 0.85));
-  root.style.setProperty('--color-background', '#FFFFFF');
-  root.style.setProperty('--org-bg-main', '#FFFFFF');
-  root.style.setProperty('--page-bg', '#FFFFFF');
   root.style.setProperty('--primary', brandHex);
-  root.style.setProperty('--primary-dark', mixColors(brandHex, '#000000', 0.15));
+  root.style.setProperty('--primary-dark', brandHover);
   root.style.setProperty('--primary-light', mixColors(brandHex, '#FFFFFF', 0.85));
-  root.style.setProperty('--primary-subtle', mixColors(brandHex, '#FFFFFF', 0.88));
-  root.style.setProperty('--primary-gradient', brandHex);
   root.style.setProperty('--pm-primary', brandHex);
-  root.style.setProperty('--pm-secondary', '#FFFFFF');
-  root.style.setProperty('--pm-border', mixColors(inkHex, '#FFFFFF', 0.87));
-  root.style.setProperty('--pm-border-light', mixColors(inkHex, '#FFFFFF', 0.93));
   root.style.setProperty('--color-sidebar', inkHex);
-  root.style.setProperty('--color-border', mixColors(inkHex, '#FFFFFF', 0.87));
 
   if (saveToStorage) {
     try {
       localStorage.setItem('teamhub_custom_ink', inkHex);
       localStorage.setItem('teamhub_custom_brand', brandHex);
+      localStorage.setItem('teamhub_custom_btn_text', contrastText);
     } catch {
       // ignore
     }
@@ -218,7 +227,7 @@ export function applyTwoColorTheme(inkHex, brandHex, saveToStorage = true) {
 }
 
 /**
- * Manages Surface Style: 'classic' (flat & hairline) vs 'neumorphic' (soft tactile 3D)
+ * Manages Surface Style: 'classic' (flat & hairline)
  */
 export function setSurfaceStyle(style = 'classic') {
   document.documentElement.removeAttribute('data-surface');
@@ -240,20 +249,23 @@ export function initSurfaceStyle() {
 }
 
 /**
- * Initializes saved theme from localStorage on app boot
+ * Initializes saved theme from localStorage on app boot (Defaults to Theme 1, enforces light mode)
  */
 export function initSavedTheme() {
+  ensureLightModeOnly();
   try {
     const savedInk = localStorage.getItem('teamhub_custom_ink');
     const savedBrand = localStorage.getItem('teamhub_custom_brand');
+    const savedBtnText = localStorage.getItem('teamhub_custom_btn_text');
     initSurfaceStyle();
     if (savedInk && savedBrand) {
-      applyTwoColorTheme(savedInk, savedBrand, false);
-      return { ink: savedInk, brand: savedBrand };
+      applyTwoColorTheme(savedInk, savedBrand, false, savedBtnText);
+      return { ink: savedInk, brand: savedBrand, btnText: savedBtnText };
     }
   } catch {
     // ignore
   }
-  return { ink: '#0F1F18', brand: '#C7882C' };
+  const defaultTheme = PRESET_THEMES[0];
+  applyTwoColorTheme(defaultTheme.ink, defaultTheme.brand, false, defaultTheme.btnText);
+  return { ink: defaultTheme.ink, brand: defaultTheme.brand, btnText: defaultTheme.btnText };
 }
-

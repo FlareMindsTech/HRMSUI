@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Row, Col, Table, Badge, Button, Form } from 'react-bootstrap';
+import Button from "../../Components/Common/Button";
+import { Card, Row, Col, Table, Badge, Form } from "react-bootstrap";
 import { FaUmbrellaBeach, FaCheckCircle, FaTimesCircle, FaCalendarAlt } from 'react-icons/fa';
 import EmptyState from '../../Components/Common/EmptyState';
 import LoadingSpinner from '../../Components/Common/LoadingSpinner';
@@ -177,7 +178,7 @@ function OptionalHolidays() {
                     {h.optInStatus === 'OPTED_IN' ? (
                       <Button
                         size="sm"
-                        variant="outline-danger"
+                        variant="danger"
                         disabled={!h.canOptOut || actionHolidayId === h.holidayId}
                         onClick={() => handleOptOut(h.holidayId)}
                       >
@@ -187,7 +188,7 @@ function OptionalHolidays() {
                     ) : (
                       <Button
                         size="sm"
-                        variant="outline-success"
+                        variant="primary"
                         disabled={!h.canOptIn || actionHolidayId === h.holidayId}
                         onClick={() => handleOptIn(h.holidayId)}
                       >
@@ -252,7 +253,7 @@ function OptionalHolidays() {
                       {rec.status === 'OPTED_IN' && (
                         <Button
                           size="sm"
-                          variant="outline-danger"
+                          variant="danger"
                           disabled={!canOptOut || actionHolidayId === rec.holidayId?._id}
                           onClick={() => handleOptOut(rec.holidayId?._id)}
                         >

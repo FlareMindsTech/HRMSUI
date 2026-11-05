@@ -1,3 +1,4 @@
+import Button from "../Common/Button";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Card,
@@ -487,9 +488,7 @@ function DepartmentsSection({
           </div>
 
           {canCreate && (
-            <button type="button" className="branches-btn-add btn-sm" onClick={handleOpenCreate}>
-              <FaPlus size={11} className="me-1" /> Add Department
-            </button>
+            <Button variant="primary" size="sm" icon={FaPlus} onClick={handleOpenCreate}>Add Department</Button>
           )}
         </div>
       </div>
@@ -499,7 +498,7 @@ function DepartmentsSection({
 
       {/* ── Branch-Scoped Notice Banner (when locked to a specific branch) ── */}
       {lockedBranchId && (
-        <div className="p-3 mb-3 rounded-3 border bg-light d-flex align-items-center justify-content-between flex-wrap gap-2" style={{ borderColor: "rgba(196, 154, 85, 0.3)" }}>
+        <div className="p-3 mb-3 rounded-3 border bg-light d-flex align-items-center justify-content-between flex-wrap gap-2" style={{ borderColor: "var(--ink-border, #E2E8F0)" }}>
           <div className="d-flex align-items-center gap-2.5">
             <div className="branch-card-icon-badge branch-card-icon-gold" style={{ width: 34, height: 34, fontSize: 14 }}>
               <FaCodeBranch />
@@ -1021,13 +1020,13 @@ function DepartmentsSection({
                 width: 42,
                 height: 42,
                 borderRadius: 12,
-                background: "linear-gradient(135deg, rgba(196, 154, 85, 0.2) 0%, rgba(196, 154, 85, 0.08) 100%)",
-                color: "var(--color-primary-dark, #9B7229)",
+                background: "var(--brand-tint, rgba(167, 243, 208, 0.15))",
+                color: "var(--color-brand)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: 20,
-                border: "1px solid rgba(196, 154, 85, 0.3)",
+                border: "1px solid var(--ink-border, #E2E8F0)",
               }}
             >
               <FaUsers />

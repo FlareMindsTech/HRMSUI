@@ -23,13 +23,13 @@
 
 .edu-summary-accent-bar {
   height: 4px;
-  background: linear-gradient(90deg, var(--color-primary, #C49A55) 0%, var(--color-primary-light, #E2C278) 50%, var(--color-primary-dark, #B8860B) 100%);
+  background: var(--color-brand);
 }
 
 .edu-icon-summary {
-  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 50%, var(--color-primary-dark, #B8860B) 100%) !important;
-  color: var(--color-text, #1C1D1D) !important;
-  box-shadow: 0 2px 6px rgba(196, 154, 85, 0.28);
+  background: var(--color-brand) !important;
+  color: var(--color-text, var(--ink-primary, #0F172A)) !important;
+  box-shadow: var(--shadow-sm);
 }
 
 /* --------------------------------------------------------------------------
@@ -43,9 +43,9 @@
 .edu-icon-pg,
 .edu-icon-phd,
 .edu-icon-gold {
-  background: linear-gradient(135deg, var(--color-primary-light, #E2C278) 0%, var(--color-primary, #C49A55) 50%, var(--color-primary-dark, #B8860B) 100%) !important;
-  color: var(--color-text, #1C1D1D) !important;
-  box-shadow: 0 2px 6px rgba(196, 154, 85, 0.28) !important;
+  background: var(--color-brand) !important;
+  color: var(--color-text, var(--ink-primary, #0F172A)) !important;
+  box-shadow: var(--shadow-sm) !important;
   width: 32px;
   height: 32px;
   display: flex !important;

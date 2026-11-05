@@ -1,3 +1,4 @@
+import Button from '../../Components/Common/Button';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -169,15 +170,7 @@ export default function NoNetworkPage() {
 
         {/* Action Buttons (Unified design system) */}
         <div className="th-error-actions">
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={checkConnection}
-            disabled={checking || autoRedirecting}
-          >
-            <MdRefresh className={checking ? 'th-spin' : ''} size={18} />
-            {checking ? 'Testing Connection...' : 'Try Connecting Now'}
-          </button>
+          <Button variant="primary" icon={MdRefresh} loading={checking} onClick={checkConnection} disabled={checking || autoRedirecting}>{checking ? "Testing Connection..." : "Try Connecting Now"}</Button>
 
           <button
             type="button"

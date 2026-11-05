@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Container, Modal, Button, Dropdown, Badge } from "react-bootstrap";
+import Button from "../../Components/Common/Button";
+import { Container, Modal, Dropdown, Badge } from "react-bootstrap";
 import {
   FaCheckCircle,
   FaExclamationTriangle,

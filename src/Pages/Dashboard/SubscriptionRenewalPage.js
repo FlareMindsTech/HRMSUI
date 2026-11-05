@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Card, Button, Row, Col, Badge, Spinner } from 'react-bootstrap';
+import Button from "../../Components/Common/Button";
+import { Card, Row, Col, Badge, Spinner } from "react-bootstrap";
 import {
   FaCrown,
   FaExclamationTriangle,

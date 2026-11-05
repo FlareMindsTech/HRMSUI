@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Card, Row, Col, Button, Form } from "react-bootstrap";
+import Button from "../Common/Button";
+import { Card, Row, Col, Form } from "react-bootstrap";
 import {
   FaPaperclip,
   FaPlus,

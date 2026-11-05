@@ -27,3 +27,7 @@ yarn-debug.log*
 yarn-error.log*
 .env
 /docs
+# Test files and folders
+**/__tests__/
+**/*.test.js
+**/*.spec.js

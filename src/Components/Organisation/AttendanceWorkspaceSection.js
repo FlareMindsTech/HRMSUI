@@ -820,7 +820,7 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                 <div style={{ marginTop: "14px", paddingTop: "12px", borderTop: "1px solid #F3F4F6", display: "grid", gridTemplateColumns: orgAttendanceMode === "STATIC_IP" || orgAttendanceMode === "BOTH" ? "repeat(auto-fit, minmax(280px, 1fr))" : "1fr", gap: "14px" }}>
                   <div className="attendance-field" style={{ maxWidth: orgAttendanceMode === "STATIC_IP" || orgAttendanceMode === "BOTH" ? "none" : "420px" }}>
                     <label className="attendance-form-label">
-                      <FaGlobe className="me-1" style={{ color: "var(--color-primary, #C49A55)" }} /> Organization Timezone
+                      <FaGlobe className="me-1" style={{ color: "var(--color-brand)" }} /> Organization Timezone
                     </label>
                     <select
                       className="attendance-form-control"
@@ -843,7 +843,7 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                   {(orgAttendanceMode === "STATIC_IP" || orgAttendanceMode === "BOTH") && (
                     <div className="attendance-field">
                       <label className="attendance-form-label">
-                        <FaWifi className="me-1" style={{ color: "var(--color-primary, #C49A55)" }} /> Organization Network IP Allowlist
+                        <FaWifi className="me-1" style={{ color: "var(--color-brand)" }} /> Organization Network IP Allowlist
                       </label>
                       <input
                         type="text"
@@ -1168,7 +1168,7 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                     type="submit"
                     className="org-btn org-btn-primary"
                     disabled={orgSaving || !orgDirty}
-                    style={{ background: "var(--color-primary, #C49A55)", color: "#FFFFFF", borderColor: "var(--color-primary, #C49A55)" }}
+                    style={{ background: "var(--color-brand)", color: "var(--brand-contrast-text, #0F172A)", borderColor: "var(--color-brand)" }}
                   >
                     {orgSaving ? (
                       <>
@@ -1712,7 +1712,7 @@ export default function AttendanceWorkspaceSection({ onNavigateTab }) {
                     type="submit"
                     className="org-btn org-btn-primary"
                     disabled={branchSaving || !branchDirty}
-                    style={{ background: "var(--color-primary, #C49A55)", color: "#FFFFFF", borderColor: "var(--color-primary, #C49A55)" }}
+                    style={{ background: "var(--color-brand)", color: "var(--brand-contrast-text, #0F172A)", borderColor: "var(--color-brand)" }}
                   >
                     {branchSaving ? (
                       <>
