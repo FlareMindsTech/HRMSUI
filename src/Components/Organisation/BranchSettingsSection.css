@@ -1,0 +1,131 @@
+.branch-settings-section {
+  --branch-settings-neutral: #475569;
+  --branch-settings-neutral-dark: #334155;
+  --branch-settings-neutral-light: #F1F5F9;
+  --branch-settings-border: #CBD5E1;
+  color: #0F172A;
+}
+
+.branch-settings-section > .d-flex.align-items-center.justify-content-between {
+  align-items: flex-start !important;
+}
+
+.branch-settings-section h3 {
+  line-height: 1.2;
+}
+
+.branch-settings-section h3 .text-success {
+  color: var(--branch-settings-neutral) !important;
+}
+
+.branch-settings-section .text-muted {
+  color: #64748B !important;
+}
+
+.branch-settings-section .card {
+  border-color: var(--branch-settings-border) !important;
+}
+
+.branch-settings-section .card-header > .d-flex {
+  align-items: stretch !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto;
+}
+
+.branch-settings-section .card-header .branch-settings-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 auto;
+  min-height: 48px;
+  margin: 0 !important;
+  padding: 0 20px !important;
+  border: 0 !important;
+  border-bottom: 2px solid transparent !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font: inherit !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  color: #475569 !important;
+  line-height: 1.2 !important;
+  cursor: pointer;
+}
+
+.branch-settings-section .card-header .branch-settings-tab.active {
+  color: var(--branch-settings-neutral-dark) !important;
+  border-bottom: 2px solid var(--branch-settings-neutral) !important;
+  background: var(--branch-settings-neutral-light) !important;
+}
+
+.branch-settings-section .card-header .branch-settings-tab:hover {
+  color: var(--branch-settings-neutral-dark) !important;
+  background: var(--branch-settings-neutral-light) !important;
+}
+
+.branch-settings-section .form-label {
+  color: #334155 !important;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.branch-settings-section .form-select,
+.branch-settings-section .form-control {
+  border-color: var(--branch-settings-border) !important;
+}
+
+.branch-settings-section .form-select:focus,
+.branch-settings-section .form-control:focus {
+  border-color: #94A3B8 !important;
+  box-shadow: 0 0 0 0.15rem rgba(71, 85, 105, 0.12) !important;
+}
+
+.branch-settings-section .btn-primary,
+.branch-settings-section .btn-success,
+.branch-settings-section .btn-ui-primary,
+.branch-settings-section .btn-ui-success {
+  background: var(--branch-settings-neutral) !important;
+  background-color: var(--branch-settings-neutral) !important;
+  border-color: var(--branch-settings-neutral) !important;
+  color: #FFFFFF !important;
+}
+
+.branch-settings-section .btn-primary:hover,
+.branch-settings-section .btn-primary:focus,
+.branch-settings-section .btn-success:hover,
+.branch-settings-section .btn-success:focus,
+.branch-settings-section .btn-ui-primary:hover,
+.branch-settings-section .btn-ui-primary:focus,
+.branch-settings-section .btn-ui-success:hover,
+.branch-settings-section .btn-ui-success:focus {
+  background: var(--branch-settings-neutral-dark) !important;
+  background-color: var(--branch-settings-neutral-dark) !important;
+  border-color: var(--branch-settings-neutral-dark) !important;
+}
+
+.branch-settings-section .btn-outline-primary,
+.branch-settings-section .btn-outline-success,
+.branch-settings-section .btn-outline-warning {
+  color: var(--branch-settings-neutral) !important;
+  border-color: var(--branch-settings-border) !important;
+}
+
+.branch-settings-section .btn-outline-primary:hover,
+.branch-settings-section .btn-outline-success:hover,
+.branch-settings-section .btn-outline-warning:hover {
+  background: var(--branch-settings-neutral-light) !important;
+  border-color: #94A3B8 !important;
+  color: var(--branch-settings-neutral-dark) !important;
+}
+
+.branch-settings-section .text-success,
+.branch-settings-section .border-success,
+.branch-settings-section .border-success-subtle {
+  color: var(--branch-settings-neutral) !important;
+  border-color: var(--branch-settings-border) !important;
+}
+
+.branch-settings-section .bg-success-subtle {
+  background: var(--branch-settings-neutral-light) !important;
+}

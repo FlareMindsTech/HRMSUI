@@ -4,6 +4,10 @@
   margin-left: auto;
   margin-right: auto;
   width: 100%;
+  --approval-neutral: #475569;
+  --approval-neutral-dark: #334155;
+  --approval-neutral-light: #F1F5F9;
+  --approval-border: #CBD5E1;
 }
 
 /* Approval Workflows CSS */
@@ -57,6 +61,50 @@
   font-weight: 700;
   padding: 0.25rem 0.6rem;
   border-radius: 4px;
-  background: var(--brand-tint, rgba(167, 243, 208, 0.2));
-  color: var(--color-primary-dark, var(--color-ink));
+  background: var(--approval-neutral-light);
+  color: var(--approval-neutral-dark);
+}
+
+.approval-workflows-page-shell .btn-primary {
+  background: var(--approval-neutral) !important;
+  background-color: var(--approval-neutral) !important;
+  border-color: var(--approval-neutral) !important;
+  color: #FFFFFF !important;
+}
+
+.approval-workflows-page-shell .btn-primary:hover,
+.approval-workflows-page-shell .btn-primary:focus {
+  background: var(--approval-neutral-dark) !important;
+  background-color: var(--approval-neutral-dark) !important;
+  border-color: var(--approval-neutral-dark) !important;
+  color: #FFFFFF !important;
+}
+
+.approval-workflows-page-shell .btn-outline {
+  border-color: var(--approval-border) !important;
+  color: var(--approval-neutral) !important;
+}
+
+.approval-workflows-page-shell .btn-outline:hover,
+.approval-workflows-page-shell .btn-outline:focus {
+  background: var(--approval-neutral-light) !important;
+  border-color: #94A3B8 !important;
+  color: var(--approval-neutral-dark) !important;
+}
+
+.approval-workflows-page-shell .lifecycle-nav-tabs .nav-link {
+  color: #64748B !important;
+  border-bottom-color: transparent !important;
+}
+
+.approval-workflows-page-shell .lifecycle-nav-tabs .nav-link.active {
+  color: var(--approval-neutral) !important;
+  border-bottom-color: var(--approval-neutral) !important;
+  background: transparent !important;
+}
+
+.approval-workflows-page-shell .modal .form-control:focus,
+.approval-workflows-page-shell .modal .form-select:focus {
+  border-color: #94A3B8 !important;
+  box-shadow: 0 0 0 0.15rem rgba(71, 85, 105, 0.12) !important;
 }

@@ -33,6 +33,7 @@ import EmptyState from "../Common/EmptyState";
 import SearchInput from "../Common/SearchInput";
 import ConfirmModal from "../Common/ConfirmModal";
 import CrudModal from "../Common/CrudModal";
+import "./JobGradesSection.css";
 
 function JobGradesSection({ lockedBranchId }) {
   const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
@@ -200,9 +201,9 @@ function JobGradesSection({ lockedBranchId }) {
   };
 
   return (
-    <div className="org-sub-section">
+    <div className="org-sub-section job-grades-section">
       {/* ── Section Header ── */}
-      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <div className="job-grades-section-header d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
           <h4 className="fw-bold mb-1 d-flex align-items-center gap-2">
             <FaLayerGroup className="text-success" />
@@ -213,7 +214,12 @@ function JobGradesSection({ lockedBranchId }) {
           </p>
         </div>
         {canCreate && (
-          <Button variant="success" size="sm" className="d-flex align-items-center gap-1 shadow-sm" onClick={handleOpenCreate}>
+          <Button
+            variant="success"
+            size="sm"
+            className="d-flex align-items-center gap-1 shadow-sm job-grades-header-action"
+            onClick={handleOpenCreate}
+          >
             <FaPlus size={11} /> Add Job Grade
           </Button>
         )}
@@ -408,6 +414,7 @@ function JobGradesSection({ lockedBranchId }) {
               actionLabel={canCreate ? "Add First Job Grade" : undefined}
               onAction={handleOpenCreate}
               actionVariant="outline-success"
+              actionClassName="job-grades-empty-action"
               actionIcon={<FaPlus className="me-1" />}
             />
           }

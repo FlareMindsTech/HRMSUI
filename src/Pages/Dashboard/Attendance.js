@@ -769,7 +769,7 @@ function Attendance() {
               <Button
                 variant="outline"
                 size="sm"
-                className="px-3 fw-semibold d-flex align-items-center gap-1.5"
+                className="attendance-manual-btn px-3 fw-semibold d-flex align-items-center gap-1.5"
                 onClick={() => setShowManualModal(true)}
               >
                 <FaUserCheck size={12} /> Manual Attendance
@@ -778,7 +778,7 @@ function Attendance() {
             <Button
               variant="primary"
               size="sm"
-              className="px-3 fw-semibold d-flex align-items-center gap-1.5"
+              className="attendance-regularization-btn px-3 fw-semibold d-flex align-items-center gap-1.5"
               onClick={() => setShowRegFormModal(true)}
             >
               <FaPlus size={11} /> Request Regularization
@@ -1053,7 +1053,7 @@ function Attendance() {
                           <Button
                             variant="link"
                             size="sm"
-                            className="p-0 text-decoration-none text-primary extra-small fw-semibold d-flex align-items-center gap-1"
+                            className="attendance-location-link p-0 text-decoration-none extra-small fw-semibold d-flex align-items-center gap-1"
                             onClick={() => { setLocationModalRecord(r); setShowLocationModal(true); }}
                           >
                             <FaMapMarkerAlt size={11} /> {r.locationType || 'Office'}
@@ -1124,7 +1124,7 @@ function Attendance() {
                       <Button
                         variant="link"
                         size="sm"
-                        className="p-0 text-decoration-none extra-small fw-semibold text-primary"
+                        className="attendance-location-link p-0 text-decoration-none extra-small fw-semibold"
                         onClick={() => { setLocationModalRecord(r); setShowLocationModal(true); }}
                       >
                         <FaMapMarkerAlt size={10} className="me-1" />

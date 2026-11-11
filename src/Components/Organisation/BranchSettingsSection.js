@@ -33,6 +33,7 @@ import FeedbackAlert from "../Common/FeedbackAlert";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { useBranch } from "../../context/BranchContext";
 import AttendanceVerificationMethodConfig from "../Attendance/AttendanceVerificationMethodConfig";
+import "./BranchSettingsSection.css";
 import { VERIFICATION_OPTIONS } from "./OrganizationSettingsSection";
 
 export default function BranchSettingsSection({ lockedBranchId = null, onNavigateTab }) {
@@ -291,11 +292,7 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
                 type="button"
                 role="tab"
                 aria-selected={activeTab === "schedules"}
-                className={`btn btn-link text-decoration-none py-3 px-4 border-0 rounded-0 fw-semibold ${
-                  activeTab === "schedules"
-                    ? "text-success border-bottom border-success border-2 bg-light"
-                    : "text-secondary"
-                }`}
+                className={`branch-settings-tab ${activeTab === "schedules" ? "active" : ""}`}
                 onClick={() => setActiveTab("schedules")}
               >
                 <FaClock className="me-2" /> Schedules &amp; Calendars
@@ -304,11 +301,7 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
                 type="button"
                 role="tab"
                 aria-selected={activeTab === "attendance"}
-                className={`btn btn-link text-decoration-none py-3 px-4 border-0 rounded-0 fw-semibold ${
-                  activeTab === "attendance"
-                    ? "text-success border-bottom border-success border-2 bg-light"
-                    : "text-secondary"
-                }`}
+                className={`branch-settings-tab ${activeTab === "attendance" ? "active" : ""}`}
                 onClick={() => setActiveTab("attendance")}
               >
                 <FaShieldAlt className="me-2" /> Attendance &amp; Verification Override
@@ -317,11 +310,7 @@ export default function BranchSettingsSection({ lockedBranchId = null, onNavigat
                 type="button"
                 role="tab"
                 aria-selected={activeTab === "profile"}
-                className={`btn btn-link text-decoration-none py-3 px-4 border-0 rounded-0 fw-semibold ${
-                  activeTab === "profile"
-                    ? "text-success border-bottom border-success border-2 bg-light"
-                    : "text-secondary"
-                }`}
+                className={`branch-settings-tab ${activeTab === "profile" ? "active" : ""}`}
                 onClick={() => setActiveTab("profile")}
               >
                 <FaBuilding className="me-2" /> Branch Profile / Timezone

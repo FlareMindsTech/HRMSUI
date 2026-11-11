@@ -479,6 +479,13 @@
   border: 1px solid #e2e8f0;
 }
 
+.branch-card-meta .branch-code-badge,
+.branch-card-meta .branch-type-pill {
+  background: #F1F5F9 !important;
+  color: #475569 !important;
+  border-color: #E2E8F0 !important;
+}
+
 .branch-type-pill {
   font-size: 10.5px;
   font-weight: 700;

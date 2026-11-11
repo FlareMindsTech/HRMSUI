@@ -867,13 +867,6 @@ export default function TasksPage() {
                   ) : (
                     <div className="tasks-empty-col">
                       <span>No tasks in {stage.toLowerCase()}</span>
-                      <button
-                        type="button"
-                        className="tasks-empty-col-btn"
-                        onClick={() => setShowNewModal(true)}
-                      >
-                        + Add task
-                      </button>
                     </div>
                   )}
 

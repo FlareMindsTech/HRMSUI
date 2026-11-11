@@ -234,7 +234,7 @@
 .th-sb-badge,
 .th-sb-badge.is-brand {
   background-color: var(--color-brand, #A7F3D0);
-  color: #FFFFFF;
+  color: var(--brand-contrast-text, #0F172A);
   font-size: 11px;
   font-weight: 700;
   padding: 1px 7px;

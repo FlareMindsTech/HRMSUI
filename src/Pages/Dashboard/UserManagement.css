@@ -4,6 +4,21 @@
   margin-left: auto;
   margin-right: auto;
   width: 100%;
+  --user-mgmt-neutral: #475569;
+  --user-mgmt-neutral-dark: #334155;
+  --user-mgmt-neutral-light: #F1F5F9;
+  --user-mgmt-border: #CBD5E1;
+  --color-primary: #475569;
+  --color-primary-dark: #334155;
+  --color-primary-light: #F1F5F9;
+  --color-brand: #475569;
+  --brand-tint: #F8FAFC;
+  --brand-hover: #334155;
+  --brand-active: #1E293B;
+  --brand-contrast-text: #FFFFFF;
+  --c-gold: #475569;
+  --c-gold-dark: #334155;
+  --c-gold-tint: #F1F5F9;
 }
 
 /* ============================================================
@@ -899,9 +914,9 @@
 }
 
 .user-mgmt-nav-tab.active {
-  background: var(--color-primary) !important;
-  color: var(--color-text, var(--ink-primary, #0F172A)) !important;
-  box-shadow: 0 2px 6px color-mix(in srgb, var(--color-primary) 30%, transparent) !important;
+  background: var(--user-mgmt-neutral) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 6px rgba(71, 85, 105, 0.25) !important;
 }
 
 .user-mgmt-nav-tab:not(.active) {
@@ -910,7 +925,7 @@
 }
 
 .user-mgmt-nav-tab:not(.active):hover {
-  background: var(--color-background, var(--ink-bg-canvas, #F8FAFC)) !important;
+  background: var(--user-mgmt-neutral-light) !important;
   color: var(--color-text, var(--ink-primary, #0F172A)) !important;
 }
 
@@ -953,7 +968,7 @@
   white-space: nowrap;
   vertical-align: middle;
   letter-spacing: 0.4px;
-  background-color: var(--color-primary-light, #F1E8D6) !important;
+  background-color: var(--user-mgmt-neutral-light) !important;
   color: var(--color-text, var(--ink-primary, #0F172A)) !important;
   font-weight: 700 !important;
   border-bottom: 1px solid var(--ink-border, #E2E8F0) !important;
@@ -1054,9 +1069,9 @@
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.2px;
-  color: #D63384;
-  background: #E7F6EC;
-  border: 1px solid #D6EBDD;
+  color: var(--user-mgmt-neutral-dark);
+  background: #FFFFFF;
+  border: 1px solid var(--user-mgmt-border);
   border-radius: 6px;
   padding: 2px 8px;
   white-space: nowrap;
@@ -1138,8 +1153,8 @@
   font-weight: 800;
   letter-spacing: 0.4px;
   color: #fff;
-  background: var(--color-primary);
-  border: 1px solid var(--color-primary-dark, var(--color-primary-dark));
+  background: var(--user-mgmt-neutral);
+  border: 1px solid var(--user-mgmt-neutral-dark);
   border-radius: 9999px;
   padding: 3px 12px;
   white-space: nowrap;
@@ -1317,13 +1332,37 @@
 }
 
 .user-mgmt-avatar-chip.account-active {
-  background: var(--color-primary);
-  color: var(--color-text, var(--ink-primary, #0F172A));
+  background: var(--user-mgmt-neutral);
+  color: #FFFFFF;
 }
 
 .user-mgmt-avatar-chip.account-none {
-  background: var(--color-primary-light, #F1E8D6);
+  background: var(--user-mgmt-neutral-light);
   color: var(--color-secondary-text, #77736B);
+}
+
+.user-mgmt-page-shell .branch-access-selector-card .access-level-card:hover:not(.disabled),
+.user-mgmt-page-shell .branch-access-selector-card .access-level-card.selected,
+.user-mgmt-page-shell .branch-access-selector-card .branch-check-item:hover:not(.disabled),
+.user-mgmt-page-shell .branch-access-selector-card .branch-check-item.checked,
+.user-mgmt-page-shell .branch-access-selector-card .branch-check-item.primary-item {
+  border-color: var(--user-mgmt-neutral) !important;
+  background: var(--user-mgmt-neutral-light) !important;
+}
+
+.user-mgmt-page-shell .branch-access-selector-card .radio-indicator.checked {
+  border-color: var(--user-mgmt-neutral) !important;
+}
+
+.user-mgmt-page-shell .branch-access-selector-card .radio-indicator.checked::after,
+.user-mgmt-page-shell .branch-access-selector-card .branch-custom-check .form-check-input:checked {
+  background-color: var(--user-mgmt-neutral) !important;
+  border-color: var(--user-mgmt-neutral) !important;
+}
+
+.user-mgmt-page-shell .branch-access-selector-card .branch-select-ctrl:focus {
+  border-color: #94A3B8 !important;
+  box-shadow: 0 0 0 3px rgba(71, 85, 105, 0.12) !important;
 }
 
 /* ── Interactive Checkbox Cards (Role Modal) ── */
@@ -1363,16 +1402,16 @@
 }
 
 .user-mgmt-pagination .page-item.active .page-link {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-text, var(--ink-primary, #0F172A));
+  background-color: var(--user-mgmt-neutral);
+  border-color: var(--user-mgmt-neutral);
+  color: #FFFFFF;
   font-weight: 700;
 }
 
 .user-mgmt-pagination .page-link:hover:not(.active) {
-  background-color: var(--color-background, #F5EFE3);
-  color: var(--color-primary);
-  border-color: var(--color-primary);
+  background-color: var(--user-mgmt-neutral-light);
+  color: var(--user-mgmt-neutral-dark);
+  border-color: var(--user-mgmt-border);
 }
 
 .user-mgmt-pagination .page-item.disabled .page-link {

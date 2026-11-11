@@ -26,12 +26,14 @@ function EducationHeader({
         <Col lg={6} md={12}>
           <div className="d-flex align-items-center gap-3">
             <div
-              className="rounded-3 p-3 d-flex align-items-center justify-content-center text-white flex-shrink-0 shadow-sm"
+              className="rounded-3 p-3 d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm"
               style={{
-                background: "var(--color-brand)",
+                background: "var(--ink-surface-subtle, #F1F5F9)",
+                color: "var(--ink-primary, #0F172A)",
+                border: "1px solid var(--ink-border, #E2E8F0)",
                 width: 52,
                 height: 52,
-                boxShadow: "var(--shadow-md)",
+                boxShadow: "var(--shadow-sm)",
               }}
             >
               <FaGraduationCap size={26} />
@@ -77,9 +79,9 @@ function EducationHeader({
                 variant={viewMode === "form" ? "dark" : "light"}
                 size="sm"
                 className={`rounded-pill py-1 px-3 extra-small fw-semibold border-0 ${
-                  viewMode === "form" ? "text-white shadow-xs" : "text-muted"
+                  viewMode === "form" ? "shadow-xs" : "text-muted"
                 }`}
-                style={viewMode === "form" ? { background: "var(--color-brand)", color: "#FFFFFF" } : {}}
+                style={viewMode === "form" ? { background: "var(--theme-nav-bg, #1E293B)", color: "#FFFFFF" } : {}}
                 onClick={() => onToggleViewMode("form")}
               >
                 <FaEdit className="me-1" /> Edit Form
@@ -88,9 +90,9 @@ function EducationHeader({
                 variant={viewMode === "profile" ? "dark" : "light"}
                 size="sm"
                 className={`rounded-pill py-1 px-3 extra-small fw-semibold border-0 ${
-                  viewMode === "profile" ? "text-white shadow-xs" : "text-muted"
+                  viewMode === "profile" ? "shadow-xs" : "text-muted"
                 }`}
-                style={viewMode === "profile" ? { background: "var(--color-brand)", color: "#FFFFFF" } : {}}
+                style={viewMode === "profile" ? { background: "var(--theme-nav-bg, #1E293B)", color: "#FFFFFF" } : {}}
                 onClick={() => onToggleViewMode("profile")}
               >
                 <FaEye className="me-1" /> View Profile

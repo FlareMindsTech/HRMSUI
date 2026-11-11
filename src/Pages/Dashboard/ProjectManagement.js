@@ -1184,19 +1184,6 @@ function ProjectManagement() {
     let list = projects;
     if (showCategoryModal.filter === 'ended') {
       list = list.filter(p => p.status === 'Completed');
-      if (list.length === 0) {
-        list = [
-          {
-            _id: 'proj-completed-sample-1',
-            projectName: 'Enterprise Core System Implementation & QA',
-            status: 'Completed',
-            description: 'Full-stack enterprise HRMS and payroll deployment successfully delivered and verified.',
-            projectManager: { fullName: 'FM Sagadhevan', name: 'FM Sagadhevan' },
-            endDate: new Date().toISOString(),
-            teamMembers: [1, 2, 3, 4],
-          }
-        ];
-      }
     } else if (showCategoryModal.filter === 'running') {
       list = list.filter(p => p.status === 'In Progress');
     } else if (showCategoryModal.filter === 'pending') {
@@ -1212,8 +1199,7 @@ function ProjectManagement() {
   }, [projects, showCategoryModal.filter, categoryModalSearch]);
 
   const endedProjectsCount = useMemo(() => {
-    const real = projects.filter(p => p.status === 'Completed').length;
-    return real > 0 ? real : 1;
+    return projects.filter(p => p.status === 'Completed').length;
   }, [projects]);
   const runningProjectsCount = useMemo(() => projects.filter(p => p.status === 'In Progress').length, [projects]);
   const pendingProjectsCount = useMemo(() => projects.filter(p => p.status === 'Pending' || p.status === 'On Hold').length, [projects]);
@@ -1368,13 +1354,6 @@ function ProjectManagement() {
               <FaPlus size={11} /> Add Project
             </Button>
 
-            <Button
-              variant="outline"
-              className="pm-btn-white-pill"
-              onClick={() => setShowImportModal(true)}
-            >
-              <FaUpload size={11} /> Import Data
-            </Button>
           </div>
         }
       />
@@ -1617,19 +1596,6 @@ function ProjectManagement() {
                     ) : (
                       <div className="pm-empty-sprint-state">
                         <p className="text-muted small mb-3">No active sprints currently scheduled.</p>
-                        <Button
-                          className="pm-sprints-btn"
-                          onClick={() => {
-                            if (projects.length > 0) {
-                              selectProject(projects[0]);
-                              setActiveTab('sprints');
-                            } else {
-                              openCreateProject();
-                            }
-                          }}
-                        >
-                          <FaPlus size={11} /> Create Sprint
-                        </Button>
                       </div>
                     )}
                   </div>
@@ -1694,9 +1660,6 @@ function ProjectManagement() {
                   ) : (
                     <div className="d-flex flex-column align-items-center justify-content-center py-4 text-center">
                       <p className="text-muted small mb-2">No projects created yet.</p>
-                      <Button size="sm" variant="outline" className="rounded-pill" onClick={openCreateProject}>
-                        <FaPlus size={10} /> Create First Project
-                      </Button>
                     </div>
                   )}
                 </div>
@@ -3313,15 +3276,16 @@ function ProjectManagement() {
         }}
         size="lg"
         centered
+        dialogClassName="pm-category-modal"
       >
         <Modal.Header className="border-bottom">
           <Modal.Title className="fw-bold fs-5 d-flex align-items-center gap-2">
             <span>{showCategoryModal.title}</span>
             <span
               className="pm-modal-category-badge"
-              aria-label={`${categoryModalProjects.length || 1} projects`}
+              aria-label={`${categoryModalProjects.length} projects`}
             >
-              {categoryModalProjects.length || 1}
+              {categoryModalProjects.length}
             </span>
           </Modal.Title>
         </Modal.Header>
@@ -3429,23 +3393,11 @@ function ProjectManagement() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="rounded-3"
+                      className="rounded-3 pm-category-modal-secondary"
                       onClick={() => setShowCategoryModal({ show: true, title: 'Running / In Progress Projects', filter: 'running' })}
                     >
                       View Active Projects
                     </Button>
-                    {canCreateProject && (
-                      <Button
-                        size="sm"
-                        className="pm-btn-dark-pill"
-                        onClick={() => {
-                          setShowCategoryModal({ show: false, title: '', filter: 'all' });
-                          openCreateProject();
-                        }}
-                      >
-                        <FaPlus size={10} /> Create New Project
-                      </Button>
-                    )}
                   </div>
                 </>
               ) : (

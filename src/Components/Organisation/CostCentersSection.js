@@ -35,6 +35,7 @@ import DataTable from "../Common/DataTable";
 import SearchInput from "../Common/SearchInput";
 import ConfirmModal from "../Common/ConfirmModal";
 import CrudModal from "../Common/CrudModal";
+import "./CostCentersSection.css";
 
 function CostCentersSection({ lockedBranchId }) {
   const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
@@ -235,9 +236,9 @@ function CostCentersSection({ lockedBranchId }) {
   };
 
   return (
-    <div className="org-section-container">
+    <div className="org-section-container cost-centers-section">
       {/* ── Section Header ── */}
-      <div className="org-section-header">
+      <div className="org-section-header cost-centers-section-header">
         <div>
           <h3 className="org-section-title">
             <FaMoneyCheckAlt className="text-success me-2" /> Cost Centers & Budgets
@@ -247,7 +248,7 @@ function CostCentersSection({ lockedBranchId }) {
           </p>
         </div>
         {canCreate && (
-          <Button variant="success" className="org-action-btn" onClick={handleOpenCreate}>
+          <Button variant="success" className="org-action-btn cost-centers-header-action" onClick={handleOpenCreate}>
             <FaPlus className="me-2" /> Add Cost Center
           </Button>
         )}
@@ -416,7 +417,7 @@ function CostCentersSection({ lockedBranchId }) {
                     <Button
                       variant="link"
                       size="sm"
-                      className="text-primary p-1"
+                      className="cost-center-action-btn cost-center-action-edit p-1"
                       title="Edit Cost Center"
                       onClick={() => handleOpenEdit(cc)}
                     >
@@ -427,7 +428,7 @@ function CostCentersSection({ lockedBranchId }) {
                     <Button
                       variant="link"
                       size="sm"
-                      className="text-danger p-1"
+                      className="cost-center-action-btn cost-center-action-delete p-1"
                       title="Delete Cost Center"
                       onClick={() => {
                         setDeletingId(cc._id);

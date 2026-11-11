@@ -3,6 +3,10 @@
   padding: 1.5rem;
   background-color: var(--color-background, #FFFFFF);
   min-height: calc(100vh - 70px);
+  --lifecycle-neutral: #475569;
+  --lifecycle-neutral-dark: #334155;
+  --lifecycle-neutral-light: #F1F5F9;
+  --lifecycle-border: #CBD5E1;
 }
 
 .lifecycle-header {
@@ -46,9 +50,45 @@
 }
 
 .lifecycle-nav-tabs .nav-link.active {
-  color: var(--color-primary, #C79D58);
-  border-bottom: 2px solid var(--color-primary, #C79D58);
+  color: var(--lifecycle-neutral) !important;
+  border-bottom: 2px solid var(--lifecycle-neutral) !important;
   background: transparent;
+}
+
+.lifecycle-page .btn-primary {
+  background: var(--lifecycle-neutral) !important;
+  background-color: var(--lifecycle-neutral) !important;
+  border-color: var(--lifecycle-neutral) !important;
+  color: #FFFFFF !important;
+}
+
+.lifecycle-page .btn-primary:hover,
+.lifecycle-page .btn-primary:focus {
+  background: var(--lifecycle-neutral-dark) !important;
+  background-color: var(--lifecycle-neutral-dark) !important;
+  border-color: var(--lifecycle-neutral-dark) !important;
+  color: #FFFFFF !important;
+}
+
+.lifecycle-page .btn-outline,
+.lifecycle-page .btn-outline-secondary {
+  border-color: var(--lifecycle-border) !important;
+  color: var(--lifecycle-neutral) !important;
+}
+
+.lifecycle-page .btn-outline:hover,
+.lifecycle-page .btn-outline:focus,
+.lifecycle-page .btn-outline-secondary:hover,
+.lifecycle-page .btn-outline-secondary:focus {
+  background: var(--lifecycle-neutral-light) !important;
+  border-color: #94A3B8 !important;
+  color: var(--lifecycle-neutral-dark) !important;
+}
+
+.lifecycle-page .form-control:focus,
+.lifecycle-page .form-select:focus {
+  border-color: #94A3B8 !important;
+  box-shadow: 0 0 0 0.15rem rgba(71, 85, 105, 0.12) !important;
 }
 
 .lifecycle-badge-clearance {

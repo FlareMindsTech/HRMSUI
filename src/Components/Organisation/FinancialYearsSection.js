@@ -33,6 +33,7 @@ import DataTable from "../Common/DataTable";
 import SearchInput from "../Common/SearchInput";
 import ConfirmModal from "../Common/ConfirmModal";
 import CrudModal from "../Common/CrudModal";
+import "./FinancialYearsSection.css";
 
 function FinancialYearsSection({ lockedBranchId }) {
   const hasPermission = useHasPermission(); const isSystemAdmin = useSelector(selectIsSystemAdmin);
@@ -205,9 +206,9 @@ function FinancialYearsSection({ lockedBranchId }) {
   };
 
   return (
-    <div className="org-sub-section">
+    <div className="org-sub-section financial-years-section">
       {/* ── Section Header ── */}
-      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <div className="financial-years-section-header d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
           <h4 className="fw-bold mb-1 d-flex align-items-center gap-2">
             <FaCalendarAlt className="text-success" />
@@ -218,7 +219,12 @@ function FinancialYearsSection({ lockedBranchId }) {
           </p>
         </div>
         {canCreate && (
-          <Button variant="success" size="sm" className="d-flex align-items-center gap-1 shadow-sm" onClick={handleOpenCreate}>
+          <Button
+            variant="success"
+            size="sm"
+            className="d-flex align-items-center gap-1 shadow-sm financial-years-header-action"
+            onClick={handleOpenCreate}
+          >
             <FaPlus size={11} /> Add Financial Year
           </Button>
         )}
@@ -380,7 +386,7 @@ function FinancialYearsSection({ lockedBranchId }) {
                     <Button
                       variant="link"
                       size="sm"
-                      className="text-primary p-1"
+                      className="financial-year-action-btn financial-year-action-edit p-1"
                       title="Edit Financial Year"
                       onClick={() => handleOpenEdit(fy)}
                     >
@@ -391,7 +397,7 @@ function FinancialYearsSection({ lockedBranchId }) {
                     <Button
                       variant="link"
                       size="sm"
-                      className="text-danger p-1"
+                      className="financial-year-action-btn financial-year-action-delete p-1"
                       title="Delete Financial Year"
                       onClick={() => {
                         setDeletingId(fy._id);

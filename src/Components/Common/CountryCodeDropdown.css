@@ -9,8 +9,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--s-2);
-  background-color: var(--c-card);
-  border: 1px solid var(--c-border);
+  background-color: var(--ink-surface, #FFFFFF);
+  border: 1px solid var(--ink-border, #CBD5E1);
   border-right: none;
   border-top-left-radius: var(--r-sm);
   border-bottom-left-radius: var(--r-sm);
@@ -19,25 +19,26 @@
   padding: 0 var(--s-3);
   font-size: var(--fs-body);
   font-weight: 600;
-  color: var(--c-text);
-  height: var(--control-h);
+  color: var(--ink-primary, #0F172A);
+  min-height: var(--control-height, 38px);
+  height: 100%;
   cursor: pointer;
   transition: all 0.15s ease;
   user-select: none;
-  min-width: 90px;
+  min-width: 92px;
   white-space: nowrap;
 }
 
 .country-code-trigger-btn:hover,
 .country-code-trigger-btn.open {
-  background-color: var(--c-gold-tint);
-  border-color: var(--c-gold);
-  color: var(--c-charcoal);
+  background-color: var(--ink-surface-hover, #F1F5F9);
+  border-color: #94A3B8;
+  color: var(--ink-primary, #0F172A);
 }
 
 .country-code-trigger-btn:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(199, 157, 88, 0.25);
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.12);
 }
 
 .country-code-flag-img {
@@ -79,7 +80,7 @@
 
 .country-code-trigger-btn.open .country-code-chevron {
   transform: rotate(180deg);
-  color: var(--c-gold-dark);
+  color: var(--ink-primary, #0F172A);
 }
 
 /* ── Menu Popover ── */
@@ -130,8 +131,8 @@
 }
 
 .country-code-search-input:focus {
-  border-color: var(--c-gold);
-  box-shadow: 0 0 0 3px rgba(199, 157, 88, 0.25);
+  border-color: #94A3B8;
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.12);
 }
 
 .country-code-search-icon {
@@ -197,14 +198,14 @@
 
 .country-code-item:hover,
 .country-code-item.focused {
-  background-color: var(--c-gold-tint);
-  color: var(--c-charcoal);
+  background-color: var(--ink-surface-hover, #F1F5F9);
+  color: var(--ink-primary, #0F172A);
 }
 
 .country-code-item.selected {
-  background-color: var(--c-gold-tint);
+  background-color: var(--ink-surface-active, #E2E8F0);
   font-weight: 600;
-  color: var(--c-charcoal);
+  color: var(--ink-primary, #0F172A);
 }
 
 .country-code-item-left {
@@ -225,7 +226,7 @@
 }
 
 .country-code-item.selected .country-code-item-name {
-  color: var(--c-charcoal);
+  color: var(--ink-primary, #0F172A);
   font-weight: 700;
 }
 

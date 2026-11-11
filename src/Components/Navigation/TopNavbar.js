@@ -80,7 +80,8 @@ export default function TopNavbar() {
       return (
         p.startsWith('/organisation') ||
         p.startsWith('/branches') ||
-        p.startsWith('/onboarding')
+        p.startsWith('/onboarding') ||
+        p.startsWith('/roles')
       );
     }
     if (item.key === 'time') {
@@ -108,7 +109,6 @@ export default function TopNavbar() {
         p.startsWith('/approval-workflows') ||
         p.startsWith('/audit-logs') ||
         p.startsWith('/assets') ||
-        p.startsWith('/roles') ||
         p.startsWith('/users') ||
         p.startsWith('/lifecycle') ||
         p.startsWith('/platform') ||

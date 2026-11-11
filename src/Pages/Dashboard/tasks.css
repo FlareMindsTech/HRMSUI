@@ -4,6 +4,21 @@
   margin-left: auto;
   margin-right: auto;
   width: 100%;
+  --color-primary: #475569;
+  --color-primary-dark: #334155;
+  --color-primary-light: #F1F5F9;
+  --color-brand: #475569;
+  --brand-tint: #F8FAFC;
+  --brand-hover: #334155;
+  --brand-active: #1E293B;
+  --brand-contrast-text: #FFFFFF;
+  --tasks-green-main: #475569;
+  --tasks-green-dark: #334155;
+  --tasks-green-light: #F1F5F9;
+  --tasks-green-fill: #64748B;
+  --tasks-col-hover-bg: #F8FAFC;
+  --tasks-col-hover-border: #CBD5E1;
+  --tasks-col-hover-glow: rgba(71, 85, 105, 0.15);
 }
 
 /* ==========================================================================
@@ -142,6 +157,29 @@
   background-image: none !important;
   border-color: var(--brand-active, #8B5A15) !important;
   transform: translateY(0);
+}
+
+.tasks-page-shell .btn-primary,
+.tasks-page-shell .btn-ui-primary {
+  background: #475569 !important;
+  background-color: #475569 !important;
+  border-color: #475569 !important;
+  color: #FFFFFF !important;
+}
+
+.tasks-page-shell .btn-primary:hover,
+.tasks-page-shell .btn-ui-primary:hover {
+  background: #334155 !important;
+  background-color: #334155 !important;
+  border-color: #334155 !important;
+  color: #FFFFFF !important;
+}
+
+.tasks-page-shell .btn-primary:active,
+.tasks-page-shell .btn-ui-primary:active {
+  background: #1E293B !important;
+  background-color: #1E293B !important;
+  border-color: #1E293B !important;
 }
 
 /* ── Filter Row ── */

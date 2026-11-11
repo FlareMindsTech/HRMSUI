@@ -83,8 +83,8 @@ const IdentityDetailsCard = ({
               height: 38,
               minWidth: 38,
               marginRight: "14px",
-              background: "var(--brand-tint, rgba(167, 243, 208, 0.15))",
-              color: "var(--color-brand)",
+              background: "var(--ink-surface-subtle, #F1F5F9)",
+              color: "var(--ink-primary, #0F172A)",
               fontSize: 18,
               border: "1px solid var(--ink-border, #E2E8F0)",
             }}
@@ -101,7 +101,7 @@ const IdentityDetailsCard = ({
             <FaLock className="me-1 text-secondary" /> Masked in View
           </Badge>
           {data?.aadhaarNo && data?.panNo ? (
-            <Badge style={{ backgroundColor: "var(--brand-tint, rgba(167, 243, 208, 0.15))", color: "var(--ink-primary, #0F172A)", border: "1px solid var(--ink-border, #E2E8F0)" }} className="rounded-pill extra-small px-2.5 py-1">
+            <Badge style={{ backgroundColor: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0" }} className="rounded-pill extra-small px-2.5 py-1">
               <FaCheck className="me-1" /> Added
             </Badge>
           ) : (
@@ -198,9 +198,9 @@ const IdentityDetailsCard = ({
             {onSave && (
               <div className="d-flex justify-content-end pt-2 border-top">
                 <Button
+                  variant="primary"
                   size="sm"
-                  className="rounded-pill px-4 extra-small d-flex align-items-center gap-1.5 shadow-xs text-white"
-                  style={{ background: "var(--color-brand)", border: "none" }}
+                  className="rounded-pill px-4 extra-small d-flex align-items-center gap-1.5 shadow-xs"
                   onClick={handleSaveClick}
                   disabled={saving}
                 >

@@ -17,10 +17,10 @@ function SSLCSection({
 
   return (
     <Card className="border-0 rounded-4 shadow-sm mb-4 bg-white overflow-hidden">
-      <div className="p-3.5 bg-light border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <div className="p-3 bg-light border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
         <div className="d-flex align-items-center gap-2">
           <div
-            className="rounded-circle p-2 d-flex align-items-center justify-content-center text-white edu-icon-sslc"
+            className="rounded-circle p-2 d-flex align-items-center justify-content-center edu-icon-sslc"
           >
             <FaSchool size={15} />
           </div>
@@ -71,7 +71,7 @@ function SSLCSection({
               </Form.Label>
               <Form.Control
                 size="sm"
-                placeholder="Enter Board / Examination Authority (e.g., State Board, CBSE, ICSE)"
+                placeholder="e.g., State Board, CBSE, ICSE"
                 value={data.sslcBoard || ""}
                 onChange={(e) => onChange("sslcBoard", e.target.value)}
                 isInvalid={Boolean(errors.sslcBoard)}

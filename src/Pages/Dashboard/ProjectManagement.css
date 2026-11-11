@@ -4,6 +4,14 @@
   margin-left: auto;
   margin-right: auto;
   width: 100%;
+  --color-primary: #475569;
+  --color-primary-dark: #334155;
+  --color-primary-light: #F1F5F9;
+  --color-brand: #475569;
+  --brand-tint: #F8FAFC;
+  --brand-hover: #334155;
+  --brand-active: #1E293B;
+  --brand-contrast-text: #FFFFFF;
 }
 
 /* ============================================================
@@ -908,6 +916,43 @@
   transform: translateY(-1px) !important;
   color: #ffffff !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+.pm-category-modal .pm-btn-dark-pill {
+  background: #475569 !important;
+  border-color: #475569 !important;
+  color: #ffffff !important;
+}
+
+.pm-category-modal .pm-btn-dark-pill:hover {
+  background: #334155 !important;
+  border-color: #334155 !important;
+}
+
+.pm-category-modal .pm-modal-category-badge {
+  color: #475569 !important;
+  border-color: #CBD5E1 !important;
+  box-shadow: 0 0 0 3px rgba(71, 85, 105, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+}
+
+.pm-category-modal .pm-category-modal-secondary {
+  border-color: #CBD5E1 !important;
+  color: #475569 !important;
+}
+
+.pm-category-modal .pm-category-modal-secondary:hover {
+  background: #F1F5F9 !important;
+  border-color: #94A3B8 !important;
+  color: #334155 !important;
+}
+
+.pm-category-modal .form-control {
+  border-color: #CBD5E1 !important;
+}
+
+.pm-category-modal .form-control:focus {
+  border-color: #94A3B8 !important;
+  box-shadow: 0 0 0 0.15rem rgba(71, 85, 105, 0.12) !important;
 }
 
 .pm-btn-white-pill {

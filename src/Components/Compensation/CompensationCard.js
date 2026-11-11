@@ -158,7 +158,7 @@ const CompensationCard = ({
           <Button
             variant="success"
             size="sm"
-            className="rounded-pill px-3 py-1 extra-small fw-semibold text-white shadow-xs"
+            className="rounded-pill px-3 py-1 extra-small fw-semibold shadow-xs"
             onClick={onSave}
             disabled={saving}
           >

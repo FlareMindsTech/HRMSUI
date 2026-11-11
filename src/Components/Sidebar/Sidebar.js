@@ -31,8 +31,9 @@ import {
   MdCheckCircle,
 } from 'react-icons/md';
 import { useSelector, useDispatch } from 'react-redux';
-import { selectAuthUser, selectIsSystemAdmin, useHasMenu, logout } from '../../redux/slices/authSlice';
+import { selectAuthUser, selectIsSystemAdmin, useHasMenu, useHasPermission, logout } from '../../redux/slices/authSlice';
 import { useBranch } from '../../context/BranchContext';
+import { fetchMyLeavesApi, fetchTeamLeavesApi, fetchAllLeavesApi } from '../../Api/leave/leave';
 import './Sidebar.css';
 
 /* ==========================================================================
@@ -52,7 +53,7 @@ const NAV_SECTIONS = {
         items: [
           { name: 'Dashboard Overview', path: '/dashboard', icon: MdDashboard, exact: true },
           { name: 'Daily Attendance', path: '/attendance', icon: MdAccessTime },
-          { name: 'Leave Requests', path: '/leave', icon: MdEventNote, badge: 5 },
+          { name: 'Leave Requests', path: '/leave', icon: MdEventNote },
           { name: 'Projects & Tasks', path: '/projects', icon: MdWork },
         ],
       },
@@ -69,9 +70,10 @@ const NAV_SECTIONS = {
       {
         header: 'OVERVIEW',
         items: [
-          { name: 'Overview', path: '/organisation', exact: true, icon: MdBusiness },
+          { name: 'Organisation', path: '/organisation', exact: true, icon: MdBusiness },
           { name: 'Locations & Branches', path: '/organisation/branches', icon: MdDomain },
           { name: 'Members & Staff', path: '/onboarding', icon: MdGroups },
+          { name: 'Role Management', path: '/roles', icon: MdAdminPanelSettings },
         ],
       },
       {
@@ -100,13 +102,6 @@ const NAV_SECTIONS = {
           { name: 'Financial Years', path: '/organisation/financial-years', icon: MdAccountBalance },
         ],
       },
-      {
-        header: 'SUBSCRIPTION & SETTINGS',
-        items: [
-          { name: 'Subscription', path: '/organisation/subscription', icon: MdReceipt },
-          { name: 'Settings', path: '/settings', icon: MdSettings },
-        ],
-      },
     ],
   },
   time: {
@@ -133,7 +128,7 @@ const NAV_SECTIONS = {
               { name: 'Optional Holidays', path: '/attendance?tab=optional-holidays', tabKey: 'optional-holidays', icon: MdEventNote },
             ],
           },
-          { name: 'Leave Requests', path: '/leave', icon: MdEventNote, badge: 5 },
+          { name: 'Leave Requests', path: '/leave', icon: MdEventNote },
         ],
       },
     ],
@@ -196,7 +191,6 @@ const NAV_SECTIONS = {
         items: [
           { name: 'Approval Workflows', path: '/approval-workflows', icon: MdAccountTree, badge: 14, badgeBrand: true },
           { name: 'Audit Logs', path: '/audit-logs', icon: MdSecurity },
-          { name: 'Role Management', path: '/roles', icon: MdAdminPanelSettings },
           { name: 'Lifecycle & Separation', path: '/lifecycle', icon: MdHistoryEdu },
         ],
       },
@@ -219,7 +213,8 @@ const getSectionFromPath = (pathname) => {
   if (['/attendance', '/leave'].some((p) => pathname.startsWith(p))) return 'time';
   if (['/projects', '/tasks'].some((p) => pathname.startsWith(p))) return 'project';
   if (['/payslip', '/epfo', '/mis', '/reimbursement'].some((p) => pathname.startsWith(p))) return 'finance';
-  if (['/approval-workflows', '/audit-logs', '/assets', '/roles', '/users', '/lifecycle', '/platform', '/settings', '/subscription-renewal'].some((p) => pathname.startsWith(p))) return 'control';
+  if (['/roles'].some((p) => pathname.startsWith(p))) return 'people';
+  if (['/approval-workflows', '/audit-logs', '/assets', '/users', '/lifecycle', '/platform', '/settings', '/subscription-renewal'].some((p) => pathname.startsWith(p))) return 'control';
   return 'home';
 };
 
@@ -235,11 +230,49 @@ export default function Sidebar({
   const dispatch = useDispatch();
   const user = useSelector(selectAuthUser);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const hasPermission = useHasPermission();
+  const [pendingLeaveCount, setPendingLeaveCount] = useState(0);
 
   // Active top-nav section
   const [activeSection, setActiveSection] = useState(() => getSectionFromPath(location.pathname));
 
   const isExpanded = isHovered || isPinned || isMobileOpen;
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadPendingLeaveCount = async () => {
+      const isOwner = user?.priority === 1 || user?.roleCode === 'OWNER';
+      const canReadAll = isOwner || hasPermission('leave.read.all') || hasPermission('*');
+      const canReadTeam = hasPermission('leave.read.team');
+      const canReadOwn = !isOwner && (hasPermission('leave.read.own') || hasPermission('leave.create.own'));
+
+      try {
+        const response = canReadAll
+          ? await fetchAllLeavesApi()
+          : canReadTeam
+          ? await fetchTeamLeavesApi()
+          : canReadOwn
+          ? await fetchMyLeavesApi()
+          : null;
+        const leaves = Array.isArray(response?.data) ? response.data : [];
+        const count = leaves.filter((leave) => {
+          const status = String(leave?.status || '').toUpperCase();
+          return status === 'PENDING' || status === 'SUBMITTED' || status === 'PENDING_APPROVAL';
+        }).length;
+        if (isMounted) setPendingLeaveCount(count);
+      } catch (error) {
+        if (isMounted) {
+          setPendingLeaveCount(0);
+          console.warn('Sidebar leave count unavailable:', error);
+        }
+      }
+    };
+
+    loadPendingLeaveCount();
+    return () => {
+      isMounted = false;
+    };
+  }, [hasPermission, user]);
 
   // Submenu toggle state
   const [openSubMenus, setOpenSubMenus] = useState({
@@ -490,7 +523,7 @@ export default function Sidebar({
         {
           header: 'OVERVIEW',
           items: [
-            { name: 'Overview', path: '/organisation', exact: true, icon: MdBusiness },
+            { name: 'Organisation', path: '/organisation', exact: true, icon: MdBusiness },
             {
               name: 'Locations & Branches',
               path: '/organisation/branches',
@@ -508,6 +541,7 @@ export default function Sidebar({
               ],
             },
             { name: 'Members & Staff', path: '/onboarding', icon: MdGroups },
+            { name: 'Role Management', path: '/roles', icon: MdAdminPanelSettings },
           ],
         },
         ...base.groups.slice(1),
@@ -544,6 +578,8 @@ export default function Sidebar({
               <div className="th-sb-items-list">
                 {group.items.filter(isVisible).map((item) => {
                   const Icon = item.icon || MdBusiness;
+                  const badgeValue = item.name === 'Leave Requests' ? pendingLeaveCount : item.badge;
+                  const shouldShowBadge = item.name === 'Leave Requests' ? pendingLeaveCount > 0 : Boolean(item.badge);
                   const hasChildren = item.children && item.children.length > 0;
                   const itemBase = item.path.split('?')[0];
                   const isOpen = openSubMenus[item.path] !== undefined
@@ -598,9 +634,9 @@ export default function Sidebar({
                         <div className="th-sb-item-wording">
                           <span className="th-sb-item-label">{item.name}</span>
 
-                          {item.badge && (
+                          {shouldShowBadge && (
                             <span className={`th-sb-badge ${item.badgeBrand ? 'is-brand' : ''}`}>
-                              {item.badge}
+                              {badgeValue}
                             </span>
                           )}
 

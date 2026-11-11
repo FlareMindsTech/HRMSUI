@@ -434,12 +434,12 @@ function AssetManagement() {
             <Button
               variant="outline"
               size="sm"
-              className="d-flex align-items-center gap-2 rounded-pill px-3 py-2 fw-semibold"
+              className="asset-refresh-btn d-flex align-items-center justify-content-center gap-2 rounded-pill px-3 py-2 fw-semibold"
               onClick={() => loadAssets(currentPage)}
               disabled={loading}
-              title="Refresh Inventory"
+              ariaLabel="Refresh Inventory"
+              icon={() => <FaRedo className={loading ? "fa-spin" : ""} style={{ fontSize: 10 }} />}
             >
-              <FaRedo className={loading ? "fa-spin" : ""} style={{ fontSize: 12 }} />
               <span className="d-none d-sm-inline">Refresh</span>
             </Button>
             {hasPermission("asset.create") && (

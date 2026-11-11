@@ -16,9 +16,9 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Hide sidebar completely on Dashboard and Settings
+  // Hide sidebar completely on Dashboard
   const isDashboard = location.pathname === "/dashboard" || location.pathname === "/";
-  const hideSidebar = isDashboard || location.pathname.startsWith("/settings");
+  const hideSidebar = isDashboard;
 
   // Track if user explicitly pinned the sidebar open (persisted in localStorage)
   const [isSidebarPinned, setIsSidebarPinned] = useState(() => {

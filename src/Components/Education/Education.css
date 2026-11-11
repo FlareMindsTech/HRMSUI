@@ -22,18 +22,19 @@
 }
 
 .edu-summary-accent-bar {
-  height: 4px;
-  background: var(--color-brand);
+  height: 3px;
+  background: var(--ink-border, #E2E8F0);
 }
 
 .edu-icon-summary {
-  background: var(--color-brand) !important;
-  color: var(--color-text, var(--ink-primary, #0F172A)) !important;
+  background: var(--ink-surface-subtle, #F1F5F9) !important;
+  color: var(--ink-primary, #0F172A) !important;
+  border: 1px solid var(--ink-border, #E2E8F0) !important;
   box-shadow: var(--shadow-sm);
 }
 
 /* --------------------------------------------------------------------------
-   Education Section Icon Badges (Theme Gold)
+   Education Section Icon Badges (Neutral High-Contrast Surfaces)
    -------------------------------------------------------------------------- */
 .edu-icon-sslc,
 .edu-icon-hsc,
@@ -43,16 +44,21 @@
 .edu-icon-pg,
 .edu-icon-phd,
 .edu-icon-gold {
-  background: var(--color-brand) !important;
-  color: var(--color-text, var(--ink-primary, #0F172A)) !important;
+  background: var(--ink-surface-subtle, #F1F5F9) !important;
+  color: var(--ink-primary, #0F172A) !important;
+  border: 1px solid var(--ink-border, #E2E8F0) !important;
   box-shadow: var(--shadow-sm) !important;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  flex-shrink: 0;
+  padding: 0 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
 }
 
+.edu-icon-summary svg,
 .edu-icon-sslc svg,
 .edu-icon-hsc svg,
 .edu-icon-iti svg,
@@ -61,7 +67,7 @@
 .edu-icon-pg svg,
 .edu-icon-phd svg,
 .edu-icon-gold svg {
-  color: var(--color-surface, #FFFFFF) !important;
+  color: var(--ink-primary, #0F172A) !important;
 }
 
 /* --------------------------------------------------------------------------

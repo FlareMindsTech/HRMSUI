@@ -13,9 +13,51 @@
   font-size: 0.72rem;
   font-weight: 700;
   border-radius: var(--radius-sm, 6px);
-  background: var(--brand-tint, rgba(167, 243, 208, 0.2));
-  color: var(--color-primary-dark, var(--color-ink, #1e293b));
-  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+  background: #F1F5F9;
+  color: #475569;
+  border: 1px solid #E2E8F0;
+}
+
+.attendance-page-shell .attendance-manual-btn {
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid #CBD5E1 !important;
+  border-color: #CBD5E1 !important;
+  color: #475569 !important;
+}
+
+.attendance-page-shell .attendance-manual-btn:hover,
+.attendance-page-shell .attendance-manual-btn:focus,
+.attendance-page-shell .attendance-manual-btn:active {
+  background: #F8FAFC !important;
+  background-color: #F8FAFC !important;
+  border-color: #94A3B8 !important;
+  color: #0F172A !important;
+}
+
+.attendance-page-shell .attendance-regularization-btn {
+  background: #1E293B !important;
+  background-color: #1E293B !important;
+  border-color: #1E293B !important;
+  color: #FFFFFF !important;
+}
+
+.attendance-page-shell .attendance-regularization-btn:hover,
+.attendance-page-shell .attendance-regularization-btn:focus,
+.attendance-page-shell .attendance-regularization-btn:active {
+  background: #0F172A !important;
+  background-color: #0F172A !important;
+  border-color: #0F172A !important;
+  color: #FFFFFF !important;
+}
+
+.attendance-page-shell .attendance-location-link {
+  color: #64748B !important;
+}
+
+.attendance-page-shell .attendance-location-link:hover,
+.attendance-page-shell .attendance-location-link:focus {
+  color: #475569 !important;
 }
 
 /* ============================================================

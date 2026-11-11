@@ -65,7 +65,11 @@ export const fetchTasks = createAsyncThunk(
             if (r.status === 'fulfilled' && r.value?.ok && r.value.data?.success) {
               const list = Array.isArray(r.value.data.data) ? r.value.data.data : [];
               list.forEach((t) => {
-                if (!allTasks.some((existing) => existing._id === t._id)) {
+                const taskId = t?._id || t?.id;
+                const alreadyLoaded = taskId
+                  ? allTasks.some((existing) => String(existing?._id || existing?.id) === String(taskId))
+                  : false;
+                if (!alreadyLoaded) {
                   allTasks.push({ ...t, project: projects[idx] });
                 }
               });
@@ -77,7 +81,16 @@ export const fetchTasks = createAsyncThunk(
       }
 
       // Map real data into Kanban fields
-      return allTasks.map((t) => {
+      const uniqueTasks = [];
+      const seenTaskIds = new Set();
+      allTasks.forEach((task) => {
+        const taskId = task?._id || task?.id;
+        if (taskId && seenTaskIds.has(String(taskId))) return;
+        if (taskId) seenTaskIds.add(String(taskId));
+        uniqueTasks.push(task);
+      });
+
+      return uniqueTasks.map((t) => {
         const stage = normalizeStage(t.status || t.stage);
         const category = normalizeCategory(t.category || t.department?.name, t.taskName || t.title);
         const priority = t.priority || 'Medium';

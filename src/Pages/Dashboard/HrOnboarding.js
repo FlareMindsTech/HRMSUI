@@ -2169,44 +2169,6 @@ function HrOnboarding() {
         if (!formData.joiningDate && !formData.professional?.[0]?.joiningDate) {
           errors.joiningDate = "Joining Date is required";
         }
-        if (Array.isArray(formData.professional) && formData.professional.length > 0) {
-          formData.professional.forEach((prof, idx) => {
-            if (!prof.isFresher) {
-              if (!prof.companyName?.trim()) {
-                errors[`prof_companyName_${idx}`] = `Company #${idx + 1}: Company Name is required`;
-              }
-              if (!prof.companyWebsite?.trim() && !prof.website?.trim() && !prof.linkedin?.trim()) {
-                errors[`prof_website_${idx}`] = `Company #${idx + 1}: Company Website / LinkedIn URL is required`;
-              }
-              if (!prof.department?.trim() && !formData.department?.trim()) {
-                errors[`prof_department_${idx}`] = `Company #${idx + 1}: Department is required`;
-              }
-              if (!prof.designation?.trim() && !formData.designation?.trim()) {
-                errors[`prof_designation_${idx}`] = `Company #${idx + 1}: Designation is required`;
-              }
-              if (!prof.role?.trim()) {
-                errors[`prof_role_${idx}`] = `Company #${idx + 1}: Role / Position is required`;
-              }
-              if (prof.salary === undefined || prof.salary === null || String(prof.salary).trim() === "") {
-                errors[`prof_salary_${idx}`] = `Company #${idx + 1}: Salary (CTC) is required`;
-              }
-              if (!prof.joiningDate) {
-                errors[`prof_joiningDate_${idx}`] = `Company #${idx + 1}: Joining Date is required`;
-              }
-              if (!prof.expectedLastWorkingDate) {
-                errors[`prof_lastDate_${idx}`] = `Company #${idx + 1}: Last Working Date is required`;
-              }
-              if (!prof.noticePeriod?.trim()) {
-                errors[`prof_noticePeriod_${idx}`] = `Company #${idx + 1}: Notice Period Served is required`;
-              }
-              if (prof.joiningDate && prof.expectedLastWorkingDate) {
-                if (new Date(prof.joiningDate) < new Date(prof.expectedLastWorkingDate)) {
-                  errors[`prof_dates_${idx}`] = `Company #${idx + 1}: Last Working Date must be on or after the Joining Date`;
-                }
-              }
-            }
-          });
-        }
       }
     }
 
@@ -6550,11 +6512,11 @@ function HrOnboarding() {
                   {new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
                 </span>
                 <h6 className="fw-bold text-dark mb-0 mt-0.5">
-                  Build Great Company experience better.
+                  Streamline candidate onboarding & compliance.
                 </h6>
               </div>
               <div className="onboarding-hero-graphic">
-                <FaBuilding className="text-primary opacity-25" size={42} />
+                <FaBuilding style={{ color: "var(--theme-nav-bg, #1E293B)", opacity: 0.18 }} size={42} />
               </div>
             </div>
           </div>
@@ -6716,7 +6678,7 @@ function HrOnboarding() {
                       </p>
                       <Button
                         size="sm"
-                        className="rounded-pill px-3.5 py-1.5 extra-small fw-bold text-white shadow-xs onboarding-btn-mint d-inline-flex align-items-center gap-1.5"
+                        className="rounded-pill px-3.5 py-1.5 extra-small fw-bold shadow-xs onboarding-btn-mint d-inline-flex align-items-center gap-1.5"
                         onClick={handleInitiateNewOnboarding}
                       >
                         <FaUserPlus size={12} /> Add Candidate
@@ -6864,7 +6826,7 @@ function HrOnboarding() {
                   {/* Circular Donut Graphic */}
                   <div className="position-relative d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: "125px", height: "125px" }}>
                     <svg viewBox="0 0 36 36" className="donut-chart-svg" style={{ width: "100%", height: "100%", transform: "rotate(-90deg)" }}>
-                      <circle cx="18" cy="18" r="14" fill="transparent" stroke="var(--color-primary-light, #F1E8D6)" strokeWidth="4.5" />
+                      <circle cx="18" cy="18" r="14" fill="transparent" stroke="var(--ink-border, #E2E8F0)" strokeWidth="4.5" />
                       {totalPipelineCount > 0 && completedPct > 0 && (
                         <circle cx="18" cy="18" r="14" fill="transparent" stroke="#10B981" strokeWidth="4.5" strokeDasharray={`${completedPct} ${100 - completedPct}`} strokeDashoffset="0" />
                       )}
@@ -6970,34 +6932,115 @@ function HrOnboarding() {
           ======================================================== */}
       {viewTab === "onboard" && (
         <div className="onboarding-layout">
+          {/* Left Sticky Guided Stepper Rail (Desktop lg+) */}
+          <aside className="onboarding-sidebar d-none d-lg-block" aria-label="Onboarding Stepper">
+            <div className="completion-card">
+              <Card className="p-3 bg-white onboarding-sticky-progress-card onboarding-stepper-card">
+                <div className="mb-3 pb-3 border-bottom">
+                  <div className="d-flex justify-content-between align-items-baseline mb-1">
+                    <h6 className="fw-bold text-dark small mb-0">Onboarding Progress</h6>
+                    <span className="onboarding-progress-percent">{formProgress}%</span>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center extra-small text-muted mb-2">
+                    <span>{completedSections} of {totalSections} sections ready</span>
+                    <span>Step {Math.max(1, formTabs.findIndex((t) => t.id === activeFormTab) + 1)}/{formTabs.length}</span>
+                  </div>
+                  <ProgressBar now={formProgress} className="rounded-pill onboarding-progress-bar-6" />
+                </div>
+
+                {/* Guided Interactive 9-Step Checklist */}
+                <div className="mb-3">
+                  <span className="extra-small text-uppercase fw-bold text-muted d-block mb-2 ps-1" style={{ letterSpacing: "0.05em" }}>
+                    Sections Checklist
+                  </span>
+                  <div className="onboarding-stepper-list">
+                    {[
+                      { id: "personal", label: "Personal Information", complete: sectionStatus.personal },
+                      { id: "professional", label: "Company & Role", complete: sectionStatus.professional },
+                      { id: "education", label: "Education History", complete: sectionStatus.education },
+                      { id: "experience", label: "Work Experience", complete: sectionStatus.experience },
+                      { id: "address", label: "Residential Address", complete: sectionStatus.address },
+                      { id: "compensation", label: "Salary Structure", complete: sectionStatus.compensation },
+                      { id: "documents", label: "Bank & Statutory", complete: sectionStatus.documents },
+                      { id: "family", label: "Family & Emergency", complete: sectionStatus.family },
+                      { id: "review", label: "Review & Initialize", complete: sectionStatus.review },
+                    ].map((sec, idx) => {
+                      const isActive = activeFormTab === sec.id;
+                      const isSkipped = sec.id === "experience" && isFresher;
+                      return (
+                        <button
+                          key={sec.id}
+                          type="button"
+                          onClick={() => handleTabClick(sec.id)}
+                          aria-current={isActive ? "step" : undefined}
+                          className={`onboarding-stepper-item ${isActive ? "active" : ""} ${sec.complete ? "completed" : ""}`}
+                        >
+                          <span className={`onboarding-stepper-num ${sec.complete ? "completed" : ""}`}>
+                            {sec.complete && !isActive ? <FaCheck size={10} /> : idx + 1}
+                          </span>
+                          <span className="onboarding-stepper-label">{sec.label}</span>
+                          {isActive ? (
+                            <span className="onboarding-stepper-status">Active</span>
+                          ) : isSkipped ? (
+                            <span className="onboarding-stepper-status skipped">Skipped</span>
+                          ) : sec.complete ? (
+                            <span className="onboarding-stepper-status filled">Done</span>
+                          ) : (
+                            <span className="onboarding-stepper-status">Pending</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Document Attachments Summary */}
+                <div className="p-2.5 border rounded-3 bg-light mb-2.5 d-flex justify-content-between align-items-center">
+                  <span className="extra-small text-muted fw-semibold d-flex align-items-center gap-1.5">
+                    <FaFileUpload className="text-secondary" /> Attached Files:
+                  </span>
+                  <span className="onboarding-attached-badge">
+                    {attachedDocsCount} File{attachedDocsCount !== 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                <p className="extra-small text-muted mb-0 text-center" style={{ lineHeight: 1.4 }}>
+                  Initiating onboarding sets status to <strong>ONBOARDING</strong> and prepares candidate records.
+                </p>
+              </Card>
+            </div>
+          </aside>
+
           <main className="onboarding-form">
-            <Card className="border-0 shadow-sm rounded-4" style={{ overflow: "visible" }}>
+            <Card className="border shadow-sm rounded-4 bg-white" style={{ overflow: "visible", borderColor: "var(--ink-border, #E2E8F0)" }}>
               <Card.Body className="p-3 p-md-4">
-                {/* Step Tabs Navigation */}
-                <div className="onboarding-step-tabs-container mb-4">
-                  <Nav
-                    variant="pills"
-                    className="onboarding-step-tabs-nav p-1.5 rounded-3 w-100"
-                  >
-                    {formTabs.map((tab) => {
+                {/* Mobile / Tablet Wrapped Stepper (< 992px only — zero horizontal clipping) */}
+                <div className="onboarding-mobile-stepper d-lg-none">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <span className="extra-small fw-bold text-dark">
+                      Step {Math.max(1, formTabs.findIndex((tab) => tab.id === activeFormTab) + 1)} of {formTabs.length}: {formTabs.find((tab) => tab.id === activeFormTab)?.label}
+                    </span>
+                    <span className="extra-small fw-semibold text-muted">{formProgress}% complete</span>
+                  </div>
+                  <ProgressBar now={formProgress} className="rounded-pill mb-2.5 onboarding-progress-bar-6" />
+                  <div className="onboarding-mobile-stepper-grid">
+                    {formTabs.map((tab, idx) => {
                       const isActive = activeFormTab === tab.id;
                       const isComplete = Boolean(sectionStatus[tab.id]);
                       return (
-                        <Nav.Item key={tab.id} className="nav-item">
-                          <Nav.Link
-                            active={isActive}
-                            onClick={() => handleTabClick(tab.id)}
-                            className={`onboarding-step-nav-link text-center ${isActive ? "active" : ""
-                              } ${isComplete ? "completed" : ""}`}
-                            title={`${tab.label}${isComplete ? " (Completed)" : ""}`}
-                          >
-                            <span className="onboarding-tab-icon">{tab.icon}</span>
-                            <span className="onboarding-tab-label">{tab.label}</span>
-                          </Nav.Link>
-                        </Nav.Item>
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => handleTabClick(tab.id)}
+                          aria-current={isActive ? "step" : undefined}
+                          className={`onboarding-mobile-step-chip ${isActive ? "active" : ""} ${isComplete ? "completed" : ""}`}
+                        >
+                          <span>{idx + 1}. {tab.label}</span>
+                          {isComplete && !isActive && <FaCheck size={9} />}
+                        </button>
                       );
                     })}
-                  </Nav>
+                  </div>
                 </div>
 
                 {/* Tab 1: Personal Information & Profile Photo */}
@@ -7008,24 +7051,23 @@ function HrOnboarding() {
                       className="onboarding-unified-step-header mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3 p-3 rounded-3"
                       style={{
                         background: "var(--color-surface, #FFFFFF)",
-                        border: "1px solid var(--color-border, #E5E0D7)",
+                        border: "1px solid var(--ink-border, #E2E8F0)",
                       }}
                     >
-                      <div className="d-flex align-items-center gap-3">
+                      <div className="d-flex align-items-center gap-3 flex-wrap">
                         {/* Profile Photo Avatar / Upload Trigger */}
                         <div className="position-relative">
                           <label
                             htmlFor="candidate-profile-pic-input"
-                            className="position-relative d-block rounded-circle cursor-pointer mb-0 shadow-xs"
+                            className="onboarding-profile-pic-ring position-relative d-block rounded-circle cursor-pointer mb-0 shadow-xs"
                             style={{
-                              width: "68px",
-                              height: "68px",
-                              border: "2.5px solid var(--color-brand)",
+                              width: "64px",
+                              height: "64px",
                               padding: "2px",
-                              background: "var(--ink-bg-canvas, #F8FAFC)",
+                              background: "#F8FAFC",
                               transition: "all 0.2s ease",
                             }}
-                            title="Click to select / upload candidate profile photo"
+                            title="Click to upload candidate profile photo"
                           >
                             {formData.profilePicPreview || formData.avatar ? (
                               <Image
@@ -7042,21 +7084,19 @@ function HrOnboarding() {
                               <div
                                 className="w-100 h-100 rounded-circle d-flex align-items-center justify-content-center"
                                 style={{
-                                  background: "var(--brand-tint, rgba(167, 243, 208, 0.15))",
+                                  background: "#F1F5F9",
                                 }}
                               >
-                                <FaUser size={26} style={{ color: "var(--color-brand)" }} />
+                                <FaUser size={24} style={{ color: "#64748B" }} />
                               </div>
                             )}
 
                             {/* Camera upload badge */}
                             <span
-                              className="position-absolute bottom-0 end-0 rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                              className="onboarding-camera-badge position-absolute bottom-0 end-0 rounded-circle d-flex align-items-center justify-content-center shadow-sm"
                               style={{
-                                width: "24px",
-                                height: "24px",
-                                background: "var(--theme-nav-bg, #1E293B)",
-                                color: "var(--color-brand)",
+                                width: "22px",
+                                height: "22px",
                                 border: "2px solid #FFFFFF",
                                 transform: "translate(2px, 2px)",
                               }}
@@ -7073,43 +7113,36 @@ function HrOnboarding() {
                           />
                         </div>
 
-                        {/* Title & Actions */}
+                        {/* Title & Explicit Upload / Remove Actions */}
                         <div>
-                          <h5 className="fw-bold mb-0 text-dark" style={{ fontSize: "16px" }}>
+                          <h5 className="fw-bold mb-1 text-dark" style={{ fontSize: "16px" }}>
                             Personal & Basic Details
                           </h5>
-                          {(formData.profilePicPreview || formData.profilePicFile) && (
-                            <div className="mt-1">
+                          <div className="d-flex flex-wrap align-items-center gap-2">
+                            <label
+                              htmlFor="candidate-profile-pic-input"
+                              className="onboarding-upload-photo-btn mb-0"
+                            >
+                              <FaCamera size={11} />
+                              <span>{formData.profilePicPreview || formData.avatar ? "Change Photo" : "Upload Photo"}</span>
+                            </label>
+                            {(formData.profilePicPreview || formData.profilePicFile) && (
                               <button
                                 type="button"
-                                className="btn btn-link p-0 text-danger extra-small text-decoration-none d-inline-flex align-items-center gap-1"
+                                className="onboarding-remove-photo-btn"
                                 onClick={handleRemoveProfilePhoto}
                               >
-                                <FaTrash size={10} /> Remove photo
+                                <FaTrash size={10} /> Remove
                               </button>
-                            </div>
-                          )}
+                            )}
+                            <span className="extra-small text-muted">PNG, JPG or WebP up to 5MB</span>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Right: Step Indicator */}
+                      {/* Right: Clean Neutral Step Indicator */}
                       <div className="d-flex align-items-center gap-2">
-                        <span
-                          className="onboarding-step-badge"
-                          style={{
-                            background: "var(--color-brand)",
-                            color: "var(--brand-contrast-text, #0F172A)", border: "1px solid var(--color-brand)",
-                            fontSize: "11px",
-                            fontWeight: 700,
-                            letterSpacing: "0.6px",
-                            padding: "5px 14px",
-                            borderRadius: "9999px",
-                            textTransform: "uppercase",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            boxShadow: "var(--shadow-sm)",
-                          }}
-                        >
+                        <span className="onboarding-step-badge">
                           Step 1 of {formTabs.length}
                         </span>
                       </div>
@@ -7176,16 +7209,16 @@ function HrOnboarding() {
                       </Col>
                     </Row>
 
-                    {/* Row 2: Personal Email, Mobile Number, Date of Birth (3 in a Row) */}
+                    {/* Row 2: Personal Email & Mobile Number (Spacious 2-Column Layout) */}
                     <Row className="g-3 mb-3">
-                      <Col md={4}>
+                      <Col md={6}>
                         <Form.Group>
                           <Form.Label className="small fw-bold">
                             Personal Email Address <span className="text-danger">*</span>
                           </Form.Label>
                           <InputGroup hasValidation>
                             <InputGroup.Text className="bg-light text-muted">
-                              <FaEnvelope size={12} />
+                              <FaEnvelope size={13} />
                             </InputGroup.Text>
                             <Form.Control
                               type="email"
@@ -7206,7 +7239,7 @@ function HrOnboarding() {
                           </InputGroup>
                         </Form.Group>
                       </Col>
-                      <Col md={4}>
+                      <Col md={6}>
                         <Form.Group>
                           <div className="d-flex justify-content-between align-items-center mb-1">
                             <Form.Label className="small fw-bold mb-0">
@@ -7247,7 +7280,11 @@ function HrOnboarding() {
                           </InputGroup>
                         </Form.Group>
                       </Col>
-                      <Col md={4}>
+                    </Row>
+
+                    {/* Row 3: Date of Birth, Gender, Marital Status, Blood Group (2x2 on Tablet, 4-Col on Desktop lg+) */}
+                    <Row className="g-3 mb-2">
+                      <Col lg={3} sm={6}>
                         <Form.Group>
                           <Form.Label className="small fw-bold">
                             Date of Birth <span className="text-danger">*</span>
@@ -7255,7 +7292,7 @@ function HrOnboarding() {
                           <Form.Control
                             type="date"
                             value={formData.dob}
-                          max={getMaximumAdultDob()}
+                            max={getMaximumAdultDob()}
                             isInvalid={!!formErrors.dob}
                             onChange={(e) => {
                               setFormData({ ...formData, dob: e.target.value });
@@ -7269,11 +7306,7 @@ function HrOnboarding() {
                           )}
                         </Form.Group>
                       </Col>
-                    </Row>
-
-                    {/* Row 3: Gender, Marital Status, Blood Group (3 in a Row) */}
-                    <Row className="g-3 mb-3">
-                      <Col md={4}>
+                      <Col lg={3} sm={6}>
                         <Form.Group>
                           <Form.Label className="small fw-bold">
                             Gender <span className="text-danger">*</span>
@@ -7298,7 +7331,7 @@ function HrOnboarding() {
                           )}
                         </Form.Group>
                       </Col>
-                      <Col md={4}>
+                      <Col lg={3} sm={6}>
                         <Form.Group>
                           <Form.Label className="small fw-bold">
                             Marital Status <span className="text-danger">*</span>
@@ -7322,7 +7355,7 @@ function HrOnboarding() {
                           )}
                         </Form.Group>
                       </Col>
-                      <Col md={4}>
+                      <Col lg={3} sm={6}>
                         <Form.Group>
                           <Form.Label className="small fw-bold">
                             Blood Group <span className="text-danger">*</span>
@@ -7354,91 +7387,6 @@ function HrOnboarding() {
                       </Col>
                     </Row>
 
-                    {/* Row 4: Department, Designation, Role Assignment (3 in a Row) */}
-                    <Row className="g-3 mb-3">
-                      <Col md={4}>
-                        <Form.Group>
-                          <Form.Label className="small fw-bold">
-                            Department
-                          </Form.Label>
-                          <Form.Select
-                            value={formData.department}
-                            isInvalid={!!formErrors.department}
-                            onChange={(e) => {
-                              setFormData({ ...formData, department: e.target.value });
-                              if (formErrors.department) setFormErrors((p) => ({ ...p, department: "" }));
-                            }}
-                          >
-                            <option value="">Select Department</option>
-                            {orgDepartments.map((dept) => {
-                              const deptName = dept.departmentName || dept.name;
-                              return (
-                                <option key={dept._id || deptName} value={deptName}>
-                                  {deptName} {dept.departmentCode ? `(${dept.departmentCode})` : ""}
-                                </option>
-                              );
-                            })}
-                            {formData.department && !orgDepartments.some((d) => (d.departmentName || d.name) === formData.department) && (
-                              <option value={formData.department}>{formData.department}</option>
-                            )}
-                          </Form.Select>
-                          {formErrors.department && (
-                            <Form.Control.Feedback type="invalid" className="d-block extra-small">
-                              {formErrors.department}
-                            </Form.Control.Feedback>
-                          )}
-                        </Form.Group>
-                      </Col>
-                      <Col md={4}>
-                        <Form.Group>
-                          <Form.Label className="small fw-bold">
-                            Designation
-                          </Form.Label>
-                          <Form.Select
-                            value={formData.designation}
-                            isInvalid={!!formErrors.designation}
-                            onChange={(e) => {
-                              setFormData({ ...formData, designation: e.target.value });
-                              if (formErrors.designation) setFormErrors((p) => ({ ...p, designation: "" }));
-                            }}
-                          >
-                            <option value="">Select Designation</option>
-                            {getFilteredDesignations(formData.department).map((des) => {
-                              const desName = des.designationName || des.name;
-                              return (
-                                <option key={des._id || desName} value={desName}>
-                                  {desName} {des.designationCode ? `(${des.designationCode})` : ""}
-                                </option>
-                              );
-                            })}
-                            {formData.designation && !getFilteredDesignations(formData.department).some((d) => (d.designationName || d.name) === formData.designation) && (
-                              <option value={formData.designation}>{formData.designation}</option>
-                            )}
-                          </Form.Select>
-                          {formErrors.designation && (
-                            <Form.Control.Feedback type="invalid" className="d-block extra-small">
-                              {formErrors.designation}
-                            </Form.Control.Feedback>
-                          )}
-                        </Form.Group>
-                      </Col>
-                      <Col md={4}>
-                        <Form.Group>
-                          <Form.Label className="small fw-bold">Role Assignment</Form.Label>
-                          <Form.Select
-                            value={formData.roleId}
-                            onChange={(e) => setFormData({ ...formData, roleId: e.target.value })}
-                          >
-                            <option value="">Select Role</option>
-                            {assignableRoles.map((r) => (
-                              <option key={r._id} value={r._id}>
-                                {r.roleName}
-                              </option>
-                            ))}
-                          </Form.Select>
-                        </Form.Group>
-                      </Col>
-                    </Row>
                   </Form>
                 )}
 
@@ -7450,7 +7398,7 @@ function HrOnboarding() {
                       className="onboarding-unified-step-header mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3 p-3 rounded-3"
                       style={{
                         background: "var(--color-surface, #FFFFFF)",
-                        border: "1px solid var(--color-border, #E5E0D7)",
+                        border: "1px solid var(--ink-border, #E2E8F0)",
                       }}
                     >
                       <div className="d-flex align-items-center gap-3">
@@ -7459,8 +7407,8 @@ function HrOnboarding() {
                           style={{
                             width: "42px",
                             height: "42px",
-                            background: "var(--brand-tint, rgba(167, 243, 208, 0.15))",
-                            color: "var(--color-brand)",
+                            background: "#F1F5F9",
+                            color: "#475569",
                             border: "1px solid var(--ink-border, #E2E8F0)",
                           }}
                         >
@@ -7468,53 +7416,22 @@ function HrOnboarding() {
                         </div>
                         <div>
                           <h5 className="fw-bold mb-0 text-dark" style={{ fontSize: "16px" }}>
-                            Experience
+                            Company & Professional
                           </h5>
-                         
                         </div>
                       </div>
 
-                      <div className="d-flex align-items-center gap-3 flex-wrap" style={{ gap: "12px" }}>
-                        <button
-                          type="button"
-                          className="btn btn-sm d-inline-flex align-items-center gap-1.5 fw-bold transition-all"
-                          style={{
-                            background: "var(--color-brand)",
-                            color: "var(--brand-contrast-text, #0F172A)", border: "1px solid var(--color-brand)",
-                            borderRadius: "9999px",
-                            padding: "6px 16px",
-                            fontSize: "12px",
-                            boxShadow: "var(--shadow-sm)",
-                          }}
-                          onClick={addProfessionalRow}
-                        >
-                          <FaPlus size={10} /> Add Company Record
-                        </button>
-                        <span
-                          className="onboarding-step-badge"
-                          style={{
-                            background: "var(--color-brand)",
-                            color: "var(--brand-contrast-text, #0F172A)", border: "1px solid var(--color-brand)",
-                            fontSize: "11px",
-                            fontWeight: 700,
-                            letterSpacing: "0.6px",
-                            padding: "5px 14px",
-                            borderRadius: "9999px",
-                            textTransform: "uppercase",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            boxShadow: "var(--shadow-sm)",
-                          }}
-                        >
+                      <div className="d-flex align-items-center gap-3 flex-wrap">
+                        <span className="onboarding-step-badge">
                           Step 2 of {formTabs.length}
                         </span>
                       </div>
                     </div>
 
-                    {formData.professional.map((prof, idx) => (
+                    {formData.professional.slice(0, 1).map((prof, idx) => (
                       <Card
                         key={idx}
-                        className="p-3 bg-white rounded-3 mb-3 shadow-xs"
+                        className="p-3 p-md-4 bg-white rounded-3 mb-3 shadow-xs onboarding-company-card"
                         style={{
                           border: "1px solid var(--ink-border, #E2E8F0)",
                           boxShadow: "var(--shadow-sm)",
@@ -7523,20 +7440,10 @@ function HrOnboarding() {
                         <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-wrap gap-2">
                           <div className="d-flex align-items-center gap-2">
                             <span className="fw-bold small" style={{ color: "var(--ink-primary, #0F172A)" }}>
-                              Company Record #{idx + 1}
+                              Current Employment
                             </span>
                             {prof.isFresher && (
-                              <span
-                                style={{
-                                  background: "var(--brand-tint, rgba(167, 243, 208, 0.15))",
-                                  color: "#8C621E",
-                                  border: "1px solid var(--ink-border, #E2E8F0)",
-                                  borderRadius: "9999px",
-                                  padding: "2px 9px",
-                                  fontSize: "11px",
-                                  fontWeight: 700,
-                                }}
-                              >
+                              <span className="onboarding-fresher-mode-badge">
                                 Fresher
                               </span>
                             )}
@@ -7566,11 +7473,6 @@ function HrOnboarding() {
                                 Fresher (No Prior Experience)
                               </span>
                             </label>
-                            {formData.professional.length > 1 && (
-                              <Button variant="outline-danger" size="sm" className="py-0 px-2 extra-small" onClick={() => removeProfessionalRow(idx)}>
-                                <FaTrash /> Remove
-                              </Button>
-                            )}
                           </div>
                         </div>
 
@@ -7581,8 +7483,61 @@ function HrOnboarding() {
                               <span className="onboarding-fresher-mode-badge me-2">Fresher Mode</span>
                               <span>No previous experience details required. Please specify the engagement terms, joining date, and reporting manager.</span>
                             </div>
-                            <Row className="g-3 mb-2">
-                              <Col md={4} sm={6}>
+                            <Row className="g-3 mb-0">
+                              <Col md={4} sm={6} xs={12}>
+                                <Form.Group>
+                                  <Form.Label className="extra-small fw-bold text-uppercase">
+                                    Department <span className="text-danger">*</span>
+                                  </Form.Label>
+                                  <Form.Select
+                                    size="sm"
+                                    value={formData.department || ""}
+                                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                                  >
+                                    <option value="">Select Department</option>
+                                    {orgDepartments.map((dept) => {
+                                      const deptName = dept.departmentName || dept.name;
+                                      return <option key={dept._id || deptName} value={deptName}>{deptName}</option>;
+                                    })}
+                                  </Form.Select>
+                                </Form.Group>
+                              </Col>
+                              <Col md={4} sm={6} xs={12}>
+                                <Form.Group>
+                                  <Form.Label className="extra-small fw-bold text-uppercase">
+                                    Designation <span className="text-danger">*</span>
+                                  </Form.Label>
+                                  <Form.Select
+                                    size="sm"
+                                    value={formData.designation || ""}
+                                    onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                                  >
+                                    <option value="">Select Designation</option>
+                                    {getFilteredDesignations(formData.department).map((designation) => {
+                                      const designationName = designation.designationName || designation.name;
+                                      return <option key={designation._id || designationName} value={designationName}>{designationName}</option>;
+                                    })}
+                                  </Form.Select>
+                                </Form.Group>
+                              </Col>
+                              <Col md={4} sm={6} xs={12}>
+                                <Form.Group>
+                                  <Form.Label className="extra-small fw-bold text-uppercase">
+                                    Role Assignment <span className="text-danger">*</span>
+                                  </Form.Label>
+                                  <Form.Select
+                                    size="sm"
+                                    value={formData.roleId || ""}
+                                    onChange={(e) => setFormData({ ...formData, roleId: e.target.value })}
+                                  >
+                                    <option value="">Select Role</option>
+                                    {assignableRoles.map((role) => (
+                                      <option key={role._id} value={role._id}>{role.roleName}</option>
+                                    ))}
+                                  </Form.Select>
+                                </Form.Group>
+                              </Col>
+                              <Col md={4} sm={6} xs={12}>
                                 <Form.Group>
                                   <Form.Label className="extra-small fw-bold text-uppercase">
                                     Joining Date <span className="text-danger">*</span>
@@ -7599,7 +7554,7 @@ function HrOnboarding() {
                                   />
                                 </Form.Group>
                               </Col>
-                              <Col md={4} sm={6}>
+                              <Col md={4} sm={6} xs={12}>
                                 <Form.Group>
                                   <Form.Label className="extra-small fw-bold text-uppercase">
                                     Reporting Manager <span className="text-danger">*</span>
@@ -7614,15 +7569,20 @@ function HrOnboarding() {
                                     }}
                                   >
                                     <option value="">Select Reporting Manager</option>
-                                    {employees.map((emp) => (
-                                      <option key={emp._id || emp.id} value={emp._id || emp.id}>
-                                        {emp.firstName} {emp.lastName} ({emp.employeeCode || emp.designation || "Employee"})
-                                      </option>
-                                    ))}
+                                    {employees.map((emp) => {
+                                      const empDesig = typeof emp.designation === "object" && emp.designation !== null
+                                        ? (emp.designation.designationName || emp.designation.title || emp.designation.name || "Employee")
+                                        : (emp.designation || "Employee");
+                                      return (
+                                        <option key={emp._id || emp.id} value={emp._id || emp.id}>
+                                          {emp.firstName} {emp.lastName} ({emp.employeeCode || empDesig})
+                                        </option>
+                                      );
+                                    })}
                                   </Form.Select>
                                 </Form.Group>
                               </Col>
-                              <Col md={4} sm={6}>
+                              <Col md={4} sm={6} xs={12}>
                                 <Form.Group>
                                   <Form.Label className="extra-small fw-bold text-uppercase">Employment Type</Form.Label>
                                   <Form.Select
@@ -7647,96 +7607,128 @@ function HrOnboarding() {
                             </Row>
                           </div>
                         ) : (
-                          /* Experienced Mode: Show full company & employment inputs */
+                          /* Experienced Mode: Clean balanced 3 + 2 field grid */
                           <div>
-                            {/* Row 1: Company Details */}
-                            <Row className="g-2 mb-2">
-                              <Col md={4}>
-                                <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">
-                                    Company Name <span className="text-danger">*</span>
-                                  </Form.Label>
-                                  <Form.Control
-                                    size="sm"
-                                    placeholder="Enter the company name "
-                                    value={prof.companyName || ""}
-                                    isInvalid={Boolean(formErrors[`prof_companyName_${idx}`])}
-                                    onChange={(e) => {
-                                      const arr = [...formData.professional];
-                                      arr[idx].companyName = e.target.value;
-                                      setFormData({ ...formData, professional: arr });
-                                      if (formErrors[`prof_companyName_${idx}`]) {
-                                        setFormErrors((p) => ({ ...p, [`prof_companyName_${idx}`]: "" }));
-                                      }
-                                    }}
-                                  />
-                                  {formErrors[`prof_companyName_${idx}`] && (
-                                    <Form.Control.Feedback type="invalid" className="d-block extra-small">
-                                      {formErrors[`prof_companyName_${idx}`]}
-                                    </Form.Control.Feedback>
-                                  )}
-                                </Form.Group>
-                              </Col>
-                              <Col md={4}>
-                                <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">
-                                    Company Website / LinkedIn <span className="text-danger">*</span>
-                                  </Form.Label>
-                                  <Form.Control
-                                    size="sm"
-                                    placeholder="https://company.com or LinkedIn URL"
-                                    value={prof.companyWebsite || prof.website || prof.linkedin || ""}
-                                    isInvalid={Boolean(formErrors[`prof_website_${idx}`])}
-                                    onChange={(e) => {
-                                      const arr = [...formData.professional];
-                                      arr[idx].companyWebsite = e.target.value;
-                                      arr[idx].website = e.target.value;
-                                      setFormData({ ...formData, professional: arr });
-                                      if (formErrors[`prof_website_${idx}`]) {
-                                        setFormErrors((p) => ({ ...p, [`prof_website_${idx}`]: "" }));
-                                      }
-                                    }}
-                                  />
-                                  {formErrors[`prof_website_${idx}`] && (
-                                    <Form.Control.Feedback type="invalid" className="d-block extra-small">
-                                      {formErrors[`prof_website_${idx}`]}
-                                    </Form.Control.Feedback>
-                                  )}
-                                </Form.Group>
-                              </Col>
-                              <Col md={4}>
-                                <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">Location / Branch</Form.Label>
-                                  <Form.Control
-                                    size="sm"
-                                    placeholder="Enter the Location"
-                                    value={prof.location || ""}
-                                    onChange={(e) => {
-                                      const arr = [...formData.professional];
-                                      arr[idx].location = e.target.value;
-                                      setFormData({ ...formData, professional: arr });
-                                    }}
-                                  />
-                                </Form.Group>
-                              </Col>
-                            </Row>
+                            <div className="d-none">
+                              <Form.Control
+                                size="sm"
+                                placeholder="Enter the company name "
+                                value={prof.companyName || ""}
+                                onChange={(e) => {
+                                  const arr = [...formData.professional];
+                                  arr[idx].companyName = e.target.value;
+                                  setFormData({ ...formData, professional: arr });
+                                }}
+                              />
+                              <Form.Control
+                                size="sm"
+                                placeholder="https://company.com or LinkedIn URL"
+                                value={prof.companyWebsite || prof.website || prof.linkedin || ""}
+                                onChange={(e) => {
+                                  const arr = [...formData.professional];
+                                  arr[idx].companyWebsite = e.target.value;
+                                  arr[idx].website = e.target.value;
+                                  setFormData({ ...formData, professional: arr });
+                                }}
+                              />
+                              <Form.Control
+                                size="sm"
+                                placeholder="Enter the Location"
+                                value={prof.location || ""}
+                                onChange={(e) => {
+                                  const arr = [...formData.professional];
+                                  arr[idx].location = e.target.value;
+                                  setFormData({ ...formData, professional: arr });
+                                }}
+                              />
+                              <Form.Select
+                                size="sm"
+                                value={prof.employmentStatus || ""}
+                                onChange={(e) => {
+                                  const arr = [...formData.professional];
+                                  arr[idx].employmentStatus = e.target.value;
+                                  setFormData({ ...formData, professional: arr });
+                                }}
+                              >
+                                <option value="">Select Previous Employment Status</option>
+                                <option value="RESIGNED">Resigned</option>
+                                <option value="RELIEVED">Relieved</option>
+                              </Form.Select>
+                              <Form.Control
+                                size="sm"
+                                placeholder="Enter The Salary"
+                                value={prof.salary !== undefined && prof.salary !== null ? prof.salary : ""}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  const arr = [...formData.professional];
+                                  arr[idx].salary = val;
+                                  setFormData({ ...formData, salary: val, professional: arr });
+                                }}
+                              />
+                              <Form.Control
+                                size="sm"
+                                type="date"
+                                value={prof.expectedLastWorkingDate ? new Date(prof.expectedLastWorkingDate).toISOString().split("T")[0] : ""}
+                                onChange={(e) => {
+                                  const arr = [...formData.professional];
+                                  arr[idx].expectedLastWorkingDate = e.target.value;
+                                  setFormData({ ...formData, professional: arr });
+                                }}
+                              />
+                              <Form.Select
+                                size="sm"
+                                value={prof.noticePeriod || ""}
+                                onChange={(e) => {
+                                  const arr = [...formData.professional];
+                                  arr[idx].noticePeriod = e.target.value;
+                                  setFormData({ ...formData, professional: arr });
+                                }}
+                              >
+                                <option value="">Select Notice Period Served</option>
+                                <option value="Immediate">No Notice / Immediate</option>
+                                <option value="15 Days">15 Days</option>
+                                <option value="30 Days">30 Days</option>
+                                <option value="60 Days">60 Days</option>
+                                <option value="90 Days">90 Days</option>
+                              </Form.Select>
+                              <Form.Select
+                                size="sm"
+                                value={prof.docType || ""}
+                                onChange={(e) => {
+                                  const arr = [...formData.professional];
+                                  arr[idx].docType = e.target.value;
+                                  setFormData({ ...formData, professional: arr });
+                                }}
+                              >
+                                <option value="">Select Document Type</option>
+                                <option value="OFFER_LETTER">Offer Letter</option>
+                                <option value="APPOINTMENT_LETTER">Appointment Letter</option>
+                                <option value="CURRENT_EMPLOYMENT_LETTER">Current Employment Letter</option>
+                                <option value="EXPERIENCE_LETTER">Experience Letter</option>
+                                <option value="PAYSLIP">Salary Slip / Payslip</option>
+                                <option value="RELIEVING_LETTER">Relieving Letter</option>
+                                <option value="RESIGNATION_ACKNOWLEDGEMENT">Resignation Ack</option>
+                                <option value="OTHER">Other Document</option>
+                              </Form.Select>
+                            </div>
 
-                            {/* Row 2: Department, Designation, Role */}
-                            <Row className="g-2 mb-2">
-                              <Col md={4}>
+                            {/* Row 1 (3 equal cols): Department, Designation, Role / Position
+                                Row 2 (2 equal cols): Employment Type, Joining Date */}
+                            <Row className="g-3 mb-1">
+                              <Col md={4} xs={12}>
                                 <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">
+                                  <Form.Label className="extra-small fw-bold text-uppercase">
                                     Department <span className="text-danger">*</span>
                                   </Form.Label>
                                   <Form.Control
                                     size="sm"
                                     placeholder="Enter Department"
-                                    value={prof.department || ""}
+                                    value={formData.department || prof.department || ""}
                                     isInvalid={Boolean(formErrors[`prof_department_${idx}`])}
                                     onChange={(e) => {
                                       const arr = [...formData.professional];
                                       arr[idx].department = e.target.value;
-                                      setFormData({ ...formData, professional: arr });
+                                      setFormData({ ...formData, department: e.target.value, professional: arr });
                                       if (formErrors[`prof_department_${idx}`]) {
                                         setFormErrors((p) => ({ ...p, [`prof_department_${idx}`]: "" }));
                                       }
@@ -7749,20 +7741,20 @@ function HrOnboarding() {
                                   )}
                                 </Form.Group>
                               </Col>
-                              <Col md={4}>
+                              <Col md={4} xs={12}>
                                 <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">
+                                  <Form.Label className="extra-small fw-bold text-uppercase">
                                     Designation <span className="text-danger">*</span>
                                   </Form.Label>
                                   <Form.Control
                                     size="sm"
                                     placeholder="Enter Designation"
-                                    value={prof.designation || ""}
+                                    value={formData.designation || prof.designation || ""}
                                     isInvalid={Boolean(formErrors[`prof_designation_${idx}`])}
                                     onChange={(e) => {
                                       const arr = [...formData.professional];
                                       arr[idx].designation = e.target.value;
-                                      setFormData({ ...formData, professional: arr });
+                                      setFormData({ ...formData, designation: e.target.value, professional: arr });
                                       if (formErrors[`prof_designation_${idx}`]) {
                                         setFormErrors((p) => ({ ...p, [`prof_designation_${idx}`]: "" }));
                                       }
@@ -7775,25 +7767,27 @@ function HrOnboarding() {
                                   )}
                                 </Form.Group>
                               </Col>
-                              <Col md={4}>
+                              <Col md={4} xs={12}>
                                 <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">
+                                  <Form.Label className="extra-small fw-bold text-uppercase">
                                     Role / Position <span className="text-danger">*</span>
                                   </Form.Label>
-                                  <Form.Control
+                                  <Form.Select
                                     size="sm"
-                                    placeholder="Enter The Role"
-                                    value={prof.role || ""}
+                                    value={formData.roleId || ""}
                                     isInvalid={Boolean(formErrors[`prof_role_${idx}`])}
                                     onChange={(e) => {
-                                      const arr = [...formData.professional];
-                                      arr[idx].role = e.target.value;
-                                      setFormData({ ...formData, professional: arr });
+                                      setFormData({ ...formData, roleId: e.target.value });
                                       if (formErrors[`prof_role_${idx}`]) {
                                         setFormErrors((p) => ({ ...p, [`prof_role_${idx}`]: "" }));
                                       }
                                     }}
-                                  />
+                                  >
+                                    <option value="">Select Role</option>
+                                    {assignableRoles.map((role) => (
+                                      <option key={role._id} value={role._id}>{role.roleName}</option>
+                                    ))}
+                                  </Form.Select>
                                   {formErrors[`prof_role_${idx}`] && (
                                     <Form.Control.Feedback type="invalid" className="d-block extra-small">
                                       {formErrors[`prof_role_${idx}`]}
@@ -7801,13 +7795,9 @@ function HrOnboarding() {
                                   )}
                                 </Form.Group>
                               </Col>
-                            </Row>
-
-                            {/* Row 3: Employment Type, Previous Employment Status, Salary (CTC) */}
-                            <Row className="g-2 mb-2">
-                              <Col md={4}>
+                              <Col md={6} xs={12}>
                                 <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">Employment Type</Form.Label>
+                                  <Form.Label className="extra-small fw-bold text-uppercase">Employment Type</Form.Label>
                                   <Form.Select
                                     size="sm"
                                     value={prof.employmentType || ""}
@@ -7827,58 +7817,9 @@ function HrOnboarding() {
                                   </Form.Select>
                                 </Form.Group>
                               </Col>
-                              <Col md={4}>
+                              <Col md={6} xs={12}>
                                 <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">Previous Employment Status</Form.Label>
-                                  <Form.Select
-                                    size="sm"
-                                    value={prof.employmentStatus || ""}
-                                    onChange={(e) => {
-                                      const arr = [...formData.professional];
-                                      arr[idx].employmentStatus = e.target.value;
-                                      setFormData({ ...formData, professional: arr });
-                                    }}
-                                  >
-                                    <option value="">Select Previous Employment Status</option>
-                                    <option value="RESIGNED">Resigned</option>
-                                    <option value="RELIEVED">Relieved</option>
-                                  </Form.Select>
-                                </Form.Group>
-                              </Col>
-                              <Col md={4}>
-                                <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">
-                                    Salary (CTC) <span className="text-danger">*</span>
-                                  </Form.Label>
-                                  <Form.Control
-                                    size="sm"
-                                    placeholder="Enter The Salary"
-                                    value={prof.salary !== undefined && prof.salary !== null ? prof.salary : ""}
-                                    isInvalid={Boolean(formErrors[`prof_salary_${idx}`])}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      const arr = [...formData.professional];
-                                      arr[idx].salary = val;
-                                      setFormData({ ...formData, salary: val, professional: arr });
-                                      if (formErrors[`prof_salary_${idx}`]) {
-                                        setFormErrors((p) => ({ ...p, [`prof_salary_${idx}`]: "" }));
-                                      }
-                                    }}
-                                  />
-                                  {formErrors[`prof_salary_${idx}`] && (
-                                    <Form.Control.Feedback type="invalid" className="d-block extra-small">
-                                      {formErrors[`prof_salary_${idx}`]}
-                                    </Form.Control.Feedback>
-                                  )}
-                                </Form.Group>
-                              </Col>
-                            </Row>
-
-                            {/* Row 4: Joining Date, Last Working Date, Notice Period Served */}
-                            <Row className="g-2 mb-2">
-                              <Col md={4}>
-                                <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">
+                                  <Form.Label className="extra-small fw-bold text-uppercase">
                                     Joining Date <span className="text-danger">*</span>
                                   </Form.Label>
                                   <Form.Control
@@ -7889,7 +7830,7 @@ function HrOnboarding() {
                                     onChange={(e) => {
                                       const arr = [...formData.professional];
                                       arr[idx].joiningDate = e.target.value;
-                                      setFormData({ ...formData, professional: arr });
+                                      setFormData({ ...formData, joiningDate: e.target.value, professional: arr });
                                       if (formErrors[`prof_joiningDate_${idx}`] || formErrors[`prof_dates_${idx}`]) {
                                         setFormErrors((p) => ({ ...p, [`prof_joiningDate_${idx}`]: "", [`prof_dates_${idx}`]: "" }));
                                       }
@@ -7902,95 +7843,10 @@ function HrOnboarding() {
                                   )}
                                 </Form.Group>
                               </Col>
-                              <Col md={4}>
-                                <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">
-                                    Last Working Date <span className="text-danger">*</span>
-                                  </Form.Label>
-                                  <Form.Control
-                                    size="sm"
-                                    type="date"
-                                    value={prof.expectedLastWorkingDate ? new Date(prof.expectedLastWorkingDate).toISOString().split("T")[0] : ""}
-                                    isInvalid={Boolean(formErrors[`prof_lastDate_${idx}`] || formErrors[`prof_dates_${idx}`])}
-                                    onChange={(e) => {
-                                      const arr = [...formData.professional];
-                                      arr[idx].expectedLastWorkingDate = e.target.value;
-                                      setFormData({ ...formData, professional: arr });
-                                      if (formErrors[`prof_lastDate_${idx}`] || formErrors[`prof_dates_${idx}`]) {
-                                        setFormErrors((p) => ({ ...p, [`prof_lastDate_${idx}`]: "", [`prof_dates_${idx}`]: "" }));
-                                      }
-                                    }}
-                                  />
-                                  {(formErrors[`prof_lastDate_${idx}`] || formErrors[`prof_dates_${idx}`]) && (
-                                    <Form.Control.Feedback type="invalid" className="d-block extra-small">
-                                      {formErrors[`prof_lastDate_${idx}`] || formErrors[`prof_dates_${idx}`]}
-                                    </Form.Control.Feedback>
-                                  )}
-                                </Form.Group>
-                              </Col>
-                              <Col md={4}>
-                                <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">
-                                    Notice Period Served <span className="text-danger">*</span>
-                                  </Form.Label>
-                                  <Form.Select
-                                    size="sm"
-                                    value={prof.noticePeriod || ""}
-                                    isInvalid={Boolean(formErrors[`prof_noticePeriod_${idx}`])}
-                                    onChange={(e) => {
-                                      const arr = [...formData.professional];
-                                      arr[idx].noticePeriod = e.target.value;
-                                      setFormData({ ...formData, professional: arr });
-                                      if (formErrors[`prof_noticePeriod_${idx}`]) {
-                                        setFormErrors((p) => ({ ...p, [`prof_noticePeriod_${idx}`]: "" }));
-                                      }
-                                    }}
-                                  >
-                                    <option value="">Select Notice Period Served</option>
-                                    <option value="Immediate">No Notice / Immediate</option>
-                                    <option value="15 Days">15 Days</option>
-                                    <option value="30 Days">30 Days</option>
-                                    <option value="60 Days">60 Days</option>
-                                    <option value="90 Days">90 Days</option>
-                                  </Form.Select>
-                                  {formErrors[`prof_noticePeriod_${idx}`] && (
-                                    <Form.Control.Feedback type="invalid" className="d-block extra-small">
-                                      {formErrors[`prof_noticePeriod_${idx}`]}
-                                    </Form.Control.Feedback>
-                                  )}
-                                </Form.Group>
-                              </Col>
                             </Row>
 
-                            {/* Row 5: Previous Employment Document */}
-                            <Row className="g-2 mb-3">
-                              <Col md={12}>
-                                <Form.Group>
-                                  <Form.Label className="extra-small fw-bold">Document Type</Form.Label>
-                                  <Form.Select
-                                    size="sm"
-                                    value={prof.docType || ""}
-                                    onChange={(e) => {
-                                      const arr = [...formData.professional];
-                                      arr[idx].docType = e.target.value;
-                                      setFormData({ ...formData, professional: arr });
-                                    }}
-                                  >
-                                    <option value="">Select Document Type</option>
-                                    <option value="OFFER_LETTER">Offer Letter</option>
-                                    <option value="APPOINTMENT_LETTER">Appointment Letter</option>
-                                    <option value="CURRENT_EMPLOYMENT_LETTER">Current Employment Letter</option>
-                                    <option value="EXPERIENCE_LETTER">Experience Letter</option>
-                                    <option value="PAYSLIP">Salary Slip / Payslip</option>
-                                    <option value="RELIEVING_LETTER">Relieving Letter</option>
-                                    <option value="RESIGNATION_ACKNOWLEDGEMENT">Resignation Ack</option>
-                                    <option value="OTHER">Other Document</option>
-                                  </Form.Select>
-                                </Form.Group>
-                              </Col>
-                            </Row>
                             {/* Document Upload Box (Matching Education / SSLC Style) */}
-                            <div className="mt-3 pt-3 border-top">
+                            <div className="mt-3 pt-2 border-top">
                               <DocumentUploadBox
                                 label={`UPLOAD ${(prof.docType ? prof.docType.replace(/_/g, " ") : "DOCUMENT")} (OPTIONAL)`}
                                 docUrl={prof.docUrl || prof.documentUrl}
@@ -8121,9 +7977,9 @@ function HrOnboarding() {
                                 size="sm"
                                 className="d-inline-flex align-items-center gap-1.5 fw-bold rounded-pill px-3 py-1.5 border transition-all shadow-xs"
                                 style={{
-                                  background: "var(--brand-tint, rgba(167, 243, 208, 0.15))",
-                                  borderColor: "var(--color-brand)",
-                                  color: "#8B651B",
+                                  background: "#FFFFFF",
+                                  borderColor: "#CBD5E1",
+                                  color: "#0F172A",
                                   fontSize: "12px",
                                 }}
                               >
@@ -8375,8 +8231,8 @@ function HrOnboarding() {
                   <div>
                     <div className="d-flex justify-content-between align-items-center mb-3">
                       <div>
-                        <h6 className="fw-bold mb-0 text-dark">Previous Work Experience & Letters</h6>
-                        <span className="extra-small text-muted">Provide past employment history, compensation, tenure, and verified service credentials.</span>
+                        <h6 className="fw-bold mb-0 text-dark">Past Work Experience</h6>
+                        <span className="extra-small text-muted">Add previous employers only. Freshers can leave this section empty.</span>
                       </div>
                       <Button variant="outline-success" size="sm" className="rounded-pill px-3 extra-small" onClick={addExperienceRow}>
                         <FaPlus className="me-1" /> Add Past Experience
@@ -8384,7 +8240,7 @@ function HrOnboarding() {
                     </div>
 
                     {formData.experience.map((exp, idx) => (
-                      <Card key={idx} className="p-3.5 bg-light border-0 rounded-3 mb-3">
+                      <Card key={idx} className="p-3.5 bg-white border rounded-3 mb-3 shadow-xs">
                         <div className="d-flex justify-content-between align-items-center mb-2.5 pb-2 border-bottom">
                           <div className="d-flex align-items-center gap-2">
                             <span className="badge bg-secondary-subtle text-secondary border border-secondary-subtle extra-small rounded-pill">
@@ -8687,14 +8543,40 @@ function HrOnboarding() {
                     </div>
 
                     {formData.addresses.map((addr, idx) => (
-                      <Card key={idx} className="p-3.5 bg-light border-0 rounded-3 mb-3" style={{ overflow: "visible" }}>
-                        <div className="d-flex justify-content-between align-items-center mb-2.5 pb-2 border-bottom">
+                      <Card key={idx} className="p-3.5 bg-white border rounded-3 mb-3 shadow-xs" style={{ overflow: "visible" }}>
+                        <div className="d-flex justify-content-between align-items-center mb-2.5 pb-2 border-bottom flex-wrap gap-2">
                           <span className="fw-bold small text-dark">Address #{idx + 1}</span>
-                          {formData.addresses.length > 1 && (
-                            <Button variant="outline-danger" size="sm" className="py-0 px-2 extra-small rounded-pill" onClick={() => removeAddressRow(idx)}>
-                              <FaTrash className="me-1" /> Remove
-                            </Button>
-                          )}
+                          <div className="d-flex align-items-center gap-2">
+                            {idx > 0 && formData.addresses[0] && (
+                              <Button
+                                variant="outline-secondary"
+                                size="sm"
+                                className="py-0 px-2.5 extra-small rounded-pill fw-semibold"
+                                onClick={() => {
+                                  const primaryAddr = formData.addresses[0];
+                                  const arr = [...formData.addresses];
+                                  arr[idx] = {
+                                    ...arr[idx],
+                                    addressLine1: primaryAddr.addressLine1 || primaryAddr.address1 || "",
+                                    address1: primaryAddr.addressLine1 || primaryAddr.address1 || "",
+                                    addressLine2: primaryAddr.addressLine2 || "",
+                                    city: primaryAddr.city || "",
+                                    state: primaryAddr.state || "",
+                                    country: primaryAddr.country || "India",
+                                    pincode: primaryAddr.pincode || "",
+                                  };
+                                  setFormData({ ...formData, addresses: arr });
+                                }}
+                              >
+                                Same as Address #1
+                              </Button>
+                            )}
+                            {formData.addresses.length > 1 && (
+                              <Button variant="outline-danger" size="sm" className="py-0 px-2 extra-small rounded-pill" onClick={() => removeAddressRow(idx)}>
+                                <FaTrash className="me-1" /> Remove
+                              </Button>
+                            )}
+                          </div>
                         </div>
                         <Row className="g-2 mb-2">
                           <Col md={4} xs={12}>
@@ -8903,8 +8785,8 @@ function HrOnboarding() {
                                 height: 38,
                                 minWidth: 38,
                                 marginRight: "14px",
-                                background: "var(--brand-tint, rgba(167, 243, 208, 0.15))",
-                                color: "var(--color-brand)",
+                                background: "#F1F5F9",
+                                color: "#475569",
                                 fontSize: 18,
                                 border: "1px solid var(--ink-border, #E2E8F0)",
                               }}
@@ -8916,15 +8798,15 @@ function HrOnboarding() {
                               <span className="extra-small text-muted">Primary banking and salary disbursement account details</span>
                             </div>
                           </div>
-                          <Badge style={{ backgroundColor: "var(--brand-tint, rgba(167, 243, 208, 0.15))", color: "var(--ink-primary, #0F172A)", border: "1px solid var(--ink-border, #E2E8F0)" }} className="rounded-pill extra-small px-2.5 py-1">
+                          <Badge style={{ backgroundColor: "#ECFDF5", color: "#047857", border: "1px solid #A7F3D0" }} className="rounded-pill extra-small px-2.5 py-1">
                             <FaCheck className="me-1" /> Exempted (Unpaid)
                           </Badge>
                         </Card.Header>
                         <Card.Body className="p-4">
-                          <div className="p-3 rounded-3 border extra-small d-flex align-items-center gap-3" style={{ background: "var(--brand-tint, rgba(167, 243, 208, 0.15))", borderColor: "var(--ink-border, #E2E8F0)", color: "var(--ink-primary, #0F172A)" }}>
+                          <div className="p-3 rounded-3 border extra-small d-flex align-items-center gap-3" style={{ background: "#ECFDF5", borderColor: "#A7F3D0", color: "var(--ink-primary, #0F172A)" }}>
                             <div
                               className="rounded-circle p-2 d-flex align-items-center justify-content-center flex-shrink-0"
-                              style={{ background: "var(--brand-tint, rgba(167, 243, 208, 0.15))", color: "var(--color-brand)" }}
+                              style={{ background: "#D1FAE5", color: "#059669" }}
                             >
                               <FaCheckCircle size={18} />
                             </div>
@@ -9153,14 +9035,14 @@ function HrOnboarding() {
                         <div
                           className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs"
                           style={{
-                            width: "54px",
-                            height: "54px",
-                            background: "var(--ink-bg-canvas, #F8FAFC)",
-                            border: "2px solid var(--color-brand)",
-                            color: "var(--color-brand)",
+                            width: "50px",
+                            height: "50px",
+                            background: "#F1F5F9",
+                            border: "1px solid #CBD5E1",
+                            color: "#0F172A",
                           }}
                         >
-                          <FaClipboardCheck size={24} />
+                          <FaClipboardCheck size={22} />
                         </div>
                         <div>
                           <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -9179,22 +9061,7 @@ function HrOnboarding() {
                         </div>
                       </div>
                       <div className="d-flex align-items-center gap-2">
-                        <span
-                          className="onboarding-step-badge"
-                          style={{
-                            background: "var(--color-brand)",
-                            color: "var(--brand-contrast-text, #0F172A)", border: "1px solid var(--color-brand)",
-                            fontSize: "11px",
-                            fontWeight: 700,
-                            letterSpacing: "0.6px",
-                            padding: "5px 14px",
-                            borderRadius: "9999px",
-                            textTransform: "uppercase",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            boxShadow: "var(--shadow-sm)",
-                          }}
-                        >
+                        <span className="onboarding-step-badge">
                           Step {formTabs.length} of {formTabs.length}
                         </span>
                       </div>
@@ -9204,7 +9071,7 @@ function HrOnboarding() {
                     <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
                       <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center gap-2">
-                          <FaUser style={{ color: "var(--color-brand)" }} />
+                          <FaUser className="text-secondary" />
                           <span className="fw-bold small text-dark">1. Personal & Basic Details</span>
                         </div>
                         <Button
@@ -9234,7 +9101,7 @@ function HrOnboarding() {
                               style={{
                                 width: "58px",
                                 height: "58px",
-                                background: "var(--color-brand)",
+                                background: "var(--theme-nav-bg, #1E293B)",
                                 fontSize: "20px",
                               }}
                             >
@@ -9295,7 +9162,7 @@ function HrOnboarding() {
                     <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
                       <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center gap-2">
-                          <FaBuilding style={{ color: "var(--color-brand)" }} />
+                          <FaBuilding className="text-secondary" />
                           <span className="fw-bold small text-dark">2. Professional & Organization Details</span>
                         </div>
                         <Button
@@ -9341,7 +9208,10 @@ function HrOnboarding() {
                                   const mgrId = formData.professional?.[0]?.reportedTo;
                                   if (!mgrId) return "Not Assigned";
                                   const foundMgr = employees.find((e) => (e._id || e.id) === mgrId);
-                                  return foundMgr ? `${foundMgr.firstName} ${foundMgr.lastName || ""} (${foundMgr.designation || "Manager"})` : "Assigned";
+                                  const mgrDesig = foundMgr && typeof foundMgr.designation === "object" && foundMgr.designation !== null
+                                    ? (foundMgr.designation.designationName || foundMgr.designation.title || foundMgr.designation.name || "Manager")
+                                    : (foundMgr?.designation || "Manager");
+                                  return foundMgr ? `${foundMgr.firstName} ${foundMgr.lastName || ""} (${mgrDesig})` : "Assigned";
                                 })()}
                               </span>
                             </div>
@@ -9383,7 +9253,7 @@ function HrOnboarding() {
                     <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
                       <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center gap-2">
-                          <FaGraduationCap style={{ color: "var(--color-brand)" }} />
+                          <FaGraduationCap className="text-secondary" />
                           <span className="fw-bold small text-dark">3. Educational Qualifications & Certificates</span>
                         </div>
                         <Button
@@ -9588,7 +9458,7 @@ function HrOnboarding() {
                       <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
                         <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                           <div className="d-flex align-items-center gap-2">
-                            <FaBriefcase style={{ color: "var(--color-brand)" }} />
+                            <FaBriefcase className="text-secondary" />
                             <span className="fw-bold small text-dark">4. Previous Work Experience & Tenure</span>
                           </div>
                           <Button
@@ -9626,7 +9496,7 @@ function HrOnboarding() {
                     <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
                       <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center gap-2">
-                          <FaHome style={{ color: "var(--color-brand)" }} />
+                          <FaHome className="text-secondary" />
                           <span className="fw-bold small text-dark">5. Residential Address Details</span>
                         </div>
                         <Button
@@ -9668,7 +9538,7 @@ function HrOnboarding() {
                     <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
                       <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center gap-2">
-                          <FaBuilding style={{ color: "var(--color-brand)" }} />
+                          <FaBuilding className="text-secondary" />
                           <span className="fw-bold small text-dark">6. Organization & Branch Assignment</span>
                         </div>
                         <Badge bg="success-subtle" className="text-success border border-success-subtle rounded-pill extra-small px-2.5 py-1">
@@ -9709,7 +9579,7 @@ function HrOnboarding() {
                     <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
                       <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center gap-2">
-                          <FaMoneyBillWave style={{ color: "var(--color-brand)" }} />
+                          <FaMoneyBillWave className="text-secondary" />
                           <span className="fw-bold small text-dark">7. Salary & Remuneration Structure</span>
                         </div>
                         <Button
@@ -9770,7 +9640,7 @@ function HrOnboarding() {
                     <Card className="border shadow-xs rounded-3 mb-3.5 bg-white overflow-hidden">
                       <Card.Header className="bg-light py-2.5 px-3 border-bottom d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center gap-2">
-                          <FaMoneyCheckAlt style={{ color: "var(--color-brand)" }} />
+                          <FaMoneyCheckAlt className="text-secondary" />
                           <span className="fw-bold small text-dark">8. Bank & Statutory Compliance</span>
                         </div>
                         <Button
@@ -9850,14 +9720,14 @@ function HrOnboarding() {
                         <div className="d-flex align-items-center gap-2">
                           <div
                             className="rounded-circle d-flex align-items-center justify-content-center"
-                            style={{ width: "26px", height: "26px", background: "var(--brand-tint, rgba(167, 243, 208, 0.15))", color: "var(--color-brand)" }}
+                            style={{ width: "26px", height: "26px", background: "#E2E8F0", color: "#475569" }}
                           >
                             <FaUsers size={12} />
                           </div>
                           <span className="fw-bold small text-dark">9. Family Members & Emergency Contacts</span>
                           <span
                             className="badge rounded-pill fw-semibold ms-1"
-                            style={{ background: "var(--brand-tint, rgba(167, 243, 208, 0.15))", color: "var(--ink-primary, #0F172A)", fontSize: "11px", padding: "3px 9px" }}
+                            style={{ background: "#F1F5F9", color: "#0F172A", border: "1px solid #CBD5E1", fontSize: "11px", padding: "3px 9px" }}
                           >
                             {(formData.familyContacts || []).length} {(formData.familyContacts || []).length === 1 ? "Contact Registered" : "Contacts Registered"}
                           </span>
@@ -9865,8 +9735,7 @@ function HrOnboarding() {
                         <Button
                           variant="outline-secondary"
                           size="sm"
-                          className="py-1 px-3 extra-small rounded-pill d-flex align-items-center gap-1.5 shadow-none"
-                          style={{ borderColor: "#D5CEBF", color: "#555", fontWeight: 600 }}
+                          className="py-1 px-3 extra-small rounded-pill d-flex align-items-center gap-1.5 shadow-none fw-semibold"
                           onClick={() => setActiveFormTab("family")}
                         >
                           <FaEdit size={11} /> Edit Section
@@ -9886,10 +9755,8 @@ function HrOnboarding() {
                                       <div
                                         className="p-3.5 p-md-4 rounded-3 border h-100 position-relative transition-all"
                                         style={{
-                                          background: isPrimary
-                                            ? "linear-gradient(145deg, #FFFFFF 0%, #FDFCF9 55%, #F9F6F0 100%)"
-                                            : "#FFFFFF",
-                                          borderColor: isPrimary ? "var(--color-brand)" : "#EBE6DC",
+                                          background: isPrimary ? "#F8FAFC" : "#FFFFFF",
+                                          borderColor: isPrimary ? "#94A3B8" : "#E2E8F0",
                                           boxShadow: isPrimary
                                             ? "var(--shadow-sm)"
                                             : "0 2px 8px rgba(0, 0, 0, 0.02)",
@@ -9904,7 +9771,7 @@ function HrOnboarding() {
                                               left: "18px",
                                               right: "18px",
                                               height: "3px",
-                                              background: "var(--color-brand)",
+                                              background: "var(--theme-nav-bg, #1E293B)",
                                               borderRadius: "3px 3px 0 0",
                                             }}
                                           />
@@ -9913,7 +9780,7 @@ function HrOnboarding() {
                                         {/* Header Row: Avatar, Name, Relationship, and Emergency Badge */}
                                         <div
                                           className="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3 pb-3 border-bottom"
-                                          style={{ borderColor: isPrimary ? "var(--ink-border, #E2E8F0)" : "rgba(0,0,0,0.06)" }}
+                                          style={{ borderColor: "#E2E8F0" }}
                                         >
                                           <div className="d-flex align-items-center min-w-0" style={{ gap: "16px" }}>
                                             <div
@@ -9924,14 +9791,14 @@ function HrOnboarding() {
                                                 minWidth: "48px",
                                                 marginRight: "14px",
                                                 background: isPrimary
-                                                  ? "var(--color-brand)"
-                                                  : "linear-gradient(135deg, #EBE6DC 0%, #D8D2C4 100%)",
-                                                color: isPrimary ? "#FFFFFF" : "#4A4740",
+                                                  ? "var(--theme-nav-bg, #1E293B)"
+                                                  : "#E2E8F0",
+                                                color: isPrimary ? "#FFFFFF" : "#334155",
                                                 fontSize: "18px",
                                                 boxShadow: isPrimary
                                                   ? "var(--shadow-sm)"
-                                                  : "0 2px 6px rgba(0, 0, 0, 0.08)",
-                                                border: "2.5px solid #FFFFFF",
+                                                  : "0 1px 4px rgba(0, 0, 0, 0.06)",
+                                                border: "2px solid #FFFFFF",
                                               }}
                                             >
                                               {initial}
@@ -9947,9 +9814,9 @@ function HrOnboarding() {
                                                 <span
                                                   className="badge rounded-pill fw-semibold"
                                                   style={{
-                                                    background: "var(--brand-tint, rgba(167, 243, 208, 0.15))",
-                                                    color: "#8B651B",
-                                                    border: "1px solid var(--ink-border, #E2E8F0)",
+                                                    background: "#F1F5F9",
+                                                    color: "#334155",
+                                                    border: "1px solid #CBD5E1",
                                                     fontSize: "11px",
                                                     padding: "3px 10px",
                                                   }}
@@ -9968,9 +9835,9 @@ function HrOnboarding() {
                                               <span
                                                 className="badge rounded-pill d-inline-flex align-items-center gap-1.5 fw-bold"
                                                 style={{
-                                                  background: "rgba(16, 185, 129, 0.12)",
+                                                  background: "#ECFDF5",
                                                   color: "#047857",
-                                                  border: "1px solid rgba(16, 185, 129, 0.3)",
+                                                  border: "1px solid #A7F3D0",
                                                   fontSize: "11px",
                                                   padding: "5px 12px",
                                                   letterSpacing: "0.3px",
@@ -9982,8 +9849,8 @@ function HrOnboarding() {
                                               <span
                                                 className="badge rounded-pill fw-semibold text-secondary"
                                                 style={{
-                                                  background: "#F5F3EF",
-                                                  border: "1px solid #E2DDD3",
+                                                  background: "#F1F5F9",
+                                                  border: "1px solid #E2E8F0",
                                                   fontSize: "11px",
                                                   padding: "5px 11px",
                                                 }}
@@ -10014,9 +9881,9 @@ function HrOnboarding() {
                                                   height: "42px",
                                                   minWidth: "42px",
                                                   marginRight: "16px",
-                                                  background: "var(--brand-tint, rgba(167, 243, 208, 0.15))",
-                                                  color: "#8B651B",
-                                                  border: "1px solid var(--ink-border, #E2E8F0)",
+                                                  background: "#ECFDF5",
+                                                  color: "#059669",
+                                                  border: "1px solid #A7F3D0",
                                                 }}
                                               >
                                                 <FaPhoneAlt size={14} />
@@ -10146,7 +10013,7 @@ function HrOnboarding() {
                 )}
 
                 {/* Navigation Buttons */}
-                <div className="mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
+                <div className="onboarding-form-footer mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
                   <div className="d-flex align-items-center gap-2">
                     <button
                       type="button"
@@ -10179,7 +10046,7 @@ function HrOnboarding() {
                       className="onboarding-nav-btn onboarding-next-btn"
                       onClick={handleNextStep}
                     >
-                      Next <FaChevronRight size={10} />
+                      Continue: {formTabs[formTabs.findIndex((t) => t.id === activeFormTab) + 1]?.label || "Next"} <FaChevronRight size={10} />
                     </button>
                   ) : (
                     <button
@@ -10187,7 +10054,6 @@ function HrOnboarding() {
                       className="onboarding-nav-btn onboarding-submit-btn"
                       onClick={handleOnboardSubmit}
                       disabled={submittingForm}
-                      style={editingOnboardingId ? { background: "#2DC58A" } : {}}
                     >
                       {submittingForm ? (
                         <LoadingSpinner variant="button" size="sm" />
@@ -10203,69 +10069,6 @@ function HrOnboarding() {
               </Card.Body>
             </Card>
           </main>
-
-          {/* Right Progress Card (Sticky Sidebar) */}
-          <aside className="onboarding-sidebar">
-            <div className="completion-card">
-              <Card className="border-0 shadow-sm rounded-4 p-3 bg-white onboarding-sticky-progress-card">
-                <div className="text-center mb-3">
-                  <h6 className="fw-bold text-dark small mb-2">Onboarding Profile Completion</h6>
-                  <h2 className="fw-bold mb-0 onboarding-progress-percent">{formProgress}%</h2>
-                  <span className="extra-small text-muted">{completedSections} of {totalSections} sections filled</span>
-                  <ProgressBar now={formProgress} className="rounded-pill mt-2 mb-2 onboarding-progress-bar-6" />
-                </div>
-
-                {/* Section Checklist */}
-                <div className="bg-light p-2 rounded-3 mb-3">
-                  <span className="extra-small text-uppercase fw-bold text-muted d-block mb-2 ps-1">Sections Checklist</span>
-                  <div className="d-flex flex-column gap-1">
-                    {[
-                      { id: "personal", label: "Personal Information", complete: sectionStatus.personal },
-                      { id: "professional", label: "Company & Professional", complete: sectionStatus.professional },
-                      { id: "education", label: "Education Qualifications", complete: sectionStatus.education },
-                      { id: "experience", label: "Past Work Experience", complete: sectionStatus.experience },
-                      { id: "address", label: "Residential Addresses", complete: sectionStatus.address },
-                      { id: "compensation", label: "Salary Details", complete: sectionStatus.compensation },
-                      { id: "documents", label: "Bank & Statutory Details", complete: sectionStatus.documents },
-                      { id: "family", label: "Family & Emergency Contact", complete: sectionStatus.family },
-                      { id: "review", label: "Review & Initialize", complete: Object.values(sectionStatus).every(Boolean) },
-                    ].map((sec) => (
-                      <div
-                        key={sec.id}
-                        onClick={() => handleTabClick(sec.id)}
-                        className={`d-flex align-items-center justify-content-between p-2 rounded-2 cursor-pointer extra-small onboarding-checklist-row ${activeFormTab === sec.id ? "onboarding-checklist-active" : "text-muted"
-                          }`}
-                      >
-                        <span className="d-flex align-items-center gap-1.5">
-                          {sec.complete ? <FaCheckCircle className="onboarding-checklist-icon-filled flex-shrink-0" /> : <FaTimesCircle className="text-secondary opacity-50 flex-shrink-0" />}
-                          {sec.label}
-                        </span>
-                        {sec.complete ? (
-                          <span className="onboarding-checklist-badge filled">Filled</span>
-                        ) : (
-                          <span className="onboarding-checklist-badge pending">Pending</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Document Attachments Summary */}
-                <div className="p-2 border rounded-3 bg-white mb-2 d-flex justify-content-between align-items-center">
-                  <span className="extra-small text-muted fw-semibold d-flex align-items-center gap-1">
-                    <FaFileUpload style={{ color: "var(--color-brand)" }} /> Attached Files:
-                  </span>
-                  <span className="onboarding-attached-badge">
-                    {attachedDocsCount} Document{attachedDocsCount !== 1 ? "s" : ""} Attached
-                  </span>
-                </div>
-
-                <p className="extra-small text-muted mb-0 text-center">
-                  Initiating onboarding automatically sets status to <strong>ONBOARDING</strong> and generates candidate credentials.
-                </p>
-              </Card>
-            </div>
-          </aside>
         </div>
       )}
 
@@ -10492,6 +10295,7 @@ function HrOnboarding() {
         centered
         scrollable
         backdrop="static"
+        className="onboarding-scoped-modal"
       >
         <Modal.Header closeButton className="bg-white border-bottom py-3 px-3 px-md-4">
           <div className="d-flex flex-wrap justify-content-between align-items-center w-100 gap-3 pe-3">
@@ -10581,7 +10385,7 @@ function HrOnboarding() {
                     {(selectedOnboarding?.status !== "COMPLETED" || validationReport?.valid) && (
                       <Button
                         size="sm"
-                        className="rounded-pill px-3 py-1 extra-small fw-bold text-white d-flex align-items-center gap-2 shadow-xs onboarding-btn-mint"
+                        className="rounded-pill px-3 py-1 extra-small fw-bold d-flex align-items-center gap-2 shadow-xs onboarding-btn-mint"
                         onClick={handleCompleteOnboarding}
                         disabled={actionLoading}
                       >
@@ -10604,7 +10408,7 @@ function HrOnboarding() {
                     {!targetEmp.hasLoginAccess && (
                       <Button
                         size="sm"
-                        className="rounded-pill px-3 py-1 extra-small fw-bold text-white d-flex align-items-center gap-2 shadow-xs onboarding-btn-mint"
+                        className="rounded-pill px-3 py-1 extra-small fw-bold d-flex align-items-center gap-2 shadow-xs onboarding-btn-mint"
                         onClick={() => handleOpenProvision(targetEmp)}
                       >
                         <FaKey size={11} className="me-1.5" /> Provision Login Account
@@ -10642,14 +10446,11 @@ function HrOnboarding() {
                       <Nav.Link
                         active={detailActiveTab === tab.id}
                         onClick={() => setDetailActiveTab(tab.id)}
-                        className={`d-flex align-items-center extra-small py-1.5 px-3 rounded-pill cursor-pointer fw-bold ${detailActiveTab === tab.id
-                          ? "text-white shadow-xs"
-                          : "text-secondary border-0 bg-transparent"
+                        className={`onboarding-workspace-tab d-flex align-items-center extra-small py-1.5 px-3 rounded-pill cursor-pointer fw-bold ${detailActiveTab === tab.id
+                          ? "active shadow-xs"
+                          : "border-0"
                           }`}
-                        style={{
-                          gap: "8px",
-                          ...(detailActiveTab === tab.id ? { backgroundColor: "#2DC58A" } : {}),
-                        }}
+                        style={{ gap: "8px" }}
                       >
                         <span className="me-1 d-inline-flex align-items-center">{tab.icon}</span>
                         <span>{tab.label}</span>
@@ -11077,57 +10878,12 @@ function HrOnboarding() {
                           <span className="fw-bold small text-dark d-flex align-items-center gap-1.5">
                             <FaBuilding className="text-success" /> Experience ({candidateProfileData.professional?.length || 0})
                           </span>
-                          {isEditingCandidateProfile && (
-                            <button
-                              type="button"
-                              className="btn btn-sm d-inline-flex align-items-center gap-1.5 fw-bold transition-all"
-                              style={{
-                                background: "var(--color-brand)",
-                                color: "var(--brand-contrast-text, #0F172A)", border: "1px solid var(--color-brand)",
-                                borderRadius: "9999px",
-                                padding: "5px 14px",
-                                fontSize: "12px",
-                                boxShadow: "var(--shadow-sm)",
-                              }}
-                              onClick={() => {
-                                setCandidateProfileData((prev) => ({
-                                  ...prev,
-                                  professional: [
-                                    ...(prev.professional || []),
-                                    {
-                                      companyName: "",
-                                      companyWebsite: "",
-                                      website: "",
-                                      location: "",
-                                      department: "",
-                                      designation: "",
-                                      role: "",
-                                      salary: "",
-                                      joiningDate: candidateProfileData.joiningDate || "",
-                                      reportedTo: candidateProfileData.reportingManager || "",
-                                      noticePeriod: "",
-                                      expectedLastWorkingDate: "",
-                                      employmentStatus: "CURRENTLY_EMPLOYED",
-                                      isCurrent: false,
-                                      isFresher: false,
-                                      documentType: "OFFER_LETTER",
-                                      documentUrl: "",
-                                      documentName: "",
-                                      documentFile: null,
-                                    },
-                                  ],
-                                }));
-                              }}
-                            >
-                              <FaPlus /> Add Company Record
-                            </button>
-                          )}
                         </div>
 
                         {isEditingCandidateProfile ? (
                           <div className="d-flex flex-column gap-3">
                             {candidateProfileData.professional && candidateProfileData.professional.length > 0 ? (
-                              candidateProfileData.professional.map((prof, i) => {
+                              candidateProfileData.professional.slice(0, 1).map((prof, i) => {
                                 const doc = getProfessionalDoc(prof);
                                 const isUploadingThis = uploadingProfIndex === i;
 
@@ -11136,7 +10892,7 @@ function HrOnboarding() {
                                     <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-wrap gap-2">
                                       <div className="d-flex align-items-center gap-2">
                                         <span className="fw-bold small text-dark">
-                                          Company Record #{i + 1}
+                                                  Current Employment
                                         </span>
                                         {prof.isFresher && (
                                           <Badge bg="info" className="ms-1 text-white">Fresher</Badge>
@@ -11163,21 +10919,6 @@ function HrOnboarding() {
                                             Fresher (No Prior Experience)
                                           </span>
                                         </label>
-                                        {candidateProfileData.professional.length > 1 && (
-                                          <Button
-                                            variant="outline-danger"
-                                            size="sm"
-                                            className="py-0 px-2 extra-small"
-                                            onClick={() => {
-                                              setCandidateProfileData((prev) => ({
-                                                ...prev,
-                                                professional: prev.professional.filter((_, idx) => idx !== i),
-                                              }));
-                                            }}
-                                          >
-                                            <FaTrash /> Remove
-                                          </Button>
-                                        )}
                                       </div>
                                     </div>
 
@@ -11589,7 +11330,7 @@ function HrOnboarding() {
                               })
                             ) : (
                               <div className="text-center py-3 bg-white rounded-3 border text-muted extra-small">
-                                No company records added. Click "+ Add Company Record" above to add one.
+                                Current employment details are taken from the Company & Professional section.
                               </div>
                             )}
                           </div>
@@ -12246,13 +11987,12 @@ function HrOnboarding() {
                       <Card className="p-3 bg-light border-0 rounded-3 mb-3">
                         <div className="d-flex justify-content-between align-items-center mb-2.5">
                           <span className="fw-bold small text-dark d-flex align-items-center gap-1.5">
-                            <FaCreditCard style={{ color: "var(--color-brand)" }} /> Bank & Statutory Details
+                            <FaCreditCard className="text-secondary" /> Bank & Statutory Details
                           </span>
                           <Button
-                            variant={isEditingCandidateProfile ? "outline-secondary" : "outline-warning"}
+                            variant="outline-secondary"
                             size="sm"
                             className="py-0 px-2 extra-small rounded-pill fw-semibold"
-                            style={!isEditingCandidateProfile ? { borderColor: "var(--color-brand)", color: "var(--ink-primary, #0F172A)", background: "var(--brand-tint, rgba(167, 243, 208, 0.15))" } : {}}
                             onClick={() => setIsEditingCandidateProfile((p) => !p)}
                           >
                             <FaEdit className="me-1" /> {isEditingCandidateProfile ? "Done Editing" : "Edit Bank & Statutory"}
@@ -12270,8 +12010,8 @@ function HrOnboarding() {
                           return isEditingCandidateProfile ? (
                             <div className="d-flex flex-column gap-3">
                               {isCandUnpaid && (
-                                <div className="p-2.5 border rounded-3 d-flex align-items-center gap-2 extra-small" style={{ background: "var(--brand-tint, rgba(167, 243, 208, 0.15))", borderColor: "var(--ink-border, #E2E8F0)", color: "var(--ink-primary, #0F172A)" }}>
-                                  <FaCheckCircle className="flex-shrink-0" style={{ color: "var(--color-brand)" }} />
+                                <div className="p-2.5 border rounded-3 d-flex align-items-center gap-2 extra-small" style={{ background: "#ECFDF5", borderColor: "#A7F3D0", color: "var(--ink-primary, #0F172A)" }}>
+                                  <FaCheckCircle className="flex-shrink-0" style={{ color: "#059669" }} />
                                   <span>
                                     <strong>Unpaid Engagement:</strong> Bank account verification and salary processing details are exempted for this candidate.
                                   </span>
@@ -12280,7 +12020,7 @@ function HrOnboarding() {
                               {/* Sub-Section 1: Statutory & Compliance Form */}
                               <div className="p-2.5 bg-white border rounded-3">
                                 <div className="extra-small text-uppercase fw-bold text-muted mb-2 d-flex align-items-center gap-1.5 pb-1.5 border-bottom">
-                                  <FaFileContract style={{ color: "var(--color-brand)" }} /> Statutory & Compliance Information
+                                  <FaFileContract className="text-secondary" /> Statutory & Compliance Information
                                 </div>
                                 <Row className="g-2">
                                   <Col md={4} sm={6}>
@@ -12369,7 +12109,7 @@ function HrOnboarding() {
                               {/* Sub-Section 2: Bank Details Form */}
                               <div className="p-2.5 bg-white border rounded-3">
                                 <div className="extra-small text-uppercase fw-bold text-muted mb-2 d-flex align-items-center gap-1.5 pb-1.5 border-bottom">
-                                  <FaUniversity style={{ color: "var(--color-brand)" }} /> Bank Account Information
+                                  <FaUniversity className="text-secondary" /> Bank Account Information
                                 </div>
                                 <Row className="g-2">
                                   <Col md={4} sm={6}>
@@ -12508,10 +12248,10 @@ function HrOnboarding() {
                               <Col lg={6}>
                                 {isCandUnpaid ? (
                                   <div className="h-100 p-4 bg-white rounded-3 border d-flex flex-column justify-content-center align-items-center text-center">
-                                    <div className="p-3 rounded-circle mb-2" style={{ background: "var(--brand-tint, rgba(167, 243, 208, 0.15))", color: "var(--color-brand)" }}>
+                                    <div className="p-3 rounded-circle mb-2" style={{ background: "#ECFDF5", color: "#059669" }}>
                                       <FaCheckCircle size={28} />
                                     </div>
-                                    <span className="badge px-3 py-1.5 rounded-pill mb-2 fw-bold" style={{ backgroundColor: "var(--brand-tint, rgba(167, 243, 208, 0.15))", color: "var(--ink-primary, #0F172A)", border: "1px solid var(--ink-border, #E2E8F0)" }}>
+                                    <span className="badge px-3 py-1.5 rounded-pill mb-2 fw-bold" style={{ backgroundColor: "#ECFDF5", color: "#047857", border: "1px solid #A7F3D0" }}>
                                       Bank Details Exempted
                                     </span>
                                     <p className="text-muted extra-small mb-0" style={{ maxWidth: 360 }}>
@@ -12522,7 +12262,7 @@ function HrOnboarding() {
                                   <div className="h-100 p-3 bg-white rounded-3 border d-flex flex-column">
                                     <div className="extra-small text-uppercase fw-bold text-muted mb-2 d-flex align-items-center justify-content-between pb-2 border-bottom">
                                       <span className="d-flex align-items-center gap-1.5">
-                                        <FaUniversity style={{ color: "var(--color-brand)" }} /> Bank Account Details
+                                        <FaUniversity className="text-secondary" /> Bank Account Details
                                       </span>
                                       <div className="d-flex align-items-center gap-1.5">
                                         {getBankPassbookDoc()?.url && (
@@ -12538,7 +12278,7 @@ function HrOnboarding() {
                                         )}
                                         <label
                                           className={`btn btn-sm rounded-pill mb-0 py-0.5 px-2 extra-small fw-semibold ${uploadingBankDoc ? "cursor-not-allowed" : "cursor-pointer"}`}
-                                          style={{ border: "1px solid var(--color-brand)", color: "var(--ink-primary, #0F172A)", background: "var(--brand-tint, rgba(167, 243, 208, 0.15))" }}
+                                          style={{ border: "1px solid #CBD5E1", color: "#0F172A", background: "#F8FAFC" }}
                                         >
                                           {uploadingBankDoc ? (
                                             <>
@@ -12599,7 +12339,7 @@ function HrOnboarding() {
                               <Col lg={6}>
                                 <div className="h-100 p-3 bg-white rounded-3 border d-flex flex-column">
                                   <div className="extra-small text-uppercase fw-bold text-muted mb-2 d-flex align-items-center gap-1.5 pb-2 border-bottom">
-                                    <FaFileContract style={{ color: "var(--color-brand)" }} /> Statutory & Compliance Details
+                                    <FaFileContract className="text-secondary" /> Statutory & Compliance Details
                                   </div>
                                   <Table borderless responsive size="sm" className="mb-0 align-middle">
                                     <tbody>
@@ -12809,7 +12549,7 @@ function HrOnboarding() {
                             {!targetEmp.hasLoginAccess && (
                               <Button
                                 size="sm"
-                                className="rounded-pill px-3 py-1 extra-small fw-bold text-white d-flex align-items-center gap-1.5 shadow-sm onboarding-btn-mint"
+                                className="rounded-pill px-3 py-1 extra-small fw-bold d-flex align-items-center gap-1.5 shadow-sm onboarding-btn-mint"
                                 onClick={() => handleOpenProvision(targetEmp)}
                               >
                                 <FaKey size={11} /> Provision Login Account
@@ -13088,11 +12828,11 @@ function HrOnboarding() {
 
                       <Button
                         size="sm"
-                        className="d-flex align-items-center gap-1.5 shadow-xs rounded-pill px-3 py-1 extra-small fw-bold text-white onboarding-btn-mint"
+                        className="d-flex align-items-center gap-1.5 shadow-xs rounded-pill px-3 py-1 extra-small fw-bold onboarding-btn-mint"
                         onClick={() => setShowCreateAssetModal(true)}
                       >
                         <FaPlus size={11} />
-                        <span>+ Add Asset</span>
+                        <span>Add Asset</span>
                       </Button>
                     </div>
                   </div>
@@ -13274,7 +13014,7 @@ function HrOnboarding() {
                         <p className="extra-small mb-3">Try adjusting your search criteria or register a new asset.</p>
                         <Button
                           size="sm"
-                          className="rounded-pill extra-small px-3 fw-bold text-white onboarding-btn-mint"
+                          className="rounded-pill extra-small px-3 fw-bold onboarding-btn-mint"
                           onClick={() => setShowCreateAssetModal(true)}
                         >
                           <FaPlus className="me-1" /> Add New Asset
@@ -13360,7 +13100,7 @@ function HrOnboarding() {
                                   ) : asset.status === "AVAILABLE" ? (
                                     <Button
                                       size="sm"
-                                      className="rounded-pill py-0.5 px-2.5 extra-small fw-bold d-inline-flex align-items-center gap-1 text-white onboarding-btn-mint"
+                                      className="rounded-pill py-0.5 px-2.5 extra-small fw-bold d-inline-flex align-items-center gap-1 onboarding-btn-mint"
                                       onClick={() => {
                                         setSelectedAssetToAssign(asset);
                                         setShowAssignAssetModal(true);
@@ -13982,7 +13722,7 @@ function HrOnboarding() {
       {/* ========================================================
           MODAL: VIEW / PREVIEW DOCUMENT MODAL
           ======================================================== */}
-      <Modal show={docPreview.show} onHide={handleCloseDocPreview} size="lg" centered>
+      <Modal show={docPreview.show} onHide={handleCloseDocPreview} size="xl" centered dialogClassName="modal-90w">
         <Modal.Header closeButton className="border-0 bg-light pb-2">
           <div className="d-flex justify-content-between align-items-center w-100 me-2 flex-wrap gap-2">
             <Modal.Title className="h6 fw-bold text-dark d-flex align-items-center gap-2 mb-0">
@@ -14320,7 +14060,7 @@ function HrOnboarding() {
               variant="success"
               size="sm"
               type="submit"
-              className="rounded-pill extra-small px-3 fw-bold text-white onboarding-btn-mint"
+              className="rounded-pill extra-small px-3 fw-bold onboarding-btn-mint"
               disabled={createAssetSubmitting || !createAssetForm.name.trim()}
             >
               {createAssetSubmitting ? <LoadingSpinner variant="button" size="sm" /> : <FaPlus className="me-1" />} Save & Register Asset
@@ -14389,97 +14129,12 @@ function HrOnboarding() {
           <Button
             variant="success"
             size="sm"
-            className="rounded-pill extra-small px-3 fw-bold text-white onboarding-btn-mint"
+            className="rounded-pill extra-small px-3 fw-bold onboarding-btn-mint"
             disabled={assigningAssetLoading}
             onClick={() => handleAssignAssetToCandidate(selectedAssetToAssign, assignAssetDetailForm.condition, assignAssetDetailForm.remarks)}
           >
             {assigningAssetLoading ? <LoadingSpinner variant="button" size="sm" /> : <FaPlus className="me-1" />} Confirm Assignment
           </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* ========================================================
-          IN-APP DOCUMENT VIEWER MODAL (INLINE VIEWING)
-          ======================================================== */}
-      <Modal
-        show={docPreview.show}
-        onHide={handleCloseDocPreview}
-        size="xl"
-        centered
-        dialogClassName="modal-90w"
-      >
-        <Modal.Header closeButton className="border-bottom py-2.5 px-3 bg-light">
-          <Modal.Title className="h6 fw-bold text-dark d-flex align-items-center gap-2 mb-0">
-            {docPreview.url?.toLowerCase().includes(".pdf") || docPreview.type === "pdf" ? (
-              <FaFilePdf className="text-danger" size={18} />
-            ) : (
-              <FaFileImage className="text-primary" size={18} />
-            )}
-            <span>{docPreview.title || "Document Viewer"}</span>
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="p-0 bg-light position-relative d-flex flex-column align-items-center justify-content-center doc-viewport-modal-body">
-          {docPreview.url ? (
-            (() => {
-              const urlLower = (docPreview.url || "").toLowerCase();
-              const isPdf = urlLower.includes(".pdf") || docPreview.file?.type === "application/pdf" || docPreview.type === "pdf";
-              const isImage = urlLower.includes(".png") || urlLower.includes(".jpg") || urlLower.includes(".jpeg") || urlLower.includes(".webp") || urlLower.includes(".gif") || docPreview.file?.type?.startsWith("image/") || (!isPdf && urlLower.includes("/image/upload/"));
-
-              if (isImage) {
-                return (
-                  <div className="w-100 h-100 p-3 d-flex align-items-center justify-content-center doc-viewport-img-wrapper">
-                    <img
-                      src={docPreview.url}
-                      alt={docPreview.title || "Document Preview"}
-                      className="doc-viewport-image"
-                    />
-                  </div>
-                );
-              }
-
-              // PDF & Other Documents: Native Full Viewport Iframe
-              return (
-                <div className="w-100 h-100 position-relative doc-viewport-iframe-wrapper">
-                  <iframe
-                    src={docPreview.url}
-                    title={docPreview.title || "Document Preview"}
-                    width="100%"
-                    height="100%"
-                    className="doc-viewport-iframe"
-                  />
-                </div>
-              );
-            })()
-          ) : (
-            <div className="text-muted text-center py-5">
-              <p className="mb-0">No preview available for this document.</p>
-            </div>
-          )}
-        </Modal.Body>
-        <Modal.Footer className="py-2 px-3 bg-light border-top d-flex justify-content-between align-items-center">
-          <span className="extra-small text-muted text-truncate doc-preview-footer-title">
-            {docPreview.title}
-          </span>
-          <div className="d-flex align-items-center gap-2">
-            {docPreview.url && (
-              <Button
-                variant="outline-secondary"
-                size="sm"
-                className="rounded-pill extra-small px-3"
-                onClick={() => window.open(docPreview.url, "_blank")}
-              >
-                <FaExternalLinkAlt className="me-1" size={11} /> Open in New Tab
-              </Button>
-            )}
-            <Button
-              variant="secondary"
-              size="sm"
-              className="rounded-pill extra-small px-3"
-              onClick={handleCloseDocPreview}
-            >
-              Close
-            </Button>
-          </div>
         </Modal.Footer>
       </Modal>
 

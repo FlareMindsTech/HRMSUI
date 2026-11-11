@@ -4,6 +4,18 @@
   margin-left: auto;
   margin-right: auto;
   width: 100%;
+  --settings-neutral: #475569;
+  --settings-neutral-dark: #334155;
+  --settings-neutral-light: #F1F5F9;
+  --settings-border: #CBD5E1;
+  --color-primary: #475569;
+  --color-primary-dark: #334155;
+  --color-primary-light: #F1F5F9;
+  --color-brand: #475569;
+  --brand-tint: #F8FAFC;
+  --brand-hover: #334155;
+  --brand-active: #1E293B;
+  --brand-contrast-text: #FFFFFF;
 }
 
 /* ==========================================================================
@@ -134,17 +146,17 @@
 }
 
 .settings-tab-btn:hover {
-  color: var(--color-brand) !important;
-  background: color-mix(in srgb, var(--color-brand) 12%, transparent) !important;
-  border-color: var(--color-brand) !important;
+  color: var(--settings-neutral-dark) !important;
+  background: var(--settings-neutral-light) !important;
+  border-color: var(--settings-border) !important;
 }
 
 .settings-tab-btn.active {
-  background: var(--color-brand) !important;
-  color: var(--brand-contrast-text, #111827) !important;
-  border-color: var(--color-brand) !important;
+  background: var(--settings-neutral-light) !important;
+  color: var(--settings-neutral-dark) !important;
+  border-color: var(--settings-border) !important;
   font-weight: 700 !important;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-brand) 30%, transparent) !important;
+  box-shadow: 0 2px 8px rgba(71, 85, 105, 0.15) !important;
 }
 
 .settings-tab-icon {

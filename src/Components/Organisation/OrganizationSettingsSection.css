@@ -6,6 +6,18 @@
 
 .org-section-container {
   width: 100%;
+  --org-settings-neutral: #475569;
+  --org-settings-neutral-dark: #334155;
+  --org-settings-neutral-light: #F1F5F9;
+  --org-settings-border: #CBD5E1;
+  --color-primary: #475569;
+  --color-primary-dark: #334155;
+  --color-primary-light: #F1F5F9;
+  --color-brand: #475569;
+  --brand-tint: #F8FAFC;
+  --brand-hover: #334155;
+  --brand-active: #1E293B;
+  --brand-contrast-text: #FFFFFF;
 }
 
 .org-section-header {
@@ -85,10 +97,10 @@ button.org-settings-nav-item {
 
 .org-settings-nav-item:hover,
 button.org-settings-nav-item:hover {
-  background: rgba(199, 136, 44, 0.08) !important;
-  background-color: rgba(199, 136, 44, 0.08) !important;
-  color: var(--color-brand) !important;
-  border-color: rgba(199, 136, 44, 0.2) !important;
+  background: var(--org-settings-neutral-light) !important;
+  background-color: var(--org-settings-neutral-light) !important;
+  color: var(--org-settings-neutral-dark) !important;
+  border-color: var(--org-settings-border) !important;
   transform: translateX(2px) !important;
   box-shadow: none !important;
 }
@@ -97,10 +109,10 @@ button.org-settings-nav-item:hover {
 button.org-settings-nav-item.active {
   background: #FFFFFF !important;
   background-color: #FFFFFF !important;
-  color: var(--color-brand) !important;
+  color: var(--org-settings-neutral-dark) !important;
   font-weight: 700 !important;
   border: 1px solid #CBD5E1 !important;
-  border-left: 4px solid var(--color-brand) !important;
+  border-left: 4px solid var(--org-settings-neutral) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
   transform: none !important;
 }
@@ -109,6 +121,21 @@ button.org-settings-nav-item.active {
 button.org-settings-nav-item svg {
   font-size: 1.1rem !important;
   flex-shrink: 0 !important;
+}
+
+.org-section-container .org-settings-content .btn-primary {
+  background: var(--org-settings-neutral) !important;
+  background-color: var(--org-settings-neutral) !important;
+  border-color: var(--org-settings-neutral) !important;
+  color: #FFFFFF !important;
+}
+
+.org-section-container .org-settings-content .btn-primary:hover,
+.org-section-container .org-settings-content .btn-primary:focus {
+  background: var(--org-settings-neutral-dark) !important;
+  background-color: var(--org-settings-neutral-dark) !important;
+  border-color: var(--org-settings-neutral-dark) !important;
+  color: #FFFFFF !important;
 }
 
 /* ── RIGHT: Options Content Viewport ── */
@@ -158,4 +185,3 @@ button.org-settings-nav-item svg {
     border-bottom: 1px solid var(--ink-border, #E2E8F0) !important;
   }
 }
-

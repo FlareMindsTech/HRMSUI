@@ -22,11 +22,11 @@ function EducationSummary({
   return (
     <Card className="border-0 rounded-4 shadow-sm mb-4 overflow-hidden edu-summary-card">
       <div className="edu-summary-accent-bar" />
-      <Card.Body className="p-3.5">
+      <Card.Body className="p-3">
         <div className="d-flex align-items-center justify-content-between mb-3">
           <div className="d-flex align-items-center gap-2">
             <div
-              className="rounded-2 p-1.5 d-flex align-items-center justify-content-center text-white edu-icon-summary"
+              className="rounded-2 p-2 d-flex align-items-center justify-content-center edu-icon-summary"
             >
               <FaAward size={14} />
             </div>
@@ -43,7 +43,7 @@ function EducationSummary({
                 Highest Qualification
               </span>
               <div className="d-flex align-items-center gap-2 mt-1">
-                <FaGraduationCap style={{ color: "var(--color-brand)" }} size={20} />
+                <FaGraduationCap style={{ color: "var(--ink-primary, #0F172A)" }} size={20} />
                 <span className="h5 fw-bold text-dark mb-0">
                   {highestQualification || "Not Specified"}
                 </span>

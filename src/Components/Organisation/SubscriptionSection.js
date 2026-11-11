@@ -15,6 +15,7 @@ import {
 import { useBranch } from "../../context/BranchContext";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchOrgResource, selectOrgStructure } from "../../redux/slices/organizationSlice";
+import "./SubscriptionSection.css";
 
 export default function SubscriptionSection() {
   const { organization } = useBranch();
@@ -83,7 +84,11 @@ export default function SubscriptionSection() {
           <Button variant="outline-secondary" size="sm" onClick={loadData} className="d-flex align-items-center gap-1">
             <FaSyncAlt /> Refresh
           </Button>
-          <Button variant="success" size="sm" className="d-flex align-items-center gap-1 fw-semibold">
+          <Button
+            variant="success"
+            size="sm"
+            className="subscription-upgrade-btn d-flex align-items-center gap-1 fw-semibold"
+          >
             <FaRocket /> Upgrade Plan
           </Button>
         </div>
