@@ -30,6 +30,8 @@ jobs:
         run: npm ci
 
       - name: Build Windows app
+        env:
+          CI: false
         run: npm run tauri build
 
       - name: Upload Windows installers

@@ -35,6 +35,8 @@ jobs:
         run: npm ci
 
       - name: Build Linux app
+        env:
+          CI: false
         run: npm run tauri build
 
       - name: Upload Linux installers
