@@ -1,6 +1,6 @@
 {
-  "name": "front-end",
-  "version": "0.1.0",
+  "name": "teamhub-hrms",
+  "version": "1.0.0",
   "private": true,
   "dependencies": {
     "@reduxjs/toolkit": "^2.12.0",
@@ -22,6 +22,9 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "tauri": "tauri",
+    "desktop:dev": "tauri dev",
+    "desktop:build": "tauri build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "test:e2e": "playwright test",

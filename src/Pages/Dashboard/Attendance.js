@@ -60,6 +60,7 @@ import {
   selectDepartmentsDropdown,
 } from '../../redux/slices/organizationSlice';
 import { formatTime, formatFullDate } from '../../utils/dateFormatter';
+import { getCurrentCoordinates } from '../../utils/geolocation';
 import OptionalHolidays from './OptionalHolidays';
 import './Attendance.css';
 
@@ -497,6 +498,82 @@ function Attendance() {
       }
     } catch (err) { console.warn("Today attendance load:", err.message); }
   }, []);
+
+  // ── Foreground geofence heartbeat (3-minute cadence) ──
+  // Keeps active working time paused while the employee is outside the
+  // permitted office area in GEOFENCE / BOTH modes.
+  useEffect(() => {
+    const heartbeatMode = String(
+      effectiveAttendanceMode || attendancePolicy?.attendanceMode || ''
+    ).toUpperCase();
+    const requiresGeofenceHeartbeat = heartbeatMode === 'GEOFENCE' || heartbeatMode === 'BOTH';
+    const hasActiveSession = Boolean(
+      todayRecord?._id && todayRecord?.loginTime && !todayRecord?.logoutTime
+    );
+
+    if (!requiresGeofenceHeartbeat || !hasActiveSession || isOwner || isAdmin) {
+      return undefined;
+    }
+
+    let isMounted = true;
+    let isPinging = false;
+
+    const sendHeartbeat = async () => {
+      if (!isMounted || isPinging) return;
+      isPinging = true;
+
+      try {
+        const coords = await getCurrentCoordinates();
+        if (!isMounted) return;
+
+        const pingResult = await sendGeofencePing({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          accuracy: coords.accuracy || 0,
+        });
+
+        if (isMounted && pingResult?.success && pingResult?.data) {
+          setTodayRecord((prev) => {
+            if (!prev || prev.logoutTime) return prev;
+            return {
+              ...prev,
+              isSessionPaused: pingResult.data.isSessionPaused,
+              lastHeartbeatAt: pingResult.data.lastHeartbeatAt || prev.lastHeartbeatAt,
+              lastKnownLocation: {
+                ...(prev.lastKnownLocation || {}),
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+                accuracy: coords.accuracy || 0,
+                distanceFromOffice: pingResult.data.distanceFromOffice,
+                isInsideGeofence: pingResult.data.isInsideGeofence,
+              },
+            };
+          });
+        }
+      } catch (err) {
+        // Background heartbeat failures must never interrupt attendance actions.
+        console.warn('Geofence heartbeat notice:', err.message);
+      } finally {
+        isPinging = false;
+      }
+    };
+
+    sendHeartbeat();
+    const intervalId = setInterval(sendHeartbeat, 3 * 60 * 1000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, [
+    todayRecord?._id,
+    todayRecord?.loginTime,
+    todayRecord?.logoutTime,
+    effectiveAttendanceMode,
+    attendancePolicy?.attendanceMode,
+    isOwner,
+    isAdmin,
+  ]);
 
   const loadOwnMonthly = useCallback(async () => {
     setOwnLoading(true);
@@ -1555,6 +1632,11 @@ function Attendance() {
                 <div className="small text-muted">
                   Working Time: <strong className="text-dark">{todayRecord?.totalHours ? `${todayRecord.totalHours} hrs` : '0h 00m'}</strong>
                 </div>
+                {todayRecord?.loginTime && !todayRecord?.logoutTime && todayRecord?.isSessionPaused && (
+                  <Badge bg="warning-subtle" text="warning" className="rounded-pill px-2.5 py-1 mt-2">
+                    Outside office · active time paused
+                  </Badge>
+                )}
               </div>
             </Card>
 
@@ -1576,7 +1658,7 @@ function Attendance() {
                           <FaClock size={10} />
                         </div>
                         <div>
-                          <strong>{session.inTime ? formatTime(session.inTime) : '—'} - {session.outTime ? formatTime(session.outTime) : 'Active'}</strong> — Session ({session.durationMinutes || 0}m)
+                          <strong>{session.startTime || session.inTime ? formatTime(session.startTime || session.inTime) : '—'} - {session.endTime || session.outTime ? formatTime(session.endTime || session.outTime) : 'Active'}</strong> — Session ({session.durationMinutes || 0}m)
                         </div>
                       </div>
                     ))}
@@ -1589,8 +1671,10 @@ function Attendance() {
                       </div>
                     ) : (
                       <div className="d-flex align-items-center gap-2">
-                        <div className="badge rounded-circle bg-primary p-1"><FaClock size={10} /></div>
-                        <div className="text-primary fw-semibold">Currently Active Session</div>
+                        <div className={`badge rounded-circle p-1 ${todayRecord?.isSessionPaused ? 'bg-warning' : 'bg-primary'}`}><FaClock size={10} /></div>
+                        <div className={todayRecord?.isSessionPaused ? 'text-warning fw-semibold' : 'text-primary fw-semibold'}>
+                          {todayRecord?.isSessionPaused ? 'Session Paused (Outside Office)' : 'Currently Active Session'}
+                        </div>
                       </div>
                     )}
                   </>

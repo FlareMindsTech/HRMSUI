@@ -14,6 +14,21 @@
 
 # production
 /build
+/dist
+
+# desktop (Tauri / Rust) build artifacts
+/src-tauri/target/
+/src-tauri/gen/
+
+# desktop bundle / installer outputs
+*.AppImage
+*.deb
+*.rpm
+*.dmg
+*.msi
+*.exe
+*.nsis
+*.zip
 
 # misc
 .DS_Store
@@ -21,7 +36,6 @@
 .env.development.local
 .env.test.local
 .env.production.local
-package-lock.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
