@@ -1,13 +1,10 @@
 name: Build Linux
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
-
-permissions:
-  contents: write
 
 jobs:
   build-linux:
@@ -37,13 +34,15 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build and upload Linux bundles
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build Linux app
+        run: npm run tauri build
+
+      - name: Upload Linux installers
+        uses: actions/upload-artifact@v4
         with:
-          tagName: v__VERSION__
-          releaseName: 'TeamHub HRMS v__VERSION__'
-          releaseBody: 'TeamHub HRMS v1.0.0 desktop installers for Windows, Linux, and macOS.'
-          releaseDraft: true
-          prerelease: false
+          name: TeamHub-HRMS-Linux-amd64
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/rpm/*.rpm
+            src-tauri/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: error

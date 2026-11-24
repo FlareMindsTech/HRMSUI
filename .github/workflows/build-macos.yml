@@ -1,13 +1,10 @@
 name: Build macOS
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
-
-permissions:
-  contents: write
 
 jobs:
   build-macos:
@@ -34,14 +31,14 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build and upload macOS bundles
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build macOS universal app
+        run: npm run tauri build -- --target universal-apple-darwin
+
+      - name: Upload macOS installers
+        uses: actions/upload-artifact@v4
         with:
-          tagName: v__VERSION__
-          releaseName: 'TeamHub HRMS v__VERSION__'
-          releaseBody: 'TeamHub HRMS v1.0.0 desktop installers for Windows, Linux, and macOS.'
-          releaseDraft: true
-          prerelease: false
-          args: '--target universal-apple-darwin'
+          name: TeamHub-HRMS-macOS-universal
+          path: |
+            src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
+          if-no-files-found: error
