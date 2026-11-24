@@ -1,4 +1,4 @@
-name: Release Desktop v1
+name: Build Windows
 
 on:
   push:
@@ -10,27 +10,10 @@ permissions:
   contents: write
 
 jobs:
-  build-tauri:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: windows-latest
-            args: ''
-          - platform: ubuntu-22.04
-            args: ''
-          - platform: macos-latest
-            args: '--target universal-apple-darwin'
-
-    runs-on: ${{ matrix.platform }}
+  build-windows:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf rpm
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -40,8 +23,6 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -51,7 +32,7 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build and upload Tauri bundles
+      - name: Build and upload Windows bundles
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -61,4 +42,3 @@ jobs:
           releaseBody: 'TeamHub HRMS v1.0.0 desktop installers for Windows, Linux, and macOS.'
           releaseDraft: true
           prerelease: false
-          args: ${{ matrix.args }}
