@@ -127,6 +127,8 @@ function ProjectManagement() {
   const isDefaultPMRole = userRoleCode === 'PROJECT_MANAGER';
   const isProjectManager = isDefaultPMRole;
   const isEmployee = !isOwnerOrAdmin && !isDefaultPMRole;
+  // Chairman has project.read only: full read access, zero project mutations.
+  const isReadOnlyProjectViewer = String(userRoleCode || '').toUpperCase() === 'CHAIRMAN';
 
   // --- Core data ---
   const [projects, setProjects] = useState([]);
@@ -395,7 +397,9 @@ function ProjectManagement() {
     setProjectsLoading(true);
     setProjectsError('');
     try {
-      const { ok, data } = isOwnerOrAdmin ? await getAllProjectsApi() : await getMyProjectsApi();
+      const { ok, data } = isOwnerOrAdmin || isReadOnlyProjectViewer
+        ? await getAllProjectsApi()
+        : await getMyProjectsApi();
       if (ok && data.success) {
         const list = data.data || [];
         setProjects(list);
@@ -412,7 +416,7 @@ function ProjectManagement() {
     } finally {
       setProjectsLoading(false);
     }
-  }, [isOwnerOrAdmin, fetchAllDashboardSprints]);
+  }, [isOwnerOrAdmin, isReadOnlyProjectViewer, fetchAllDashboardSprints]);
 
   const handleImportData = async () => {
     if (!importDataText.trim()) {
@@ -1346,13 +1350,15 @@ function ProjectManagement() {
         subtitle="Everything your team is shipping, in one calm place."
         actions={
           <div className="d-flex align-items-center gap-2 flex-wrap">
-            <Button
-              variant="primary"
-              className="pm-btn-dark-pill"
-              onClick={openCreateProject}
-            >
-              <FaPlus size={11} /> Add Project
-            </Button>
+            {canCreateProject && (
+              <Button
+                variant="primary"
+                className="pm-btn-dark-pill"
+                onClick={openCreateProject}
+              >
+                <FaPlus size={11} /> Add Project
+              </Button>
+            )}
 
           </div>
         }
@@ -2060,7 +2066,7 @@ function ProjectManagement() {
                                       header: "Status",
                                       render: (task) => {
                                         const isMyTask = task.assignedTo && getId(task.assignedTo) === user?.id;
-                                        const canChangeStatus = isMyTask || canManageTasks;
+                                        const canChangeStatus = !isReadOnlyProjectViewer && (isMyTask || canManageTasks);
                                         return canChangeStatus ? (
                                           <Form.Select
                                             size="sm" className="shadow-none pm-status-select"
@@ -2079,9 +2085,11 @@ function ProjectManagement() {
                                       header: "Actions",
                                       render: (task) => (
                                         <div className="d-flex gap-1">
-                                          <Button size="sm" variant="secondary" className="pm-icon-btn p-1 text-primary" onClick={() => openLogTimeModal(task)} title="Log Time on Task">
-                                            <FaClock size={11} />
-                                          </Button>
+                                          {!isReadOnlyProjectViewer && (
+                                            <Button size="sm" variant="secondary" className="pm-icon-btn p-1 text-primary" onClick={() => openLogTimeModal(task)} title="Log Time on Task">
+                                              <FaClock size={11} />
+                                            </Button>
+                                          )}
                                           {canManageTasks && (
                                             <>
                                               <Button size="sm" variant="secondary" className="pm-icon-btn p-1" onClick={() => openEditTask(task)} title="Edit task">
@@ -2347,40 +2355,43 @@ function ProjectManagement() {
                                     )}
 
                                     {/* Reply Input */}
-                                    <div className="d-flex gap-1 mt-2">
-                                      <Form.Control
-                                        type="text"
-                                        size="sm"
-                                        placeholder="Write a reply/comment..."
-                                        value={commentTextMap[reportId] || ''}
-                                        onChange={e => setCommentTextMap({ ...commentTextMap, [reportId]: e.target.value })}
-                                        onKeyDown={e => {
-                                          if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.preventDefault();
-                                            handleAddComment(reportId);
-                                          }
-                                        }}
-                                        className="pm-chat-reply-input"
-                                      />
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="px-2 py-0 d-flex align-items-center micro-text fw-bold"
-                                        onClick={() => handleAddComment(reportId)}
-                                        disabled={submittingCommentMap[reportId] || !(commentTextMap[reportId] || '').trim()}
-                                      >
-                                        {submittingCommentMap[reportId] ? <LoadingSpinner variant="button" size="sm" /> : 'Reply'}
-                                      </Button>
-                                    </div>
+                                    {!isReadOnlyProjectViewer && (
+                                      <div className="d-flex gap-1 mt-2">
+                                        <Form.Control
+                                          type="text"
+                                          size="sm"
+                                          placeholder="Write a reply/comment..."
+                                          value={commentTextMap[reportId] || ''}
+                                          onChange={e => setCommentTextMap({ ...commentTextMap, [reportId]: e.target.value })}
+                                          onKeyDown={e => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                              e.preventDefault();
+                                              handleAddComment(reportId);
+                                            }
+                                          }}
+                                          className="pm-chat-reply-input"
+                                        />
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="px-2 py-0 d-flex align-items-center micro-text fw-bold"
+                                          onClick={() => handleAddComment(reportId)}
+                                          disabled={submittingCommentMap[reportId] || !(commentTextMap[reportId] || '').trim()}
+                                        >
+                                          {submittingCommentMap[reportId] ? <LoadingSpinner variant="button" size="sm" /> : 'Reply'}
+                                        </Button>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               );
                             })}
                           </div>
 
-                          {/* Chat Input Bar */}
-                          <div className="pm-chat-input-bar">
-                            <Form onSubmit={submitProjectDailyReport}>
+                          {/* Chat Input Bar — hidden for read-only roles */}
+                          {!isReadOnlyProjectViewer && (
+                            <div className="pm-chat-input-bar">
+                              <Form onSubmit={submitProjectDailyReport}>
                               <Form.Group className="mb-2">
                                 <Form.Control
                                   type="text"
@@ -2404,8 +2415,9 @@ function ProjectManagement() {
                                   {submittingReport ? <LoadingSpinner variant="button" size="sm" /> : <FaPaperPlane />}
                                 </Button>
                               </div>
-                            </Form>
-                          </div>
+                              </Form>
+                            </div>
+                          )}
                         </div>
                       </Tab.Pane>
 
@@ -2415,14 +2427,16 @@ function ProjectManagement() {
                           <Card.Body className="p-3">
                             <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                               <h6 className="fw-bold mb-0 text-uppercase small text-muted">Task Timesheets & Time Tracking</h6>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="pm-outline-btn d-flex align-items-center gap-1 rounded-pill"
-                                onClick={() => openLogTimeModal()}
-                              >
-                                <FaPlus size={12} /> Log Time
-                              </Button>
+                              {!isReadOnlyProjectViewer && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="pm-outline-btn d-flex align-items-center gap-1 rounded-pill"
+                                  onClick={() => openLogTimeModal()}
+                                >
+                                  <FaPlus size={12} /> Log Time
+                                </Button>
+                              )}
                             </div>
 
                             {timeLogsLoading && (
@@ -2486,15 +2500,17 @@ function ProjectManagement() {
                                       key: "actions",
                                       header: "Actions",
                                       render: (log) => (
-                                        <Button
-                                          size="sm"
-                                          variant="secondary"
-                                          className="pm-icon-btn p-1"
-                                          onClick={() => openLogTimeModal(log.task || log.taskId, log)}
-                                          title="Edit Time Log"
-                                        >
-                                          <FaEdit size={12} />
-                                        </Button>
+                                        isReadOnlyProjectViewer ? <span className="text-muted micro-text">—</span> : (
+                                          <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            className="pm-icon-btn p-1"
+                                            onClick={() => openLogTimeModal(log.task || log.taskId, log)}
+                                            title="Edit Time Log"
+                                          >
+                                            <FaEdit size={12} />
+                                          </Button>
+                                        )
                                       ),
                                     },
                                   ]}
@@ -2680,28 +2696,32 @@ function ProjectManagement() {
                                 </span>
                               </td>
                               <td>
-                                <Form.Select
-                                  size="sm"
-                                  className="shadow-none pm-status-select pm-status-select-sm py-0 px-1"
-                                  value={task.status}
-                                  onChange={e => quickStatusChange(task, e.target.value)}
-                                >
-                                  {TASK_STATUS_OPTIONS.map(s => (
-                                    <option key={s} value={s}>{s}</option>
-                                  ))}
-                                </Form.Select>
+                                {isReadOnlyProjectViewer ? getStatusBadge(task.status) : (
+                                  <Form.Select
+                                    size="sm"
+                                    className="shadow-none pm-status-select pm-status-select-sm py-0 px-1"
+                                    value={task.status}
+                                    onChange={e => quickStatusChange(task, e.target.value)}
+                                  >
+                                    {TASK_STATUS_OPTIONS.map(s => (
+                                      <option key={s} value={s}>{s}</option>
+                                    ))}
+                                  </Form.Select>
+                                )}
                               </td>
                               <td>
                                 <div className="d-flex align-items-center gap-1">
-                                  <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    className="pm-icon-btn p-1 text-primary"
-                                    onClick={() => openLogTimeModal(task)}
-                                    title="Log Time on Task"
-                                  >
-                                    <FaClock size={11} />
-                                  </Button>
+                                  {!isReadOnlyProjectViewer && (
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      className="pm-icon-btn p-1 text-primary"
+                                      onClick={() => openLogTimeModal(task)}
+                                      title="Log Time on Task"
+                                    >
+                                      <FaClock size={11} />
+                                    </Button>
+                                  )}
                                   {task.status !== 'Completed' ? (
                                     <Button
                                       size="sm"

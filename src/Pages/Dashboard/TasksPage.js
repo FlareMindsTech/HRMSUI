@@ -23,7 +23,7 @@ import {
   selectTasksFilter,
   STAGES,
 } from '../../redux/slices/tasksSlice';
-import { selectAuthUser } from '../../redux/slices/authSlice';
+import { selectAuthUser, useHasPermission } from '../../redux/slices/authSlice';
 import { getAllProjectsApi, getCompanyUsersApi } from '../../Api/Project/project';
 import FeedbackAlert from '../../Components/Common/FeedbackAlert';
 import LoadingSpinner from '../../Components/Common/LoadingSpinner';
@@ -83,7 +83,7 @@ const formatDueText = (dueDate, stage) => {
 };
 
 // ── TASK MENU POPOVER ──
-function TaskMenu({ task, isOpen, onClose, onMove, onDelete }) {
+function TaskMenu({ task, isOpen, onClose, onMove, onDelete, readOnly = false, allowDelete = true }) {
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -104,7 +104,7 @@ function TaskMenu({ task, isOpen, onClose, onMove, onDelete }) {
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || readOnly) return null;
 
   return (
     <div className="tasks-menu-popover" ref={menuRef} onClick={(e) => e.stopPropagation()}>
@@ -127,18 +127,22 @@ function TaskMenu({ task, isOpen, onClose, onMove, onDelete }) {
           {task.stage === s && <FiCheck size={12} className="ms-auto text-success" />}
         </button>
       ))}
-      <div className="tasks-menu-divider" />
-      <button
-        type="button"
-        className="tasks-menu-item danger"
-        onClick={() => {
-          onDelete(task.id || task._id);
-          onClose();
-        }}
-      >
-        <FiTrash2 size={12} />
-        <span>Delete Task</span>
-      </button>
+      {allowDelete && (
+        <>
+          <div className="tasks-menu-divider" />
+          <button
+            type="button"
+            className="tasks-menu-item danger"
+            onClick={() => {
+              onDelete(task.id || task._id);
+              onClose();
+            }}
+          >
+            <FiTrash2 size={12} />
+            <span>Delete Task</span>
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -150,6 +154,8 @@ function TaskCard({
   onPointerDown,
   onMoveStage,
   onDeleteTask,
+  readOnly = false,
+  allowDelete = true,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const cardRef = useRef(null);
@@ -202,26 +208,31 @@ function TaskCard({
         </div>
 
         <div className="position-relative">
-          <button
-            type="button"
-            className="tasks-menu-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuOpen((prev) => !prev);
-            }}
-            title="Task options"
-            aria-label="Task options"
-          >
-            <FiMoreHorizontal size={16} />
-          </button>
+          {!readOnly && (
+            <>
+              <button
+                type="button"
+                className="tasks-menu-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen((prev) => !prev);
+                }}
+                title="Task options"
+                aria-label="Task options"
+              >
+                <FiMoreHorizontal size={16} />
+              </button>
 
-          <TaskMenu
-            task={task}
-            isOpen={menuOpen}
-            onClose={() => setMenuOpen(false)}
-            onMove={onMoveStage}
-            onDelete={onDeleteTask}
-          />
+              <TaskMenu
+                task={task}
+                isOpen={menuOpen}
+                onClose={() => setMenuOpen(false)}
+                onMove={onMoveStage}
+                onDelete={onDeleteTask}
+                allowDelete={allowDelete}
+              />
+            </>
+          )}
         </div>
       </div>
 
@@ -490,6 +501,10 @@ function NewTaskModal({ show, onHide, projects, users, onCreate }) {
 export default function TasksPage() {
   const dispatch = useDispatch();
   const user = useSelector(selectAuthUser);
+  const hasPermission = useHasPermission();
+  const isReadOnlyTasksViewer = String(user?.roleCode || user?.roleName || '').toUpperCase() === 'CHAIRMAN';
+  const canCreateTasks = Boolean(hasPermission && hasPermission('project.update'));
+  const canDeleteTasks = Boolean(hasPermission && hasPermission('project.delete'));
   const tasks = useSelector(selectAllTasks);
   const loading = useSelector(selectTasksLoading);
   const filter = useSelector(selectTasksFilter);
@@ -796,7 +811,9 @@ export default function TasksPage() {
         title="Tasks"
         subtitle="Drag a card to another stage, or use its menu to move it."
         actions={
-          <Button variant="primary" icon={FiPlus} onClick={() => setShowNewModal(true)}>New Task</Button>
+          !isReadOnlyTasksViewer && canCreateTasks ? (
+            <Button variant="primary" icon={FiPlus} onClick={() => setShowNewModal(true)}>New Task</Button>
+          ) : null
         }
       />
 
@@ -857,7 +874,9 @@ export default function TasksPage() {
                           <TaskCard
                             task={t}
                             isGhost={isGhost}
-                            onPointerDown={handlePointerDown}
+                            readOnly={isReadOnlyTasksViewer}
+                            allowDelete={canDeleteTasks}
+                            onPointerDown={isReadOnlyTasksViewer ? undefined : handlePointerDown}
                             onMoveStage={handleMoveStage}
                             onDeleteTask={handleRequestDelete}
                           />

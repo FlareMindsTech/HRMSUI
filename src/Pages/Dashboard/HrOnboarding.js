@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo, createContext, useContext } from "react";
 import PageShell from "../../Components/Common/PageShell";
-import Button from "../../Components/Common/Button";
+import BaseButton from "../../Components/Common/Button";
 import {
   Container,
   Row,
@@ -202,6 +202,17 @@ import {
 import { useBranch } from "../../context/BranchContext";
 import { API_BASE_URL } from "../../config/api";
 import "./HrOnboarding.css";
+
+// Read-only roles (e.g. Chairman) must not see any mutation affordance on the
+// Members & Staff workspace. Buttons are hidden through context so every
+// action button in this large file is covered; navigation-only buttons opt
+// out with `allowReadOnly`.
+const ReadOnlyButtonContext = createContext(false);
+const Button = ({ allowReadOnly, children, ...props }) => {
+  const isReadOnly = useContext(ReadOnlyButtonContext);
+  if (isReadOnly && !allowReadOnly) return null;
+  return <BaseButton {...props}>{children}</BaseButton>;
+};
 
 /**
  * Safe Array normalizer
@@ -891,6 +902,21 @@ function HrOnboarding() {
   const currentUser = useSelector(selectAuthUser);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
   const hasPermission = useHasPermission();
+  const isReadOnlyViewer = String(currentUser?.roleCode || currentUser?.roleName || '').toUpperCase() === 'CHAIRMAN';
+  // Members & Staff mutation capabilities. Read-only oversight roles (Chairman)
+  // get none of these, even when they can read the underlying records.
+  const canCreateOnboarding = hasPermission('onboarding.create');
+  const canUpdateOnboarding = hasPermission('onboarding.update');
+  const canCompleteOnboarding = hasPermission('onboarding.complete');
+  const canProvisionAccount = hasPermission('user.provision_account');
+  const canManageAccountStatus = hasPermission('user.manage_status');
+  const canManageRoles = hasPermission('user.manage_roles');
+  const canManageAssets = hasPermission('asset.assign') || hasPermission('asset.create');
+  const canManageMembers = !isReadOnlyViewer && (
+    canCreateOnboarding || canUpdateOnboarding || canCompleteOnboarding ||
+    canProvisionAccount || canManageAccountStatus || canManageRoles || canManageAssets ||
+    isSystemAdmin
+  );
   const dispatch = useDispatch();
   // Post-mutation refresh must bypass the fetchAuth TTL so role/permission
   // changes revalidate immediately.
@@ -6326,6 +6352,7 @@ function HrOnboarding() {
   ];
 
   return (
+    <ReadOnlyButtonContext.Provider value={isReadOnlyViewer}>
     <PageShell className="onboarding-page-shell">
       <Container fluid className="onboarding-container p-0">
       {/* ── 1. TOP PAGE HEADER ── */}
@@ -6358,6 +6385,7 @@ function HrOnboarding() {
           </div>
           {editingOnboardingId && (
             <Button
+              allowReadOnly
               variant="outline-secondary"
               size="sm"
               className="rounded-pill px-3 extra-small fw-semibold"
@@ -10030,6 +10058,7 @@ function HrOnboarding() {
                     </button>
                     {editingOnboardingId && activeFormTab !== formTabs[0].id && (
                       <Button
+                        allowReadOnly
                         variant="outline-secondary"
                         size="sm"
                         className="rounded-pill px-3 extra-small fw-semibold"
@@ -12763,6 +12792,7 @@ function HrOnboarding() {
                           <td className="onboarding-col-w40">
                             <Form.Check
                               type="checkbox"
+                              disabled={!canManageMembers}
                               id={`task-check-${t._id || t.id}`}
                               checked={t.status === "COMPLETED" || t.isCompleted}
                               onChange={(e) => {
@@ -12901,6 +12931,7 @@ function HrOnboarding() {
                     <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 pb-2 mb-2 border-bottom">
                       <div className="d-flex gap-1.5 flex-wrap">
                         <Button
+                          allowReadOnly
                           variant={assetSubTab === "all" ? "primary" : "outline-secondary"}
                           size="sm"
                           className="rounded-pill extra-small px-3 py-1 fw-semibold"
@@ -12909,6 +12940,7 @@ function HrOnboarding() {
                           All Inventory ({assetCounts.total})
                         </Button>
                         <Button
+                          allowReadOnly
                           variant={assetSubTab === "assigned" ? "primary" : "outline-secondary"}
                           size="sm"
                           className="rounded-pill extra-small px-3 py-1 fw-semibold"
@@ -12917,6 +12949,7 @@ function HrOnboarding() {
                           Assigned to Candidate ({assetCounts.candidateAssigned})
                         </Button>
                         <Button
+                          allowReadOnly
                           variant={assetSubTab === "available" ? "success" : "outline-success"}
                           size="sm"
                           className="rounded-pill extra-small px-3 py-1 fw-semibold"
@@ -13181,6 +13214,7 @@ function HrOnboarding() {
                           <td className="text-end">
                             <Form.Select
                               size="sm"
+                              disabled={!canManageMembers}
                               className="onboarding-col-w140"
                               value={acc.status || (acc.isProvisioned ? "ACTIVE" : "REQUESTED")}
                               onChange={(e) => handleUpdateAccessStatus(acc._id, e.target.value)}
@@ -13330,6 +13364,7 @@ function HrOnboarding() {
                           <td className="text-end">
                             <Form.Select
                               size="sm"
+                              disabled={!canManageMembers}
                               className="onboarding-col-w140"
                               value={trn.status || "NOT_STARTED"}
                               onChange={(e) => handleUpdateTrainingStatus(trn._id, e.target.value)}
@@ -13351,7 +13386,7 @@ function HrOnboarding() {
         </Modal.Body>
 
         <Modal.Footer className="bg-white border-top py-2 px-4">
-          <Button variant="secondary" size="sm" className="rounded-pill px-4" onClick={handleCloseWorkspace}>
+          <Button allowReadOnly variant="secondary" size="sm" className="rounded-pill px-4" onClick={handleCloseWorkspace}>
             Close Workspace
           </Button>
         </Modal.Footer>
@@ -14267,6 +14302,7 @@ function HrOnboarding() {
       </Modal>
       </Container>
     </PageShell>
+    </ReadOnlyButtonContext.Provider>
   );
 }
 

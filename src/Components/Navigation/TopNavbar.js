@@ -7,7 +7,8 @@ import {
 } from 'react-icons/md';
 import { useSelector, useDispatch } from 'react-redux';
 import { LuPanelLeft } from 'react-icons/lu';
-import { selectAuthUser, selectIsSystemAdmin, logout } from '../../redux/slices/authSlice';
+import { selectAuthUser, selectAuthMenus, selectAuthPermissions, selectIsSystemAdmin, logout } from '../../redux/slices/authSlice';
+import { buildAccessContext, canSeeSection, getSectionLandingPath } from '../../config/accessRules';
 import './TopNavbar.css';
 
 /* ── Navigation Schema ── */
@@ -50,7 +51,13 @@ export default function TopNavbar() {
   const location = useLocation();
   const dispatch = useDispatch();
   const user = useSelector(selectAuthUser);
+  const menus = useSelector(selectAuthMenus);
+  const permissions = useSelector(selectAuthPermissions);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const access = buildAccessContext(user, menus, permissions);
+  const visibleNavItems = NAV_ITEMS.filter((item) => canSeeSection(access, item.key));
+  const navItemPath = (item) => getSectionLandingPath(access, item.key) || item.path;
+  const brandPath = getSectionLandingPath(access, 'home') || '/dashboard';
 
   // Mobile drawer state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -159,7 +166,7 @@ export default function TopNavbar() {
               <LuPanelLeft size={19} />
             </button>
           )}
-          <Link to="/dashboard" className="th-topnav-brand-link" title="TeamHub HRMS">
+          <Link to={brandPath} className="th-topnav-brand-link" title="TeamHub HRMS">
             <div className="th-topnav-brand-badge">T</div>
             <span className="th-topnav-brand-title">TeamHub</span>
           </Link>
@@ -167,12 +174,12 @@ export default function TopNavbar() {
 
         {/* ── Center Nav ── */}
         <nav className="th-topnav-links" aria-label="Main Navigation">
-          {NAV_ITEMS.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive = isNavItemActive(item);
             return (
               <NavLink
                 key={item.key}
-                to={item.path}
+                to={navItemPath(item)}
                 end={item.exact}
                 className={`th-topnav-item ${isActive ? 'is-active' : ''}`}
                 onClick={() => {
@@ -258,10 +265,10 @@ export default function TopNavbar() {
             </button>
           </div>
           <div className="th-mobile-drawer-body">
-            {NAV_ITEMS.map((item) => (
+            {visibleNavItems.map((item) => (
               <div key={item.key}>
                 <NavLink
-                  to={item.path}
+                  to={navItemPath(item)}
                   className="th-mobile-nav-link"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >

@@ -325,21 +325,67 @@ function Attendance() {
   const rawRole = (user?.roleCode || user?.roleName || '').toUpperCase();
   const priority = user?.priority || 5;
 
-  // Strict Mutually Exclusive Role Flags matching Business Architecture
+  // Strict, mutually exclusive role flags. Priority alone must never be used
+  // to infer HR: Chairman and Employee are both priority 3 but have very
+  // different (and read-only for Chairman) capabilities.
   const isOwner = priority === 1 || rawRole === 'OWNER';
-  const isAdmin = !isOwner && (priority === 2 || rawRole.includes('ADMIN'));
-  const isHR = !isOwner && !isAdmin && (priority === 3 || rawRole.includes('HR'));
-  const isPM = !isOwner && !isAdmin && !isHR && (priority === 4 || rawRole.includes('MANAGER') || rawRole.includes('PROJECT') || rawRole.includes('TL'));
-  const isEmployeeOrIntern = !isOwner && !isAdmin && !isHR && !isPM;
+  const isAdmin = !isOwner && (priority === 2 || rawRole === 'ADMIN');
+  const isChairman = !isOwner && !isAdmin && rawRole.includes('CHAIRMAN');
+  const isHR = !isOwner && !isAdmin && !isChairman &&
+    (rawRole === 'HR' || rawRole.includes('HR'));
+  const isPM = !isOwner && !isAdmin && !isHR && !isChairman &&
+    (priority === 4 || rawRole.includes('MANAGER') || rawRole.includes('PROJECT') || rawRole.includes('TL'));
+  const isEmployeeOrIntern = !isOwner && !isAdmin && !isHR && !isPM && !isChairman;
 
   const hasPermission = useHasPermission();
-  const canManualEntry = isOwner || isAdmin || Boolean(hasPermission && hasPermission('attendance.modify')) || (user?.permissions && (user.permissions.includes('*') || user.permissions.includes('attendance.modify')));
+  const canManualEntry = Boolean(hasPermission && hasPermission('attendance.modify'));
+  const canRegularize = Boolean(hasPermission && hasPermission('attendance.regularize.apply'));
+  const canReviewRegularization = Boolean(hasPermission && hasPermission('attendance.modify'));
+  const canPunch = Boolean(hasPermission && (hasPermission('attendance.punch_in') || hasPermission('attendance.punch_out')));
+  const canReadOwn = Boolean(hasPermission && hasPermission('attendance.read.own'));
+  const canReadTeam = Boolean(hasPermission && (hasPermission('attendance.read.all') || hasPermission('attendance.read.team')));
+  const canViewAudit = Boolean(hasPermission && hasPermission('attendance.audit'));
 
-  // Determine initial default tab per role
+  // Determine initial default tab per role, and reject unauthorized tab URLs
+  // so direct links never render an empty/denied view.
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const defaultTab = isPM ? 'my-team' : isEmployeeOrIntern ? 'my-today' : 'overview';
-  const activeTab = tabParam || defaultTab;
+  const isTabAllowed = (tab) => {
+    switch (tab) {
+      case 'overview':
+        return hasPermission('attendance.analytics') || canReadTeam;
+      case 'daily':
+        return canReadTeam;
+      case 'exceptions':
+      case 'overtime':
+      case 'my-team':
+        return hasPermission('attendance.read.team');
+      case 'regularization':
+        return canReadOwn || canRegularize || canManualEntry;
+      case 'audit':
+        return canViewAudit;
+      case 'optional-holidays':
+        return canReadOwn;
+      case 'my-today':
+      case 'my-calendar':
+      case 'my-history':
+        return canReadOwn;
+      default:
+        return false;
+    }
+  };
+  const requestedTab = tabParam || defaultTab;
+  const activeTab = isTabAllowed(requestedTab) ? requestedTab : defaultTab;
+  useEffect(() => {
+    if (tabParam && tabParam !== activeTab) {
+      setSearchParams((prev) => {
+        const sp = new URLSearchParams(prev);
+        sp.set('tab', activeTab);
+        return sp;
+      }, { replace: true });
+    }
+  }, [tabParam, activeTab, setSearchParams]);
   const setActiveTab = useCallback((nextTab) => {
     setSearchParams((prev) => {
       const sp = new URLSearchParams(prev);
@@ -488,6 +534,7 @@ function Attendance() {
 
   // ── Loaders ──
   const loadTodayData = useCallback(async () => {
+    if (!canReadOwn) return;
     try {
       const res = await fetchTodayAttendance();
       if (res?.success) {
@@ -497,7 +544,7 @@ function Attendance() {
         }
       }
     } catch (err) { console.warn("Today attendance load:", err.message); }
-  }, []);
+  }, [canReadOwn]);
 
   // ── Foreground geofence heartbeat (3-minute cadence) ──
   // Keeps active working time paused while the employee is outside the
@@ -511,7 +558,7 @@ function Attendance() {
       todayRecord?._id && todayRecord?.loginTime && !todayRecord?.logoutTime
     );
 
-    if (!requiresGeofenceHeartbeat || !hasActiveSession || isOwner || isAdmin) {
+    if (!requiresGeofenceHeartbeat || !hasActiveSession || !canPunch || isOwner || isAdmin || isChairman) {
       return undefined;
     }
 
@@ -573,6 +620,8 @@ function Attendance() {
     attendancePolicy?.attendanceMode,
     isOwner,
     isAdmin,
+    isChairman,
+    canPunch,
   ]);
 
   const loadOwnMonthly = useCallback(async () => {
@@ -829,6 +878,8 @@ function Attendance() {
             ? `Branch Attendance (${branchesList.find((b) => b._id === user?.branchId)?.branchName || 'Assigned Branch'})`
             : isHR
             ? 'HR Operations & Attendance Management'
+            : isChairman
+            ? 'Attendance Overview (Read-Only)'
             : isPM
             ? 'Team Attendance'
             : `My Attendance — ${user?.firstName || 'Employee'}`
@@ -852,14 +903,16 @@ function Attendance() {
                 <FaUserCheck size={12} /> Manual Attendance
               </Button>
             )}
-            <Button
-              variant="primary"
-              size="sm"
-              className="attendance-regularization-btn px-3 fw-semibold d-flex align-items-center gap-1.5"
-              onClick={() => setShowRegFormModal(true)}
-            >
-              <FaPlus size={11} /> Request Regularization
-            </Button>
+            {canRegularize && (
+              <Button
+                variant="primary"
+                size="sm"
+                className="attendance-regularization-btn px-3 fw-semibold d-flex align-items-center gap-1.5"
+                onClick={() => setShowRegFormModal(true)}
+              >
+                <FaPlus size={11} /> Request Regularization
+              </Button>
+            )}
           </div>
         }
       />
@@ -878,7 +931,7 @@ function Attendance() {
 
 
       {/* ── Organizational Scope Filter Bar (For Owner, Admin, HR) ── */}
-      {(isOwner || isAdmin || isHR) && (activeTab === 'overview' || activeTab === 'daily' || activeTab === 'exceptions' || activeTab === 'overtime' || activeTab === 'audit') && (
+      {(isOwner || isAdmin || isHR || isChairman) && (activeTab === 'overview' || activeTab === 'daily' || activeTab === 'exceptions' || activeTab === 'overtime' || activeTab === 'audit') && (
         <Card className="border-0 shadow-sm rounded-4 p-3 mb-3 bg-white">
           <Row className="g-2 align-items-center">
             {isOwner && (
@@ -1141,15 +1194,17 @@ function Attendance() {
                         <td className="fw-bold">{r.totalHours ? `${r.totalHours} hrs` : '0 hrs'}</td>
                         <td>{renderStatusBadgeStatic(r.status)}</td>
                         <td>
-                          <Button
-                            variant="light"
-                            size="sm"
-                            className="btn-icon p-1 rounded-circle border"
-                            onClick={() => handleOpenCorrection(r)}
-                            title="Edit / Correct Attendance"
-                          >
-                            <FaEdit size={12} className="text-muted" />
-                          </Button>
+                          {canManualEntry && (
+                            <Button
+                              variant="light"
+                              size="sm"
+                              className="btn-icon p-1 rounded-circle border"
+                              onClick={() => handleOpenCorrection(r)}
+                              title="Edit / Correct Attendance"
+                            >
+                              <FaEdit size={12} className="text-muted" />
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     );
@@ -1223,9 +1278,11 @@ function Attendance() {
                       </Badge>
                     </td>
                     <td>
-                      <Button variant="ghost" size="sm" onClick={() => handleOpenCorrection(r)} className="border btn-icon p-1">
-                        <FaEdit size={12} className="text-muted" />
-                      </Button>
+                      {canManualEntry && (
+                        <Button variant="ghost" size="sm" onClick={() => handleOpenCorrection(r)} className="border btn-icon p-1">
+                          <FaEdit size={12} className="text-muted" />
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -1317,26 +1374,28 @@ function Attendance() {
                     </td>
                     <td>{ex.date}</td>
                     <td>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setRegForm({
-                            employeeId: ex.employeeId,
-                            employeeName: ex.employeeName,
-                            employeeCode: ex.employeeCode,
-                            date: ex.date,
-                            requestType: ex.exceptionType === 'MISSING_PUNCH_OUT' ? 'MISSED_PUNCH_OUT' : 'STATUS_CORRECTION',
-                            requestedStatus: 'Present',
-                            requestedLoginTime: ex.loginTime ? new Date(ex.loginTime).toISOString().slice(0, 16) : '',
-                            requestedLogoutTime: '',
-                            reason: `Correcting exception: ${ex.title}`
-                          });
-                          setShowRegFormModal(true);
-                        }}
-                      >
-                        Prompt Regularization
-                      </Button>
+                      {canRegularize && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setRegForm({
+                              employeeId: ex.employeeId,
+                              employeeName: ex.employeeName,
+                              employeeCode: ex.employeeCode,
+                              date: ex.date,
+                              requestType: ex.exceptionType === 'MISSING_PUNCH_OUT' ? 'MISSED_PUNCH_OUT' : 'STATUS_CORRECTION',
+                              requestedStatus: 'Present',
+                              requestedLoginTime: ex.loginTime ? new Date(ex.loginTime).toISOString().slice(0, 16) : '',
+                              requestedLogoutTime: '',
+                              reason: `Correcting exception: ${ex.title}`
+                            });
+                            setShowRegFormModal(true);
+                          }}
+                        >
+                          Prompt Regularization
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -1351,9 +1410,11 @@ function Attendance() {
         <Card className="border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h6 className="fw-bold mb-0">Regularization & Missed Punch Requests</h6>
-            <Button variant="primary" size="sm" onClick={() => setShowRegFormModal(true)}>
-              + Submit Request
-            </Button>
+            {canRegularize && (
+              <Button variant="primary" size="sm" onClick={() => setShowRegFormModal(true)}>
+                + Submit Request
+              </Button>
+            )}
           </div>
 
           {regularizationLoading ? (
@@ -1387,7 +1448,7 @@ function Attendance() {
                       </Badge>
                     </td>
                     <td>
-                      {r.status === 'PENDING' && (isOwner || isAdmin || isHR || isPM) ? (
+                      {r.status === 'PENDING' && canReviewRegularization ? (
                         <Button
                           variant="outline-dark"
                           size="sm"
@@ -1486,7 +1547,7 @@ function Attendance() {
       )}
 
       {/* ── TAB CONTENT 7: AUDIT LOG (OWNER, ADMIN & HR) ── */}
-      {activeTab === 'audit' && (isOwner || isAdmin || isHR) && (
+      {activeTab === 'audit' && (isOwner || isAdmin || canViewAudit) && (
         <Card className="border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h6 className="fw-bold text-info d-flex align-items-center gap-2 mb-0">
@@ -1600,16 +1661,18 @@ function Attendance() {
                     <p className="text-muted extra-small mb-3 mx-auto" style={{ maxWidth: 300 }}>
                       Direct attendance punch is disabled for this organization/branch. Attendance records are recorded and managed manually by HR/Admin.
                     </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="rounded-pill px-3 py-1 fw-semibold extra-small"
-                      onClick={() => setActiveTab('regularization')}
-                    >
-                      Request Regularization
-                    </Button>
+                    {canRegularize && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-pill px-3 py-1 fw-semibold extra-small"
+                        onClick={() => setActiveTab('regularization')}
+                      >
+                        Request Regularization
+                      </Button>
+                    )}
                   </div>
-                ) : (
+                ) : canPunch ? (
                   <Button
                     variant={todayRecord?.loginTime && !todayRecord?.logoutTime ? 'danger' : 'primary'}
                     size="lg"
@@ -1625,6 +1688,8 @@ function Attendance() {
                       </div>
                     )}
                   </Button>
+                ) : (
+                  <div className="extra-small text-muted mb-3">Punch actions are not available for your role.</div>
                 )}
                 <div className="small fw-bold text-dark mb-1">
                   Punch In: <span className="text-success">{todayRecord?.loginTime ? formatTime(todayRecord.loginTime) : '—'}</span>

@@ -15,6 +15,7 @@ import {
 import { fetchOnboardings } from '../../Api/Hr/hr';
 import { fetchLeaveBalanceApi, fetchAllLeavesApi, fetchMyLeavesApi } from '../../Api/leave/leave';
 import { getPendingApprovals } from '../../services/approvalWorkflowService';
+import { getMyProjectsApi } from '../../Api/Project/project';
 import {
   MdSearch,
   MdNotificationsNone,
@@ -55,6 +56,7 @@ function Dashboard() {
   const [employees, setEmployees] = useState([]);
   const [leaveBalances, setLeaveBalances] = useState(null);
   const [allLeaves, setAllLeaves] = useState([]);
+  const [myProjects, setMyProjects] = useState([]);
   const [loadingRealData, setLoadingRealData] = useState(true);
 
   const employeeName = user
@@ -73,6 +75,7 @@ function Dashboard() {
   const isOwner = priority === 1 || rawRole === 'OWNER' || user?.isOwner === true;
   const isSystemAdmin = rawRole === 'SYSTEM_ADMIN' || rawRole === 'ADMIN';
   const isOwnerOrAdmin = isOwner || isSystemAdmin;
+  const isProjectManager = rawRole === 'PROJECT_MANAGER';
 
   // Live seconds clock
   useEffect(() => {
@@ -84,6 +87,19 @@ function Dashboard() {
   const loadAllRealData = useCallback(async () => {
     setLoadingRealData(true);
     try {
+      // Project Manager dashboard is project-scoped only: no attendance punch,
+      // onboarding, approval, leave or payroll calls are made for this role.
+      if (isProjectManager) {
+        const projectRes = await Promise.resolve(getMyProjectsApi()).catch(() => null);
+        const list = Array.isArray(projectRes)
+          ? projectRes
+          : Array.isArray(projectRes?.data)
+          ? projectRes.data
+          : [];
+        setMyProjects(list);
+        return;
+      }
+
       // 1. Real today personal attendance record
       const attRes = typeof fetchTodayAttendance === 'function' ? await Promise.resolve(fetchTodayAttendance()).catch(() => null) : null;
       if (attRes) {
@@ -152,7 +168,7 @@ function Dashboard() {
     } finally {
       setLoadingRealData(false);
     }
-  }, []);
+  }, [isProjectManager]);
 
   useEffect(() => {
     loadAllRealData();
@@ -303,6 +319,78 @@ function Dashboard() {
   // Currency format helper
   const formatINR = (val) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
+
+  // Project Manager: project-only dashboard (no punch, leave, onboarding,
+  // approval or payroll widgets and no unauthorized data calls).
+  if (isProjectManager) {
+    const projectCount = Array.isArray(myProjects) ? myProjects.length : 0;
+    return (
+      <PageShell className="th-calm-dashboard">
+        <Container fluid className="px-4 py-3">
+          <div className="th-cd-topbar mb-3">
+            <div className="th-cd-breadcrumb">Dashboard / Projects</div>
+          </div>
+          <div className="th-cd-header mb-4">
+            <div className="th-cd-header-left">
+              <h1 className="th-cd-title">Project workspace, {employeeName}</h1>
+              <p className="th-cd-subtitle">
+                {dayName}, {dateNum} {monthName}. Project-scoped overview of your assigned work.
+              </p>
+            </div>
+            <div className="th-cd-header-actions">
+              <Button variant="primary" icon={MdAdd} onClick={() => navigate('/projects')}>
+                Open projects
+              </Button>
+            </div>
+          </div>
+          <Row className="g-3 mb-4">
+            <Col md={4}>
+              <div className="th-kpi-card h-100">
+                <div className="th-kpi-title">My projects</div>
+                <div className="th-kpi-num">{loadingRealData ? '—' : projectCount}</div>
+                <div className="th-kpi-denom">Assigned to you</div>
+              </div>
+            </Col>
+            <Col md={4}>
+              <div className="th-kpi-card h-100">
+                <div className="th-kpi-title">In progress</div>
+                <div className="th-kpi-num">
+                  {loadingRealData ? '—' : myProjects.filter((p) => String(p.status || '').toUpperCase() === 'IN_PROGRESS').length}
+                </div>
+                <div className="th-kpi-denom">Active delivery</div>
+              </div>
+            </Col>
+            <Col md={4}>
+              <div className="th-kpi-card h-100">
+                <div className="th-kpi-title">Team attendance</div>
+                <div className="th-kpi-num">View</div>
+                <div className="th-kpi-denom">Assigned project teams only</div>
+                <Button variant="link" size="sm" onClick={() => navigate('/attendance')}>Open attendance</Button>
+              </div>
+            </Col>
+          </Row>
+          <div className="th-kpi-card">
+            <h5 className="mb-3">Assigned projects</h5>
+            {loadingRealData ? (
+              <p className="text-muted small mb-0">Loading projects…</p>
+            ) : projectCount === 0 ? (
+              <p className="text-muted small mb-0">No projects are currently assigned to you.</p>
+            ) : (
+              <ul className="mb-0 small">
+                {myProjects.map((p) => (
+                  <li key={p._id || p.id}>
+                    <button type="button" className="btn btn-link p-0" onClick={() => navigate('/projects')}>
+                      {p.projectName || p.name || 'Untitled project'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Container>
+      </PageShell>
+    );
+  }
 
   return (
     <PageShell className="th-calm-dashboard">
