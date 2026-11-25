@@ -12,6 +12,7 @@ import {
 import { getAuthToken, clearAuthToken, setUnauthorizedHandler } from './config/api';
 import { store } from './redux/store';
 import Layout from './Layout/Layout';
+import AccessBoundary from './Components/Common/AccessBoundary';
 import Login from './view/Login';
 import ResetPassword from './view/ResetPassword';
 import NetworkStatusListener from './Components/Common/NetworkStatusListener';
@@ -224,7 +225,7 @@ function App() {
 
           {/* Protected Dashboard Routes */}
           {isAuthenticated ? (
-            <Route path="/" element={<Layout />}>
+            <Route path="/" element={<AccessBoundary><Layout /></AccessBoundary>}>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/organisation" element={<Organisation />} />

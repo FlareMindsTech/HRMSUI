@@ -31,7 +31,14 @@ import {
   MdCheckCircle,
 } from 'react-icons/md';
 import { useSelector, useDispatch } from 'react-redux';
-import { selectAuthUser, selectIsSystemAdmin, useHasMenu, useHasPermission, logout } from '../../redux/slices/authSlice';
+import { selectAuthUser, selectIsSystemAdmin, selectAuthMenus, selectAuthPermissions, useHasMenu, useHasPermission, logout } from '../../redux/slices/authSlice';
+import {
+  buildAccessContext,
+  canSeeNavItem,
+  canSeeAttendanceTab,
+  canSeeSection,
+  SECTION_NAV_ITEMS,
+} from '../../config/accessRules';
 import { useBranch } from '../../context/BranchContext';
 import { fetchMyLeavesApi, fetchTeamLeavesApi, fetchAllLeavesApi } from '../../Api/leave/leave';
 import './Sidebar.css';
@@ -126,6 +133,9 @@ const NAV_SECTIONS = {
               { name: 'Overtime', path: '/attendance?tab=overtime', tabKey: 'overtime', icon: MdHistoryEdu },
               { name: 'Audit Log', path: '/attendance?tab=audit', tabKey: 'audit', icon: MdSecurity },
               { name: 'Optional Holidays', path: '/attendance?tab=optional-holidays', tabKey: 'optional-holidays', icon: MdEventNote },
+              { name: 'My Attendance', path: '/attendance?tab=my-today', tabKey: 'my-today', icon: MdAccessTime },
+              { name: 'My Calendar', path: '/attendance?tab=my-calendar', tabKey: 'my-calendar', icon: MdEventNote },
+              { name: 'My Team', path: '/attendance?tab=my-team', tabKey: 'my-team', icon: MdPeople },
             ],
           },
           { name: 'Leave Requests', path: '/leave', icon: MdEventNote },
@@ -230,6 +240,9 @@ export default function Sidebar({
   const dispatch = useDispatch();
   const user = useSelector(selectAuthUser);
   const isSystemAdmin = useSelector(selectIsSystemAdmin);
+  const menus = useSelector(selectAuthMenus);
+  const permissions = useSelector(selectAuthPermissions);
+  const access = buildAccessContext(user, menus, permissions);
   const hasPermission = useHasPermission();
   const [pendingLeaveCount, setPendingLeaveCount] = useState(0);
 
@@ -333,10 +346,16 @@ export default function Sidebar({
 
   const isVisible = (item) => {
     if (item.isPlatformOnly) {
-      const roleCode = (user?.roleCode || user?.role?.roleCode || '').toUpperCase();
-      return roleCode === 'SAAS_SUPER_ADMIN' || (user?.scope === 'PLATFORM' && !user?.organizationId);
+      return Boolean(access.isPlatform);
     }
-    return true;
+    return canSeeNavItem(access, item);
+  };
+
+  const isChildVisible = (child) => {
+    if (child.tabKey && child.path?.startsWith('/attendance')) {
+      return canSeeAttendanceTab(access, child.tabKey);
+    }
+    return canSeeNavItem(access, child);
   };
 
   const handleConfirmLogout = () => {
@@ -549,12 +568,35 @@ export default function Sidebar({
     };
   }, [branches]);
 
+  const effectiveSection = canSeeSection(access, activeSection)
+    ? activeSection
+    : Object.keys(SECTION_NAV_ITEMS).find((key) => canSeeSection(access, key)) || 'home';
   const currentSection =
-    isBranchActive && branchSection
+    isBranchActive && canSeeNavItem(access, { path: '/organisation' }) && branchSection
       ? branchSection
-      : activeSection === 'people'
+      : effectiveSection === 'people'
       ? peopleSection
-      : NAV_SECTIONS[activeSection] || NAV_SECTIONS.home;
+      : NAV_SECTIONS[effectiveSection] || NAV_SECTIONS.home;
+
+  // Drop unauthorized items/submenus and any group that becomes empty.
+  const visibleGroups = useMemo(() => {
+    const groups = (currentSection.groups || [])
+      .map((group) => {
+        const items = (group.items || [])
+          .filter(isVisible)
+          .map((item) => {
+            if (!Array.isArray(item.children) || item.children.length === 0) return item;
+            const children = item.children.filter(isChildVisible);
+            return children.length > 0 ? { ...item, children } : null;
+          })
+          .filter(Boolean);
+        return { ...group, items };
+      })
+      .filter((group) => group.items.length > 0);
+    return groups;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSection, access, user]);
+
   const SectionIcon = currentSection.icon || MdBusiness;
   const displayName = user?.name || user?.fullName || 'FM Sagadhevan';
   const displayRole = user?.roleName || user?.roleCode || 'Owner · Head Office';
@@ -569,14 +611,14 @@ export default function Sidebar({
       >
         {/* ── Scrollable Navigation Tree ── */}
         <nav className="th-sb-nav-scroll">
-          {currentSection.groups.map((group, gIdx) => (
+          {visibleGroups.map((group, gIdx) => (
             <div key={gIdx} className="th-sb-group">
               {group.header && (
                 <div className="th-sb-group-header">{group.header}</div>
               )}
 
               <div className="th-sb-items-list">
-                {group.items.filter(isVisible).map((item) => {
+                {group.items.map((item) => {
                   const Icon = item.icon || MdBusiness;
                   const badgeValue = item.name === 'Leave Requests' ? pendingLeaveCount : item.badge;
                   const shouldShowBadge = item.name === 'Leave Requests' ? pendingLeaveCount > 0 : Boolean(item.badge);
